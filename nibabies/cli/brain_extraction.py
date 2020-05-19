@@ -6,7 +6,7 @@ def get_parser():
     """Build parser object."""
     from os import cpu_count
     from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-    from ..__about__ import __version__
+    from .._version import get_versions
 
     parser = ArgumentParser(
         description="""\
@@ -24,7 +24,7 @@ ANTs package.\
     parser.add_argument(
         "--version",
         action="version",
-        version="nibabies-be v{}".format(__version__),
+        version="nibabies-be v{}".format(get_versions()["version"]),
     )
     parser.add_argument(
         "--template",
@@ -54,7 +54,7 @@ ANTs package.\
         "-m",
         "--mri-scheme",
         default="T2w",
-        choices=("T2w", "T1w"),
+        choices=("T2w",),
         help="select a particular MRI scheme",
     )
     parser.add_argument(

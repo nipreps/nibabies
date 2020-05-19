@@ -33,7 +33,7 @@ LOWRES_ZOOMS = (0.42, 0.42, 0.42)
 HIRES_ZOOMS = (0.1, 0.1, 0.1)
 
 
-def init_rodent_brain_extraction_wf(
+def init_infant_brain_extraction_wf(
     ants_affine_init=False,
     bspline_fitting_distance=8,
     debug=False,
