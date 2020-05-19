@@ -29,8 +29,7 @@ from ..utils.filtering import (
     truncation as _trunc
 )
 
-LOWRES_ZOOMS = (0.42, 0.42, 0.42)
-HIRES_ZOOMS = (0.1, 0.1, 0.1)
+LOWRES_ZOOMS = HIRES_ZOOMS = (4, 4, 4)
 
 
 def init_infant_brain_extraction_wf(
@@ -65,12 +64,11 @@ def init_infant_brain_extraction_wf(
     )
 
     template_specs = template_specs or {}
-    res = template_specs.get('resolution', 1)
     # Find a suitable target template in TemplateFlow
     tpl_target_path = get_template(
         in_template,
-        resolution=2,
         suffix=mri_scheme,
+        **template_specs
     )
     if not tpl_target_path:
         raise RuntimeError(
@@ -120,7 +118,7 @@ def init_infant_brain_extraction_wf(
     norm = pe.Node(
         Registration(from_file=pkgr_fn(
             "niworkflows.data",
-            f"data/antsBrainExtraction_{ants_params}.json")
+            f"antsBrainExtraction_{ants_params}.json")
         ),
         name="norm",
         n_procs=omp_nthreads,

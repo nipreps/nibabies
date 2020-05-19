@@ -89,7 +89,7 @@ def main(argv=None):
     template_specs = {'resolution': 2 if opts.debug else 1}
     if opts.cohort:
         template_specs['cohort'] = opts.cohort
-    be = init_rodent_brain_extraction_wf(
+    be = init_infant_brain_extraction_wf(
         debug=opts.debug,
         in_template=opts.template,
         template_specs=template_specs,
