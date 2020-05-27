@@ -1,5 +1,6 @@
-"""Command Line Interface."""
+"""Main runner"""
 from pathlib import Path
+import sys
 
 
 def get_parser():
@@ -16,6 +17,11 @@ ANTs package.\
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
 
+    parser.add_argument(
+        "command",
+        choices=('bew',),
+        help="Specific nibabies commandline workflow",
+    )
     parser.add_argument(
         "input_image",
         type=Path,
@@ -83,23 +89,29 @@ ANTs package.\
 
 def main(argv=None):
     """Entry point."""
-    from ..workflows.brain_extraction import init_infant_brain_extraction_wf
+    from nipype import config
 
     opts = get_parser().parse_args(argv)
-    template_specs = {'resolution': 2 if opts.debug else 1}
-    if opts.cohort:
-        template_specs['cohort'] = opts.cohort
-    be = init_infant_brain_extraction_wf(
-        debug=opts.debug,
-        in_template=opts.template,
-        template_specs=template_specs,
-        mri_scheme=opts.mri_scheme,
-        omp_nthreads=opts.omp_nthreads,
-        output_dir=opts.output_dir,
-    )
-    be.base_dir = opts.work_dir
-    be.inputs.inputnode.in_files = opts.input_image
+    if opts.command == 'bew':
+        from ..workflows.brain_extraction import init_infant_brain_extraction_wf
+        template_specs = {'resolution': 2 if opts.debug else 1}
+        if opts.cohort:
+            template_specs['cohort'] = opts.cohort
+        wf = init_infant_brain_extraction_wf(
+            debug=opts.debug,
+            in_template=opts.template,
+            template_specs=template_specs,
+            mri_scheme=opts.mri_scheme,
+            omp_nthreads=opts.omp_nthreads,
+            output_dir=opts.output_dir,
+        )
+        wf.inputs.inputnode.in_files = opts.input_image
+    else:
+        print(f"No workflow for command: {opts.command}", file=sys.stderr)
+        sys.exit(1)
 
+    # Run the workflow
+    wf.base_dir = opts.work_dir
     nipype_plugin = {"plugin": "Linear"}
     if opts.nprocs > 1:
         nipype_plugin["plugin"] = "MultiProc"
@@ -108,10 +120,9 @@ def main(argv=None):
             "raise_insufficient": False,
             "maxtasksperchild": 1,
         }
-    be.run(**nipype_plugin)
-
+    wf.run(**nipype_plugin)
 
 if __name__ == "__main__":
     raise RuntimeError(
-        "Please `pip install` nibabies and use the `nibabies-be` command."
+        "Please `pip install` this and run via the commandline interfaces, `nibabies <command>`"
     )

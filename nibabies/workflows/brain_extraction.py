@@ -12,6 +12,7 @@ from nipype.interfaces.ants import N4BiasFieldCorrection
 from nipype.interfaces.ants.utils import AI
 
 # niworkflows
+from niworkflows.anat.ants import init_atropos_wf, ATROPOS_MODELS
 from niworkflows.interfaces.ants import ImageMath
 from niworkflows.interfaces.images import RegridToZooms
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
@@ -29,7 +30,8 @@ from ..utils.filtering import (
     truncation as _trunc
 )
 
-LOWRES_ZOOMS = HIRES_ZOOMS = (4, 4, 4)
+HIRES_ZOOMS = (.8, .8, .8)
+LOWRES_ZOOMS = (2, 2, 2)
 
 
 def init_infant_brain_extraction_wf(
@@ -42,6 +44,7 @@ def init_infant_brain_extraction_wf(
     mem_gb=3.0,
     mri_scheme="T2w",
     name="infant_brain_extraction_wf",
+    atropos_model=None,
     omp_nthreads=None,
     output_dir=None,
     use_float=True,
@@ -88,8 +91,8 @@ def init_infant_brain_extraction_wf(
     )
 
     # Resample both target and template to a controlled, isotropic resolution
-    res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")
-    res_target = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_target")
+    res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")  # testing
+    res_target = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_target")  # testing
     gauss_tmpl = pe.Node(niu.Function(function=_gauss_filter), name="gauss_tmpl")
     gauss_tmpl.inputs.sigma = tuple(np.array(LOWRES_ZOOMS) * 10.0)
 
@@ -167,6 +170,7 @@ def init_infant_brain_extraction_wf(
         # truncation, resampling, and initial N4
         (inputnode, res_target, [(("in_files", _pop), "in_file")]),
         (res_target, clip_target, [("out_file", "in_file")]),
+        # (inputnode, clip_target, [(("in_files", _pop), "in_file")]),
         (clip_tmpl, res_tmpl, [("out", "in_file")]),
         (clip_target, init_n4, [("out", "input_image")]),
         (init_n4, clip_inu, [("output_image", "in_file")]),
@@ -174,6 +178,7 @@ def init_infant_brain_extraction_wf(
         (clip_inu, buffernode, [("out", "hires_target")]),
         (gauss_target, buffernode, [("out", "smooth_target")]),
         (res_tmpl, gauss_tmpl, [("out_file", "in_file")]),
+        # (clip_tmpl, gauss_tmpl, [("out", "in_file")]),
     ])
 
     # Graft a template registration-mask if present
@@ -219,6 +224,22 @@ def init_infant_brain_extraction_wf(
     )
     final_mask = pe.Node(ApplyMask(), name="final_mask")
 
+    if atropos_model is None:
+        atropos_model = tuple(ATROPOS_MODELS[mri_scheme].values())
+
+    atropos_wf = init_atropos_wf(
+        use_random_seed=False,
+        omp_nthreads=omp_nthreads,
+        mem_gb=mem_gb,
+        in_segmentation_model=atropos_model,
+    )
+    # if tpl_regmask_path:
+    #     atropos_wf.get_node('inputnode').inputs.in_mask_dilated = tpl_regmask_path
+
+    sel_wm = pe.Node(niu.Select(index=atropos_model[-1] - 1), name='sel_wm',
+                    run_without_submitting=True)
+
+
     wf.connect([
         (inputnode, map_brainmask, [(("in_files", _pop), "reference_image")]),
         (inputnode, final_n4, [(("in_files", _pop), "input_image")]),
@@ -251,10 +272,32 @@ def init_infant_brain_extraction_wf(
         (final_mask, outputnode, [("out_file", "out_brain")]),
     ])
 
+    # wf.disconnect([
+    #     (get_brainmask, apply_mask, [('output_image', 'mask_file')]),
+    #     (copy_xform, outputnode, [('out_mask', 'out_mask')]),
+    # ])
+
+    # wf.connect([
+    #     (init_n4, atropos_wf, [
+    #         ('output_image', 'inputnode.in_files')]),  # intensity image
+    #     (thr_brainmask, atropos_wf, [
+    #         ('out_mask', 'inputnode.in_mask')]),
+    #     (atropos_wf, sel_wm, [('outputnode.out_tpms', 'inlist')]),
+    #     (sel_wm, final_n4, [('out', 'weight_image')]),
+    # ])
+    # wf.connect([
+        # (atropos_wf, outputnode, [
+        #     ('outputnode.out_mask', 'out_mask'),
+        #     ('outputnode.out_segm', 'out_segm'),
+        #     ('outputnode.out_tpms', 'out_tpms')]),
+    # ])
+
     if tpl_regmask_path:
         wf.connect([
             (hires_mask, norm, [
                 ("output_image", "fixed_image_masks")]),
+            # (hires_mask, atropos_wf, [
+            #     ("output_image", "inputnode.in_mask_dilated")]),
         ])
 
     if interim_checkpoints:
@@ -266,7 +309,7 @@ def init_infant_brain_extraction_wf(
             mem_gb=1
         )
         final_report = pe.Node(SimpleBeforeAfter(
-            before_label="tpl-WHS",
+            before_label=f"tpl-{in_template}",
             after_label="target"),
             name="final_report"
         )
@@ -351,7 +394,7 @@ def init_infant_brain_extraction_wf(
             mem_gb=1
         )
         init_report = pe.Node(SimpleBeforeAfter(
-            before_label="tpl-WHS",
+            before_label=f"tpl-{in_template}",
             after_label="target"),
             name="init_report"
         )
