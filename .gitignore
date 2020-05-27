@@ -93,5 +93,6 @@ ENV/
 # vim
 *.swp
 
+.DS_Store
 # local testing
 work/
