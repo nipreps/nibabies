@@ -14,7 +14,7 @@ from nipype.interfaces.ants.utils import AI
 # niworkflows
 from niworkflows.anat.ants import init_atropos_wf, ATROPOS_MODELS
 from niworkflows.interfaces.ants import ImageMath
-from niworkflows.interfaces.images import RegridToZooms
+from niworkflows.interfaces.images import RegridToZooms, ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
 from niworkflows.interfaces.fixes import (
     FixHeaderRegistration as Registration,
@@ -90,6 +90,12 @@ def init_infant_brain_extraction_wf(
         in_template, desc="BrainCerebellumExtraction", suffix="mask", **template_specs
     )
 
+    # validate images
+    val_tmpl = pe.Node(ValidateImage(), name='val_tmpl')
+    val_tmpl.inputs.in_file = _pop(tpl_target_path)
+
+    val_target = pe.Node(ValidateImage(), name='val_target')
+
     # Resample both target and template to a controlled, isotropic resolution
     res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")  # testing
     res_target = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_target")  # testing
@@ -144,7 +150,7 @@ def init_infant_brain_extraction_wf(
         niu.Function(function=_trunc),
         name="clip_tmpl",
     )
-    clip_tmpl.inputs.in_file = _pop(tpl_target_path)
+    #clip_tmpl.inputs.in_file = _pop(tpl_target_path)
 
     # INU correction of the target image
     init_n4 = pe.Node(
@@ -168,9 +174,11 @@ def init_infant_brain_extraction_wf(
     gauss_target.inputs.sigma = tuple(np.array(LOWRES_ZOOMS) * 8.0)
     wf.connect([
         # truncation, resampling, and initial N4
-        (inputnode, res_target, [(("in_files", _pop), "in_file")]),
+        (inputnode, val_target, [(("in_files", _pop), "in_file")]),
+        # (inputnode, res_target, [(("in_files", _pop), "in_file")]),
+        (val_target, res_target, [("out_file", "in_file")]),
         (res_target, clip_target, [("out_file", "in_file")]),
-        # (inputnode, clip_target, [(("in_files", _pop), "in_file")]),
+        (val_tmpl, clip_tmpl, [("out_file", "in_file")]),
         (clip_tmpl, res_tmpl, [("out", "in_file")]),
         (clip_target, init_n4, [("out", "input_image")]),
         (init_n4, clip_inu, [("output_image", "in_file")]),
