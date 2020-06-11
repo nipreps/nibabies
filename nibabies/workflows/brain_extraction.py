@@ -78,13 +78,15 @@ def init_infant_brain_extraction_wf(
             f"An instance of template <tpl-{in_template}> with MR scheme '{mri_scheme}'"
             " could not be found.")
 
+    # tpl_brainmask_path = get_template(
+    #     in_template, desc="brain", suffix="probseg", **template_specs
+    # )
+    # if not tpl_brainmask_path:
+
+    # ignore probseg for the time being
     tpl_brainmask_path = get_template(
-        in_template, desc="brain", suffix="probseg", **template_specs
+        in_template, desc="brain", suffix="mask", **template_specs
     )
-    if not tpl_brainmask_path:
-        tpl_brainmask_path = get_template(
-            in_template, desc="brain", suffix="mask", **template_specs
-        )
 
     tpl_regmask_path = get_template(
         in_template, desc="BrainCerebellumExtraction", suffix="mask", **template_specs

@@ -98,6 +98,7 @@ def main(argv=None):
         if opts.cohort:
             template_specs['cohort'] = opts.cohort
         wf = init_infant_brain_extraction_wf(
+            ants_affine_init=True,
             debug=opts.debug,
             in_template=opts.template,
             template_specs=template_specs,
