@@ -361,12 +361,12 @@ def init_infant_brain_extraction_wf(
 
     init_aff = pe.Node(
         AI(
-            metric=("Mattes", 32, "Regular", 1.0),
+            metric=("Mattes", 32, "Regular", 0.25),
             transform=("Affine", 0.1),
-            search_factor=(10, 0.08),
+            search_factor=(15, 0.1),
             principal_axes=False,
-            convergence=(40, 1e-6, 10),
-            search_grid=(25, (0, 0, 0)) if debug else (2, (1, 1, 1)),
+            convergence=(10, 1e-6, 10),
+            search_grid=(40, (0, 40, 40)),
             verbose=True,
         ),
         name="init_aff",
