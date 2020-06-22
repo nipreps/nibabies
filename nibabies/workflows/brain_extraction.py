@@ -173,7 +173,7 @@ def init_infant_brain_extraction_wf(
         name="clip_inu",
     )
     gauss_target = pe.Node(niu.Function(function=_gauss_filter), name="gauss_target")
-    gauss_target.inputs.sigma = tuple(np.array(LOWRES_ZOOMS) * 8.0)
+    gauss_target.inputs.sigma = tuple(np.array(LOWRES_ZOOMS) * 2.0)
     wf.connect([
         # truncation, resampling, and initial N4
         (inputnode, val_target, [(("in_files", _pop), "in_file")]),
