@@ -36,7 +36,7 @@ LOWRES_ZOOMS = (2, 2, 2)
 
 def init_infant_brain_extraction_wf(
     ants_affine_init=False,
-    bspline_fitting_distance=8,
+    bspline_fitting_distance=200,
     debug=False,
     in_template="MNIInfant",
     template_specs=None,
@@ -163,7 +163,7 @@ def init_infant_brain_extraction_wf(
             n_iterations=[50] * (4 - debug),
             convergence_threshold=1e-7,
             shrink_factor=4,
-            bspline_fitting_distance=8,
+            bspline_fitting_distance=bspline_fitting_distance,
         ),
         n_procs=omp_nthreads,
         name="init_n4",
@@ -434,7 +434,7 @@ def _pop(in_files):
     return in_files
 
 
-def _bspline_distance(in_file, spacings=(8, 2, 8)):
+def _bspline_distance(in_file, spacings=(20, 20, 20)):
     import numpy as np
     import nibabel as nb
 
