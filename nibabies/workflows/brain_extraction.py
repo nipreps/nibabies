@@ -320,7 +320,8 @@ def init_infant_brain_extraction_wf(
         )
         final_report = pe.Node(SimpleBeforeAfter(
             before_label=f"tpl-{in_template}",
-            after_label="target"),
+            after_label="target",
+            out_report="final_report.svg"),
             name="final_report"
         )
         wf.connect([
@@ -405,7 +406,8 @@ def init_infant_brain_extraction_wf(
         )
         init_report = pe.Node(SimpleBeforeAfter(
             before_label=f"tpl-{in_template}",
-            after_label="target"),
+            after_label="target",
+            out_report="init_report.svg"),
             name="init_report"
         )
         wf.connect([
