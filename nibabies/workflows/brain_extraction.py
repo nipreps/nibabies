@@ -30,7 +30,7 @@ from ..utils.filtering import (
     truncation as _trunc
 )
 
-HIRES_ZOOMS = (.8, .8, .8)
+HIRES_ZOOMS = (1, 1, 1)
 LOWRES_ZOOMS = (2, 2, 2)
 
 
@@ -416,6 +416,13 @@ def init_infant_brain_extraction_wf(
             (res_tmpl, init_report, [("out_file", "before")]),
         ])
 
+        if output_dir:
+            ds_init_report = pe.Node(DataSink(base_directory=str(output_dir.parent)),
+                    name="ds_init_report")
+            wf.connect(
+                init_report, "out_report",
+                ds_init_report, f"{output_dir.name}.@init_report"
+            )
     return wf
 
 
