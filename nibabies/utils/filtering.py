@@ -48,9 +48,10 @@ def truncation(
     return out_file
 
 
-def gaussian_filter(in_file, sigma, out_file=None):
+def gaussian_filter(in_file, sigma=None, out_file=None):
     """Filter input image by convolving with a Gaussian kernel."""
     from pathlib import Path
+    import numpy as np
     import nibabel as nb
     from scipy.ndimage import gaussian_filter
     from nipype.utils.filemanip import fname_presuffix
@@ -60,6 +61,8 @@ def gaussian_filter(in_file, sigma, out_file=None):
     out_file = str(Path(out_file).absolute())
 
     img = nb.load(in_file)
+    if sigma is None:
+        sigma = tuple(np.array(img.header.get_zooms()[:3]) * 2.0)
     img.__class__(
         gaussian_filter(img.dataobj, sigma), img.affine, img.header
     ).to_filename(out_file)

@@ -102,7 +102,6 @@ def init_infant_brain_extraction_wf(
     res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")  # testing
     res_target = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_target")  # testing
     gauss_tmpl = pe.Node(niu.Function(function=_gauss_filter), name="gauss_tmpl")
-    gauss_tmpl.inputs.sigma = tuple(np.array(LOWRES_ZOOMS) * 10.0)
 
     # Spatial normalization step
     lap_tmpl = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_tmpl")
@@ -173,7 +172,6 @@ def init_infant_brain_extraction_wf(
         name="clip_inu",
     )
     gauss_target = pe.Node(niu.Function(function=_gauss_filter), name="gauss_target")
-    gauss_target.inputs.sigma = tuple(np.array(LOWRES_ZOOMS) * 2.0)
     wf.connect([
         # truncation, resampling, and initial N4
         (inputnode, val_target, [(("in_files", _pop), "in_file")]),
