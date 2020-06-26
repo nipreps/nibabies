@@ -1,4 +1,4 @@
-"""Main runner"""
+"""Main runner."""
 from pathlib import Path
 import sys
 
@@ -41,7 +41,8 @@ ANTs package.\
     parser.add_argument(
         "--cohort",
         type=int,
-        choices=range(1,12),
+        choices=range(1, 12),
+        default=1,
         help="TemplateFlow cohort ID of the reference template"
     )
     parser.add_argument(
@@ -67,7 +68,7 @@ ANTs package.\
         "-o",
         "--output-dir",
         type=Path,
-        default=Path("results").absolute(),
+        default=Path("results"),
         help="path where intermediate results should be stored",
     )
     parser.add_argument(
@@ -99,12 +100,13 @@ def main(argv=None):
             template_specs['cohort'] = opts.cohort
         wf = init_infant_brain_extraction_wf(
             ants_affine_init=True,
+            atropos_refinement=False,
             debug=opts.debug,
             in_template=opts.template,
             template_specs=template_specs,
             mri_scheme=opts.mri_scheme,
             omp_nthreads=opts.omp_nthreads,
-            output_dir=opts.output_dir,
+            output_dir=opts.output_dir.absolute(),
         )
         wf.inputs.inputnode.in_files = opts.input_image
     else:
