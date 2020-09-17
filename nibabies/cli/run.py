@@ -34,7 +34,7 @@ ANTs package.\
     )
     parser.add_argument(
         "--template",
-        choices=("MNIInfant",),
+        choices=("MNIInfant", "UNCInfant"),
         default="MNIInfant",
         help="The TemplateFlow ID of the reference template.",
     )
@@ -59,8 +59,8 @@ ANTs package.\
     parser.add_argument(
         "-m",
         "--mri-scheme",
-        default="T2w",
-        choices=("T2w",),
+        default="T1w",
+        choices=("T1w", "T2w"),
         help="select a particular MRI scheme",
     )
     parser.add_argument(
@@ -92,11 +92,13 @@ def main(argv=None):
     from nipype import config
 
     opts = get_parser().parse_args(argv)
+     template_specs = {}
+    if opts.template == 'MNIInfant'
+        template_specs = {'resolution': 2 if opts.debug else 1}
+    if opts.cohort:
+        template_specs['cohort'] = opts.cohort
     if opts.command == 'bew':
         from ..workflows.brain_extraction import init_infant_brain_extraction_wf
-        template_specs = {'resolution': 2 if opts.debug else 1}
-        if opts.cohort:
-            template_specs['cohort'] = opts.cohort
         wf = init_infant_brain_extraction_wf(
             ants_affine_init=True,
             debug=opts.debug,

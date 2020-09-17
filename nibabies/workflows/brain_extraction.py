@@ -38,11 +38,11 @@ def init_infant_brain_extraction_wf(
     ants_affine_init=False,
     bspline_fitting_distance=200,
     debug=False,
-    in_template="MNIInfant",
+    in_template="UNCInfant",
     template_specs=None,
     interim_checkpoints=True,
     mem_gb=3.0,
-    mri_scheme="T2w",
+    mri_scheme="T1w",
     name="infant_brain_extraction_wf",
     atropos_model=None,
     omp_nthreads=None,
@@ -50,7 +50,7 @@ def init_infant_brain_extraction_wf(
     use_float=True,
 ):
     """
-    Build an atlas-based brain extraction pipeline for infant T2w MRI data.
+    Build an atlas-based brain extraction pipeline for infant T1w/T2w MRI data.
 
     Parameters
     ----------
@@ -71,6 +71,7 @@ def init_infant_brain_extraction_wf(
     tpl_target_path = get_template(
         in_template,
         suffix=mri_scheme,
+        desc=None,
         **template_specs
     )
     if not tpl_target_path:
