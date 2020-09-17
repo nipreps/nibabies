@@ -19,7 +19,7 @@ ANTs package.\
 
     parser.add_argument(
         "command",
-        choices=('bew',),
+        choices=('bew', 'bew+surf'),
         help="Specific nibabies commandline workflow",
     )
     parser.add_argument(
@@ -108,12 +108,21 @@ def main(argv=None):
             omp_nthreads=opts.omp_nthreads,
             output_dir=opts.output_dir,
         )
-        wf.inputs.inputnode.in_files = opts.input_image
+    elif opts.command == 'bew+surf':
+        from ..workflows.base import init_infant_anat_wf
+        wf = init_infant_anat_wf(
+            in_template=opt.template,
+            template_specs=template_specs,
+            mri_scheme=mri_scheme,
+            omp_nthreads=opts.omp_nthreads,
+            output_dir=opts.output_dir,
+        )
     else:
         print(f"No workflow for command: {opts.command}", file=sys.stderr)
         sys.exit(1)
 
     # Run the workflow
+    wf.inputs.inputnode.in_files = opts.input_image
     wf.base_dir = opts.work_dir
     nipype_plugin = {"plugin": "Linear"}
     if opts.nprocs > 1:
