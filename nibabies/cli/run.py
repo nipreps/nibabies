@@ -92,8 +92,8 @@ def main(argv=None):
     from nipype import config
 
     opts = get_parser().parse_args(argv)
-     template_specs = {}
-    if opts.template == 'MNIInfant'
+    template_specs = {}
+    if opts.template == 'MNIInfant':
         template_specs = {'resolution': 2 if opts.debug else 1}
     if opts.cohort:
         template_specs['cohort'] = opts.cohort
