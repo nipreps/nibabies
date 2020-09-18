@@ -11,7 +11,7 @@ from ..interfaces.freesurfer import InfantReconAll
 
 def init_infant_surface_recon_wf(age_months):
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_file", "t1_file", "in_seg"]), name="inputnode"
+        niu.IdentityInterface(fields=["in_masked", "t1_file", "in_seg"]), name="inputnode"
     )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=["t1w_aseg", "t1w_aparc"]), name="outputnode"
@@ -23,7 +23,7 @@ def init_infant_surface_recon_wf(age_months):
     recon = pe.Node(InfantReconAll(age=age_months), name='reconall')
     wf.connect([
         (inputnode, recon, [('t1_file', 't1_file'),
-                            ('in_file', 'mask_file')]),
+                            ('masked_file', 'mask_file')]),
     ])
 
     fsnative2t1w_xfm = pe.Node(RobustRegister(auto_sens=True, est_int_scale=True),

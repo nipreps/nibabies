@@ -84,6 +84,12 @@ ANTs package.\
         default=False,
         help="Use low-quality tools for speed - TESTING ONLY",
     )
+    parser.add_argument(
+        "--age",
+        dest="age_months",
+        type=int,
+        help="Age (in months)",
+    )
     return parser
 
 
@@ -113,6 +119,7 @@ def main(argv=None):
         wf = init_infant_anat_wf(
             in_template=opt.template,
             template_specs=template_specs,
+            age_months=age_months,
             mri_scheme=mri_scheme,
             omp_nthreads=opts.omp_nthreads,
             output_dir=opts.output_dir,
