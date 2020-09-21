@@ -19,15 +19,16 @@ def init_infant_surface_recon_wf(age_months):
 
     # we will use the intensity-normalized t1w from the brain extraction workflow with
     # the brainmask applied, and then feed that into baby freesurfer
-        # down the line, we might want to inject another segmentation to replace baby FS's aseg.
+    # down the line, we might want to inject another segmentation to replace baby FS's aseg.
     recon = pe.Node(InfantReconAll(age=age_months), name='reconall')
     wf.connect([
         (inputnode, recon, [('t1_file', 't1_file'),
                             ('masked_file', 'mask_file')]),
     ])
 
+    # convert generated surfaces to GIFTIs
+    gifti_surface_wf = init_gifti_surface_wf(
+
+    )
     fsnative2t1w_xfm = pe.Node(RobustRegister(auto_sens=True, est_int_scale=True),
                                name='fsnative2t1w_xfm')
-
-
-

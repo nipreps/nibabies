@@ -8,6 +8,7 @@ from nipype.interfaces.base import (
     isdefined, CommandLineInputSpec, TraitedSpec
 )
 
+
 class InfantReconAllInputSpec(CommandLineInputSpec):
     subjects_dir = Directory(
         exists=True,
@@ -39,8 +40,10 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         desc="Force all the processing to be (re)done",
     )
 
+
 class InfantReconAllOutputSpec(TraitedSpec):
     outdir = Directory(exists=True, desc="Output directory")
+
 
 class InfantReconAll(FSCommand):
     """
