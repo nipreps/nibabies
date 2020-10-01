@@ -33,6 +33,7 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         desc="Skull-stripped and INU-corrected T1 (skips skullstripping step)",
     )
     aseg_file = File(
+        argstr='--aseg %s',
         desc="Pre-computed segmentation file",
     )
 
@@ -63,11 +64,6 @@ class InfantReconAll(CommandLine):
                 Path(self.inputs.t1_file).symlink_to(subjdir / 'mprage.nii.gz')
             elif not isdefined(self.inputs.mask_file):
                 raise RuntimeError("Neither T1 or mask present!")
-        if isdefined(self.inputs.aseg_file):
-            # inject aseg into working directory
-            workdir = subjdir / 'work'
-            workdir.mkdir(exist_ok=True)
-            Path(self.inputs.aseg_file).symlink_to(workdir / 'aseg.nii.gz')
 
         return super()._run_interface(runtime)
 
