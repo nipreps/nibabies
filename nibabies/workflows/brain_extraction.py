@@ -8,12 +8,11 @@ from pkg_resources import resource_filename as pkgr_fn
 # nipype
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
-from nipype.interfaces.ants import N4BiasFieldCorrection
+from nipype.interfaces.ants import N4BiasFieldCorrection, ImageMath
 from nipype.interfaces.ants.utils import AI
 
 # niworkflows
 from niworkflows.anat.ants import init_atropos_wf, ATROPOS_MODELS
-from niworkflows.interfaces.ants import ImageMath
 from niworkflows.interfaces.images import RegridToZooms, ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
 from niworkflows.interfaces.fixes import (
