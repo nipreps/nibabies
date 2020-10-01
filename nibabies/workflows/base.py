@@ -53,7 +53,9 @@ def init_infant_anat_wf(
 
     wf.connect([
         # (inputnode, surface_recon_wf, [('in_seg', 'inputnode.in_seg')]),
-        (brain_extraction_wf, surface_recon_wf, [('outputnode.out_brain', 'inputnode.masked_file')]),
+        (brain_extraction_wf, surface_recon_wf, [
+            ('outputnode.out_brain', 'inputnode.masked_file')
+        ]),
         (surface_recon_wf, outputnode, [('outputnode.subjects_dir', 'subjects_dir')])
     ])
 
