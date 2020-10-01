@@ -1,10 +1,8 @@
 import os
 from pathlib import Path
 
-from nipype.interfaces.freesurfer.base import FSCommand
-from nipype.interfaces.freesurfer.preprocess import ReconAllOutputSpec
 from nipype.interfaces.base import (
-    traits, File, Directory,
+    traits, File, Directory, CommandLine,
     isdefined, CommandLineInputSpec, TraitedSpec
 )
 
@@ -14,10 +12,9 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         exists=True,
         hash_files=False,
         desc="path to subjects directory",
-        genfile=True,
     )
     subject_id = traits.Str(
-        "recon_all", argstr="-subjid %s", desc="subject name", usedefault=True
+        "recon_all", argstr="--subject %s", desc="subject name", required=True,
     )
     t1_file = File(
         exists=True,
@@ -35,43 +32,48 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         argstr='--masked %s',
         desc="Skull-stripped and INU-corrected T1 (skips skullstripping step)",
     )
-    force = traits.Bool(
-        argstr='--force',
-        desc="Force all the processing to be (re)done",
+    aseg_file = File(
+        desc="Pre-computed segmentation file",
     )
 
 
 class InfantReconAllOutputSpec(TraitedSpec):
-    outdir = Directory(exists=True, desc="Output directory")
+    outdir = Directory(exists=True, desc="Output directory.")
+    subject_id = traits.Str(desc="Subject name for whom to retrieve data")
 
 
-class InfantReconAll(FSCommand):
+class InfantReconAll(CommandLine):
     """
     Runs the infant recon all pipeline
     """
 
     _cmd = 'infant_recon_all'
     input_spec = InfantReconAllInputSpec
-    output_spec = ReconAllOutputSpec
-
-    def _parse_inputs(self):
-        if not isdefined(self.inputs.subjects_dir):
-            self.inputs.subjects_dir = _get_subjects_dir()
-        super()._parse_inputs()
+    output_spec = InfantReconAllOutputSpec
 
     def _run_interface(self, runtime):
         # make sure directory structure is intact
+        if not isdefined(self.inputs.subjects_dir):
+            self.inputs.subjects_dir = _set_subjects_dir()
         subjdir = Path(self.inputs.subjects_dir) / self.inputs.subject_id
         subjdir.mkdir(parents=True, exist_ok=True)
-        # T1 image is expected to be in a specific location
+        # T1 image is expected to be in a specific location if no mask is present
         if not (subjdir / 'mprage.nii.gz').exists() and not (subjdir / 'mprage.mgz').exists():
-            if not isdefined(self.inputs.t1_file):
-                raise Exception("T1 is required!")
-            Path(self.inputs.t1_file).symlink_to(subjdir / 'mprage.nii.gz')
+            if isdefined(self.inputs.t1_file):
+                Path(self.inputs.t1_file).symlink_to(subjdir / 'mprage.nii.gz')
+            elif not isdefined(self.inputs.mask_file):
+                raise RuntimeError("Neither T1 or mask present!")
+        if isdefined(self.inputs.aseg_file):
+            # inject aseg into working directory
+            workdir = subjdir / 'work'
+            workdir.mkdir(exist_ok=True)
+            Path(self.inputs.aseg_file).symlink_to(workdir / 'aseg.nii.gz')
+
         return super()._run_interface(runtime)
 
     def _list_outputs(self):
         outputs = self._outputs().get()
+        outputs['subject_id'] = self.inputs.subject_id
         if isdefined(self.inputs.outdir):
             outputs["outdir"] = self.inputs.outdir
         else:
@@ -79,5 +81,9 @@ class InfantReconAll(FSCommand):
         return outputs
 
 
-def _get_subjects_dir():
-    return os.getenv('SUBJECTS_DIR') or os.getcwd()
+def _set_subjects_dir():
+    subjdir = os.getenv('SUBJECTS_DIR')
+    if not subjdir:
+        subjdir = os.getcwd()
+        os.environ['SUBJECTS_DIR'] = subjdir
+    return subjdir
