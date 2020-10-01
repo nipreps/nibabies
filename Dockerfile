@@ -108,7 +108,7 @@ RUN apt update && \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && echo "Downloading FreeSurfer (Infant)" \
     && mkdir -p /opt/freesurfer \
-    && curl -fSL --retry 5 https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/infant/freesurfer-linux-centos7_x86_64-infant.tar.gz \
+    && curl -fSL --retry 5 https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/infant/freesurfer-linux-centos7_x86_64-7.1.1-infant.tar.gz \
     | tar -xz -C /opt/freesurfer --no-same-owner --strip-components 1 \
     --exclude='freesurfer/average/mult-comp-cor' \
     --exclude='freesurfer/diffusion' \
@@ -229,5 +229,8 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.vcs-url="https://github.com/nipreps/nibabies" \
       org.label-schema.version=$VERSION \
       org.label-schema.schema-version="1.0"
+
+# remove build-stamp to play nice with nipype
+RUN rm ${FREESURFER_HOME}/build-stamp.txt
 
 ENTRYPOINT ["/usr/local/miniconda/bin/nibabies"]
