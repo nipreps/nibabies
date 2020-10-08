@@ -6,7 +6,7 @@ from niworkflows.interfaces.nibabel import ApplyMask
 from niworkflows.interfaces.freesurfer import PatchedRobustRegister as RobustRegister
 from smriprep.workflows.surfaces import init_gifti_surface_wf
 
-from ..interfaces.freesurfer import InfantReconAll
+from ...interfaces.freesurfer import InfantReconAll
 
 
 def init_infant_surface_recon_wf(

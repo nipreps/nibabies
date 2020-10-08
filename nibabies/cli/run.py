@@ -121,7 +121,7 @@ def main(argv=None):
         template_specs['cohort'] = cohort
 
     if opts.command == 'bew':
-        from ..workflows.brain_extraction import init_infant_brain_extraction_wf
+        from ..workflows.anatomical.brain_extraction import init_infant_brain_extraction_wf
         wf = init_infant_brain_extraction_wf(
             ants_affine_init=True,
             debug=opts.debug,
@@ -132,7 +132,7 @@ def main(argv=None):
             output_dir=opts.output_dir,
         )
     elif opts.command == 'bew+surf':
-        from ..workflows.base import init_infant_anat_wf
+        from ..workflows.anatomical import init_infant_anat_wf
         wf = init_infant_anat_wf(
             template_name=opts.template,
             template_specs=template_specs,
