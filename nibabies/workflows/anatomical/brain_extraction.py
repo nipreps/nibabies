@@ -24,7 +24,7 @@ from niworkflows.interfaces.registration import (
 )
 
 from templateflow.api import get as get_template
-from ..utils.filtering import (
+from ...utils.filtering import (
     gaussian_filter as _gauss_filter,
     truncation as _trunc
 )
