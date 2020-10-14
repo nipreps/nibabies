@@ -2,6 +2,7 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Miscellaneous utilities."""
 
+
 def fix_multi_source_name(in_files, modality='T1w'):
     """
     Make up a generic source name when there are multiple
