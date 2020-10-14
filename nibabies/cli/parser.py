@@ -390,7 +390,7 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
     g_ants = parser.add_argument_group("Specific options for ANTs registrations")
     g_ants.add_argument(
         "--skull-strip-template",
-        default="OASIS30ANTs",
+        default="UNCInfant",
         type=Reference.from_string,
         help="select a template for skull-stripping with antsBrainExtraction",
     )

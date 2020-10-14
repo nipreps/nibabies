@@ -526,7 +526,7 @@ class workflow(_Config):
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
-    skull_strip_template = "OASIS30ANTs"
+    skull_strip_template = "UNCInfant"
     """Change default brain extraction template."""
     skull_strip_t1w = "force"
     """Skip brain extraction of the T1w image (default is ``force``, meaning that
@@ -681,23 +681,23 @@ def init_spaces(checkpoint=True):
     if checkpoint and not spaces.is_cached():
         spaces.checkpoint()
 
-    # # Add the default standard space if not already present (required by several sub-workflows)
-    # if "MNI152NLin2009cAsym" not in spaces.get_spaces(nonstandard=False, dim=(3,)):
-    #     spaces.add(Reference("MNI152NLin2009cAsym", {}))
+    # Add the default standard space if not already present (required by several sub-workflows)
+    if "MNI152NLin2009cAsym" not in spaces.get_spaces(nonstandard=False, dim=(3,)):
+        spaces.add(Reference("MNI152NLin2009cAsym", {}))
 
-    # # Ensure user-defined spatial references for outputs are correctly parsed.
-    # # Certain options require normalization to a space not explicitly defined by users.
-    # # These spaces will not be included in the final outputs.
-    # if workflow.use_aroma:
-    #     # Make sure there's a normalization to FSL for AROMA to use.
-    #     spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
+    # Ensure user-defined spatial references for outputs are correctly parsed.
+    # Certain options require normalization to a space not explicitly defined by users.
+    # These spaces will not be included in the final outputs.
+    if workflow.use_aroma:
+        # Make sure there's a normalization to FSL for AROMA to use.
+        spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
 
-    # cifti_output = workflow.cifti_output
-    # if cifti_output:
-    #     # CIFTI grayordinates to corresponding FSL-MNI resolutions.
-    #     vol_res = "2" if cifti_output == "91k" else "1"
-    #     spaces.add(Reference("fsaverage", {"den": "164k"}))
-    #     spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
+    cifti_output = workflow.cifti_output
+    if cifti_output:
+        # CIFTI grayordinates to corresponding FSL-MNI resolutions.
+        vol_res = "2" if cifti_output == "91k" else "1"
+        spaces.add(Reference("fsaverage", {"den": "164k"}))
+        spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
 
-    # # Make the SpatialReferences object available
-    # workflow.spaces = spaces
+    # Make the SpatialReferences object available
+    workflow.spaces = spaces
