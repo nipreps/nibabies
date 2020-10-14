@@ -24,6 +24,7 @@ from niworkflows.interfaces.registration import (
 )
 
 from templateflow.api import get as get_template
+from ... import config
 from ...utils.filtering import (
     gaussian_filter as _gauss_filter,
     truncation as _trunc
@@ -57,6 +58,22 @@ def init_infant_brain_extraction_wf(
         Set-up a pre-initialization step with ``antsAI`` to account for mis-oriented images.
 
     """
+    # handle template specifics
+    if template_specs is None:
+        template_specs = {}
+
+    if config.workflow.skull_strip_template == 'MNIInfant':
+        template_specs['resolution'] = 2 if config.execution.sloppy else 1
+
+    if config.workflow.age_months:
+        if opts.age_months <= 2:
+            cohort = 1
+        elif opts.age_months < 12:
+            cohort = 2
+        else:
+            cohort = 3
+        template_specs['cohort'] = cohort
+
     inputnode = pe.Node(
         niu.IdentityInterface(fields=["in_files", "in_mask"]), name="inputnode"
     )
