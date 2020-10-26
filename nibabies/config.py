@@ -397,6 +397,8 @@ class execution(_Config):
     """Only build the reports, based on the reportlets found in a cached working directory."""
     run_uuid = f"{strftime('%Y%m%d-%H%M%S')}_{uuid4()}"
     """Unique identifier of this particular run."""
+    segmentation_atlases_dir = None
+    """Directory with atlases to use for JLF segmentations"""
     participant_label = None
     """List of participant identifiers that are to be preprocessed."""
     task_id = None
@@ -419,6 +421,7 @@ class execution(_Config):
         "layout",
         "log_dir",
         "output_dir",
+        "segmentation_atlases_dir",
         "templateflow_home",
         "work_dir",
     )

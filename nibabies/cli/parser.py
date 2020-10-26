@@ -410,6 +410,10 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         "stripping, 'skip' ignores skull stripping, and 'auto' applies brain extraction "
         "based on the outcome of a heuristic to check whether the brain is already masked).",
     )
+    g_ants.add_argument(
+        "--segmentation-atlases-dir",
+        help="Directory containing precalculated segmentations to use for JointLabelFusion."
+    )
 
     # Fieldmap options
     g_fmap = parser.add_argument_group("Specific options for handling fieldmaps")
