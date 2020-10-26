@@ -35,10 +35,11 @@ LOWRES_ZOOMS = (2, 2, 2)
 
 
 def init_infant_brain_extraction_wf(
+    age_months=None,
     ants_affine_init=False,
     bspline_fitting_distance=200,
-    debug=False,
-    in_template="UNCInfant",
+    sloppy=False,
+    skull_strip_template="UNCInfant",
     template_specs=None,
     interim_checkpoints=True,
     mem_gb=3.0,
@@ -62,16 +63,17 @@ def init_infant_brain_extraction_wf(
     if template_specs is None:
         template_specs = {}
 
-    if config.workflow.skull_strip_template == 'MNIInfant':
+    if skull_strip_template == 'MNIInfant':
         template_specs['resolution'] = 2 if config.execution.sloppy else 1
 
-    if config.workflow.age_months:
+    if config.workflow.age_months is not None:
         if opts.age_months <= 2:
             cohort = 1
         elif opts.age_months < 12:
             cohort = 2
         else:
             cohort = 3
+        # select relevant templateflow cohort
         template_specs['cohort'] = cohort
 
     inputnode = pe.Node(
@@ -262,7 +264,7 @@ def init_infant_brain_extraction_wf(
     #     atropos_wf.get_node('inputnode').inputs.in_mask_dilated = tpl_regmask_path
 
     sel_wm = pe.Node(niu.Select(index=atropos_model[-1] - 1), name='sel_wm',
-                    run_without_submitting=True)
+                     run_without_submitting=True)
 
 
     wf.connect([
