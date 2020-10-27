@@ -238,7 +238,7 @@ def init_anat_seg_wf(
 
     wf = pe.Workflow(name=name)
     inputnode = pe.Node(niu.IdentityInterface(fields=["anat_brain"]), name="inputnode")
-    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_dseg"]), name="outputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_aseg"]), name="outputnode")
 
     tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
@@ -298,6 +298,7 @@ def init_anat_seg_wf(
         (inputnode, jointfusion, [(('anat_brain', _to_list), 'target_image')]),
         (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
         (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
+        (jointfusion, outputnode, [('out_label_fusion', 'anat_aseg')])
     ])
     # fmt: on
 
