@@ -1,6 +1,7 @@
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, fsl
 
+
 def init_infant_anat_wf(
     *,
     age_months,
@@ -15,7 +16,7 @@ def init_infant_anat_wf(
     skull_strip_template,
     sloppy,
     spaces,
-    name='infant_anat_wf',
+    name="infant_anat_wf",
 ):
     """
 
@@ -69,7 +70,10 @@ def init_infant_anat_wf(
 
     from smriprep.workflows.anatomical import init_anat_template_wf, _probseg_fast2bids
     from smriprep.workflows.norm import init_anat_norm_wf
-    from smriprep.workflows.outputs import init_anat_reports_wf, init_anat_derivatives_wf
+    from smriprep.workflows.outputs import (
+        init_anat_reports_wf,
+        init_anat_derivatives_wf,
+    )
 
     from .brain_extraction import init_infant_brain_extraction_wf
     from .surfaces import init_infant_surface_recon_wf
@@ -79,18 +83,34 @@ def init_infant_anat_wf(
     wf = pe.Workflow(name=name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["t1w", "t2w", "subject_id", "subjects_dir"]), # FLAIR / ROI?
-        name='inputnode'
+        niu.IdentityInterface(
+            fields=["t1w", "t2w", "subject_id", "subjects_dir"]
+        ),  # FLAIR / ROI?
+        name="inputnode",
     )
     outputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
-                "anat_preproc", "anat_brain", "anat_mask", "anat_dseg", "anat_tpms",
-                "std_preproc", "std_brain", "std_dseg", "std_tpms",
-                "subjects_dir", "subject_id", "anat2std_xfm", "std2anat_xfm",
-                "anat2fsnative_xfm", "fsnative2anat_xfm", "surfaces",
+                "anat_preproc",
+                "anat_brain",
+                "anat_mask",
+                "anat_dseg",
+                "anat_tpms",
+                "std_preproc",
+                "std_brain",
+                "std_dseg",
+                "std_tpms",
+                "subjects_dir",
+                "subject_id",
+                "anat2std_xfm",
+                "std2anat_xfm",
+                "anat2fsnative_xfm",
+                "fsnative2anat_xfm",
+                "surfaces",
             ]
-        ), name='outputnode')
+        ),
+        name="outputnode",
+    )
 
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(freesurfer=freesurfer, output_dir=output_dir)
@@ -140,11 +160,17 @@ def init_infant_anat_wf(
     if not freesurfer:  # Flag --fs-no-reconall is set - return
         # This should be handled by anat_seg_wf
         # Brain tissue segmentation - FAST produces: 0 (bg), 1 (wm), 2 (csf), 3 (gm)
-        t1w_dseg = pe.Node(fsl.FAST(segments=True, no_bias=True, probability_maps=True),
-                           name='t1w_dseg', mem_gb=3)
+        t1w_dseg = pe.Node(
+            fsl.FAST(segments=True, no_bias=True, probability_maps=True),
+            name="t1w_dseg",
+            mem_gb=3,
+        )
         lut_t1w_dseg.inputs.lut = (0, 3, 1, 2)  # Maps: 0 -> 0, 3 -> 1, 1 -> 2, 2 -> 3.
-        fast2bids = pe.Node(niu.Function(function=_probseg_fast2bids), name="fast2bids",
-                            run_without_submitting=True)
+        fast2bids = pe.Node(
+            niu.Function(function=_probseg_fast2bids),
+            name="fast2bids",
+            run_without_submitting=True,
+        )
 
         # fmt: off
         workflow.connect([
@@ -162,7 +188,7 @@ def init_infant_anat_wf(
 
     # FreeSurfer surfaces
     surface_recon_wf = init_infant_surface_recon_wf(age_months=age_months)
-    applyrefined = pe.Node(fsl.ApplyMask(), name='applyrefined')
+    applyrefined = pe.Node(fsl.ApplyMask(), name="applyrefined")
     # fmt: off
     wf.connect([
         (inputnode, brain_extraction_wf, [
@@ -186,11 +212,11 @@ def init_infant_anat_wf(
 
 def init_anat_seg_wf(
     age_months=None,
-    anat_modality='T1w',
+    anat_modality="T1w",
     template_dir=None,
     sloppy=False,
     omp_nthreads=None,
-    name='anat_seg_wf'
+    name="anat_seg_wf",
 ):
     """Calculate segmentation from collection of OHSU atlases"""
     from pkg_resources import resource_filename as pkgr_fn
@@ -202,13 +228,17 @@ def init_anat_seg_wf(
     from smriprep.utils.misc import apply_lut
 
     if template_dir is None:  # TODO: set default
-        raise NotImplementedError("No default has been set yet. Please pass segmentations.")
-    if anat_modality != 'T1w':
-        raise NotImplementedError("Only T1w images are currently accepted for ANTs LabelFusion.")
+        raise NotImplementedError(
+            "No default has been set yet. Please pass segmentations."
+        )
+    if anat_modality != "T1w":
+        raise NotImplementedError(
+            "Only T1w images are currently accepted for ANTs LabelFusion."
+        )
 
     wf = pe.Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=["anat_brain"]), name='inputnode')
-    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_dseg"]), name='outputnode')
+    inputnode = pe.Node(niu.IdentityInterface(fields=["anat_brain"]), name="inputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_dseg"]), name="outputnode")
 
     tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
@@ -216,12 +246,13 @@ def init_anat_seg_wf(
     ants_params = "testing" if sloppy else "precise"
     # Register to each subject space
     norm = pe.MapNode(
-        Registration(from_file=pkgr_fn(
-            "niworkflows.data",
-            f"antsBrainExtraction_{ants_params}.json")
+        Registration(
+            from_file=pkgr_fn(
+                "niworkflows.data", f"antsBrainExtraction_{ants_params}.json"
+            )
         ),
         name="norm",
-        iterfield=['fixed_image', 'moving_image'],
+        iterfield=["fixed_image", "moving_image"],
         n_procs=omp_nthreads,
         mem_gb=mem_gb,
     )
@@ -234,24 +265,24 @@ def init_anat_seg_wf(
             interpolation="NearestNeighbor",
             float=True,
         ),
-        iterfield=['transforms', 'input_image'],
-        name='apply_atlas',
+        iterfield=["transforms", "input_image"],
+        name="apply_atlas",
     )
     apply_atlas.inputs.input_image = tmpl_anats
 
     apply_seg = pe.Node(
         ApplyTransforms(dimension=3, interpolation="MultiLabel"),  # NearestNeighbor?
-        name='apply_seg',
-        iterfield=['transforms', 'input_image'],
+        name="apply_seg",
+        iterfield=["transforms", "input_image"],
     )
     apply_seg.inputs.input_image = tmpl_segs
 
     jointfusion = pe.Node(
         JointFusion(
             dimension=3,
-            out_label_fusion='fusion_labels.nii.gz',
+            out_label_fusion="fusion_labels.nii.gz",
         ),
-        name='jointfusion'
+        name="jointfusion",
     )
 
     def _to_list(x):
@@ -284,8 +315,8 @@ def _parse_segmentation_atlases(anat_modality, template_dir):
 
     anats, segs = [], []
 
-    for f in Path(template_dir).glob('**/*.nii*'):
-        if 'Segmentation' in f.name:
+    for f in Path(template_dir).glob("**/*.nii*"):
+        if "Segmentation" in f.name:
             segs.append(f.absolute())
         elif anat_modality in f.name:
             anats.append(f.absolute())
