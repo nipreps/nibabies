@@ -146,6 +146,7 @@ def init_infant_anat_wf(
         fast2bids = pe.Node(niu.Function(function=_probseg_fast2bids), name="fast2bids",
                             run_without_submitting=True)
 
+        # fmt: off
         workflow.connect([
             (brain_extraction_wf, buffernode, [
                 (('outputnode.out_file', _pop), 'anat_brain'),
@@ -156,12 +157,13 @@ def init_infant_anat_wf(
             (fast2bids, anat_norm_wf, [('out', 'inputnode.moving_tpms')]),
             (fast2bids, outputnode, [('out', 'anat_tpms')]),
         ])
+        # fmt: on
         return workflow
 
     # FreeSurfer surfaces
     surface_recon_wf = init_infant_surface_recon_wf(age_months=age_months)
     applyrefined = pe.Node(fsl.ApplyMask(), name='applyrefined')
-
+    # fmt: off
     wf.connect([
         (inputnode, brain_extraction_wf, [
             ('t1w', 'inputnode.t1w'),
@@ -178,12 +180,13 @@ def init_infant_anat_wf(
             ('outputnode.subjects_dir', 'subjects_dir'),
             ('outputnode.subject_id', 'subject_id')]),
     ])
+    # fmt: on
     return wf
 
 
 def init_anat_seg_wf(
     age_months=None,
-    anat_modality=T1w,
+    anat_modality='T1w',
     template_dir=None,
     sloppy=False,
     omp_nthreads=None,
@@ -204,53 +207,68 @@ def init_anat_seg_wf(
         raise NotImplementedError("Only T1w images are currently accepted for ANTs LabelFusion.")
 
     wf = pe.Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=[""]))
-    outputnode = pe.Node(niu.IdentityInterface(fields=[""]))
+    inputnode = pe.Node(niu.IdentityInterface(fields=["anat_brain"]), name='inputnode')
+    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_dseg"]), name='outputnode')
 
-    anatomicals, segmentations = _parse_segmentation_atlases(anat_modality, template_dir)
+    tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
     # register to templates
     ants_params = "testing" if sloppy else "precise"
-    norm = pe.Node(
+    # Register to each subject space
+    norm = pe.MapNode(
         Registration(from_file=pkgr_fn(
             "niworkflows.data",
             f"antsBrainExtraction_{ants_params}.json")
         ),
         name="norm",
+        iterfield=['fixed_image', 'moving_image'],
         n_procs=omp_nthreads,
         mem_gb=mem_gb,
     )
+    norm.inputs.moving_image = tmpl_anats
     norm.inputs.float = True
 
-    apply_tmpl = pe.Node(
+    apply_atlas = pe.MapNode(
         ApplyTransforms(
             dimension=3,
             interpolation="NearestNeighbor",
             float=True,
         ),
-        name='apply_tmpl',
+        iterfield=['transforms', 'input_image'],
+        name='apply_atlas',
     )
+    apply_atlas.inputs.input_image = tmpl_anats
+
     apply_seg = pe.Node(
-        ApplyTransforms(dimension=3, interpolation="MultiLabel"),
+        ApplyTransforms(dimension=3, interpolation="MultiLabel"),  # NearestNeighbor?
         name='apply_seg',
+        iterfield=['transforms', 'input_image'],
     )
+    apply_seg.inputs.input_image = tmpl_segs
 
-    jointlabelfusion = pe.JoinNode(
-        ants.AntsJointFusion(
+    jointfusion = pe.Node(
+        JointFusion(
             dimension=3,
-            alpha=0.1,
-            beta=2.0,
-            patch_radius=[2, 2, 2],
-            search_radius=[3, 3, 3],
-            out_label_fusion='aseg_acpc.nii.gz',
+            out_label_fusion='fusion_labels.nii.gz',
         ),
-        joinsource='input_spec',
-        joinfield=['atlas_image', 'atlas_segmentation_image'],
-        name='joint_label_fusion'
+        name='jointfusion'
     )
 
-    # TODO: check FreeSurfer labels synch
-    # TODO: convert JLF output to dseg?
+    def _to_list(x):
+        return [x]
+
+    # fmt: off
+    wf.connect([
+        (inputnode, reg, [('anat_brain', 'fixed_image')]),
+        (reg, apply_atlas, [('forward_transforms', 'transforms')]),
+        (inputnode, apply_atlas, [('anat_brain', 'reference_image')]),
+        (reg, apply_seg, [('forward_transforms', 'transforms')]),
+        (inputnode, apply_seg, [('anat_brain', 'reference_image')]),
+        (inputnode, jointfusion, [(('anat_brain', _to_list), 'target_image')]),
+        (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
+        (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
+    ])
+    # fmt: on
 
     return wf
 
