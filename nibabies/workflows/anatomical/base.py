@@ -161,7 +161,6 @@ def init_infant_anat_wf(
     surface_recon_wf = init_infant_surface_recon_wf(age_months=age_months)
     applyrefined = pe.Node(fsl.ApplyMask(), name="applyrefined")
 
-
     # fmt: off
     wf.connect([
         (inputnode, brain_extraction_wf, [
@@ -212,7 +211,10 @@ def init_anat_seg_wf(
 
     wf = pe.Workflow(name=name)
     inputnode = pe.Node(niu.IdentityInterface(fields=["anat_brain"]), name="inputnode")
-    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_aseg", "anat_dseg", "anat_tpms"]), name="outputnode")
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=["anat_aseg", "anat_dseg", "anat_tpms"]),
+        name="outputnode",
+    )
 
     tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
@@ -260,13 +262,13 @@ def init_anat_seg_wf(
     )
 
     # Convert FreeSurfer aseg to three-tissue segmentation
-    lut_anat_dseg = pe.Node(niu.Function(function=_apply_bids_lut),
-                            name='lut_anat_dseg')
+    lut_anat_dseg = pe.Node(
+        niu.Function(function=_apply_bids_lut), name="lut_anat_dseg"
+    )
     lut_anat_dseg.inputs.lut = _aseg_to_three
 
     # split each tissue into individual masks
-    split_seg = pe.Node(niu.Function(function=_split_segments),
-                        name='split_seg')
+    split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
 
     def _to_list(x):
         return [x]
