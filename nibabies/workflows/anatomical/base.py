@@ -157,38 +157,11 @@ def init_infant_anat_wf(
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
 
-    if not freesurfer:  # Flag --fs-no-reconall is set - return
-        # This should be handled by anat_seg_wf
-        # Brain tissue segmentation - FAST produces: 0 (bg), 1 (wm), 2 (csf), 3 (gm)
-        t1w_dseg = pe.Node(
-            fsl.FAST(segments=True, no_bias=True, probability_maps=True),
-            name="t1w_dseg",
-            mem_gb=3,
-        )
-        lut_t1w_dseg.inputs.lut = (0, 3, 1, 2)  # Maps: 0 -> 0, 3 -> 1, 1 -> 2, 2 -> 3.
-        fast2bids = pe.Node(
-            niu.Function(function=_probseg_fast2bids),
-            name="fast2bids",
-            run_without_submitting=True,
-        )
-
-        # fmt: off
-        workflow.connect([
-            (brain_extraction_wf, buffernode, [
-                (('outputnode.out_file', _pop), 'anat_brain'),
-                ('outputnode.out_mask', 'anat_mask')]),
-            (buffernode, t1w_dseg, [('t1w_brain', 'in_files')]),
-            (t1w_dseg, lut_t1w_dseg, [('partial_volume_map', 'in_dseg')]),
-            (t1w_dseg, fast2bids, [('partial_volume_files', 'inlist')]),
-            (fast2bids, anat_norm_wf, [('out', 'inputnode.moving_tpms')]),
-            (fast2bids, outputnode, [('out', 'anat_tpms')]),
-        ])
-        # fmt: on
-        return workflow
-
     # FreeSurfer surfaces
     surface_recon_wf = init_infant_surface_recon_wf(age_months=age_months)
     applyrefined = pe.Node(fsl.ApplyMask(), name="applyrefined")
+
+
     # fmt: off
     wf.connect([
         (inputnode, brain_extraction_wf, [
@@ -225,7 +198,8 @@ def init_anat_seg_wf(
         FixHeaderRegistration as Registration,
         FixHeaderApplyTransforms as ApplyTransforms,
     )
-    from smriprep.utils.misc import apply_lut
+    from smriprep.utils.misc import apply_lut as _apply_bids_lut
+    from smriprep.workflows.anatomical import _aseg_to_three, _split_segments
 
     if template_dir is None:  # TODO: set default
         raise NotImplementedError(
@@ -238,7 +212,7 @@ def init_anat_seg_wf(
 
     wf = pe.Workflow(name=name)
     inputnode = pe.Node(niu.IdentityInterface(fields=["anat_brain"]), name="inputnode")
-    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_aseg"]), name="outputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=["anat_aseg", "anat_dseg", "anat_tpms"]), name="outputnode")
 
     tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
@@ -285,6 +259,15 @@ def init_anat_seg_wf(
         name="jointfusion",
     )
 
+    # Convert FreeSurfer aseg to three-tissue segmentation
+    lut_anat_dseg = pe.Node(niu.Function(function=_apply_bids_lut),
+                            name='lut_anat_dseg')
+    lut_anat_dseg.inputs.lut = _aseg_to_three
+
+    # split each tissue into individual masks
+    split_seg = pe.Node(niu.Function(function=_split_segments),
+                        name='split_seg')
+
     def _to_list(x):
         return [x]
 
@@ -298,7 +281,11 @@ def init_anat_seg_wf(
         (inputnode, jointfusion, [(('anat_brain', _to_list), 'target_image')]),
         (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
         (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
-        (jointfusion, outputnode, [('out_label_fusion', 'anat_aseg')])
+        (jointfusion, outputnode, [('out_label_fusion', 'anat_aseg')]),
+        (jointfusion, lut_anat_dseg, [('out_label_fusion', 'in_dseg')]),
+        (lut_anat_dseg, outputnode, [('out', 'anat_dseg')]),
+        (lut_anat_dseg, split_seg, [('out', 'in_file')]),
+        (split_seg, outputnode, [('out', 'anat_tpms')]),
     ])
     # fmt: on
 
