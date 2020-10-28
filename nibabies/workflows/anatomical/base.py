@@ -68,7 +68,7 @@ def init_infant_anat_wf(
         GIFTI surfaces (gray/white boundary, midthickness, pial, inflated)
     """
 
-    from smriprep.workflows.anatomical import init_anat_template_wf, _probseg_fast2bids
+    from smriprep.workflows.anatomical import init_anat_template_wf, _probseg_fast2bids, _pop
     from smriprep.workflows.norm import init_anat_norm_wf
     from smriprep.workflows.outputs import (
         init_anat_reports_wf,
@@ -76,6 +76,7 @@ def init_infant_anat_wf(
     )
 
     from .brain_extraction import init_infant_brain_extraction_wf
+    from .segmentation import init_anat_seg_wf
     from .surfaces import init_infant_surface_recon_wf
 
     # for now, T1w only
@@ -140,6 +141,8 @@ def init_infant_anat_wf(
         output_dir=output_dir,
         sloppy=sloppy,
     )
+    # Ensure single outputs
+    be_buffer = pe.Node(niu.IdentityInterface(fields=["anat_preproc", "anat_brain"]), name='be_buffer')
 
     # Segmentation - initial implementation should be simple: JLF
     anat_seg_wf = init_anat_seg_wf(
@@ -166,154 +169,27 @@ def init_infant_anat_wf(
         (inputnode, brain_extraction_wf, [
             ('t1w', 'inputnode.t1w'),
             ('t2w', 'inputnode.t2w')]),
-        (brain_extraction_wf, outputnode, [
-            ('outputnode.out_corrected', 'anat_preproc'),
-            ('outputnode.out_brain', 'anat_brain'),
-            ('outputnode.out_mask', 'anat_mask')]),
-        (brain_extraction_wf, surface_recon_wf, [
-            ('outputnode.out_brain', 'inputnode.masked_file')]),
+        (brain_extraction_wf, be_buffer, [
+            (('outputnode.out_corrected', _pop), 'anat_preproc'),
+            (('outputnode.out_brain', _pop), 'anat_brain'),
+            (('outputnode.out_mask', _pop), 'anat_mask')]),
+        (be_buffer, outputnode, [
+            ('anat_preproc', 'anat_preproc'),
+            ('anat_brain', 'anat_brain'),
+            ('anat_mask', 'anat_mask')]),
+        (be_buffer, anat_seg_wf, [
+            ('anat_brain', 'inputnode.anat_brain')]),
         (surface_recon_wf, outputnode, [
             ('outputnode.subjects_dir', 'subjects_dir')]),
         (surface_recon_wf, anat_reports_wf, [
             ('outputnode.subjects_dir', 'subjects_dir'),
             ('outputnode.subject_id', 'subject_id')]),
     ])
+    if freesurfer:
+        wf.connect([
+            (inputnode, surface_recon_wf, [
+                ('subject_id', 'inputnode.subject_id'),
+                ('subject_dir', 'inputnode.subject_dir')]),
+            (be_buffer, surface_recon_wf, [('anat_brain', 'inputnode.masked_file')]),
     # fmt: on
     return wf
-
-
-def init_anat_seg_wf(
-    age_months=None,
-    anat_modality="T1w",
-    template_dir=None,
-    sloppy=False,
-    omp_nthreads=None,
-    name="anat_seg_wf",
-):
-    """Calculate segmentation from collection of OHSU atlases"""
-    from pkg_resources import resource_filename as pkgr_fn
-    from nipype.interfaces.ants.segmentation import JointFusion
-    from niworkflows.interfaces.fixes import (
-        FixHeaderRegistration as Registration,
-        FixHeaderApplyTransforms as ApplyTransforms,
-    )
-    from smriprep.utils.misc import apply_lut as _apply_bids_lut
-    from smriprep.workflows.anatomical import _aseg_to_three, _split_segments
-
-    if template_dir is None:  # TODO: set default
-        raise NotImplementedError(
-            "No default has been set yet. Please pass segmentations."
-        )
-    if anat_modality != "T1w":
-        raise NotImplementedError(
-            "Only T1w images are currently accepted for ANTs LabelFusion."
-        )
-
-    wf = pe.Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=["anat_brain"]), name="inputnode")
-    outputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_aseg", "anat_dseg", "anat_tpms"]),
-        name="outputnode",
-    )
-
-    tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
-
-    # register to templates
-    ants_params = "testing" if sloppy else "precise"
-    # Register to each subject space
-    norm = pe.MapNode(
-        Registration(
-            from_file=pkgr_fn(
-                "niworkflows.data", f"antsBrainExtraction_{ants_params}.json"
-            )
-        ),
-        name="norm",
-        iterfield=["fixed_image", "moving_image"],
-        n_procs=omp_nthreads,
-        mem_gb=mem_gb,
-    )
-    norm.inputs.moving_image = tmpl_anats
-    norm.inputs.float = True
-
-    apply_atlas = pe.MapNode(
-        ApplyTransforms(
-            dimension=3,
-            interpolation="NearestNeighbor",
-            float=True,
-        ),
-        iterfield=["transforms", "input_image"],
-        name="apply_atlas",
-    )
-    apply_atlas.inputs.input_image = tmpl_anats
-
-    apply_seg = pe.Node(
-        ApplyTransforms(dimension=3, interpolation="MultiLabel"),  # NearestNeighbor?
-        name="apply_seg",
-        iterfield=["transforms", "input_image"],
-    )
-    apply_seg.inputs.input_image = tmpl_segs
-
-    jointfusion = pe.Node(
-        JointFusion(
-            dimension=3,
-            out_label_fusion="fusion_labels.nii.gz",
-        ),
-        name="jointfusion",
-    )
-
-    # Convert FreeSurfer aseg to three-tissue segmentation
-    lut_anat_dseg = pe.Node(
-        niu.Function(function=_apply_bids_lut), name="lut_anat_dseg"
-    )
-    lut_anat_dseg.inputs.lut = _aseg_to_three
-
-    # split each tissue into individual masks
-    split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
-
-    def _to_list(x):
-        return [x]
-
-    # fmt: off
-    wf.connect([
-        (inputnode, reg, [('anat_brain', 'fixed_image')]),
-        (reg, apply_atlas, [('forward_transforms', 'transforms')]),
-        (inputnode, apply_atlas, [('anat_brain', 'reference_image')]),
-        (reg, apply_seg, [('forward_transforms', 'transforms')]),
-        (inputnode, apply_seg, [('anat_brain', 'reference_image')]),
-        (inputnode, jointfusion, [(('anat_brain', _to_list), 'target_image')]),
-        (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
-        (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
-        (jointfusion, outputnode, [('out_label_fusion', 'anat_aseg')]),
-        (jointfusion, lut_anat_dseg, [('out_label_fusion', 'in_dseg')]),
-        (lut_anat_dseg, outputnode, [('out', 'anat_dseg')]),
-        (lut_anat_dseg, split_seg, [('out', 'in_file')]),
-        (split_seg, outputnode, [('out', 'anat_tpms')]),
-    ])
-    # fmt: on
-
-    return wf
-
-
-def _parse_segmentation_atlases(anat_modality, template_dir):
-    """
-    Parse segmentation templates directory for anatomical and segmentation files.
-
-    This is currently hardcoded to match DCAN lab templates.
-    Will need to rethink standardization for more general cases.
-    """
-    from pathlib import Path
-
-    anats, segs = [], []
-
-    for f in Path(template_dir).glob("**/*.nii*"):
-        if "Segmentation" in f.name:
-            segs.append(f.absolute())
-        elif anat_modality in f.name:
-            anats.append(f.absolute())
-
-    assert anats
-    assert segs
-    # there should matching files per template
-    assert len(anats) == len(segs)
-
-    return sorted(anats), sorted(segs)
