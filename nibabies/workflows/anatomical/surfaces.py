@@ -45,9 +45,9 @@ def init_infant_surface_recon_wf(
     # https://github.com/freesurfer/freesurfer/blob/8b40551f096294cc6603ce928317b8df70bce23e/infant/infant_recon_all#L743-L788
     # calculate anat -> fsnative transform
     fsnative2anat_xfm = pe.Node(RobustRegister(auto_sens=True, est_int_scale=True),
-                            name='fsnative2t1w_xfm')
+                                name='fsnative2t1w_xfm')
     anat2fsnative_xfm = pe.Node(LTAConvert(out_lta=True, invert=True),
-                               name='t1w2fsnative_xfm')
+                                name='t1w2fsnative_xfm')
 
     # convert generated surfaces to GIFTIs
     gifti_surface_wf = init_gifti_surface_wf()
