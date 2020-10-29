@@ -372,6 +372,8 @@ It is released under the [CC0]\
     if anat_only:
         return workflow
 
+    raise NotImplementedError("BOLD processing is not yet implemented.")
+
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
     anat_preproc_wf.__postdesc__ = (
