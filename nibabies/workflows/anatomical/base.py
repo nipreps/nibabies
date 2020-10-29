@@ -299,11 +299,11 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
         ]),
         (outputnode, anat_derivatives_wf, [
-            ('t1w_ref_xfms', 'inputnode.t1w_ref_xfms'),
-            ('t1w_preproc', 'inputnode.t1w_preproc'),
-            ('t1w_mask', 'inputnode.t1w_mask'),
-            ('t1w_dseg', 'inputnode.t1w_dseg'),
-            ('t1w_tpms', 'inputnode.t1w_tpms'),
+            ('anat_ref_xfms', 'inputnode.t1w_ref_xfms'),
+            ('anat_preproc', 'inputnode.t1w_preproc'),
+            ('anat_mask', 'inputnode.t1w_mask'),
+            ('anat_dseg', 'inputnode.t1w_dseg'),
+            ('anat_tpms', 'inputnode.t1w_tpms'),
         ]),
     ])
 
@@ -320,11 +320,11 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('t2w', 'inputnode.t2w'),
         ]),
         (anat_validate, surface_recon_wf, [
-            ('out_file', 'inputnode.t1w'),
+            ('out_file', 'inputnode.anat_orig'),
         ]),
         (be_buffer, surface_recon_wf, [
-            ('anat_brain', 'inputnode.masked_file'),
-            ('anat_preproc', 'inputnode.corrected_t1w'),
+            ('anat_brain', 'inputnode.anat_skullstripped'),
+            ('anat_preproc', 'inputnode.anat_preproc'),
         ]),
         (surface_recon_wf, outputnode, [
             ('outputnode.subjects_dir', 'subjects_dir'),
