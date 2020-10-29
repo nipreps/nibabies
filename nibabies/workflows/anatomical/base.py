@@ -13,6 +13,7 @@ def init_infant_anat_wf(
     omp_nthreads,
     output_dir,
     segmentation_atlases,
+    skull_strip_mode,
     skull_strip_template,
     sloppy,
     spaces,
@@ -67,7 +68,8 @@ def init_infant_anat_wf(
     surfaces
         GIFTI surfaces (gray/white boundary, midthickness, pial, inflated)
     """
-
+    from nipype.interfaces.ants.base import Info as ANTsInfo
+    from niworkflows.interfaces.images import ValidateImage
     from smriprep.workflows.anatomical import init_anat_template_wf, _probseg_fast2bids, _pop
     from smriprep.workflows.norm import init_anat_norm_wf
     from smriprep.workflows.outputs import (
@@ -75,6 +77,7 @@ def init_infant_anat_wf(
         init_anat_derivatives_wf,
     )
 
+    from ...utils.misc import fix_multi_source_name
     from .brain_extraction import init_infant_brain_extraction_wf
     from .segmentation import init_anat_seg_wf
     from .surfaces import init_infant_surface_recon_wf
@@ -82,6 +85,12 @@ def init_infant_anat_wf(
     # for now, T1w only
     num_anats = len(anatomicals)
     wf = pe.Workflow(name=name)
+    desc = """Anatomical data preprocessing
+
+: """
+    desc += f"""\
+A total of {num_anats} anatomical images were found within the input
+BIDS dataset."""
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -97,6 +106,7 @@ def init_infant_anat_wf(
                 "anat_mask",
                 "anat_dseg",
                 "anat_tpms",
+                "anat_ref_xfms",
                 "std_preproc",
                 "std_brain",
                 "std_dseg",
@@ -113,6 +123,38 @@ def init_infant_anat_wf(
         name="outputnode",
     )
 
+    # Connect reportlets workflows
+    anat_reports_wf = init_anat_reports_wf(
+        freesurfer=freesurfer,
+        output_dir=output_dir,
+    )
+
+    if existing_derivatives:
+        raise NotImplementedError("Reusing derivatives is not yet supported.")
+
+    desc += """
+All of them were corrected for intensity non-uniformity (INU)
+""" if num_anats > 1 else """\
+The T1-weighted (T1w) image was corrected for intensity non-uniformity (INU)
+"""
+    desc += """\
+with `N4BiasFieldCorrection` [@n4], distributed with ANTs {ants_ver} \
+[@ants, RRID:SCR_004757]"""
+    desc += '.\n' if num_anats > 1 else ", and used as T1w-reference throughout the workflow.\n"
+
+    desc += """\
+The T1w-reference was then skull-stripped with a modified implementation of
+the `antsBrainExtraction.sh` workflow (from ANTs), using {skullstrip_tpl}
+as target template.
+Brain tissue segmentation of cerebrospinal fluid (CSF),
+white-matter (WM) and gray-matter (GM) was performed on
+the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}.
+"""
+
+    workflow.__desc__ = desc.format(
+        ants_ver=ANTsInfo.version() or '(version unknown)',
+        skullstrip_tpl=skull_strip_template.fullname,
+    )
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(freesurfer=freesurfer, output_dir=output_dir)
     anat_derivatives_wf = init_anat_derivatives_wf(
@@ -124,13 +166,23 @@ def init_infant_anat_wf(
     )
 
     # Multiple T1w files -> generate average reference
+    # TODO: Add path for T2w
     anat_template_wf = init_anat_template_wf(
         longitudial=longitudial,
         omp_nthreads=omp_nthreads,
         num_t1w=num_anat,
     )
 
+    anat_validate = pe.Node(
+        ValidateImage(),
+        name='anat_validate',
+        run_without_submitting=True,
+    )
+
     # INU + Brain Extraction
+    if skull_strip_mode != 'force':
+        raise NotImplementedError("Skull stripping is currently required.")
+
     brain_extraction_wf = init_infant_brain_extraction_wf(
         age_months=age_months,
         anat_modality=anat_modality,
@@ -142,7 +194,12 @@ def init_infant_anat_wf(
         sloppy=sloppy,
     )
     # Ensure single outputs
-    be_buffer = pe.Node(niu.IdentityInterface(fields=["anat_preproc", "anat_brain"]), name='be_buffer')
+    be_buffer = pe.Node(
+        niu.IdentityInterface(
+            fields=["anat_preproc", "anat_brain"]
+        ),
+        name='be_buffer'
+    )
 
     # Segmentation - initial implementation should be simple: JLF
     anat_seg_wf = init_anat_seg_wf(
@@ -160,36 +217,136 @@ def init_infant_anat_wf(
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
 
-    # FreeSurfer surfaces
-    surface_recon_wf = init_infant_surface_recon_wf(age_months=age_months)
-    applyrefined = pe.Node(fsl.ApplyMask(), name="applyrefined")
-
     # fmt: off
     wf.connect([
-        (inputnode, brain_extraction_wf, [
+        (inputnode, anat_template_wf, [
             ('t1w', 'inputnode.t1w'),
-            ('t2w', 'inputnode.t2w')]),
+        ]),
+        (anat_template_wf, outputnode, [
+            ('outputnode.t1w_realign_xfm', 'anat_ref_xfms'),
+        ]),
+        (anat_template_wf, anat_validate, [
+            ('outputnode.t1w_ref', 'in_file'),
+        ]),
+        (anat_validate, brain_extraction_wf, [
+            ('out_file', 'inputnode.in_file'),
+        ]),
         (brain_extraction_wf, be_buffer, [
             (('outputnode.out_corrected', _pop), 'anat_preproc'),
             (('outputnode.out_brain', _pop), 'anat_brain'),
-            (('outputnode.out_mask', _pop), 'anat_mask')]),
+            (('outputnode.out_mask', _pop), 'anat_mask'),
+        ]),
         (be_buffer, outputnode, [
             ('anat_preproc', 'anat_preproc'),
             ('anat_brain', 'anat_brain'),
-            ('anat_mask', 'anat_mask')]),
+            ('anat_mask', 'anat_mask'),
+        ]),
         (be_buffer, anat_seg_wf, [
-            ('anat_brain', 'inputnode.anat_brain')]),
-        (surface_recon_wf, outputnode, [
-            ('outputnode.subjects_dir', 'subjects_dir')]),
-        (surface_recon_wf, anat_reports_wf, [
-            ('outputnode.subjects_dir', 'subjects_dir'),
-            ('outputnode.subject_id', 'subject_id')]),
+            ('anat_brain', 'inputnode.anat_brain'),
+        ]),
+        (anat_seg_wf, outputnode, [
+            ('outputnode.anat_dseg', 'anat_dseg'),
+        ]),
+        (anat_seg_wf, anat_norm_wf, [
+            ('outputnode.anat_dseg', 'inputnode.moving_segmentation'),
+        ]),
+        (anat_seg_wf, anat_derivatives_wf, [
+            ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
+        ]),
+        (be_buffer, anat_norm_wf, [
+            ('anat_preproc', 'inputnode.moving_image'),
+            ('anat_mask', 'inputnode.moving_mask'),
+        ]),
+        (anat_norm_wf, outputnode, [
+            ('poutputnode.standardized', 'std_preproc'),
+            ('poutputnode.std_mask', 'std_mask'),
+            ('poutputnode.std_dseg', 'std_dseg'),
+            ('poutputnode.std_tpms', 'std_tpms'),
+            ('outputnode.template', 'template'),
+            ('outputnode.anat2std_xfm', 'anat2std_xfm'),
+            ('outputnode.std2anat_xfm', 'std2anat_xfm'),
+        ]),
+        (inputnode, anat_norm_wf, [
+            (('t1w', fix_multi_source_name), 'inputnode.orig_t1w'),  # anat_validate? not used...
+        ]),
     ])
-    if freesurfer:
-        wf.connect([
-            (inputnode, surface_recon_wf, [
-                ('subject_id', 'inputnode.subject_id'),
-                ('subject_dir', 'inputnode.subject_dir')]),
-            (be_buffer, surface_recon_wf, [('anat_brain', 'inputnode.masked_file')]),
+
+    wf.connect([
+        # reports
+        (inputnode, anat_reports_wf, [
+            ('t1w', 'inputnode.source_file'),
+        ]),
+        (outputnode, anat_reports_wf, [
+            ('anat_preproc', 'inputnode.t1w_preproc'),
+            ('anat_mask', 'inputnode.t1w_mask'),
+            ('anat_dseg', 'inputnode.t1w_dseg'),
+            ('std_preproc', 'inputnode.std_t1w'),
+            ('std_mask', 'inputnode.std_mask'),
+        ]),
+        (anat_template_wf, anat_reports_wf, [
+            ('outputnode.out_report', 'inputnode.t1w_conform_report'),
+        ]),
+        (anat_norm_wf, anat_reports_wf, [
+            ('poutputnode.template', 'inputnode.template'),
+        ]),
+        # derivatives
+        (anat_template_wf, anat_derivatives_wf, [
+            ('outputnode.t1w_valid_list', 'inputnode.source_files'),
+        ]),
+        (anat_norm_wf, anat_derivatives_wf, [
+            ('outputnode.template', 'inputnode.template'),
+            ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+            ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
+        ]),
+        (outputnode, anat_derivatives_wf, [
+            ('t1w_ref_xfms', 'inputnode.t1w_ref_xfms'),
+            ('t1w_preproc', 'inputnode.t1w_preproc'),
+            ('t1w_mask', 'inputnode.t1w_mask'),
+            ('t1w_dseg', 'inputnode.t1w_dseg'),
+            ('t1w_tpms', 'inputnode.t1w_tpms'),
+        ]),
+    ])
+
+    if not freesurfer:
+        return wf
+
+    # FreeSurfer surfaces
+    surface_recon_wf = init_infant_surface_recon_wf(age_months=age_months)
+
+    wf.connect([
+        (inputnode, surface_recon_wf, [
+            ('subject_id', 'inputnode.subject_id'),
+            ('subject_dir', 'inputnode.subject_dir'),
+            ('t2w', 'inputnode.t2w'),
+        ]),
+        (anat_validate, surface_recon_wf, [
+            ('out_file', 'inputnode.t1w'),
+        ]),
+        (be_buffer, surface_recon_wf, [
+            ('anat_brain', 'inputnode.masked_file'),
+            ('anat_preproc', 'inputnode.corrected_t1w'),
+        ]),
+        (surface_recon_wf, outputnode, [
+            ('outputnode.subjects_dir', 'subjects_dir'),
+            ('outputnode.subject_id', 'subject_id'),
+            ('outputnode.t1w2fsnative_xfm', 't1w2fsnative_xfm'),
+            ('outputnode.fsnative2t1w_xfm', 'fsnative2t1w_xfm'),
+            ('outputnode.surfaces', 'surfaces'),
+            ('outputnode.out_aseg', 't1w_aseg'),
+            ('outputnode.out_aparc', 't1w_aparc'),
+        ]),
+        (surface_recon_wf, anat_reports_wf, [
+            ('outputnode.subject_id', 'inputnode.subject_id'),
+            ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+        ]),
+        (surface_recon_wf, anat_derivatives_wf, [
+            ('outputnode.out_aparc', 'inputnode.t1w_fs_aparc'),
+        ]),
+        (surface_recon_wf, anat_derivatives_wf, [
+            ('outputnode.t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
+            ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
+            ('outputnode.surfaces', 'inputnode.surfaces'),
+        ]),
+    ])
     # fmt: on
     return wf
