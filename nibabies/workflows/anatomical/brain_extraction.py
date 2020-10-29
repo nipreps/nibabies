@@ -77,7 +77,7 @@ def init_infant_brain_extraction_wf(
         template_specs['cohort'] = cohort
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_files", "in_mask"]), name="inputnode"
+        niu.IdentityInterface(fields=["in_file", "in_mask"]), name="inputnode"
     )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=["out_corrected", "out_brain", "out_mask"]),
@@ -115,7 +115,7 @@ def init_infant_brain_extraction_wf(
     val_tmpl = pe.Node(ValidateImage(), name='val_tmpl')
     val_tmpl.inputs.in_file = _pop(tpl_target_path)
 
-    val_target = pe.Node(ValidateImage(), name='val_target')
+    # val_target = pe.Node(ValidateImage(), name='val_target')
 
     # Resample both target and template to a controlled, isotropic resolution
     res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")  # testing
@@ -193,9 +193,9 @@ def init_infant_brain_extraction_wf(
     gauss_target = pe.Node(niu.Function(function=_gauss_filter), name="gauss_target")
     wf.connect([
         # truncation, resampling, and initial N4
-        (inputnode, val_target, [(("in_files", _pop), "in_file")]),
+        # (inputnode, val_target, [(("in_files", _pop), "in_file")]),
         # (inputnode, res_target, [(("in_files", _pop), "in_file")]),
-        (val_target, res_target, [("out_file", "in_file")]),
+        (inputnode, res_target, [("in_file", "in_file")]),
         (res_target, clip_target, [("out_file", "in_file")]),
         (val_tmpl, clip_tmpl, [("out_file", "in_file")]),
         (clip_tmpl, res_tmpl, [("out", "in_file")]),
