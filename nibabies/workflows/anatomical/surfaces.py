@@ -19,9 +19,11 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
             fields=[
                 "subjects_dir",
                 "subject_id",
+                "anat_orig",
                 "anat_skullstripped",
                 "anat_preproc",
                 "anat_seg",
+                "t2w",
             ],
         ),
         name="inputnode",
@@ -31,8 +33,8 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
             fields=[
                 "subjects_dir",
                 "subject_id",
-                "anat2fsaverage_xfm",
-                "fsaverage2anat_xfm",
+                "anat2fsnative_xfm",
+                "fsnative2anat_xfm",
                 "surfaces",
                 "out_aparc",
             ]

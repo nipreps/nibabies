@@ -61,10 +61,10 @@ def init_infant_anat_wf(
         Inverse transform of the above.
     subject_id
         FreeSurfer subject ID
-    t1w2fsnative_xfm
+    anat2fsnative_xfm
         LTA-style affine matrix translating from T1w to
         FreeSurfer-conformed subject space
-    fsnative2t1w_xfm
+    fsnative2anat_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed
         subject space to T1w
     surfaces
@@ -255,6 +255,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (anat_seg_wf, anat_derivatives_wf, [
             ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
         ]),
+        (anat_seg_wf, outputnode, [
+            ('outputnode.anat_aseg', 't1w_aseg'),
+        ]),
         (be_buffer, anat_norm_wf, [
             ('anat_preproc', 'inputnode.moving_image'),
             ('anat_mask', 'inputnode.moving_mask'),
@@ -318,7 +321,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     wf.connect([
         (inputnode, surface_recon_wf, [
             ('subject_id', 'inputnode.subject_id'),
-            ('subject_dir', 'inputnode.subject_dir'),
+            ('subjects_dir', 'inputnode.subjects_dir'),
             ('t2w', 'inputnode.t2w'),
         ]),
         (anat_validate, surface_recon_wf, [
@@ -331,10 +334,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (surface_recon_wf, outputnode, [
             ('outputnode.subjects_dir', 'subjects_dir'),
             ('outputnode.subject_id', 'subject_id'),
-            ('outputnode.t1w2fsnative_xfm', 't1w2fsnative_xfm'),
-            ('outputnode.fsnative2t1w_xfm', 'fsnative2t1w_xfm'),
+            ('outputnode.anat2fsnative_xfm', 'anat2fsnative_xfm'),
+            ('outputnode.fsnative2anat_xfm', 'fsnative2anat_xfm'),
             ('outputnode.surfaces', 'surfaces'),
-            ('outputnode.out_aseg', 't1w_aseg'),
             ('outputnode.out_aparc', 't1w_aparc'),
         ]),
         (surface_recon_wf, anat_reports_wf, [
@@ -345,8 +347,8 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('outputnode.out_aparc', 'inputnode.t1w_fs_aparc'),
         ]),
         (surface_recon_wf, anat_derivatives_wf, [
-            ('outputnode.t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
-            ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
+            ('outputnode.anat2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
+            ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
             ('outputnode.surfaces', 'inputnode.surfaces'),
         ]),
     ])
