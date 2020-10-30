@@ -17,8 +17,8 @@ from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
 from .. import config
-from ..interfaces import SubjectSummary, AboutSummary, DerivativesDataSink
-from .bold import init_func_preproc_wf
+from fmriprep.interfaces import SubjectSummary, AboutSummary, DerivativesDataSink
+# from .bold import init_func_preproc_wf
 
 
 def init_nibabies_wf():
@@ -288,11 +288,14 @@ It is released under the [CC0]\
     anat_preproc_wf = init_infant_anat_wf(
         age_months=config.workflow.age_months,
         anat_modality=anat_modality,
+        anatomicals=subject_data[anat_modality],
+        bids_root=config.execution.bids_dir,
         existing_derivatives=anat_derivatives,
         freesurfer=config.workflow.run_reconall,
-        omp_nthreads=config.nipype.om4errp_nthreads,
+        omp_nthreads=config.nipype.omp_nthreads,
         output_dir=output_dir,
-        segmentation_atlases=config.execution.segmentation_atlases,
+        segmentation_atlases=config.execution.segmentation_atlases_dir,
+        skull_strip_mode=config.workflow.skull_strip_t1w,
         skull_strip_template=Reference.from_string(
             config.workflow.skull_strip_template
         )[0],

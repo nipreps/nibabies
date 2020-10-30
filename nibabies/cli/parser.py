@@ -14,7 +14,7 @@ def _build_parser():
         ArgumentDefaultsHelpFormatter,
     )
     from packaging.version import Version
-    from .version import check_latest, is_flagged
+    # from .version import check_latest, is_flagged
     from niworkflows.utils.spaces import Reference, OutputReferencesAction
 
     def _path_exists(path, parser):
@@ -162,8 +162,8 @@ def _build_parser():
     )
     g_bids.add_argument(
         "--anat-modality",
-        default="T1w",
-        choices=("T1w", "T2w"),
+        default="t1w",
+        choices=("t1w", "t2w"),
         help="Preferred modality to use for anatomical processing",
     )
     g_bids.add_argument(
@@ -390,7 +390,7 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
     g_ants = parser.add_argument_group("Specific options for ANTs registrations")
     g_ants.add_argument(
         "--skull-strip-template",
-        default="UNCInfant",
+        default="UNCInfant:cohort-1",
         type=Reference.from_string,
         help="select a template for skull-stripping with antsBrainExtraction",
     )
@@ -562,29 +562,29 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         help="Use low-quality tools for speed - TESTING ONLY",
     )
 
-    latest = check_latest()
-    if latest is not None and currentv < latest:
-        print(
-            """\
-You are using NiBabies-%s, but a newer version is available: %s.
-Please check out our documentation about how and when to upgrade:
-https://fmriprep.readthedocs.io/en/latest/faq.html#upgrading"""
-            % (currentv, latest),
-            file=sys.stderr,
-        )
+#     latest = check_latest()
+#     if latest is not None and currentv < latest:
+#         print(
+#             """\
+# You are using NiBabies-%s, but a newer version is available: %s.
+# Please check out our documentation about how and when to upgrade:
+# https://fmriprep.readthedocs.io/en/latest/faq.html#upgrading"""
+#             % (currentv, latest),
+#             file=sys.stderr,
+#         )
 
-    _blist = is_flagged()
-    if _blist[0]:
-        _reason = _blist[1] or "unknown"
-        print(
-            """\
-WARNING: Version %s of NiBabies (current) has been FLAGGED
-(reason: %s).
-That means some severe flaw was found in it and we strongly
-discourage its usage."""
-            % (config.environment.version, _reason),
-            file=sys.stderr,
-        )
+#     _blist = is_flagged()
+#     if _blist[0]:
+#         _reason = _blist[1] or "unknown"
+#         print(
+#             """\
+# WARNING: Version %s of NiBabies (current) has been FLAGGED
+# (reason: %s).
+# That means some severe flaw was found in it and we strongly
+# discourage its usage."""
+#             % (config.environment.version, _reason),
+#             file=sys.stderr,
+#         )
 
     return parser
 

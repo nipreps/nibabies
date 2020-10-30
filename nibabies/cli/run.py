@@ -12,7 +12,7 @@ def main():
     import gc
     from multiprocessing import Process, Manager
     from .parser import parse_args
-    from ..utils.bids import write_derivative_description, write_bidsignore
+    from fmriprep.utils.bids import write_derivative_description, write_bidsignore
 
     parse_args()
 

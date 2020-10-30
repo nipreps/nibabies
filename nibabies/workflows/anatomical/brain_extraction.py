@@ -39,7 +39,7 @@ def init_infant_brain_extraction_wf(
     ants_affine_init=False,
     bspline_fitting_distance=200,
     sloppy=False,
-    skull_strip_template="UNCInfant",
+    skull_strip_template="UNCInfant:cohort-1",
     template_specs=None,
     interim_checkpoints=True,
     mem_gb=3.0,
@@ -66,10 +66,10 @@ def init_infant_brain_extraction_wf(
     if skull_strip_template == 'MNIInfant':
         template_specs['resolution'] = 2 if config.execution.sloppy else 1
 
-    if config.workflow.age_months is not None:
-        if opts.age_months <= 2:
+    if not template_specs.get('cohort') and age_months is not None:
+        if age_months <= 2:
             cohort = 1
-        elif opts.age_months < 12:
+        elif age_months < 12:
             cohort = 2
         else:
             cohort = 3
@@ -87,14 +87,14 @@ def init_infant_brain_extraction_wf(
     template_specs = template_specs or {}
     # Find a suitable target template in TemplateFlow
     tpl_target_path = get_template(
-        in_template,
+        skull_strip_template,
         suffix=mri_scheme,
         desc=None,
         **template_specs
     )
     if not tpl_target_path:
         raise RuntimeError(
-            f"An instance of template <tpl-{in_template}> with MR scheme '{mri_scheme}'"
+            f"An instance of template <tpl-{skull_strip_template}> with MR scheme '{mri_scheme}'"
             " could not be found.")
 
     # tpl_brainmask_path = get_template(
@@ -104,11 +104,11 @@ def init_infant_brain_extraction_wf(
 
     # ignore probseg for the time being
     tpl_brainmask_path = get_template(
-        in_template, desc="brain", suffix="mask", **template_specs
+        skull_strip_template, desc="brain", suffix="mask", **template_specs
     )
 
     tpl_regmask_path = get_template(
-        in_template, desc="BrainCerebellumExtraction", suffix="mask", **template_specs
+        skull_strip_template, desc="BrainCerebellumExtraction", suffix="mask", **template_specs
     )
 
     # validate images
@@ -143,7 +143,7 @@ def init_infant_brain_extraction_wf(
     norm_lap_target.inputs.clip_max = None
 
     # Set up initial spatial normalization
-    ants_params = "testing" if debug else "precise"
+    ants_params = "testing" if sloppy else "precise"
     norm = pe.Node(
         Registration(from_file=pkgr_fn(
             "niworkflows.data",
@@ -178,7 +178,7 @@ def init_infant_brain_extraction_wf(
             dimension=3,
             save_bias=False,
             copy_header=True,
-            n_iterations=[50] * (4 - debug),
+            n_iterations=[50] * (4 - sloppy),
             convergence_threshold=1e-7,
             shrink_factor=4,
             bspline_fitting_distance=bspline_fitting_distance,
@@ -336,7 +336,7 @@ def init_infant_brain_extraction_wf(
             mem_gb=1
         )
         final_report = pe.Node(SimpleBeforeAfter(
-            before_label=f"tpl-{in_template}",
+            before_label=f"tpl-{skull_strip_template}",
             after_label="target",
             out_report="final_report.svg"),
             name="final_report"
@@ -422,7 +422,7 @@ def init_infant_brain_extraction_wf(
             mem_gb=1
         )
         init_report = pe.Node(SimpleBeforeAfter(
-            before_label=f"tpl-{in_template}",
+            before_label=f"tpl-{skull_strip_template}",
             after_label="target",
             out_report="init_report.svg"),
             name="init_report"

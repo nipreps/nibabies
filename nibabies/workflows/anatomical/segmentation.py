@@ -9,6 +9,8 @@ from niworkflows.interfaces.fixes import (
 from smriprep.utils.misc import apply_lut as _apply_bids_lut
 from smriprep.workflows.anatomical import _aseg_to_three, _split_segments
 
+from ...config import DEFAULT_MEMORY_MIN_GB
+
 
 def init_anat_seg_wf(
     age_months=None,
@@ -50,7 +52,7 @@ def init_anat_seg_wf(
         name="norm",
         iterfield=["fixed_image", "moving_image"],
         n_procs=omp_nthreads,
-        mem_gb=mem_gb,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
     norm.inputs.moving_image = tmpl_anats
     norm.inputs.float = True
@@ -66,7 +68,7 @@ def init_anat_seg_wf(
     )
     apply_atlas.inputs.input_image = tmpl_anats
 
-    apply_seg = pe.Node(
+    apply_seg = pe.MapNode(
         ApplyTransforms(dimension=3, interpolation="MultiLabel"),  # NearestNeighbor?
         name="apply_seg",
         iterfield=["transforms", "input_image"],
@@ -92,10 +94,10 @@ def init_anat_seg_wf(
 
     # fmt: off
     wf.connect([
-        (inputnode, reg, [('anat_brain', 'fixed_image')]),
-        (reg, apply_atlas, [('forward_transforms', 'transforms')]),
+        (inputnode, norm, [('anat_brain', 'fixed_image')]),
+        (norm, apply_atlas, [('forward_transforms', 'transforms')]),
         (inputnode, apply_atlas, [('anat_brain', 'reference_image')]),
-        (reg, apply_seg, [('forward_transforms', 'transforms')]),
+        (norm, apply_seg, [('forward_transforms', 'transforms')]),
         (inputnode, apply_seg, [('anat_brain', 'reference_image')]),
         (inputnode, jointfusion, [(('anat_brain', _to_list), 'target_image')]),
         (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
@@ -124,9 +126,9 @@ def _parse_segmentation_atlases(anat_modality, template_dir):
 
     for f in Path(template_dir).glob("**/*.nii*"):
         if "Segmentation" in f.name:
-            segs.append(f.absolute())
+            segs.append(str(f.absolute()))
         elif anat_modality in f.name:
-            anats.append(f.absolute())
+            anats.append(str(f.absolute()))
 
     assert anats
     assert segs

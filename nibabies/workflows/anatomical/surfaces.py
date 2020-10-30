@@ -88,9 +88,9 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
         ]),
         (anat2fsnative_xfm, outputnode, [
             ('out', 'anat2fsnative_xfm'),
-        ])
+        ]),
         (anat2fsnative_xfm, fsnative2anat_xfm, [
-            ('out', 'in_lta')
+            ('out', 'in_lta'),
         ]),
         (fsnative2anat_xfm, outputnode, [
             ('out_lta', 'fsnative2anat_xfm'),

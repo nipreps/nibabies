@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, fsl
 
@@ -151,7 +153,7 @@ white-matter (WM) and gray-matter (GM) was performed on
 the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}.
 """
 
-    workflow.__desc__ = desc.format(
+    wf.__desc__ = desc.format(
         ants_ver=ANTsInfo.version() or '(version unknown)',
         skullstrip_tpl=skull_strip_template.fullname,
     )
@@ -168,9 +170,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     # Multiple T1w files -> generate average reference
     # TODO: Add path for T2w
     anat_template_wf = init_anat_template_wf(
-        longitudial=longitudial,
+        longitudinal=False,
         omp_nthreads=omp_nthreads,
-        num_t1w=num_anat,
+        num_t1w=num_anats,
     )
 
     anat_validate = pe.Node(
@@ -185,12 +187,12 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
     brain_extraction_wf = init_infant_brain_extraction_wf(
         age_months=age_months,
-        anat_modality=anat_modality,
+        mri_scheme=anat_modality.capitalize(),
         ants_affine_init=True,
-        skull_strip_template=skull_strip_template,
-        template_specs=template_specs,
+        skull_strip_template=skull_strip_template.space,
+        template_specs=skull_strip_template.spec,
         omp_nthreads=omp_nthreads,
-        output_dir=output_dir,
+        output_dir=Path(output_dir),
         sloppy=sloppy,
     )
     # Ensure single outputs
@@ -204,7 +206,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     # Segmentation - initial implementation should be simple: JLF
     anat_seg_wf = init_anat_seg_wf(
         age_months=age_months,
-        anat_modality=anat_modality,
+        anat_modality=anat_modality.capitalize(),
         template_dir=segmentation_atlases,
         sloppy=sloppy,
         omp_nthreads=omp_nthreads,
@@ -212,7 +214,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
     # Spatial normalization (requires segmentation)
     anat_norm_wf = init_anat_norm_wf(
-        debug=debug,
+        debug=sloppy,
         omp_nthreads=omp_nthreads,
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
