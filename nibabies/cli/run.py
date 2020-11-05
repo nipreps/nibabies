@@ -59,7 +59,7 @@ def main():
     if retcode != 0:
         sys.exit(retcode)
 
-    # # Generate boilerplate
+    # Generate boilerplate
     # with Manager() as mgr:
     #     from .workflow import build_boilerplate
 
@@ -67,11 +67,11 @@ def main():
     #     p.start()
     #     p.join()
 
-    # if config.execution.boilerplate_only:
-    #     sys.exit(int(retcode > 0))
+    if config.execution.boilerplate_only:
+        sys.exit(int(retcode > 0))
 
-    # # Clean up master process before running workflow, which may create forks
-    # gc.collect()
+    # Clean up master process before running workflow, which may create forks
+    gc.collect()
 
     # Sentry tracking
     # if sentry_sdk is not None:
@@ -109,7 +109,7 @@ def main():
 
         #     if "Workflow did not execute cleanly" not in str(e):
         #         sentry_sdk.capture_exception(e)
-        # config.loggers.workflow.critical("nibabies failed: %s", e)
+        config.loggers.workflow.critical("nibabies failed: %s", e)
         raise
     else:
         config.loggers.workflow.log(25, "nibabies finished successfully!")
@@ -152,17 +152,17 @@ def main():
             )
         errno = 0
     finally:
-        # from niworkflows.reports import generate_reports
-        # from pkg_resources import resource_filename as pkgrf
+        from niworkflows.reports import generate_reports
+        from pkg_resources import resource_filename as pkgrf
 
-        # # Generate reports phase
-        # failed_reports = generate_reports(
-        #     config.execution.participant_label,
-        #     config.execution.output_dir,
-        #     config.execution.run_uuid,
-        #     config=pkgrf("nibabies", "data/reports-spec.yml"),
-        #     packagename="nibabies",
-        # )
+        # Generate reports phase
+        failed_reports = generate_reports(
+            config.execution.participant_label,
+            config.execution.output_dir,
+            config.execution.run_uuid,
+            config=pkgrf("nibabies", "data/reports-spec.yml"),
+            packagename="nibabies",
+        )
         write_derivative_description(
             config.execution.bids_dir, config.execution.output_dir / "nibabies"
         )
