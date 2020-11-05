@@ -1,23 +1,23 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 r"""
-A Python module to maintain unique, run-wide *fMRIPrep* settings.
+A Python module to maintain unique, run-wide *nibabies* settings.
 
 This module implements the memory structures to keep a consistent, singleton config.
 Settings are passed across processes via filesystem, and a copy of the settings for
 each run and subject is left under
-``<output_dir>/sub-<participant_id>/log/<run_unique_id>/fmriprep.toml``.
+``<output_dir>/sub-<participant_id>/log/<run_unique_id>/nibabies.toml``.
 Settings are stored using :abbr:`ToML (Tom's Markup Language)`.
-The module has a :py:func:`~fmriprep.config.to_filename` function to allow writting out
+The module has a :py:func:`~nibabies.config.to_filename` function to allow writting out
 the settings to hard disk in *ToML* format, which looks like:
 
 .. literalinclude:: ../fmriprep/data/tests/config.toml
    :language: toml
-   :name: fmriprep.toml
-   :caption: **Example file representation of fMRIPrep settings**.
+   :name: nibabies.toml
+   :caption: **Example file representation of nibabies settings**.
 
 This config file is used to pass the settings across processes,
-using the :py:func:`~fmriprep.config.load` function.
+using the :py:func:`~nibabies.config.load` function.
 
 Configuration sections
 ----------------------
@@ -37,8 +37,8 @@ graph is built across processes.
 
 .. code-block:: Python
 
-    from fmriprep import config
-    config_file = config.execution.work_dir / '.fmriprep.toml'
+    from nibabies import config
+    config_file = config.execution.work_dir / '.nibabies.toml'
     config.to_filename(config_file)
     # Call build_workflow(config_file, retval) in a subprocess
     with Manager() as mgr:
@@ -212,14 +212,9 @@ class _Config:
                 setattr(cls, k, Path(v).absolute())
             elif hasattr(cls, k):
                 setattr(cls, k, v)
-            else:
-                raise Exception(f"Option {k} not found in {cls.__name__}")
 
-        if init:
-            if hasattr(cls, 'init'):
-                cls.init()
-            else:
-                raise Exception(f"Cannot initialize class {cls.__name__}")
+        if init and hasattr(cls, 'init'):
+            cls.init()
 
     @classmethod
     def get(cls):
@@ -247,7 +242,7 @@ class environment(_Config):
     Read-only options regarding the platform and environment.
 
     Crawls runtime descriptive settings (e.g., default FreeSurfer license,
-    execution environment, nipype and *fMRIPrep* versions, etc.).
+    execution environment, nipype and *nibabies* versions, etc.).
     The ``environment`` section is not loaded in from file,
     only written out when settings are exported.
     This config section is useful when reporting issues,
@@ -387,7 +382,7 @@ class execution(_Config):
     md_only_boilerplate = False
     """Do not convert boilerplate from MarkDown to LaTex and HTML."""
     notrack = False
-    """Do not monitor *fMRIPrep* using Sentry.io."""
+    """Do not monitor *nibabies* using Sentry.io."""
     output_dir = None
     """Folder where derivatives will be stored."""
     output_spaces = None
@@ -397,6 +392,8 @@ class execution(_Config):
     """Only build the reports, based on the reportlets found in a cached working directory."""
     run_uuid = f"{strftime('%Y%m%d-%H%M%S')}_{uuid4()}"
     """Unique identifier of this particular run."""
+    segmentation_atlases_dir = None
+    """Directory with atlases to use for JLF segmentations"""
     participant_label = None
     """List of participant identifiers that are to be preprocessed."""
     task_id = None
@@ -419,6 +416,7 @@ class execution(_Config):
         "layout",
         "log_dir",
         "output_dir",
+        "segmentation_atlases_dir",
         "templateflow_home",
         "work_dir",
     )
@@ -486,7 +484,7 @@ class workflow(_Config):
     """Age (in months)"""
     anat_only = False
     """Execute the anatomical preprocessing only."""
-    anat_modality = "T1w"
+    anat_modality = "t1w"
     """Structural MRI modality"""
     aroma_err_on_warn = None
     """Cast AROMA warnings to errors."""
@@ -511,7 +509,7 @@ class workflow(_Config):
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     ignore = None
-    """Ignore particular steps for *fMRIPrep*."""
+    """Ignore particular steps for *nibabies*."""
     longitudinal = False
     """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
     medial_surface_nan = None
@@ -526,11 +524,11 @@ class workflow(_Config):
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
-    skull_strip_template = "UNCInfant"
+    skull_strip_template = "UNCInfant:cohort-1"
     """Change default brain extraction template."""
     skull_strip_t1w = "force"
     """Skip brain extraction of the T1w image (default is ``force``, meaning that
-    *fMRIPrep* will run brain extraction of the T1w)."""
+    *nibabies* will run brain extraction of the T1w)."""
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
@@ -681,23 +679,34 @@ def init_spaces(checkpoint=True):
     if checkpoint and not spaces.is_cached():
         spaces.checkpoint()
 
-    # Add the default standard space if not already present (required by several sub-workflows)
-    if "MNI152NLin2009cAsym" not in spaces.get_spaces(nonstandard=False, dim=(3,)):
-        spaces.add(Reference("MNI152NLin2009cAsym", {}))
+    if "UNCInfant" not in [s.space for s in spaces.references]:
+        age = workflow.age_months or 12
+        if age <= 2:
+            cohort = 1
+        elif age <= 12:
+            cohort = 2
+        else:
+            cohort = 3
+        # add the UNC space
+        spaces.add(Reference("UNCInfant", {'cohort': cohort}))
+
+    # # Add the default standard space if not already present (required by several sub-workflows)
+    # if "MNI152NLin2009cAsym" not in spaces.get_spaces(nonstandard=False, dim=(3,)):
+    #     spaces.add(Reference("MNI152NLin2009cAsym", {}))
 
     # Ensure user-defined spatial references for outputs are correctly parsed.
     # Certain options require normalization to a space not explicitly defined by users.
     # These spaces will not be included in the final outputs.
-    if workflow.use_aroma:
-        # Make sure there's a normalization to FSL for AROMA to use.
-        spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
+    # if workflow.use_aroma:
+    #     # Make sure there's a normalization to FSL for AROMA to use.
+    #     spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
 
-    cifti_output = workflow.cifti_output
-    if cifti_output:
-        # CIFTI grayordinates to corresponding FSL-MNI resolutions.
-        vol_res = "2" if cifti_output == "91k" else "1"
-        spaces.add(Reference("fsaverage", {"den": "164k"}))
-        spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
+    # cifti_output = workflow.cifti_output
+    # if cifti_output:
+    #     # CIFTI grayordinates to corresponding FSL-MNI resolutions.
+    #     vol_res = "2" if cifti_output == "91k" else "1"
+    #     spaces.add(Reference("fsaverage", {"den": "164k"}))
+    #     spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
 
     # Make the SpatialReferences object available
     workflow.spaces = spaces

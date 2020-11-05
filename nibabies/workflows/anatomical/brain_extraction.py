@@ -35,10 +35,11 @@ LOWRES_ZOOMS = (2, 2, 2)
 
 
 def init_infant_brain_extraction_wf(
+    age_months=None,
     ants_affine_init=False,
     bspline_fitting_distance=200,
-    debug=False,
-    in_template="UNCInfant",
+    sloppy=False,
+    skull_strip_template="UNCInfant:cohort-1",
     template_specs=None,
     interim_checkpoints=True,
     mem_gb=3.0,
@@ -62,20 +63,21 @@ def init_infant_brain_extraction_wf(
     if template_specs is None:
         template_specs = {}
 
-    if config.workflow.skull_strip_template == 'MNIInfant':
+    if skull_strip_template == 'MNIInfant':
         template_specs['resolution'] = 2 if config.execution.sloppy else 1
 
-    if config.workflow.age_months:
-        if opts.age_months <= 2:
+    if not template_specs.get('cohort') and age_months is not None:
+        if age_months <= 2:
             cohort = 1
-        elif opts.age_months < 12:
+        elif age_months < 12:
             cohort = 2
         else:
             cohort = 3
+        # select relevant templateflow cohort
         template_specs['cohort'] = cohort
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_files", "in_mask"]), name="inputnode"
+        niu.IdentityInterface(fields=["in_file", "in_mask"]), name="inputnode"
     )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=["out_corrected", "out_brain", "out_mask"]),
@@ -85,14 +87,14 @@ def init_infant_brain_extraction_wf(
     template_specs = template_specs or {}
     # Find a suitable target template in TemplateFlow
     tpl_target_path = get_template(
-        in_template,
+        skull_strip_template,
         suffix=mri_scheme,
         desc=None,
         **template_specs
     )
     if not tpl_target_path:
         raise RuntimeError(
-            f"An instance of template <tpl-{in_template}> with MR scheme '{mri_scheme}'"
+            f"An instance of template <tpl-{skull_strip_template}> with MR scheme '{mri_scheme}'"
             " could not be found.")
 
     # tpl_brainmask_path = get_template(
@@ -102,18 +104,18 @@ def init_infant_brain_extraction_wf(
 
     # ignore probseg for the time being
     tpl_brainmask_path = get_template(
-        in_template, desc="brain", suffix="mask", **template_specs
+        skull_strip_template, desc="brain", suffix="mask", **template_specs
     )
 
     tpl_regmask_path = get_template(
-        in_template, desc="BrainCerebellumExtraction", suffix="mask", **template_specs
+        skull_strip_template, desc="BrainCerebellumExtraction", suffix="mask", **template_specs
     )
 
     # validate images
     val_tmpl = pe.Node(ValidateImage(), name='val_tmpl')
     val_tmpl.inputs.in_file = _pop(tpl_target_path)
 
-    val_target = pe.Node(ValidateImage(), name='val_target')
+    # val_target = pe.Node(ValidateImage(), name='val_target')
 
     # Resample both target and template to a controlled, isotropic resolution
     res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")  # testing
@@ -141,7 +143,7 @@ def init_infant_brain_extraction_wf(
     norm_lap_target.inputs.clip_max = None
 
     # Set up initial spatial normalization
-    ants_params = "testing" if debug else "precise"
+    ants_params = "testing" if sloppy else "precise"
     norm = pe.Node(
         Registration(from_file=pkgr_fn(
             "niworkflows.data",
@@ -176,7 +178,7 @@ def init_infant_brain_extraction_wf(
             dimension=3,
             save_bias=False,
             copy_header=True,
-            n_iterations=[50] * (4 - debug),
+            n_iterations=[50] * (4 - sloppy),
             convergence_threshold=1e-7,
             shrink_factor=4,
             bspline_fitting_distance=bspline_fitting_distance,
@@ -191,9 +193,9 @@ def init_infant_brain_extraction_wf(
     gauss_target = pe.Node(niu.Function(function=_gauss_filter), name="gauss_target")
     wf.connect([
         # truncation, resampling, and initial N4
-        (inputnode, val_target, [(("in_files", _pop), "in_file")]),
+        # (inputnode, val_target, [(("in_files", _pop), "in_file")]),
         # (inputnode, res_target, [(("in_files", _pop), "in_file")]),
-        (val_target, res_target, [("out_file", "in_file")]),
+        (inputnode, res_target, [("in_file", "in_file")]),
         (res_target, clip_target, [("out_file", "in_file")]),
         (val_tmpl, clip_tmpl, [("out_file", "in_file")]),
         (clip_tmpl, res_tmpl, [("out", "in_file")]),
@@ -262,13 +264,13 @@ def init_infant_brain_extraction_wf(
     #     atropos_wf.get_node('inputnode').inputs.in_mask_dilated = tpl_regmask_path
 
     sel_wm = pe.Node(niu.Select(index=atropos_model[-1] - 1), name='sel_wm',
-                    run_without_submitting=True)
+                     run_without_submitting=True)
 
 
     wf.connect([
-        (inputnode, map_brainmask, [(("in_files", _pop), "reference_image")]),
-        (inputnode, final_n4, [(("in_files", _pop), "input_image")]),
-        (inputnode, bspline_grid, [(("in_files", _pop), "in_file")]),
+        (inputnode, map_brainmask, [("in_file", "reference_image")]),
+        (inputnode, final_n4, [("in_file", "input_image")]),
+        (inputnode, bspline_grid, [("in_file", "in_file")]),
         # (bspline_grid, final_n4, [("out", "bspline_fitting_distance")]),
         (bspline_grid, final_n4, [("out", "args")]),
         # merge laplacian and original images
@@ -334,13 +336,13 @@ def init_infant_brain_extraction_wf(
             mem_gb=1
         )
         final_report = pe.Node(SimpleBeforeAfter(
-            before_label=f"tpl-{in_template}",
+            before_label=f"tpl-{skull_strip_template}",
             after_label="target",
             out_report="final_report.svg"),
             name="final_report"
         )
         wf.connect([
-            (inputnode, final_apply, [(("in_files", _pop), "reference_image")]),
+            (inputnode, final_apply, [("in_file", "reference_image")]),
             (res_tmpl, final_apply, [("out_file", "input_image")]),
             (norm, final_apply, [
                 ("reverse_transforms", "transforms"),
@@ -420,7 +422,7 @@ def init_infant_brain_extraction_wf(
             mem_gb=1
         )
         init_report = pe.Node(SimpleBeforeAfter(
-            before_label=f"tpl-{in_template}",
+            before_label=f"tpl-{skull_strip_template}",
             after_label="target",
             out_report="init_report.svg"),
             name="init_report"
