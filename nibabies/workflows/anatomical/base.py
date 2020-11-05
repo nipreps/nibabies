@@ -70,6 +70,7 @@ def init_infant_anat_wf(
     surfaces
         GIFTI surfaces (gray/white boundary, midthickness, pial, inflated)
     """
+    from nipype.interfaces.base import Undefined
     from nipype.interfaces.ants.base import Info as ANTsInfo
     from niworkflows.interfaces.images import ValidateImage
     from smriprep.workflows.anatomical import init_anat_template_wf, _probseg_fast2bids, _pop
@@ -159,6 +160,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     )
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(freesurfer=freesurfer, output_dir=output_dir)
+    # HACK: remove resolution from TFSelect
+    anat_reports_wf.get_node('tf_select').inputs.resolution = Undefined
+
     anat_derivatives_wf = init_anat_derivatives_wf(
         bids_root=bids_root,
         freesurfer=freesurfer,
@@ -166,6 +170,8 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         output_dir=output_dir,
         spaces=spaces,
     )
+    # HACK: remove resolution from TFSelect
+    anat_derivatives_wf.get_node('select_tpl').inputs.resolution = Undefined
 
     # Multiple T1w files -> generate average reference
     # TODO: Add path for T2w
@@ -218,6 +224,10 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         omp_nthreads=omp_nthreads,
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
+    # HACK: remove resolution from TFSelect
+    anat_norm_wf.get_node('tf_select').inputs.resolution = Undefined
+    # HACK: requires patched niworkflows to allow setting resolution to none
+    anat_norm_wf.get_node('registration').inputs.template_resolution = None
 
     # fmt: off
     wf.connect([
@@ -251,9 +261,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         ]),
         (anat_seg_wf, anat_norm_wf, [
             ('outputnode.anat_dseg', 'inputnode.moving_segmentation'),
-        ]),
-        (anat_seg_wf, anat_derivatives_wf, [
-            ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
+            ('outputnode.anat_tpms', 'inputnode.moving_tpms'),
         ]),
         (anat_seg_wf, outputnode, [
             ('outputnode.anat_aseg', 't1w_aseg'),
@@ -297,18 +305,21 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         # derivatives
         (anat_template_wf, anat_derivatives_wf, [
             ('outputnode.t1w_valid_list', 'inputnode.source_files'),
+            ('outputnode.t1w_realign_xfm', 'inputnode.t1w_ref_xfms'),
+        ]),
+        (be_buffer, anat_derivatives_wf, [
+            ('anat_mask', 'inputnode.t1w_mask'),
+            ('anat_preproc', 'inputnode.t1w_preproc'),
         ]),
         (anat_norm_wf, anat_derivatives_wf, [
             ('outputnode.template', 'inputnode.template'),
             ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
             ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
         ]),
-        (outputnode, anat_derivatives_wf, [
-            ('anat_ref_xfms', 'inputnode.t1w_ref_xfms'),
-            ('anat_preproc', 'inputnode.t1w_preproc'),
-            ('anat_mask', 'inputnode.t1w_mask'),
-            ('anat_dseg', 'inputnode.t1w_dseg'),
-            ('anat_tpms', 'inputnode.t1w_tpms'),
+        (anat_seg_wf, anat_derivatives_wf, [
+            ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
+            ('outputnode.anat_dseg', 'inputnode.t1w_dseg'),
+            ('outputnode.anat_tpms', 'inputnode.t1w_tpms'),
         ]),
     ])
 

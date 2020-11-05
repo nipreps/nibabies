@@ -173,7 +173,7 @@ def main():
         #         "Report generation failed for %d subjects" % failed_reports,
         #         level="error",
         #     )
-        sys.exit(int((errno + failed_reports) > 0))
+        # sys.exit(int((errno + failed_reports) > 0))
 
 
 if __name__ == "__main__":

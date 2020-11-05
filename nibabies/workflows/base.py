@@ -419,9 +419,3 @@ tasks and sessions), the following preprocessing was performed.
 
 def _prefix(subid):
     return subid if subid.startswith("sub-") else f"sub-{subid}"
-
-
-def _pop(inlist):
-    if isinstance(inlist, (list, tuple)):
-        return inlist[0]
-    return inlist

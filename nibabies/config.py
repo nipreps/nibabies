@@ -524,7 +524,7 @@ class workflow(_Config):
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
-    skull_strip_template = "UNCInfant:cohort1"
+    skull_strip_template = "UNCInfant:cohort-1"
     """Change default brain extraction template."""
     skull_strip_t1w = "force"
     """Skip brain extraction of the T1w image (default is ``force``, meaning that

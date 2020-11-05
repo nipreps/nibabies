@@ -609,7 +609,7 @@ def parse_args(args=None, namespace=None):
         from niworkflows.utils.spaces import Reference, SpatialReferences
 
         config.execution.output_spaces = SpatialReferences(
-            [Reference("MNI152NLin2009cAsym", {"res": "native"})]
+            [Reference("UNCInfant", {"cohort": "1"})]
         )
 
     # Retrieve logging level

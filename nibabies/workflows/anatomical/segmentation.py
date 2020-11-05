@@ -17,7 +17,7 @@ def init_anat_seg_wf(
     anat_modality="T1w",
     template_dir=None,
     sloppy=False,
-    omp_nthreads=None,
+    omp_nthreads=1,
     name="anat_seg_wf",
 ):
     """Calculate segmentation from collection of OHSU atlases"""
@@ -50,7 +50,7 @@ def init_anat_seg_wf(
             )
         ),
         name="norm",
-        iterfield=["fixed_image", "moving_image"],
+        iterfield=["moving_image"],
         n_procs=omp_nthreads,
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
@@ -79,6 +79,7 @@ def init_anat_seg_wf(
         JointFusion(
             dimension=3,
             out_label_fusion="fusion_labels.nii.gz",
+            num_threads=omp_nthreads,
         ),
         name="jointfusion",
     )
@@ -87,10 +88,12 @@ def init_anat_seg_wf(
     lut_anat_dseg = pe.Node(
         niu.Function(function=_apply_bids_lut), name="lut_anat_dseg"
     )
-    lut_anat_dseg.inputs.lut = _aseg_to_three
+    lut_anat_dseg.inputs.lut = _aseg_to_three()
 
     # split each tissue into individual masks
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
+
+    to_list = pe.Node(niu.Function(function=_to_list), name='to_list')
 
     # fmt: off
     wf.connect([
@@ -99,7 +102,8 @@ def init_anat_seg_wf(
         (inputnode, apply_atlas, [('anat_brain', 'reference_image')]),
         (norm, apply_seg, [('forward_transforms', 'transforms')]),
         (inputnode, apply_seg, [('anat_brain', 'reference_image')]),
-        (inputnode, jointfusion, [(('anat_brain', _to_list), 'target_image')]),
+        (inputnode, to_list, [('anat_brain', 'in_file')]),
+        (to_list, jointfusion, [('out', 'target_image')]),
         (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
         (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
         (jointfusion, outputnode, [('out_label_fusion', 'anat_aseg')]),
@@ -138,5 +142,5 @@ def _parse_segmentation_atlases(anat_modality, template_dir):
     return sorted(anats), sorted(segs)
 
 
-def _to_list(x):
-    return [x]
+def _to_list(in_file):
+    return [in_file]

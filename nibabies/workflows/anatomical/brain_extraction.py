@@ -268,9 +268,9 @@ def init_infant_brain_extraction_wf(
 
 
     wf.connect([
-        (inputnode, map_brainmask, [(("in_files", _pop), "reference_image")]),
-        (inputnode, final_n4, [(("in_files", _pop), "input_image")]),
-        (inputnode, bspline_grid, [(("in_files", _pop), "in_file")]),
+        (inputnode, map_brainmask, [("in_file", "reference_image")]),
+        (inputnode, final_n4, [("in_file", "input_image")]),
+        (inputnode, bspline_grid, [("in_file", "in_file")]),
         # (bspline_grid, final_n4, [("out", "bspline_fitting_distance")]),
         (bspline_grid, final_n4, [("out", "args")]),
         # merge laplacian and original images
@@ -342,7 +342,7 @@ def init_infant_brain_extraction_wf(
             name="final_report"
         )
         wf.connect([
-            (inputnode, final_apply, [(("in_files", _pop), "reference_image")]),
+            (inputnode, final_apply, [("in_file", "reference_image")]),
             (res_tmpl, final_apply, [("out_file", "input_image")]),
             (norm, final_apply, [
                 ("reverse_transforms", "transforms"),

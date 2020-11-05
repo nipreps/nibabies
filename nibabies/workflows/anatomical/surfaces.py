@@ -42,6 +42,8 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
         name="outputnode",
     )
 
+    gen_recon_outdir = pe.Node(niu.Function(function=_gen_recon_dir), name='gen_recon_outdir')
+
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
 
@@ -49,11 +51,11 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
     # https://github.com/freesurfer/freesurfer/blob/
     # 8b40551f096294cc6603ce928317b8df70bce23e/infant/infant_recon_all#L744
     # TODO: calculate full anat -> fsnative transform?
-    anat2fsnative_xfm = pe.Node(
-        niu.Function(function=_get_talairch_xfm), name="anat2fsnative_xfm"
+    get_tal_lta = pe.Node(
+        niu.Function(function=_get_talairch_lta), name="get_tal_xfm",
     )
     fsnative2anat_xfm = pe.Node(
-        LTAConvert(out_lta=True, invert=True), name="fsnative2anat_xfm"
+        LTAConvert(out_lta=True, invert=True), name="fsnative2anat_xfm",
     )
 
     # convert generated surfaces to GIFTIs
@@ -64,34 +66,42 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
 
     # fmt: off
     wf.connect([
+        (inputnode, gen_recon_outdir, [
+            ('subjects_dir', 'subjects_dir'),
+            ('subject_id', 'subject_id'),
+        ]),
         (inputnode, recon, [
             ('anat_skullstripped', 'mask_file'),
-            ('subjects_dir', 'outdir'),
             ('subject_id', 'subject_id'),
-            # ('anat_seg', 'aseg_file'),  # TODO: Add precomputed segmentation when upgrading version
+            # ('anat_seg', 'aseg_file'),  # TODO: Add precomputed segmentation upon new babyFS rel
+        ]),
+        (gen_recon_outdir, recon, [
+            ('out', 'outdir'),
         ]),
         (recon, outputnode, [
-            ('outdir', 'subjects_dir'),
+            ('subject_id', 'subject_id'),
+            (('outdir', _parent), 'subjects_dir'),
         ]),
         (recon, gifti_surface_wf, [
             ('subject_id', 'inputnode.subject_id'),
-            ('outdir', 'inputnode.subjects_dir'),
+            (('outdir', _parent), 'inputnode.subjects_dir'),
         ]),
         (recon, get_aparc, [
-            ('subject_id', 'subject_id'),
-            ('outdir', 'subjects_dir'),
+            ('outdir', 'fs_subject_dir'),
         ]),
-        (get_aparc, outputnode, [
-            ('out', 'out_aparc'),
+        (get_aparc, aparc2nii, [
+            ('out', 'in_file'),
         ]),
-        (recon, anat2fsnative_xfm, [
-            ('subject_id', 'subject_id'),
-            ('outdir', 'subjects_dir'),
+        (aparc2nii, outputnode, [
+            ('out_file', 'out_aparc'),
         ]),
-        (anat2fsnative_xfm, outputnode, [
+        (recon, get_tal_lta, [
+            ('outdir', 'fs_subject_dir'),
+        ]),
+        (get_tal_lta, outputnode, [
             ('out', 'anat2fsnative_xfm'),
         ]),
-        (anat2fsnative_xfm, fsnative2anat_xfm, [
+        (get_tal_lta, fsnative2anat_xfm, [
             ('out', 'in_lta'),
         ]),
         (fsnative2anat_xfm, outputnode, [
@@ -107,21 +117,35 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
     return wf
 
 
-def _get_talairch_xfm(subject_id, subjects_dir):
+def _parent(p):
+    from pathlib import Path
+
+    return str(Path(p).parent)
+
+
+def _gen_recon_dir(subjects_dir, subject_id):
+    from pathlib import Path
+
+    p = Path(subjects_dir) / subject_id
+    p.mkdir(parents=True, exist_ok=True)
+    return str(p)
+
+
+def _get_talairch_lta(fs_subject_dir):
     """Fetch pre-computed transform from infant_recon_all"""
     from pathlib import Path
 
-    xfm = Path(subjects_dir) / subject_id / "mri" / "transforms" / "talairach.xfm"
+    xfm = Path(fs_subject_dir) / "mri" / "transforms" / "niftyreg_affine.lta"
     if not xfm.exists():
         raise FileNotFoundError("Could not find talairach transform.")
     return str(xfm.absolute())
 
 
-def _get_aparc(subject_id, subjects_dir):
+def _get_aparc(fs_subject_dir):
     """Fetch infant_recon_all's aparc+aseg"""
     from pathlib import Path
 
-    aparc = Path(subjects_dir) / subject_id / "mri" / "aparc+aseg.mgz"
+    aparc = Path(fs_subject_dir) / "mri" / "aparc+aseg.mgz"
     if not aparc.exists():
         raise FileNotFoundError("Could not find aparc.")
     return str(aparc)
