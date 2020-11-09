@@ -59,7 +59,7 @@ def main():
     if retcode != 0:
         sys.exit(retcode)
 
-    Generate boilerplate
+    # Generate boilerplate
     with Manager() as mgr:
         from .workflow import build_boilerplate
 
