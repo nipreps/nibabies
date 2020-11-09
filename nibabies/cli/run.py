@@ -144,7 +144,6 @@ def main():
             )
             _copy_any(
                 dseg_tsv, str(config.execution.fmriprep_dir / "desc-aparcaseg_dseg.tsv")
-                ),
             )
         errno = 0
     finally:
@@ -159,9 +158,7 @@ def main():
             config=pkgrf("nibabies", "data/reports-spec.yml"),
             packagename="nibabies",
         )
-        write_derivative_description(
-            config.execution.bids_dir, config.execution.fmriprep_dir,
-        )
+        write_derivative_description(config.execution.bids_dir, config.execution.fmriprep_dir)
         write_bidsignore(config.execution.fmriprep_dir)
 
         # if failed_reports and not config.execution.notrack:

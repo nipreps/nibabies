@@ -10,13 +10,14 @@ def _build_parser():
     from fmriprep.cli.parser import _build_parser as fmriprep_parser
 
     parser = fmriprep_parser()
-    parser.description = f"NiBabies: Preprocessing workflows for infants v{config.environment.version}"
+    parser.description = f"""
+NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
 
     # Change a few defaults
     for action in parser._actions:
         avars = vars(action)
         if avars.get('dest') == 'version':
-            avars['version']= f"NiBabies v{config.environment.version}"
+            avars['version'] = f"NiBabies v{config.environment.version}"
         elif avars.get('dest') == 'skull_strip_template':
             avars['default'] = 'UNCInfant:cohort-1'
 
