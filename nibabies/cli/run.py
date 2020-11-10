@@ -60,12 +60,12 @@ def main():
         sys.exit(retcode)
 
     # Generate boilerplate
-    # with Manager() as mgr:
-    #     from .workflow import build_boilerplate
+    with Manager() as mgr:
+        from .workflow import build_boilerplate
 
-    #     p = Process(target=build_boilerplate, args=(str(config_file), nibabies_wf))
-    #     p.start()
-    #     p.join()
+        p = Process(target=build_boilerplate, args=(str(config_file), nibabies_wf))
+        p.start()
+        p.join()
 
     if config.execution.boilerplate_only:
         sys.exit(int(retcode > 0))
@@ -81,12 +81,12 @@ def main():
     #     sentry_sdk.add_breadcrumb(message="nibabies started", level="info")
     #     sentry_sdk.capture_message("nibabies started", level="info")
 
-    # config.loggers.workflow.log(
-    #     15,
-    #     "\n".join(
-    #         ["nibabies config:"] + ["\t\t%s" % s for s in config.dumps().splitlines()]
-    #     ),
-    # )
+    config.loggers.workflow.log(
+        15,
+        "\n".join(
+            ["nibabies config:"] + ["\t\t%s" % s for s in config.dumps().splitlines()]
+        ),
+    )
     config.loggers.workflow.log(25, "nibabies started!")
     errno = 1  # Default is error exit unless otherwise set
     try:
@@ -96,8 +96,7 @@ def main():
         #     from ..utils.sentry import process_crashfile
 
         #     crashfolders = [
-        #         config.execution.output_dir
-        #         / "nibabies"
+        #         config.execution.fmriprep_dir,
         #         / "sub-{}".format(s)
         #         / "log"
         #         / config.execution.run_uuid
@@ -119,7 +118,7 @@ def main():
         #     sentry_sdk.capture_message(success_message, level="info")
 
         # Bother users with the boilerplate only iff the workflow went okay.
-        boiler_file = config.execution.output_dir / "nibabies" / "logs" / "CITATION.md"
+        boiler_file = config.execution.fmriprep_dir / "logs" / "CITATION.md"
         if boiler_file.exists():
             if config.environment.exec_env in (
                 "singularity",
@@ -141,32 +140,26 @@ def main():
 
             dseg_tsv = str(api.get("fsaverage", suffix="dseg", extension=[".tsv"]))
             _copy_any(
-                dseg_tsv,
-                str(config.execution.output_dir / "nibabies" / "desc-aseg_dseg.tsv"),
+                dseg_tsv, str(config.execution.fmriprep_dir / "desc-aseg_dseg.tsv")
             )
             _copy_any(
-                dseg_tsv,
-                str(
-                    config.execution.output_dir / "nibabies" / "desc-aparcaseg_dseg.tsv"
-                ),
+                dseg_tsv, str(config.execution.fmriprep_dir / "desc-aparcaseg_dseg.tsv")
             )
         errno = 0
     finally:
-        from niworkflows.reports import generate_reports
+        from fmriprep.reports.core import generate_reports
         from pkg_resources import resource_filename as pkgrf
 
         # Generate reports phase
         failed_reports = generate_reports(
             config.execution.participant_label,
-            config.execution.output_dir,
+            config.execution.fmriprep_dir,
             config.execution.run_uuid,
             config=pkgrf("nibabies", "data/reports-spec.yml"),
             packagename="nibabies",
         )
-        write_derivative_description(
-            config.execution.bids_dir, config.execution.output_dir / "nibabies"
-        )
-        write_bidsignore(config.execution.output_dir / "nibabies")
+        write_derivative_description(config.execution.bids_dir, config.execution.fmriprep_dir)
+        write_bidsignore(config.execution.fmriprep_dir)
 
         # if failed_reports and not config.execution.notrack:
         #     sentry_sdk.capture_message(

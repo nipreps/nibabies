@@ -367,6 +367,8 @@ class execution(_Config):
     """Debug mode(s)."""
     echo_idx = None
     """Select a particular echo for multi-echo EPI datasets."""
+    fmriprep_dir = None
+    """Root of fMRIPrep BIDS Derivatives dataset. Depends on output_layout."""
     fs_license_file = _fs_license
     """An existing file containing a FreeSurfer license."""
     fs_subjects_dir = None
@@ -385,6 +387,8 @@ class execution(_Config):
     """Do not monitor *nibabies* using Sentry.io."""
     output_dir = None
     """Folder where derivatives will be stored."""
+    output_layout = None
+    """Layout of derivatives within output_dir."""
     output_spaces = None
     """List of (non)standard spaces designated (with the ``--output-spaces`` flag of
     the command line) as spatial references for outputs."""
@@ -411,6 +415,7 @@ class execution(_Config):
         "anat_derivatives",
         "bids_dir",
         "bids_database_dir",
+        "fmriprep_dir",
         "fs_license_file",
         "fs_subjects_dir",
         "layout",

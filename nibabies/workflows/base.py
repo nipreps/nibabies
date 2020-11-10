@@ -66,9 +66,8 @@ def init_nibabies_wf():
         single_subject_wf = init_single_subject_wf(subject_id)
 
         single_subject_wf.config["execution"]["crashdump_dir"] = str(
-            config.execution.output_dir
-            / "nibabies"
-            / "-".join(("sub", subject_id))
+            config.execution.fmriprep_dir
+            / f"sub-{subject_id}"
             / "log"
             / config.execution.run_uuid
         )
@@ -83,8 +82,7 @@ def init_nibabies_wf():
 
         # Dump a copy of the config file into the log directory
         log_dir = (
-            config.execution.output_dir
-            / "nibabies"
+            config.execution.fmriprep_dir
             / f"sub-{subject_id}"
             / "log"
             / config.execution.run_uuid
@@ -226,7 +224,7 @@ It is released under the [CC0]\
         nilearn_ver=NILEARN_VERSION
     )
 
-    output_dir = str(config.execution.output_dir)
+    fmriprep_dir = str(config.execution.fmriprep_dir)
 
     inputnode = pe.Node(
         niu.IdentityInterface(fields=["subjects_dir"]), name="inputnode"
@@ -264,7 +262,7 @@ It is released under the [CC0]\
 
     ds_report_summary = pe.Node(
         DerivativesDataSink(
-            base_directory=output_dir,
+            base_directory=fmriprep_dir,
             desc="summary",
             datatype="figures",
             dismiss_entities=("echo",),
@@ -275,7 +273,7 @@ It is released under the [CC0]\
 
     ds_report_about = pe.Node(
         DerivativesDataSink(
-            base_directory=output_dir,
+            base_directory=fmriprep_dir,
             desc="about",
             datatype="figures",
             dismiss_entities=("echo",),
@@ -293,7 +291,7 @@ It is released under the [CC0]\
         existing_derivatives=anat_derivatives,
         freesurfer=config.workflow.run_reconall,
         omp_nthreads=config.nipype.omp_nthreads,
-        output_dir=output_dir,
+        output_dir=fmriprep_dir,
         segmentation_atlases=config.execution.segmentation_atlases_dir,
         skull_strip_mode=config.workflow.skull_strip_t1w,
         skull_strip_template=Reference.from_string(
@@ -370,7 +368,7 @@ It is released under the [CC0]\
     # Overwrite ``out_path_base`` of smriprep's DataSinks
     for node in workflow.list_node_names():
         if node.split(".")[-1].startswith("ds_"):
-            workflow.get_node(node).interface.out_path_base = "nibabies"
+            workflow.get_node(node).interface.out_path_base = ""
 
     if anat_only:
         return workflow
