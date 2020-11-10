@@ -66,7 +66,7 @@ def init_nibabies_wf():
         single_subject_wf = init_single_subject_wf(subject_id)
 
         single_subject_wf.config["execution"]["crashdump_dir"] = str(
-            config.execution.fmriprep_dir,
+            config.execution.fmriprep_dir
             / f"sub-{subject_id}"
             / "log"
             / config.execution.run_uuid
@@ -82,7 +82,7 @@ def init_nibabies_wf():
 
         # Dump a copy of the config file into the log directory
         log_dir = (
-            config.execution.fmriprep_dir,
+            config.execution.fmriprep_dir
             / f"sub-{subject_id}"
             / "log"
             / config.execution.run_uuid
