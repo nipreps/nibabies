@@ -23,6 +23,14 @@ from fmriprep.utils.meepi import combine_meepi_source
 from fmriprep.interfaces import DerivativesDataSink
 from fmriprep.interfaces.reports import FunctionalSummary
 
+from fmriprep.workflows.bold.base import (
+    get_img_orientation,
+    extract_entities,
+    _to_join,
+    _get_wf_name,
+    _create_mem_gb,
+    _get_series_len,
+)
 # BOLD workflows
 from fmriprep.workflows.bold.confounds import init_bold_confs_wf, init_carpetplot_wf
 from fmriprep.workflows.bold.hmc import init_bold_hmc_wf
@@ -873,99 +881,3 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             workflow.get_node(node).inputs.source_file = ref_file
 
     return workflow
-
-
-def _get_series_len(bold_fname):
-    from niworkflows.interfaces.registration import _get_vols_to_discard
-    img = nb.load(bold_fname)
-    if len(img.shape) < 4:
-        return 1
-
-    skip_vols = _get_vols_to_discard(img)
-
-    return img.shape[3] - skip_vols
-
-
-def _create_mem_gb(bold_fname):
-    bold_size_gb = os.path.getsize(bold_fname) / (1024**3)
-    bold_tlen = nb.load(bold_fname).shape[-1]
-    mem_gb = {
-        'filesize': bold_size_gb,
-        'resampled': bold_size_gb * 4,
-        'largemem': bold_size_gb * (max(bold_tlen / 100, 1.0) + 4),
-    }
-
-    return bold_tlen, mem_gb
-
-
-def _get_wf_name(bold_fname):
-    """
-    Derive the workflow name for supplied BOLD file.
-
-    >>> _get_wf_name('/completely/made/up/path/sub-01_task-nback_bold.nii.gz')
-    'func_preproc_task_nback_wf'
-    >>> _get_wf_name('/completely/made/up/path/sub-01_task-nback_run-01_echo-1_bold.nii.gz')
-    'func_preproc_task_nback_run_01_echo_1_wf'
-
-    """
-    from nipype.utils.filemanip import split_filename
-    fname = split_filename(bold_fname)[1]
-    fname_nosub = '_'.join(fname.split("_")[1:])
-    # if 'echo' in fname_nosub:
-    #     fname_nosub = '_'.join(fname_nosub.split("_echo-")[:1]) + "_bold"
-    name = "func_preproc_" + fname_nosub.replace(
-        ".", "_").replace(" ", "").replace("-", "_").replace("_bold", "_wf")
-
-    return name
-
-
-def _to_join(in_file, join_file):
-    """Join two tsv files if the join_file is not ``None``."""
-    from niworkflows.interfaces.utils import JoinTSVColumns
-    if join_file is None:
-        return in_file
-    res = JoinTSVColumns(in_file=in_file, join_file=join_file).run()
-    return res.outputs.out_file
-
-
-def extract_entities(file_list):
-    """
-    Return a dictionary of common entities given a list of files.
-
-    Examples
-    --------
-    >>> extract_entities('sub-01/anat/sub-01_T1w.nii.gz')
-    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
-    >>> extract_entities(['sub-01/anat/sub-01_T1w.nii.gz'] * 2)
-    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
-    >>> extract_entities(['sub-01/anat/sub-01_run-1_T1w.nii.gz',
-    ...                   'sub-01/anat/sub-01_run-2_T1w.nii.gz'])
-    {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat',
-     'extension': '.nii.gz'}
-
-    """
-    from collections import defaultdict
-    from bids.layout import parse_file_entities
-
-    entities = defaultdict(list)
-    for e, v in [
-        ev_pair
-        for f in listify(file_list)
-        for ev_pair in parse_file_entities(f).items()
-    ]:
-        entities[e].append(v)
-
-    def _unique(inlist):
-        inlist = sorted(set(inlist))
-        if len(inlist) == 1:
-            return inlist[0]
-        return inlist
-    return {
-        k: _unique(v) for k, v in entities.items()
-    }
-
-
-def get_img_orientation(imgf):
-    """Return the image orientation as a string"""
-    img = nb.load(imgf)
-    return ''.join(nb.aff2axcodes(img.affine))
