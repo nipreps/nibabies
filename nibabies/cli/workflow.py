@@ -117,7 +117,7 @@ def build_boilerplate(config_file, workflow):
     from .. import config
 
     config.load(config_file)
-    logs_path = config.workflow.fmriprep_dir / "logs"
+    logs_path = config.execution.fmriprep_dir / "logs"
     boilerplate = workflow.visit_desc()
     citation_files = {
         ext: logs_path / ("CITATION.%s" % ext) for ext in ("bib", "tex", "md", "html")
