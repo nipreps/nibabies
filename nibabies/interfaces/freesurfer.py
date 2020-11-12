@@ -55,20 +55,23 @@ class InfantReconAll(CommandLine):
         # make sure directory structure is intact
         if not isdefined(self.inputs.subjects_dir):
             self.inputs.subjects_dir = _set_subjects_dir()
-        subjdir = Path(self.inputs.subjects_dir) / self.inputs.subject_id
-        subjdir.mkdir(parents=True, exist_ok=True)
-        # T1 image is expected to be in a specific location if no mask is present
-        if not (subjdir / 'mprage.nii.gz').exists() and not (subjdir / 'mprage.mgz').exists():
-            if isdefined(self.inputs.t1_file):
-                Path(self.inputs.t1_file).symlink_to(subjdir / 'mprage.nii.gz')
-            elif not isdefined(self.inputs.mask_file):
-                raise RuntimeError("Neither T1 or mask present!")
+        if not isdefined(self.inputs.outdir):
+            subjdir = Path(self.inputs.subjects_dir) / self.inputs.subject_id
+            try:
+                subjdir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                raise OSError(
+                    f"Current SUBJECTS_DIR <{subjdir}> cannot be written to. To fix this,"
+                    "either define the input or unset the environmental variable."
+                )
+            # T1 image is expected to be in a specific location if no mask is present
+            if not (subjdir / 'mprage.nii.gz').exists() and not (subjdir / 'mprage.mgz').exists():
+                if isdefined(self.inputs.t1_file):
+                    Path(self.inputs.t1_file).symlink_to(subjdir / 'mprage.nii.gz')
+                elif not isdefined(self.inputs.mask_file):
+                    raise RuntimeError("Neither T1 or mask present!")
         if isdefined(self.inputs.aseg_file):
-            # inject aseg into working directory
-            workdir = subjdir / 'work'
-            workdir.mkdir(exist_ok=True)
-            Path(self.inputs.aseg_file).symlink_to(workdir / 'aseg.nii.gz')
-
+            pass  # To be added in a future infant-FS release.
         return super()._run_interface(runtime)
 
     def _list_outputs(self):
