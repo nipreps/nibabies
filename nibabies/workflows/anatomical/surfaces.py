@@ -100,7 +100,7 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
         ]),
         (get_aseg, outputnode, [
             ('out', 'anat_aseg'),
-        ])
+        ]),
         (get_aparc, aparc2nii, [
             ('out', 'in_file'),
         ]),

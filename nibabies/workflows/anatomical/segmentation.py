@@ -66,7 +66,7 @@ def init_anat_seg_wf(
             ]),
             (anat_dseg, outputnode, [
                 ('out', 'anat_dseg'),
-            ])
+            ]),
             (anat_dseg, fast2bids, [
                 ('partial_volume_files', 'inlist'),
             ]),
@@ -77,6 +77,7 @@ def init_anat_seg_wf(
         return wf
 
     # Otherwise, register to templates and run ANTs JointFusion
+    lut_anat_dseg.inputs.lut = _aseg_to_three()
     tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
     # register to templates
@@ -125,7 +126,6 @@ def init_anat_seg_wf(
 
     # split each tissue into individual masks
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
-
     to_list = pe.Node(niu.Function(function=_to_list), name='to_list')
 
     # fmt: off
@@ -141,11 +141,6 @@ def init_anat_seg_wf(
         (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
         (jointfusion, outputnode, [('out_label_fusion', 'anat_aseg')]),
         (jointfusion, lut_anat_dseg, [('out_label_fusion', 'in_dseg')]),
-    ])
-
-    else:
-        lut_anat_dseg.inputs.lut = _aseg_to_three()
-
         (lut_anat_dseg, outputnode, [('out', 'anat_dseg')]),
         (lut_anat_dseg, split_seg, [('out', 'in_file')]),
         (split_seg, outputnode, [('out', 'anat_tpms')]),
