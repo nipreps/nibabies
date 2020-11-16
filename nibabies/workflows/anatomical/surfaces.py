@@ -12,7 +12,7 @@ from smriprep.workflows.surfaces import init_gifti_surface_wf
 from ...interfaces.freesurfer import InfantReconAll
 
 
-def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
+def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
     wf = pe.Workflow(name=name)
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -22,7 +22,7 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
                 "anat_orig",
                 "anat_skullstripped",
                 "anat_preproc",
-                "anat_seg",
+                "anat_aseg",
                 "t2w",
             ],
         ),
@@ -36,7 +36,8 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
                 "anat2fsnative_xfm",
                 "fsnative2anat_xfm",
                 "surfaces",
-                "out_aparc",
+                "anat_aseg",
+                "anat_aparc",
             ]
         ),
         name="outputnode",
@@ -61,8 +62,14 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
     # convert generated surfaces to GIFTIs
     gifti_surface_wf = init_gifti_surface_wf()
 
+    get_aseg = pe.Node(niu.Function(function=_get_aseg), name='get_aseg')
     get_aparc = pe.Node(niu.Function(function=_get_aparc), name="get_aparc")
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
+
+    if use_aseg:
+        # TODO: Add precomputed segmentation upon new babyFS rel
+        # wf.connect(inputnode, 'anat_aseg', recon, 'aseg_file')
+        pass
 
     # fmt: off
     wf.connect([
@@ -73,7 +80,6 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
         (inputnode, recon, [
             ('anat_skullstripped', 'mask_file'),
             ('subject_id', 'subject_id'),
-            # ('anat_seg', 'aseg_file'),  # TODO: Add precomputed segmentation upon new babyFS rel
         ]),
         (gen_recon_outdir, recon, [
             ('out', 'outdir'),
@@ -89,11 +95,17 @@ def init_infant_surface_recon_wf(*, age_months, name="infant_surface_recon_wf"):
         (recon, get_aparc, [
             ('outdir', 'fs_subject_dir'),
         ]),
+        (recon, get_aseg, [
+            ('outdir', 'fs_subject_dir'),
+        ]),
+        (get_aseg, outputnode, [
+            ('out', 'anat_aseg'),
+        ])
         (get_aparc, aparc2nii, [
             ('out', 'in_file'),
         ]),
         (aparc2nii, outputnode, [
-            ('out_file', 'out_aparc'),
+            ('out_file', 'anat_aparc'),
         ]),
         (recon, get_tal_lta, [
             ('outdir', 'fs_subject_dir'),
@@ -139,6 +151,16 @@ def _get_talairch_lta(fs_subject_dir):
     if not xfm.exists():
         raise FileNotFoundError("Could not find talairach transform.")
     return str(xfm.absolute())
+
+
+def _get_aparc(fs_subject_dir):
+    """Fetch infant_recon_all's aparc+aseg"""
+    from pathlib import Path
+
+    aseg = Path(fs_subject_dir) / "mri" / "aseg.nii.gz"
+    if not aseg.exists():
+        raise FileNotFoundError("Could not find aseg.")
+    return str(aseg)
 
 
 def _get_aparc(fs_subject_dir):
