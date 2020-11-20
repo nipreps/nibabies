@@ -121,6 +121,8 @@ BIDS dataset."""
                 "anat2fsnative_xfm",
                 "fsnative2anat_xfm",
                 "surfaces",
+                "anat_aseg",
+                "anat_aparc",
             ]
         ),
         name="outputnode",
@@ -263,9 +265,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('outputnode.anat_dseg', 'inputnode.moving_segmentation'),
             ('outputnode.anat_tpms', 'inputnode.moving_tpms'),
         ]),
-        (anat_seg_wf, outputnode, [
-            ('outputnode.anat_aseg', 't1w_aseg'),
-        ]),
         (be_buffer, anat_norm_wf, [
             ('anat_preproc', 'inputnode.moving_image'),
             ('anat_mask', 'inputnode.moving_mask'),
@@ -317,7 +316,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
         ]),
         (anat_seg_wf, anat_derivatives_wf, [
-            ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
             ('outputnode.anat_dseg', 'inputnode.t1w_dseg'),
             ('outputnode.anat_tpms', 'inputnode.t1w_tpms'),
         ]),
@@ -327,9 +325,15 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         return wf
 
     # FreeSurfer surfaces
-    surface_recon_wf = init_infant_surface_recon_wf(age_months=age_months)
+    surface_recon_wf = init_infant_surface_recon_wf(
+        age_months=age_months,
+        use_aseg=segmentation_atlases is None,
+    )
 
     wf.connect([
+        (anat_seg_wf, surface_recon_wf, [
+            ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+        ]),
         (inputnode, surface_recon_wf, [
             ('subject_id', 'inputnode.subject_id'),
             ('subjects_dir', 'inputnode.subjects_dir'),
@@ -348,19 +352,22 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('outputnode.anat2fsnative_xfm', 'anat2fsnative_xfm'),
             ('outputnode.fsnative2anat_xfm', 'fsnative2anat_xfm'),
             ('outputnode.surfaces', 'surfaces'),
-            ('outputnode.out_aparc', 't1w_aparc'),
+            ('outputnode.anat_aparc', 'anat_aparc'),
+            ('outputnode.anat_aseg', 'anat_aseg'),
         ]),
         (surface_recon_wf, anat_reports_wf, [
             ('outputnode.subject_id', 'inputnode.subject_id'),
             ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
         ]),
         (surface_recon_wf, anat_derivatives_wf, [
-            ('outputnode.out_aparc', 'inputnode.t1w_fs_aparc'),
-        ]),
-        (surface_recon_wf, anat_derivatives_wf, [
+            ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
+            ('outputnode.anat_aparc', 'inputnode.t1w_fs_aparc'),
             ('outputnode.anat2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
             ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
             ('outputnode.surfaces', 'inputnode.surfaces'),
+        ]),
+        (anat_seg_wf, anat_derivatives_wf, [
+            ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
         ]),
     ])
     # fmt: on

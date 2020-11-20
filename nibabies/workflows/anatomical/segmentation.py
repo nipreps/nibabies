@@ -7,7 +7,7 @@ from niworkflows.interfaces.fixes import (
     FixHeaderApplyTransforms as ApplyTransforms,
 )
 from smriprep.utils.misc import apply_lut as _apply_bids_lut
-from smriprep.workflows.anatomical import _aseg_to_three, _split_segments
+from smriprep.workflows.anatomical import _aseg_to_three, _split_segments, _probseg_fast2bids
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 
@@ -20,15 +20,15 @@ def init_anat_seg_wf(
     omp_nthreads=1,
     name="anat_seg_wf",
 ):
-    """Calculate segmentation from collection of OHSU atlases"""
+    """
+    Calculate brain tissue segmentations from either:
+     A) a collection of manually segmented templates
+     B) FSL's FAST
+    """
 
-    if template_dir is None:  # TODO: set default
-        raise NotImplementedError(
-            "No default has been set yet. Please pass segmentations."
-        )
     if anat_modality != "T1w":
         raise NotImplementedError(
-            "Only T1w images are currently accepted for ANTs LabelFusion."
+            "Only T1w images are currently accepted for the segmentation workflow."
         )
 
     wf = pe.Workflow(name=name)
@@ -38,6 +38,46 @@ def init_anat_seg_wf(
         name="outputnode",
     )
 
+    # Coerce segmentation labels to BIDS
+    lut_anat_dseg = pe.Node(
+        niu.Function(function=_apply_bids_lut), name="lut_anat_dseg"
+    )
+
+    if template_dir is None:
+        # Use FSL FAST for segmentations
+        anat_dseg = pe.Node(
+            fsl.FAST(segments=True, no_bias=True, probability_maps=True),
+            name='anat_dseg',
+            mem_gb=3
+        )
+        lut_anat_dseg.inputs.lut = (0, 3, 1, 2)  # Maps: 0 -> 0, 3 -> 1, 1 -> 2, 2 -> 3.
+        fast2bids = pe.Node(
+            niu.Function(function=_probseg_fast2bids),
+            name="fast2bids",
+            run_without_submitting=True
+        )
+
+        wf.connect([
+            (inputnode, anat_dseg, [
+                ('anat_brain', 'in_files'),
+            ]),
+            (anat_dseg, lut_anat_dseg, [
+                ('partial_volume_map', 'in_dseg'),
+            ]),
+            (anat_dseg, outputnode, [
+                ('out', 'anat_dseg'),
+            ]),
+            (anat_dseg, fast2bids, [
+                ('partial_volume_files', 'inlist'),
+            ]),
+            (fast2bids, outputnode, [
+                ('out', 'anat_tpms'),
+            ]),
+        ])
+        return wf
+
+    # Otherwise, register to templates and run ANTs JointFusion
+    lut_anat_dseg.inputs.lut = _aseg_to_three()
     tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
     # register to templates
@@ -84,15 +124,8 @@ def init_anat_seg_wf(
         name="jointfusion",
     )
 
-    # Convert FreeSurfer aseg to three-tissue segmentation
-    lut_anat_dseg = pe.Node(
-        niu.Function(function=_apply_bids_lut), name="lut_anat_dseg"
-    )
-    lut_anat_dseg.inputs.lut = _aseg_to_three()
-
     # split each tissue into individual masks
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
-
     to_list = pe.Node(niu.Function(function=_to_list), name='to_list')
 
     # fmt: off
