@@ -366,9 +366,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
             ('outputnode.surfaces', 'inputnode.surfaces'),
         ]),
-        (anat_seg_wf, anat_derivatives_wf, [
-            ('outputnode.anat_aseg', 'inputnode.t1w_fs_aseg'),
-        ]),
     ])
     # fmt: on
     return wf

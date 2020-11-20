@@ -1,6 +1,6 @@
 from pkg_resources import resource_filename as pkgr_fn
 from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu
+from nipype.interfaces import utility as niu, fsl
 from nipype.interfaces.ants.segmentation import JointFusion
 from niworkflows.interfaces.fixes import (
     FixHeaderRegistration as Registration,
@@ -64,7 +64,7 @@ def init_anat_seg_wf(
             (anat_dseg, lut_anat_dseg, [
                 ('partial_volume_map', 'in_dseg'),
             ]),
-            (anat_dseg, outputnode, [
+            (lut_anat_dseg, outputnode, [
                 ('out', 'anat_dseg'),
             ]),
             (anat_dseg, fast2bids, [

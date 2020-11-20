@@ -153,7 +153,7 @@ def _get_talairch_lta(fs_subject_dir):
     return str(xfm.absolute())
 
 
-def _get_aparc(fs_subject_dir):
+def _get_aseg(fs_subject_dir):
     """Fetch infant_recon_all's aparc+aseg"""
     from pathlib import Path
 
