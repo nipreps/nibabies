@@ -3,7 +3,7 @@
 """Miscellaneous utilities."""
 
 
-def fix_multi_source_name(in_files, modality='T1w'):
+def fix_multi_source_name(in_files):
     """
     Make up a generic source name when there are multiple
     >>> fix_multi_source_name([
@@ -11,15 +11,23 @@ def fix_multi_source_name(in_files, modality='T1w'):
     ...     '/path/to/sub-045_ses-retest_T1w.nii.gz'])
     '/path/to/sub-045_T1w.nii.gz'
     """
-    import os
+    import re
+    from pathlib import Path
     from nipype.utils.filemanip import filename_to_list
 
-    if len(in_files) == 1:
+    if not isinstance(in_files, (tuple, list)):
+        return in_files
+    elif len(in_files) == 1:
         return in_files[0]
 
-    base, in_file = os.path.split(filename_to_list(in_files)[0])
-    subject_label = in_file.split("_", 1)[0].split("-")[1]
-    return os.path.join(base, f"sub-{subject_label}_{modality}.nii.gz")
+    p = Path(filename_to_list(in_files)[0])
+    # subject_label = p.name.split("_", 1)[0].split("-")[1]
+    try:
+        subj = re.search('(?<=^sub-)[a-zA-Z0-9]*', p.name).group()
+        suffix = re.search('(?<=_)\w+(?=\.)', p.name).group()
+    except AttributeError:
+        raise AttributeError("Could not extract BIDS information")
+    return str(p.parent / f"sub-{subj}_{suffix}.nii.gz")
 
 
 def check_deps(workflow):
