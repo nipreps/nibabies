@@ -24,7 +24,6 @@ from niworkflows.interfaces.registration import (
 )
 
 from templateflow.api import get as get_template
-from ... import config
 from ...utils.filtering import (
     gaussian_filter as _gauss_filter,
     truncation as _trunc
@@ -62,9 +61,8 @@ def init_infant_brain_extraction_wf(
     # handle template specifics
     if template_specs is None:
         template_specs = {}
-
     if skull_strip_template == 'MNIInfant':
-        template_specs['resolution'] = 2 if config.execution.sloppy else 1
+        template_specs['resolution'] = 2 if sloppy else 1
 
     if not template_specs.get('cohort') and age_months is not None:
         if age_months <= 2:
