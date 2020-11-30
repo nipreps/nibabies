@@ -38,3 +38,20 @@ def check_deps(workflow):
         for node in workflow._get_all_nodes()
         if (hasattr(node.interface, '_cmd')
             and which(node.interface._cmd.split()[0]) is None))
+
+
+
+def cohort_by_months(template, months):
+    cohort_key = {
+        'MNIInfant': (2, 5, 8, 11, 14, 17, 21, 27, 33, 44, 60),
+        'UNCInfant': (8, 12, 24),
+    }
+    ages = cohort_key.get(template)
+    if ages is None:
+        raise KeyError("Template cohort information does not exist.")
+
+    for cohort, age in enumerate(ages, 1):
+        if months <= age:
+            return cohort
+
+    raise KeyError("Age exceeds all cohorts!")

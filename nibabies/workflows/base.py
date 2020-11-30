@@ -286,10 +286,12 @@ It is released under the [CC0]\
     anat_preproc_wf = init_infant_anat_wf(
         age_months=config.workflow.age_months,
         anat_modality=anat_modality,
-        anatomicals=subject_data[anat_modality],
+        t1w=subject_data['t1w'],
+        t2w=subject_data['t2w'],
         bids_root=config.execution.bids_dir,
         existing_derivatives=anat_derivatives,
         freesurfer=config.workflow.run_reconall,
+        longitudinal=config.workflow.longitudinal,
         omp_nthreads=config.nipype.omp_nthreads,
         output_dir=fmriprep_dir,
         segmentation_atlases=config.execution.segmentation_atlases_dir,

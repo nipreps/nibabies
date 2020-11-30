@@ -28,6 +28,7 @@ from ...utils.filtering import (
     gaussian_filter as _gauss_filter,
     truncation as _trunc
 )
+from ...utils.misc import cohort_by_months
 
 HIRES_ZOOMS = (1, 1, 1)
 LOWRES_ZOOMS = (2, 2, 2)
@@ -38,7 +39,7 @@ def init_infant_brain_extraction_wf(
     ants_affine_init=False,
     bspline_fitting_distance=200,
     sloppy=False,
-    skull_strip_template="UNCInfant:cohort-1",
+    skull_strip_template="UNCInfant",
     template_specs=None,
     interim_checkpoints=True,
     mem_gb=3.0,
@@ -48,6 +49,7 @@ def init_infant_brain_extraction_wf(
     omp_nthreads=None,
     output_dir=None,
     use_float=True,
+    use_t2w=False,
 ):
     """
     Build an atlas-based brain extraction pipeline for infant T1w/T2w MRI data.
@@ -59,41 +61,43 @@ def init_infant_brain_extraction_wf(
 
     """
     # handle template specifics
-    if template_specs is None:
-        template_specs = {}
+    template_specs = template_specs or {}
     if skull_strip_template == 'MNIInfant':
         template_specs['resolution'] = 2 if sloppy else 1
 
-    if not template_specs.get('cohort') and age_months is not None:
-        if age_months <= 2:
-            cohort = 1
-        elif age_months < 12:
-            cohort = 2
-        else:
-            cohort = 3
-        # select relevant templateflow cohort
-        template_specs['cohort'] = cohort
+    if not template_specs.get('cohort'):
+        if age_months is None:
+            raise KeyError(f"Age or cohort for {skull_strip_template} must be provided!")
+        template_specs['cohort'] = cohort_by_months(skull_strip_template, age_months)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_file", "in_mask"]), name="inputnode"
+        niu.IdentityInterface(fields=["t1w", "t2w", "in_mask"]), name="inputnode"
     )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=["out_corrected", "out_brain", "out_mask"]),
         name="outputnode"
     )
 
-    template_specs = template_specs or {}
-    # Find a suitable target template in TemplateFlow
-    tpl_target_path = get_template(
-        skull_strip_template,
-        suffix=mri_scheme,
-        desc=None,
-        **template_specs
+    if use_t2w and mri_scheme == 'T1w':
+        tpl_target_path = get(
+            skull_strip_template,
+            suffix='T2w',
+            desc=None,
+            **template_specs,
+        )
+    else:
+        # Find a suitable target template in TemplateFlow
+        tpl_target_path = get_template(
+            skull_strip_template,
+            suffix=mri_scheme,
+            desc=None,
+            **template_specs
     )
     if not tpl_target_path:
         raise RuntimeError(
             f"An instance of template <tpl-{skull_strip_template}> with MR scheme '{mri_scheme}'"
-            " could not be found.")
+            " could not be found."
+        )
 
     # tpl_brainmask_path = get_template(
     #     in_template, desc="brain", suffix="probseg", **template_specs
