@@ -193,9 +193,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             omp_nthreads=omp_nthreads,
             num_t2w=num_t2w,
         )
+        wf.connect(inputnode, 't2w', t2w_template_wf, 'inputnode.t2w')
         # TODO: determine cutoff (< 8 months)
         use_t2w = True
-
 
     anat_validate = pe.Node(
         ValidateImage(),
@@ -247,23 +247,26 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     anat_norm_wf.get_node('registration').inputs.template_resolution = None
 
     # fmt: off
+    if use_t2w:
+        wf.connect(t2w_template_wf, 'outputnode.t2w_ref', brain_extraction_wf, 'inputnode.t2w')
+
     wf.connect([
-        (inputnode, anat_template_wf, [
+        (inputnode, t1w_template_wf, [
             ('t1w', 'inputnode.t1w'),
         ]),
-        (anat_template_wf, outputnode, [
+        (t1w_template_wf, outputnode, [
             ('outputnode.t1w_realign_xfm', 'anat_ref_xfms'),
         ]),
-        (anat_template_wf, anat_validate, [
+        (t1w_template_wf, anat_validate, [
             ('outputnode.t1w_ref', 'in_file'),
         ]),
         (anat_validate, brain_extraction_wf, [
-            ('out_file', 'inputnode.in_file'),
+            ('out_file', 'inputnode.t1w'),
         ]),
         (brain_extraction_wf, be_buffer, [
-            (('outputnode.out_corrected', _pop), 'anat_preproc'),
-            (('outputnode.out_brain', _pop), 'anat_brain'),
-            (('outputnode.out_mask', _pop), 'anat_mask'),
+            (('outputnode.t1w_corrected', _pop), 'anat_preproc'),
+            (('outputnode.t1w_corrected_brain', _pop), 'anat_brain'),
+            (('outputnode.t1w_mask', _pop), 'anat_mask'),
         ]),
         (be_buffer, outputnode, [
             ('anat_preproc', 'anat_preproc'),
@@ -310,14 +313,14 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ('std_preproc', 'inputnode.std_t1w'),
             ('std_mask', 'inputnode.std_mask'),
         ]),
-        (anat_template_wf, anat_reports_wf, [
+        (t1w_template_wf, anat_reports_wf, [
             ('outputnode.out_report', 'inputnode.t1w_conform_report'),
         ]),
         (anat_norm_wf, anat_reports_wf, [
             ('poutputnode.template', 'inputnode.template'),
         ]),
         # derivatives
-        (anat_template_wf, anat_derivatives_wf, [
+        (t1w_template_wf, anat_derivatives_wf, [
             ('outputnode.t1w_valid_list', 'inputnode.source_files'),
             ('outputnode.t1w_realign_xfm', 'inputnode.t1w_ref_xfms'),
         ]),
@@ -387,7 +390,10 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
 
 def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_template_wf"):
-    wf = Workflow(name=name)
+    from pkg_resources import resource_filename as pkgr
+    from niworkflows.interfaces.images import TemplateDimensions, Conform, ValidateImage
+
+    wf = pe.Workflow(name=name)
 
     inputnode = pe.Node(niu.IdentityInterface(fields=["t2w"]), name="inputnode")
     outputnode = pe.Node(
@@ -401,7 +407,7 @@ def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_tem
     t2w_conform = pe.MapNode(Conform(), iterfield='in_file', name='t2w_conform')
 
     wf.connect([
-        (inputnode, t2_ref_dimensions, [('t2w', 't1w_list')]),
+        (inputnode, t2w_ref_dimensions, [('t2w', 't1w_list')]),
         (t2w_ref_dimensions, t2w_conform, [
             ('t1w_valid_list', 'in_file'),
             ('target_zooms', 'target_zooms'),
@@ -415,9 +421,9 @@ def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_tem
     get1st = pe.Node(niu.Select(index=[0]), name='get1st')
     outputnode.inputs.t2w_realign_xfm = [pkgr('smriprep', 'data/itkIdentityTransform.txt')]
 
-    workflow.connect([
+    wf.connect([
         (t2w_conform, get1st, [('out_file', 'inlist')]),
         (get1st, outputnode, [('out', 't2w_ref')]),
     ])
 
-        return workflow
+    return wf
