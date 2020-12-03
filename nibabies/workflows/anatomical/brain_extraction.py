@@ -120,8 +120,8 @@ def init_infant_brain_extraction_wf(
     # validate images
     val_tmpl = pe.Node(ValidateImage(), name='val_tmpl')
     val_tmpl.inputs.in_file = _pop(tpl_target_path)
-    # val_t1w = val_tmpl.clone("val_t1w")
-    # val_t2w = val_tmpl.clone("val_t2w")
+    val_t1w = val_tmpl.clone("val_t1w")
+    val_t2w = val_tmpl.clone("val_t2w")
 
     # Resample both target and template to a controlled, isotropic resolution
     res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")
