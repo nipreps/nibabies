@@ -188,7 +188,7 @@ def init_infant_brain_extraction_wf(
     clip_t1w = clip_tmpl.clone('clip_t1w')
 
     # INU correction of the t1w
-    init_n4 = pe.Node(
+    init_t2w_n4 = pe.Node(
         N4BiasFieldCorrection(
             dimension=3,
             save_bias=False,
@@ -199,12 +199,15 @@ def init_infant_brain_extraction_wf(
             bspline_fitting_distance=bspline_fitting_distance,
         ),
         n_procs=omp_nthreads,
-        name="init_n4",
+        name="init_t2w_n4",
     )
-    clip_inu = pe.Node(
+    init_t1w_n4 = init_t2w_n4.clone("init_t1w_n4")
+
+    clip_t2w_inu = pe.Node(
         niu.Function(function=_trunc),
-        name="clip_inu",
+        name="clip_t2w_inu",
     )
+    clip_t1w_inu = clip_t2w_inu.clone("clip_t1w_inu")
 
     # Graft a template registration-mask if present
     if tpl_regmask_path:
@@ -281,9 +284,10 @@ def init_infant_brain_extraction_wf(
         (inputnode, val_t2w, [('t2w', 'in_file')]),
         (val_t2w, res_t2w, [('out_file', 'in_file')]),
         (res_t2w, clip_t2w, [('out_file', 'in_file')]),
-        # no need for init_n4 + clip_inu of T2w
-        (clip_t2w, gauss_t2w, [('out', 'in_file')]),
-        (clip_t2w, buffernode, [('out', 'hires_target')]),
+        (clip_t2w, init_t2w_n4, [('out', 'input_image')]),
+        (init_t2w_n4, clip_t2w_inu, [("output_image", "in_file")]),
+        (clip_t2w_inu, gauss_t2w, [('out', 'in_file')]),
+        (clip_t2w_inu, buffernode, [('out', 'hires_target')]),
         (gauss_t2w, buffernode, [('out', 'smooth_target')]),
         (buffernode, lap_t2w, [("smooth_target", "op1")]),
         (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
@@ -301,10 +305,10 @@ def init_infant_brain_extraction_wf(
         # 5. massage T1w
         (inputnode, res_t1w, [('t1w', 'in_file')]),
         (res_t1w, clip_t1w, [('out_file', 'in_file')]),
-        (clip_t1w, init_n4, [("out", "input_image")]),
-        (init_n4, clip_inu, [("output_image", "in_file")]),
-        (clip_inu, gauss_t1w, [("out", "in_file")]),
-        (clip_inu, mrg_t1w, [("out", "in1")]),
+        (clip_t1w, init_t1w_n4, [("out", "input_image")]),
+        (init_t1w_n4, clip_t1w_inu, [("output_image", "in_file")]),
+        (clip_t1w_inu, gauss_t1w, [("out", "in_file")]),
+        (clip_t1w_inu, mrg_t1w, [("out", "in1")]),
         (gauss_t1w, lap_t1w, [("out", "op1")]),
         (lap_t1w, norm_lap_t1w, [("output_image", "in_file")]),
         (norm_lap_t1w, mrg_t1w, [("out", "in2")]),
