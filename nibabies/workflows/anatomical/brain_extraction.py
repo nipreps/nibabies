@@ -9,7 +9,7 @@ from pkg_resources import resource_filename as pkgr_fn
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 from nipype.interfaces.ants import N4BiasFieldCorrection, ImageMath
-# from nipype.interfaces.ants.utils import AI
+from nipype.interfaces.ants.utils import AI
 
 # niworkflows
 from niworkflows.anat.ants import init_atropos_wf, ATROPOS_MODELS
@@ -30,7 +30,6 @@ from ...utils.filtering import (
 )
 from ...utils.misc import cohort_by_months
 
-HIRES_ZOOMS = (1, 1, 1)
 LOWRES_ZOOMS = (2, 2, 2)
 
 
@@ -106,31 +105,20 @@ def init_infant_brain_extraction_wf(
         )
 
     tpl_brainmask_path = get_template(
-        skull_strip_template, desc="brain", suffix="probseg", **template_specs
-    )
-    if not tpl_brainmask_path:
-        tpl_brainmask_path = get_template(
-            skull_strip_template, desc="brain", suffix="mask", **template_specs
-        )
+        skull_strip_template, label="brain", suffix="probseg", **template_specs
+    ) or get_template(skull_strip_template, desc="brain", suffix="mask", **template_specs)
 
     tpl_regmask_path = get_template(
-        skull_strip_template, desc="BrainCerebellumExtraction", suffix="mask", **template_specs
+        skull_strip_template, label="BrainCerebellumExtraction", suffix="mask", **template_specs
     )
 
     # validate images
     val_tmpl = pe.Node(ValidateImage(), name='val_tmpl')
-    val_tmpl.inputs.in_file = _pop(tpl_target_path)
     val_t1w = val_tmpl.clone("val_t1w")
     val_t2w = val_tmpl.clone("val_t2w")
-
-    # Resample both target and template to a controlled, isotropic resolution
-    res_tmpl = pe.Node(RegridToZooms(zooms=HIRES_ZOOMS), name="res_tmpl")
-    res_t1w = res_tmpl.clone("res_t1w")
-    res_t2w = res_tmpl.clone("res_t2w")
+    val_tmpl.inputs.in_file = _pop(tpl_target_path)
 
     gauss_tmpl = pe.Node(niu.Function(function=_gauss_filter), name="gauss_tmpl")
-    gauss_t1w = gauss_tmpl.clone("gauss_t1w")
-    gauss_t2w = gauss_tmpl.clone("gauss_t2w")
 
     # Spatial normalization step
     lap_tmpl = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_tmpl")
@@ -163,6 +151,8 @@ def init_infant_brain_extraction_wf(
         mem_gb=mem_gb,
     )
     norm.inputs.float = use_float
+    if tpl_regmask_path:
+        norm.inputs.fixed_image_masks = tpl_regmask_path
 
     # Set up T2w -> T1w within-subject registration
     norm_subj = pe.Node(
@@ -180,10 +170,7 @@ def init_infant_brain_extraction_wf(
         fields=["hires_target", "smooth_target"]), name="buffernode")
 
     # truncate target intensity for N4 correction
-    clip_tmpl = pe.Node(
-        niu.Function(function=_trunc),
-        name="clip_tmpl",
-    )
+    clip_tmpl = pe.Node(niu.Function(function=_trunc), name="clip_tmpl")
     clip_t2w = clip_tmpl.clone('clip_t2w')
     clip_t1w = clip_tmpl.clone('clip_t1w')
 
@@ -203,26 +190,8 @@ def init_infant_brain_extraction_wf(
     )
     init_t1w_n4 = init_t2w_n4.clone("init_t1w_n4")
 
-    clip_t2w_inu = pe.Node(
-        niu.Function(function=_trunc),
-        name="clip_t2w_inu",
-    )
+    clip_t2w_inu = pe.Node(niu.Function(function=_trunc), name="clip_t2w_inu")
     clip_t1w_inu = clip_t2w_inu.clone("clip_t1w_inu")
-
-    # Graft a template registration-mask if present
-    if tpl_regmask_path:
-        hires_mask = pe.Node(
-            ApplyTransforms(
-                input_image=_pop(tpl_regmask_path),
-                transforms="identity",
-                interpolation="NearestNeighbor",
-                float=True),
-            name="hires_mask",
-            mem_gb=1
-        )
-        wf.connect([
-            (res_tmpl, hires_mask, [("out_file", "reference_image")]),
-        ])
 
     map_mask_t2w = pe.Node(
         ApplyTransforms(interpolation="Gaussian", float=True),
@@ -244,6 +213,7 @@ def init_infant_brain_extraction_wf(
     final_n4 = pe.Node(
         N4BiasFieldCorrection(
             dimension=3,
+            bspline_fitting_distance=bspline_fitting_distance,
             save_bias=True,
             copy_header=True,
             n_iterations=[50] * 5,
@@ -274,22 +244,17 @@ def init_infant_brain_extraction_wf(
     wf.connect([
         # 1. massage template
         (val_tmpl, clip_tmpl, [("out_file", "in_file")]),
-        (clip_tmpl, res_tmpl, [("out", "in_file")]),
-        (res_tmpl, gauss_tmpl, [("out_file", "in_file")]),
-        (res_tmpl, lap_tmpl, [("out_file", "op1")]),
-        (res_tmpl, mrg_tmpl, [("out_file", "in1")]),
+        (clip_tmpl, lap_tmpl, [("out", "op1")]),
+        (clip_tmpl, mrg_tmpl, [("out", "in1")]),
         (lap_tmpl, norm_lap_tmpl, [("output_image", "in_file")]),
         (norm_lap_tmpl, mrg_tmpl, [("out", "in2")]),
         # 2. massage T2w
         (inputnode, val_t2w, [('t2w', 'in_file')]),
-        (val_t2w, res_t2w, [('out_file', 'in_file')]),
-        (res_t2w, clip_t2w, [('out_file', 'in_file')]),
+        (val_t2w, clip_t2w, [('out_file', 'in_file')]),
         (clip_t2w, init_t2w_n4, [('out', 'input_image')]),
         (init_t2w_n4, clip_t2w_inu, [("output_image", "in_file")]),
-        (clip_t2w_inu, gauss_t2w, [('out', 'in_file')]),
-        (clip_t2w_inu, buffernode, [('out', 'hires_target')]),
-        (gauss_t2w, buffernode, [('out', 'smooth_target')]),
-        (buffernode, lap_t2w, [("smooth_target", "op1")]),
+        (clip_t2w_inu, lap_t2w, [('out', 'op1')]),
+        (clip_t2w_inu, mrg_t2w, [('out', 'in1')]),
         (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
         (norm_lap_t2w, mrg_t2w, [("out", "in2")]),
         # 3. normalize T2w to target template (UNC)
@@ -303,13 +268,12 @@ def init_infant_brain_extraction_wf(
         ]),
         (map_mask_t2w, thr_t2w_mask, [("output_image", "in_file")]),
         # 5. massage T1w
-        (inputnode, res_t1w, [('t1w', 'in_file')]),
-        (res_t1w, clip_t1w, [('out_file', 'in_file')]),
+        (inputnode, val_t1w, [("t1w", "in_file")]),
+        (val_t1w, clip_t1w, [("out_file", "in_file")]),
         (clip_t1w, init_t1w_n4, [("out", "input_image")]),
         (init_t1w_n4, clip_t1w_inu, [("output_image", "in_file")]),
-        (clip_t1w_inu, gauss_t1w, [("out", "in_file")]),
-        (clip_t1w_inu, mrg_t1w, [("out", "in1")]),
-        (gauss_t1w, lap_t1w, [("out", "op1")]),
+        (clip_t1w_inu, lap_t1w, [('out', 'op1')]),
+        (clip_t1w_inu, mrg_t1w, [('out', 'in1')]),
         (lap_t1w, norm_lap_t1w, [("output_image", "in_file")]),
         (norm_lap_t1w, mrg_t1w, [("out", "in2")]),
         # 6. normalize within subject T2w to T1w
@@ -336,127 +300,36 @@ def init_infant_brain_extraction_wf(
         (final_mask, outputnode, [("out_file", "t1w_corrected_brain")]),
     ])
 
-    if tpl_regmask_path:
+    if ants_affine_init:
+        ants_kwargs = dict(
+            metric=("Mattes", 32, "Regular", 0.2),
+            transform=("Affine", 0.1),
+            search_factor=(20, 0.12),
+            principal_axes=False,
+            convergence=(10, 1e-6, 10),
+            search_grid=(40, (0, 40, 40)),
+            verbose=True,
+        )
+
+        if ants_affine_init == 'random':
+            ants_kwargs['metric'] = ("Mattes", 32, "Random", 0.2)
+        if ants_affine_init == 'search':
+            ants_kwargs['search_grid'] = (20, (20, 40, 40))
+
+        init_aff = pe.Node(
+            AI(**ants_kwargs),
+            name="init_aff",
+            n_procs=omp_nthreads,
+        )
+        if tpl_regmask_path:
+            init_aff.inputs.fixed_image_mask = _pop(tpl_regmask_path)
+
         wf.connect([
-            (hires_mask, norm, [
-                ("output_image", "fixed_image_masks")]),
+            (clip_tmpl, init_aff, [("out", "fixed_image")]),
+            (clip_t2w_inu, init_aff, [("out", "moving_image")]),
+            (init_aff, norm, [("output_transform", "initial_moving_transform")]),
         ])
 
-    # if interim_checkpoints:
-    #     final_apply = pe.Node(
-    #         ApplyTransforms(
-    #             interpolation="BSpline",
-    #             float=True),
-    #         name="final_apply",
-    #         mem_gb=1
-    #     )
-    #     final_report = pe.Node(SimpleBeforeAfter(
-    #         before_label=f"tpl-{skull_strip_template}",
-    #         after_label="target",
-    #         out_report="final_report.svg"),
-    #         name="final_report"
-    #     )
-    #     wf.connect([
-    #         (inputnode, final_apply, [("in_file", "reference_image")]),
-    #         (res_tmpl, final_apply, [("out_file", "input_image")]),
-    #         (norm, final_apply, [
-    #             ("reverse_transforms", "transforms"),
-    #             ("reverse_invert_flags", "invert_transform_flags")]),
-    #         (final_apply, final_report, [("output_image", "before")]),
-    #         (outputnode, final_report, [("out_corrected", "after"),
-    #                                     ("out_mask", "wm_seg")]),
-    #     ])
-
-    # if output_dir:
-    #     from nipype.interfaces.io import DataSink
-    #     ds_final_inu = pe.Node(DataSink(base_directory=str(output_dir.parent)),
-    #                            name="ds_final_inu")
-    #     ds_final_msk = pe.Node(DataSink(base_directory=str(output_dir.parent)),
-    #                            name="ds_final_msk")
-    #     ds_report = pe.Node(DataSink(base_directory=str(output_dir.parent)),
-    #                         name="ds_report")
-
-    #     wf.connect([
-    #         (outputnode, ds_final_inu, [
-    #             ("out_corrected", f"{output_dir.name}.@inu_corrected")]),
-    #         (outputnode, ds_final_msk, [
-    #             ("out_mask", f"{output_dir.name}.@brainmask")]),
-    #         (final_report, ds_report, [
-    #             ("out_report", f"{output_dir.name}.@report")]),
-    #     ])
-
-    # if not ants_affine_init:
-    #     return wf
-
-    # # Initialize transforms with antsAI
-    # lowres_tmpl = pe.Node(RegridToZooms(zooms=LOWRES_ZOOMS), name="lowres_tmpl")
-    # lowres_target = pe.Node(RegridToZooms(zooms=LOWRES_ZOOMS), name="lowres_target")
-
-    # init_aff = pe.Node(
-    #     AI(
-    #         metric=("Mattes", 32, "Regular", 0.25),
-    #         transform=("Affine", 0.1),
-    #         search_factor=(15, 0.1),
-    #         principal_axes=False,
-    #         convergence=(10, 1e-6, 10),
-    #         search_grid=(40, (0, 40, 40)),
-    #         verbose=True,
-    #     ),
-    #     name="init_aff",
-    #     n_procs=omp_nthreads,
-    # )
-    # wf.connect([
-    #     (gauss_tmpl, lowres_tmpl, [("out", "in_file")]),
-    #     (lowres_tmpl, init_aff, [("out_file", "fixed_image")]),
-    #     (gauss_target, lowres_target, [("out", "in_file")]),
-    #     (lowres_target, init_aff, [("out_file", "moving_image")]),
-    #     (init_aff, norm, [("output_transform", "initial_moving_transform")]),
-    # ])
-
-    # if tpl_regmask_path:
-    #     lowres_mask = pe.Node(
-    #         ApplyTransforms(
-    #             input_image=_pop(tpl_regmask_path),
-    #             transforms="identity",
-    #             interpolation="MultiLabel",
-    #             float=True),
-    #         name="lowres_mask",
-    #         mem_gb=1
-    #     )
-    #     wf.connect([
-    #         (lowres_tmpl, lowres_mask, [("out_file", "reference_image")]),
-    #         (lowres_mask, init_aff, [("output_image", "fixed_image_mask")]),
-    #     ])
-
-    # if interim_checkpoints:
-    #     init_apply = pe.Node(
-    #         ApplyTransforms(
-    #             interpolation="BSpline",
-    #             float=True),
-    #         name="init_apply",
-    #         mem_gb=1
-    #     )
-    #     init_report = pe.Node(SimpleBeforeAfter(
-    #         before_label=f"tpl-{skull_strip_template}",
-    #         after_label="target",
-    #         out_report="init_report.svg"),
-    #         name="init_report"
-    #     )
-    #     wf.connect([
-    #         (lowres_target, init_apply, [("out_file", "input_image")]),
-    #         (res_tmpl, init_apply, [("out_file", "reference_image")]),
-    #         (init_aff, init_apply, [("output_transform", "transforms")]),
-    #         (init_apply, init_report, [("output_image", "after")]),
-    #         (res_tmpl, init_report, [("out_file", "before")]),
-    #     ])
-
-    #     if output_dir:
-    #         ds_init_report = pe.Node(DataSink(base_directory=str(output_dir.parent)),
-    #                 name="ds_init_report")
-    #         wf.connect(
-    #             init_report, "out_report",
-    #             ds_init_report, f"{output_dir.name}.@init_report"
-    #         )
     return wf
 
 

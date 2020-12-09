@@ -491,6 +491,8 @@ class workflow(_Config):
     """Execute the anatomical preprocessing only."""
     anat_modality = "t1w"
     """Structural MRI modality"""
+    ants_affine_init = None
+    """Customize ants affine initialization"""
     aroma_err_on_warn = None
     """Cast AROMA warnings to errors."""
     aroma_melodic_dim = None

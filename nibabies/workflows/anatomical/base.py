@@ -7,6 +7,7 @@ from nipype.interfaces import utility as niu, fsl
 def init_infant_anat_wf(
     *,
     age_months,
+    ants_affine_init,
     t1w,
     t2w,
     anat_modality,
@@ -210,7 +211,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     brain_extraction_wf = init_infant_brain_extraction_wf(
         age_months=age_months,
         mri_scheme=anat_modality.capitalize(),
-        ants_affine_init=True,
+        ants_affine_init=ants_affine_init,
         skull_strip_template=skull_strip_template.space,
         template_specs=skull_strip_template.spec,
         omp_nthreads=omp_nthreads,

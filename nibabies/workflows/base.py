@@ -284,6 +284,7 @@ It is released under the [CC0]\
 
     # Preprocessing of anatomical (includes registration to UNCInfant)
     anat_preproc_wf = init_infant_anat_wf(
+        ants_affine_init=config.workflow.ants_affine_init or True,
         age_months=config.workflow.age_months,
         anat_modality=anat_modality,
         t1w=subject_data['t1w'],
