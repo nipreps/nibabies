@@ -23,8 +23,8 @@ def fix_multi_source_name(in_files):
     p = Path(filename_to_list(in_files)[0])
     # subject_label = p.name.split("_", 1)[0].split("-")[1]
     try:
-        subj = re.search('(?<=^sub-)[a-zA-Z0-9]*', p.name).group()
-        suffix = re.search('(?<=_)\w+(?=\.)', p.name).group()
+        subj = re.search(r'(?<=^sub-)[a-zA-Z0-9]*', p.name).group()
+        suffix = re.search(r'(?<=_)\w+(?=\.)', p.name).group()
     except AttributeError:
         raise AttributeError("Could not extract BIDS information")
     return str(p.parent / f"sub-{subj}_{suffix}.nii.gz")
@@ -38,7 +38,6 @@ def check_deps(workflow):
         for node in workflow._get_all_nodes()
         if (hasattr(node.interface, '_cmd')
             and which(node.interface._cmd.split()[0]) is None))
-
 
 
 def cohort_by_months(template, months):
