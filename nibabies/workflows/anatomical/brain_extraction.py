@@ -276,9 +276,10 @@ def init_infant_brain_extraction_wf(
         (clip_t1w_inu, mrg_t1w, [('out', 'in1')]),
         (lap_t1w, norm_lap_t1w, [("output_image", "in_file")]),
         (norm_lap_t1w, mrg_t1w, [("out", "in2")]),
-        # 6. normalize within subject T2w to T1w
-        (mrg_t2w, norm_subj, [("out", "moving_image")]),
-        (mrg_t1w, norm_subj, [("out", "fixed_image")]),
+        # 6. normalize within subject T1w to T2w
+        (mrg_t1w, norm_subj, [("out", "moving_image")]),
+        (mrg_t2w, norm_subj, [("out", "fixed_image")]),
+        (thr_t2w_mask, norm_subj, [("out_mask", "fixed_image_mask")]),
         # 7. map mask to T1w space
         (thr_t2w_mask, map_mask_t1w, [("out_mask", "input_image")]),
         (inputnode, map_mask_t1w, [("t1w", "reference_image")]),
