@@ -24,7 +24,6 @@ from fmriprep.interfaces import DerivativesDataSink
 from fmriprep.interfaces.reports import FunctionalSummary
 
 from fmriprep.workflows.bold.base import (
-    get_img_orientation,
     extract_entities,
     _to_join,
     _get_wf_name,
@@ -166,8 +165,6 @@ def init_func_preproc_wf(bold_file):
     # Take first file as reference
     ref_file = pop_file(bold_file)
     metadata = layout.get_metadata(ref_file)
-    # get original image orientation
-    ref_orientation = get_img_orientation(ref_file)
 
     echo_idxs = listify(entities.get("echo", []))
     multiecho = len(echo_idxs) > 2
@@ -197,8 +194,8 @@ def init_func_preproc_wf(bold_file):
     wf_name = _get_wf_name(ref_file)
     config.loggers.workflow.debug(
         f'Creating bold processing workflow for <{ref_file}> ({mem_gb["filesize"]:.2f} GB '
-        f'/ {bold_tlen} TRs). Memory resampled/largemem={mem_gb['resampled']:.2f}'
-        f'/{mem_gb['largemem']:.2f} GB.'
+        f'/ {bold_tlen} TRs). Memory resampled/largemem={mem_gb["resampled"]:.2f}'
+        f'/{mem_gb["largemem"]:.2f} GB.'
     )
 
     # Find associated sbref, if possible
@@ -263,7 +260,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 'confounds_metadata']),
         name='outputnode')
 
-    # Generate a brain-masked conversion of the anatomical
+    # Generate a brain-masked conversion of the t1w
     anat_brain = pe.Node(ApplyMask(), name='anat_brain')
 
     # BOLD buffer: an identity used as a pointer to either the original BOLD
@@ -278,8 +275,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             registration_init=config.workflow.bold2t1w_init,
             pe_direction=metadata.get("PhaseEncodingDirection"),
             echo_idx=echo_idxs,
-            tr=metadata.get("RepetitionTime"),
-            orientation=ref_orientation),
+            tr=metadata.get("RepetitionTime")),
         name='summary', mem_gb=config.DEFAULT_MEMORY_MIN_GB, run_without_submitting=True)
     summary.inputs.dummy_scans = config.workflow.dummy_scans
 

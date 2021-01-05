@@ -18,7 +18,7 @@ from nipype.interfaces import utility as niu
 
 from .. import config
 from fmriprep.interfaces import SubjectSummary, AboutSummary, DerivativesDataSink
-# from .bold import init_func_preproc_wf
+from .bold import init_func_preproc_wf
 
 
 def init_nibabies_wf():
@@ -375,8 +375,6 @@ It is released under the [CC0]\
 
     if anat_only:
         return workflow
-
-    raise NotImplementedError("BOLD processing is not yet implemented.")
 
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets

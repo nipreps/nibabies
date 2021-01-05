@@ -340,6 +340,16 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         ]),
     ])
 
+    wf.__postdesc__ = """
+
+For more details of the pipeline, see [the section corresponding
+to workflows in *NiBabies*'s documentation TODO]\
+(https://smriprep.readthedocs.io/en/latest/workflows.html \
+"NiBabies's documentation").
+
+### References
+"""
+
     if not freesurfer:
         return wf
 
