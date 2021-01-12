@@ -54,3 +54,19 @@ def cohort_by_months(template, months):
             return cohort
 
     raise KeyError("Age exceeds all cohorts!")
+
+
+def check_total_memory(recommended_gb):
+    """
+    Check total memory allocated to the process, and compare with a recommended value.
+    If available memory is equal to or greater than recommended, return ``True``.
+    Otherwise, return ``False``.
+    """
+
+    try:
+        import psutil
+    except ImportError:
+        return
+
+    tot = int(psutil.virtual_memory().total / 1024 ** 3)
+    return tot >= recommended_gb

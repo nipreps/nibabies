@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 
 from nipype.interfaces.base import (
@@ -6,6 +7,7 @@ from nipype.interfaces.base import (
     isdefined, CommandLineInputSpec, TraitedSpec
 )
 
+from ..utils.misc import check_total_memory
 
 class InfantReconAllInputSpec(CommandLineInputSpec):
     subjects_dir = Directory(
@@ -21,7 +23,10 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         desc="path to T1w file",
     )
     age = traits.Range(
-        low=0, high=24, argstr='--age %d', required=True, desc="Subject age in months"
+        low=0,
+        high=24,
+        argstr='--age %d',
+        desc="Subject age in months",
     )
     outdir = Directory(
         argstr='--outdir %s',
@@ -32,7 +37,13 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         argstr='--masked %s',
         desc="Skull-stripped and INU-corrected T1 (skips skullstripping step)",
     )
+    newborn = traits.Bool(
+        xor=['age'],
+        argstr='--newborn',
+        help="Use newborns from set",
+    )
     aseg_file = File(
+        argstr='--segfile',
         desc="Pre-computed segmentation file",
     )
 
@@ -72,6 +83,14 @@ class InfantReconAll(CommandLine):
                     raise RuntimeError("Neither T1 or mask present!")
         if isdefined(self.inputs.aseg_file):
             pass  # To be added in a future infant-FS release.
+
+        # warn users that this might fail...
+        if not check_total_memory(recommended_gb=20):
+            import logging
+            logging.getLogger('nipype.interface').warning(
+                f"For best results, run {self._cmd} with at least 20GB available RAM."
+            )
+
         return super()._run_interface(runtime)
 
     def _list_outputs(self):
