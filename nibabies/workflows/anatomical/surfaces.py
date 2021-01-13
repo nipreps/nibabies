@@ -68,8 +68,7 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
 
     if use_aseg:
         # TODO: Add precomputed segmentation upon new babyFS rel
-        # wf.connect(inputnode, 'anat_aseg', recon, 'aseg_file')
-        pass
+        wf.connect(inputnode, 'anat_aseg', recon, 'aseg_file')
 
     # fmt: off
     wf.connect([

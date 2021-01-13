@@ -81,9 +81,6 @@ class InfantReconAll(CommandLine):
                     Path(self.inputs.t1_file).symlink_to(subjdir / 'mprage.nii.gz')
                 elif not isdefined(self.inputs.mask_file):
                     raise RuntimeError("Neither T1 or mask present!")
-        if isdefined(self.inputs.aseg_file):
-            pass  # To be added in a future infant-FS release.
-
         # warn users that this might fail...
         if not check_total_memory(recommended_gb=20):
             import logging
