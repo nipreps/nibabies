@@ -124,6 +124,8 @@ def init_anat_seg_wf(
         name="jointfusion",
     )
 
+    jf_label = pe.Node(niu.Function(function=_to_dtype), name="jf_label")
+
     # split each tissue into individual masks
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
     to_list = pe.Node(niu.Function(function=_to_list), name='to_list')
@@ -139,8 +141,9 @@ def init_anat_seg_wf(
         (to_list, jointfusion, [('out', 'target_image')]),
         (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
         (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
-        (jointfusion, outputnode, [('out_label_fusion', 'anat_aseg')]),
-        (jointfusion, lut_anat_dseg, [('out_label_fusion', 'in_dseg')]),
+        (jointfusion, jf_label, [('out_label_fusion', 'in_file')]),
+        (jf_label, outputnode, [('out', 'anat_aseg')]),
+        (jf_label, lut_anat_dseg, [('out', 'in_dseg')]),
         (lut_anat_dseg, outputnode, [('out', 'anat_dseg')]),
         (lut_anat_dseg, split_seg, [('out', 'in_file')]),
         (split_seg, outputnode, [('out', 'anat_tpms')]),
@@ -177,3 +180,22 @@ def _parse_segmentation_atlases(anat_modality, template_dir):
 
 def _to_list(in_file):
     return [in_file]
+
+
+def _to_dtype(in_file, dtype='uint8'):
+    """
+    Freesurfer's ``mri_convert`` complains about unsigned 32-bit integers.
+    Since we may plan using the JLF segmentation within ``infant_recon_all``,
+    better to make this change now.
+    """
+    import nibabel as nb
+    import numpy as np
+    from pathlib import Path
+
+    img = nb.load(in_file)
+    out_file = Path(f"labels{''.join(Path(in_file).suffixes)}").absolute()
+
+    new_data = np.asanyarray(img.get_fdata(), dtype=dtype)
+    img.set_data_dtype(dtype)
+    img.__class__(new_data, img.affine, img.header).to_filename(out_file)
+    return str(out_file)
