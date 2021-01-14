@@ -9,6 +9,7 @@ from nipype.interfaces.base import (
 
 from ..utils.misc import check_total_memory
 
+
 class InfantReconAllInputSpec(CommandLineInputSpec):
     subjects_dir = Directory(
         exists=True,
@@ -43,7 +44,7 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         help="Use newborns from set",
     )
     aseg_file = File(
-        argstr='--segfile',
+        argstr='--segfile %s',
         desc="Pre-computed segmentation file",
     )
 
