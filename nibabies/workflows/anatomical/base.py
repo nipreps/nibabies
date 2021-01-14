@@ -346,7 +346,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     # FreeSurfer surfaces
     surface_recon_wf = init_infant_surface_recon_wf(
         age_months=age_months,
-        use_aseg=segmentation_atlases is None,
+        use_aseg=bool(segmentation_atlases),
     )
 
     wf.connect([
