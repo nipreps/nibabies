@@ -389,6 +389,9 @@ tasks and sessions), the following preprocessing was performed.
 """
     )
 
+    # calculate reference image(s) for BOLD images
+    func_reference_wf = init_func_reference_wf(subject_data["bold"])
+
     for bold_file in subject_data["bold"]:
         func_preproc_wf = init_func_preproc_wf(bold_file)
 
