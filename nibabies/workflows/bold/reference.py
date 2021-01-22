@@ -9,6 +9,7 @@ from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.fixes import (
     FixHeaderRegistration as Registration,
     FixHeaderApplyTransforms as ApplyTransforms,
+    FixN4BiasFieldCorrection as N4BiasFieldCorrection,
 )
 from niworkflows.interfaces.images import ValidateImage, MatchHeader
 
@@ -18,7 +19,7 @@ from ...interfaces.func import EstimateReferenceImage
 DEFAULT_MEMORY_MIN_GB = 0.01
 
 
-def init_func_reference_wf(bold_files, multiecho=False, name='func_reference_wf'):
+def init_func_reference_wf(bold_files, omp_nthreads, multiecho=False, name='func_reference_wf'):
     """
     IN: list of bold files with matching PE/readout.
     OUT: reference images
@@ -40,17 +41,32 @@ def init_func_reference_wf(bold_files, multiecho=False, name='func_reference_wf'
         iterfield=['in_file']
     )
 
+    n4_ref = pe.MapNode(
+        N4BiasFieldCorrection(dimension=3, copy_header=True),
+        name='n4_ref',
+        iterfield=['in_file'],
+        n_procs=omp_nthreads,
+    )
+
     if len(bold_files) > 1:
         # inspect all BOLD references and get the one with the highest SNR
         get_best_snr = pe.Node(
             niu.Function(function=_max_snr, output_names=["reference", "out_files", "fidx"]),
-            name='get_best_snr'
+            name='get_best_snr',
         )
 
         # register other reference images to best SNR
-        norm_ref = pe.MapNode(Registration(), name='norm_ref', iterfield=['in_file'])
-        apply_ref = pe.MapNode(ApplyTransforms(), name='apply_ref', iterfield=['transforms', 'invert_transform_flags'])
-
+        norm_ref = pe.MapNode(
+            Registration(),
+            name='norm_ref',
+            iterfield=['in_file'],
+            n_procs=omp_nthreads
+        )
+        apply_ref = pe.MapNode(
+            ApplyTransforms(),
+            name='apply_ref',
+            iterfield=['transforms', 'invert_transform_flags']
+        )
 
         wf.connect([
             (get_best_snr, norm_ref, [("out_files", "in_file")]),
@@ -64,9 +80,6 @@ def init_func_reference_wf(bold_files, multiecho=False, name='func_reference_wf'
     else:
         # sole bold file
         pass
-
-
-
 
 def _max_snr(in_files, ddof=0):
     """
