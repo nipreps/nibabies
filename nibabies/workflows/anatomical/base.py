@@ -398,13 +398,12 @@ def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_tem
     from nipype.interfaces import freesurfer as fs, image, ants
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.freesurfer import (
-    StructuralReference,
-    PatchedLTAConvert as LTAConvert,
-)
+        StructuralReference,
+        PatchedLTAConvert as LTAConvert,
+    )
     from niworkflows.interfaces.images import TemplateDimensions, Conform, ValidateImage
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
     from niworkflows.utils.misc import add_suffix
-
 
     wf = Workflow(name=name)
 
