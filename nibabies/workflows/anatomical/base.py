@@ -391,10 +391,22 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
 
 def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_template_wf"):
+    """
+    Adapts :py:func:`~smriprep.workflows.anatomical.init_anat_template_wf` for T2w image reference
+    """
     from pkg_resources import resource_filename as pkgr
+    from nipype.interfaces import freesurfer as fs, image, ants
+    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+    from niworkflows.interfaces.freesurfer import (
+    StructuralReference,
+    PatchedLTAConvert as LTAConvert,
+)
     from niworkflows.interfaces.images import TemplateDimensions, Conform, ValidateImage
+    from niworkflows.interfaces.nitransforms import ConcatenateXFMs
+    from niworkflows.utils.misc import add_suffix
 
-    wf = pe.Workflow(name=name)
+
+    wf = Workflow(name=name)
 
     inputnode = pe.Node(niu.IdentityInterface(fields=["t2w"]), name="inputnode")
     outputnode = pe.Node(
@@ -403,7 +415,7 @@ def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_tem
         name="outputnode",
     )
 
-    # 0. Reorient T1w image(s) to RAS and resample to common voxel space
+    # 0. Reorient T2w image(s) to RAS and resample to common voxel space
     t2w_ref_dimensions = pe.Node(TemplateDimensions(), name='t2w_ref_dimensions')
     t2w_conform = pe.MapNode(Conform(), iterfield='in_file', name='t2w_conform')
 
@@ -417,14 +429,78 @@ def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_tem
                                           ('t1w_valid_list', 't2w_valid_list')]),
     ])
 
-    # for now always take the first image
-    # TODO: Average when multiple T2w images
-    get1st = pe.Node(niu.Select(index=[0]), name='get1st')
-    outputnode.inputs.t2w_realign_xfm = [pkgr('smriprep', 'data/itkIdentityTransform.txt')]
+    if num_t2w == 1:
+        get1st = pe.Node(niu.Select(index=[0]), name='get1st')
+        outputnode.inputs.t2w_realign_xfm = [pkgr('smriprep', 'data/itkIdentityTransform.txt')]
+
+        wf.connect([
+            (t2w_conform, get1st, [('out_file', 'inlist')]),
+            (get1st, outputnode, [('out', 't2w_ref')]),
+        ])
+
+        return wf
+
+    wf.__desc__ = f"""\
+A T2w-reference map was computed after registration of
+{num_t2w} T2w images (after INU-correction) using
+`mri_robust_template` [FreeSurfer {fs.Info().looseversion() or "<ver>"}, @fs_template].
+"""
+
+    t2w_conform_xfm = pe.MapNode(
+        LTAConvert(in_lta='identity.nofile', out_lta=True),
+        iterfield=['source_file', 'target_file'],
+        name='t2w_conform_xfm'
+    )
+
+    # 1a. Correct for bias field: the bias field is an additive factor
+    #     in log-transformed intensity units. Therefore, it is not a linear
+    #     combination of fields and N4 fails with merged images.
+    # 1b. Align and merge if several T1w images are provided
+    n4_correct = pe.MapNode(
+        ants.N4BiasFieldCorrection(dimension=3, copy_header=True),
+        iterfield='input_image', name='n4_correct',
+        n_procs=1)  # n_procs=1 for reproducibility
+
+    # StructuralReference is fs.RobustTemplate if > 1 volume, copying otherwise
+    t2w_merge = pe.Node(
+        StructuralReference(auto_detect_sensitivity=True,
+                            initial_timepoint=1,      # For deterministic behavior
+                            intensity_scaling=True,   # 7-DOF (rigid + intensity)
+                            subsample_threshold=200,
+                            fixed_timepoint=not longitudinal,
+                            no_iteration=not longitudinal,
+                            transform_outputs=True,
+                            ),
+        mem_gb=2 * num_t2w - 1,
+        name='t2w_merge')
+
+    # 2. Reorient template to RAS, if needed (mri_robust_template may set to LIA)
+    t2w_reorient = pe.Node(image.Reorient(), name='t2w_reorient')
+
+    merge_xfm = pe.MapNode(niu.Merge(2), name='merge_xfm',
+                           iterfield=['in1', 'in2'], run_without_submitting=True)
+    concat_xfms = pe.MapNode(ConcatenateXFMs(inverse=True), name="concat_xfms",
+                             iterfield=['in_xfms'], run_without_submitting=True)
+
+    def _set_threads(in_list, maximum):
+        return min(len(in_list), maximum)
 
     wf.connect([
-        (t2w_conform, get1st, [('out_file', 'inlist')]),
-        (get1st, outputnode, [('out', 't2w_ref')]),
+        (t2w_ref_dimensions, t2w_conform_xfm, [('t1w_valid_list', 'source_file')]),
+        (t2w_conform, t2w_conform_xfm, [('out_file', 'target_file')]),
+        (t2w_conform, n4_correct, [('out_file', 'input_image')]),
+        (t2w_conform, t2w_merge, [
+            (('out_file', _set_threads, omp_nthreads), 'num_threads'),
+            (('out_file', add_suffix, '_template'), 'out_file')]),
+        (n4_correct, t2w_merge, [('output_image', 'in_files')]),
+        (t2w_merge, t2w_reorient, [('out_file', 'in_file')]),
+        # Combine orientation and template transforms
+        (t2w_conform_xfm, merge_xfm, [('out_lta', 'in1')]),
+        (t2w_merge, merge_xfm, [('transform_outputs', 'in2')]),
+        (merge_xfm, concat_xfms, [('out', 'in_xfms')]),
+        # Output
+        (t2w_reorient, outputnode, [('out_file', 't2w_ref')]),
+        (concat_xfms, outputnode, [('out_xfm', 't2w_realign_xfm')]),
     ])
 
     return wf
