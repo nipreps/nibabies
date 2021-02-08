@@ -156,7 +156,7 @@ def init_infant_brain_extraction_wf(
 
     # Set up T2w -> T1w within-subject registration
     norm_subj = pe.Node(
-        Registration(from_file=pkgr_fn("nibabies.data", "within_subject.json")),
+        Registration(from_file=pkgr_fn("nibabies.data", "within_subject_t1t2.json")),
         name="norm_subj",
         n_procs=omp_nthreads,
         mem_gb=mem_gb,
