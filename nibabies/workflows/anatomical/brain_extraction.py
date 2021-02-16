@@ -261,7 +261,7 @@ def init_infant_brain_extraction_wf(
         (mrg_t2w, norm, [("out", "moving_image")]),
         (mrg_tmpl, norm, [("out", "fixed_image")]),
         # 4. map template brainmask to T2w space
-        (inputnode, map_mask_t2w, [('t2w', 'reference_image')]),
+        (val_t2w, map_mask_t2w, [('out_file', 'reference_image')]),
         (norm, map_mask_t2w, [
             ("reverse_transforms", "transforms"),
             ("reverse_invert_flags", "invert_transform_flags")
@@ -282,7 +282,7 @@ def init_infant_brain_extraction_wf(
         (thr_t2w_mask, norm_subj, [("out_mask", "fixed_image_mask")]),
         # 7. map mask to T1w space
         (thr_t2w_mask, map_mask_t1w, [("out_mask", "input_image")]),
-        (inputnode, map_mask_t1w, [("t1w", "reference_image")]),
+        (val_t1w, map_mask_t1w, [("out_file", "reference_image")]),
         (norm_subj, map_mask_t1w, [
             ("reverse_transforms", "transforms"),
             ("reverse_invert_flags", "invert_transform_flags"),
@@ -330,6 +330,7 @@ def init_infant_brain_extraction_wf(
             (clip_t2w_inu, init_aff, [("out", "moving_image")]),
             (init_aff, norm, [("output_transform", "initial_moving_transform")]),
         ])
+
 
     return wf
 
