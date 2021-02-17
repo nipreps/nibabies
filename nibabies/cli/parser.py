@@ -605,7 +605,7 @@ discourage its usage."""
         choices=("random", "search"),
         help="TESTING: Customize parameters for ants AI initialization."
     )
-    # return parser
+    return parser
 
 
 def parse_args(args=None, namespace=None):
