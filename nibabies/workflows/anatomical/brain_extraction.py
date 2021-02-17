@@ -24,6 +24,7 @@ from niworkflows.interfaces.registration import (
 )
 
 from templateflow.api import get as get_template
+from ...interfaces.nibabel import IntensityClip
 from ...utils.filtering import (
     gaussian_filter as _gauss_filter,
     truncation as _trunc
@@ -130,11 +131,12 @@ def init_infant_brain_extraction_wf(
     mrg_t2w = mrg_tmpl.clone("mrg_t2w")
     mrg_t1w = mrg_tmpl.clone("mrg_t1w")
 
-    norm_lap_tmpl = pe.Node(niu.Function(function=_trunc), name="norm_lap_tmpl")
-    norm_lap_tmpl.inputs.dtype = "float32"
-    norm_lap_tmpl.inputs.out_max = 1.0
-    norm_lap_tmpl.inputs.percentile = (0.01, 99.99)
-    norm_lap_tmpl.inputs.clip_max = None
+    # norm_lap_tmpl = pe.Node(niu.Function(function=_trunc), name="norm_lap_tmpl")
+    norm_lap_tmpl = pe.Node(IntensityClip(), name='norm_lap_tmpl')
+    # norm_lap_tmpl.inputs.dtype = "float32"
+    # norm_lap_tmpl.inputs.out_max = 1.0
+    # norm_lap_tmpl.inputs.percentile = (0.01, 99.99)
+    # norm_lap_tmpl.inputs.clip_max = None
 
     norm_lap_t1w = norm_lap_tmpl.clone('norm_lap_t1w')
     norm_lap_t2w = norm_lap_t1w.clone('norm_lap_t2w')
@@ -170,7 +172,8 @@ def init_infant_brain_extraction_wf(
         fields=["hires_target", "smooth_target"]), name="buffernode")
 
     # truncate target intensity for N4 correction
-    clip_tmpl = pe.Node(niu.Function(function=_trunc), name="clip_tmpl")
+    # clip_tmpl = pe.Node(niu.Function(function=_trunc), name="clip_tmpl")
+    clip_tmpl = pe.Node(IntensityClip(), name='clip_tmpl')
     clip_t2w = clip_tmpl.clone('clip_t2w')
     clip_t1w = clip_tmpl.clone('clip_t1w')
 
@@ -190,7 +193,8 @@ def init_infant_brain_extraction_wf(
     )
     init_t1w_n4 = init_t2w_n4.clone("init_t1w_n4")
 
-    clip_t2w_inu = pe.Node(niu.Function(function=_trunc), name="clip_t2w_inu")
+    # clip_t2w_inu = pe.Node(niu.Function(function=_trunc), name="clip_t2w_inu")
+    clip_t2w_inu = pe.Node(IntensityClip(p_min=2.0, p_max=100.0), name='clip_t2w_inu')
     clip_t1w_inu = clip_t2w_inu.clone("clip_t1w_inu")
 
     map_mask_t2w = pe.Node(
@@ -244,19 +248,19 @@ def init_infant_brain_extraction_wf(
     wf.connect([
         # 1. massage template
         (val_tmpl, clip_tmpl, [("out_file", "in_file")]),
-        (clip_tmpl, lap_tmpl, [("out", "op1")]),
-        (clip_tmpl, mrg_tmpl, [("out", "in1")]),
+        (clip_tmpl, lap_tmpl, [("out_file", "op1")]),
+        (clip_tmpl, mrg_tmpl, [("out_file", "in1")]),
         (lap_tmpl, norm_lap_tmpl, [("output_image", "in_file")]),
-        (norm_lap_tmpl, mrg_tmpl, [("out", "in2")]),
+        (norm_lap_tmpl, mrg_tmpl, [("out_file", "in2")]),
         # 2. massage T2w
         (inputnode, val_t2w, [('t2w', 'in_file')]),
         (val_t2w, clip_t2w, [('out_file', 'in_file')]),
-        (clip_t2w, init_t2w_n4, [('out', 'input_image')]),
+        (clip_t2w, init_t2w_n4, [('out_file', 'input_image')]),
         (init_t2w_n4, clip_t2w_inu, [("output_image", "in_file")]),
-        (clip_t2w_inu, lap_t2w, [('out', 'op1')]),
-        (clip_t2w_inu, mrg_t2w, [('out', 'in1')]),
+        (clip_t2w_inu, lap_t2w, [('out_file', 'op1')]),
+        (clip_t2w_inu, mrg_t2w, [('out_file', 'in1')]),
         (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
-        (norm_lap_t2w, mrg_t2w, [("out", "in2")]),
+        (norm_lap_t2w, mrg_t2w, [("out_file", "in2")]),
         # 3. normalize T2w to target template (UNC)
         (mrg_t2w, norm, [("out", "moving_image")]),
         (mrg_tmpl, norm, [("out", "fixed_image")]),
@@ -270,12 +274,12 @@ def init_infant_brain_extraction_wf(
         # 5. massage T1w
         (inputnode, val_t1w, [("t1w", "in_file")]),
         (val_t1w, clip_t1w, [("out_file", "in_file")]),
-        (clip_t1w, init_t1w_n4, [("out", "input_image")]),
+        (clip_t1w, init_t1w_n4, [("out_file", "input_image")]),
         (init_t1w_n4, clip_t1w_inu, [("output_image", "in_file")]),
-        (clip_t1w_inu, lap_t1w, [('out', 'op1')]),
-        (clip_t1w_inu, mrg_t1w, [('out', 'in1')]),
+        (clip_t1w_inu, lap_t1w, [('out_file', 'op1')]),
+        (clip_t1w_inu, mrg_t1w, [('out_file', 'in1')]),
         (lap_t1w, norm_lap_t1w, [("output_image", "in_file")]),
-        (norm_lap_t1w, mrg_t1w, [("out", "in2")]),
+        (norm_lap_t1w, mrg_t1w, [("out_file", "in2")]),
         # 6. normalize within subject T1w to T2w
         (mrg_t1w, norm_subj, [("out", "moving_image")]),
         (mrg_t2w, norm_subj, [("out", "fixed_image")]),
@@ -326,8 +330,8 @@ def init_infant_brain_extraction_wf(
             init_aff.inputs.fixed_image_mask = _pop(tpl_regmask_path)
 
         wf.connect([
-            (clip_tmpl, init_aff, [("out", "fixed_image")]),
-            (clip_t2w_inu, init_aff, [("out", "moving_image")]),
+            (clip_tmpl, init_aff, [("out_file", "fixed_image")]),
+            (clip_t2w_inu, init_aff, [("out_file", "moving_image")]),
             (init_aff, norm, [("output_transform", "initial_moving_transform")]),
         ])
 
