@@ -69,7 +69,8 @@ def _advanced_clip(
     out_file = (Path(newpath or "") / "clipped.nii.gz").absolute()
 
     # Load data
-    img = nb.load(in_file)
+    img = nb.squeeze_image(nb.load(in_file))
+    assert len(img.shape) == 3, "Not a 3D image"
     data = img.get_fdata(dtype="float32")
 
     # Calculate stats on denoised version, to preempt outliers from biasing

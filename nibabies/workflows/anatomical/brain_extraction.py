@@ -22,8 +22,8 @@ from niworkflows.interfaces.fixes import (
 from niworkflows.interfaces.registration import (
     SimpleBeforeAfterRPT as SimpleBeforeAfter
 )
-
 from templateflow.api import get as get_template
+
 from ...interfaces.nibabel import IntensityClip
 from ...utils.filtering import (
     gaussian_filter as _gauss_filter,
@@ -172,7 +172,6 @@ def init_infant_brain_extraction_wf(
         fields=["hires_target", "smooth_target"]), name="buffernode")
 
     # truncate target intensity for N4 correction
-    # clip_tmpl = pe.Node(niu.Function(function=_trunc), name="clip_tmpl")
     clip_tmpl = pe.Node(IntensityClip(), name='clip_tmpl')
     clip_t2w = clip_tmpl.clone('clip_t2w')
     clip_t1w = clip_tmpl.clone('clip_t1w')
@@ -193,7 +192,6 @@ def init_infant_brain_extraction_wf(
     )
     init_t1w_n4 = init_t2w_n4.clone("init_t1w_n4")
 
-    # clip_t2w_inu = pe.Node(niu.Function(function=_trunc), name="clip_t2w_inu")
     clip_t2w_inu = pe.Node(IntensityClip(p_min=2.0, p_max=100.0), name='clip_t2w_inu')
     clip_t1w_inu = clip_t2w_inu.clone("clip_t1w_inu")
 
@@ -209,6 +207,11 @@ def init_infant_brain_extraction_wf(
 
     thr_t2w_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_t2w_mask")
     thr_t1w_mask = thr_t2w_mask.clone('thr_t1w_mask')
+
+    # dilate t2w mask for easier t1->t2 registration
+    dil_brainmask = pe.Node(
+        ImageMath(operation="MD", op2="8", copy_header=True), name="dil_brainmask"
+    )
 
     bspline_grid = pe.Node(niu.Function(function=_bspline_distance),
                            name="bspline_grid")
@@ -283,7 +286,8 @@ def init_infant_brain_extraction_wf(
         # 6. normalize within subject T1w to T2w
         (mrg_t1w, norm_subj, [("out", "moving_image")]),
         (mrg_t2w, norm_subj, [("out", "fixed_image")]),
-        (thr_t2w_mask, norm_subj, [("out_mask", "fixed_image_mask")]),
+        (thr_t2w_mask, dil_brainmask, [('out_mask', 'op1')]),
+        (dil_brainmask, norm_subj, [("output_image", "fixed_image_mask")]),
         # 7. map mask to T1w space
         (thr_t2w_mask, map_mask_t1w, [("out_mask", "input_image")]),
         (val_t1w, map_mask_t1w, [("out_file", "reference_image")]),
