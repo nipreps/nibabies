@@ -8,6 +8,7 @@ from nipype.interfaces.base import (
     InputMultiObject,
 )
 
+
 class _IntensityClipInputSpec(BaseInterfaceInputSpec):
     in_file = File(
         exists=True, mandatory=True, desc="file which intensity will be clipped"

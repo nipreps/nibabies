@@ -131,13 +131,7 @@ def init_infant_brain_extraction_wf(
     mrg_t2w = mrg_tmpl.clone("mrg_t2w")
     mrg_t1w = mrg_tmpl.clone("mrg_t1w")
 
-    # norm_lap_tmpl = pe.Node(niu.Function(function=_trunc), name="norm_lap_tmpl")
     norm_lap_tmpl = pe.Node(IntensityClip(), name='norm_lap_tmpl')
-    # norm_lap_tmpl.inputs.dtype = "float32"
-    # norm_lap_tmpl.inputs.out_max = 1.0
-    # norm_lap_tmpl.inputs.percentile = (0.01, 99.99)
-    # norm_lap_tmpl.inputs.clip_max = None
-
     norm_lap_t1w = norm_lap_tmpl.clone('norm_lap_t1w')
     norm_lap_t2w = norm_lap_t1w.clone('norm_lap_t2w')
 
