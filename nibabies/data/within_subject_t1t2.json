@@ -26,6 +26,6 @@
     "use_estimate_learning_rate_once": [ true, true ],
     "use_histogram_matching": [ true, true ],
     "verbose": true,
-    "winsorize_lower_quantile": 0.025,
-    "winsorize_upper_quantile": 0.975
+    "winsorize_lower_quantile": 0,
+    "winsorize_upper_quantile": 1
 }
