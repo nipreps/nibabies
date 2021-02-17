@@ -12,7 +12,7 @@ def main():
     import gc
     from multiprocessing import Process, Manager
     from .parser import parse_args
-    from fmriprep.utils.bids import write_derivative_description, write_bidsignore
+    from ..utils.bids import write_derivative_description, write_bidsignore
 
     parse_args()
 
@@ -96,7 +96,7 @@ def main():
         #     from ..utils.sentry import process_crashfile
 
         #     crashfolders = [
-        #         config.execution.fmriprep_dir,
+        #         config.execution.nibabies_dir,
         #         / "sub-{}".format(s)
         #         / "log"
         #         / config.execution.run_uuid
@@ -118,7 +118,7 @@ def main():
         #     sentry_sdk.capture_message(success_message, level="info")
 
         # Bother users with the boilerplate only iff the workflow went okay.
-        boiler_file = config.execution.fmriprep_dir / "logs" / "CITATION.md"
+        boiler_file = config.execution.nibabies_dir / "logs" / "CITATION.md"
         if boiler_file.exists():
             if config.environment.exec_env in (
                 "singularity",
@@ -140,26 +140,26 @@ def main():
 
             dseg_tsv = str(api.get("fsaverage", suffix="dseg", extension=[".tsv"]))
             _copy_any(
-                dseg_tsv, str(config.execution.fmriprep_dir / "desc-aseg_dseg.tsv")
+                dseg_tsv, str(config.execution.nibabies_dir / "desc-aseg_dseg.tsv")
             )
             _copy_any(
-                dseg_tsv, str(config.execution.fmriprep_dir / "desc-aparcaseg_dseg.tsv")
+                dseg_tsv, str(config.execution.nibabies_dir / "desc-aparcaseg_dseg.tsv")
             )
         errno = 0
     finally:
-        from fmriprep.reports.core import generate_reports
+        from niworkflows.reports.core import generate_reports
         from pkg_resources import resource_filename as pkgrf
 
         # Generate reports phase
         failed_reports = generate_reports(
             config.execution.participant_label,
-            config.execution.fmriprep_dir,
+            config.execution.nibabies_dir,
             config.execution.run_uuid,
             config=pkgrf("nibabies", "data/reports-spec.yml"),
             packagename="nibabies",
         )
-        write_derivative_description(config.execution.bids_dir, config.execution.fmriprep_dir)
-        write_bidsignore(config.execution.fmriprep_dir)
+        write_derivative_description(config.execution.bids_dir, config.execution.nibabies_dir)
+        write_bidsignore(config.execution.nibabies_dir)
 
         # if failed_reports and not config.execution.notrack:
         #     sentry_sdk.capture_message(

@@ -11,7 +11,7 @@ Settings are stored using :abbr:`ToML (Tom's Markup Language)`.
 The module has a :py:func:`~nibabies.config.to_filename` function to allow writting out
 the settings to hard disk in *ToML* format, which looks like:
 
-.. literalinclude:: ../fmriprep/data/tests/config.toml
+.. literalinclude:: ../nibabies/data/tests/config.toml
    :language: toml
    :name: nibabies.toml
    :caption: **Example file representation of nibabies settings**.
@@ -140,7 +140,7 @@ if os.getenv("IS_DOCKER_8395080871"):
     _cgroup = Path("/proc/1/cgroup")
     if _cgroup.exists() and "docker" in _cgroup.read_text():
         _docker_ver = os.getenv("DOCKER_VERSION_8395080871")
-        _exec_env = "fmriprep-docker" if _docker_ver else "docker"
+        _exec_env = "nibabies-docker" if _docker_ver else "docker"
     del _cgroup
 
 _fs_license = os.getenv("FS_LICENSE")
@@ -367,8 +367,6 @@ class execution(_Config):
     """Debug mode(s)."""
     echo_idx = None
     """Select a particular echo for multi-echo EPI datasets."""
-    fmriprep_dir = None
-    """Root of fMRIPrep BIDS Derivatives dataset. Depends on output_layout."""
     fs_license_file = _fs_license
     """An existing file containing a FreeSurfer license."""
     fs_subjects_dir = None
@@ -383,6 +381,8 @@ class execution(_Config):
     """Utilize uncompressed NIfTIs and other tricks to minimize memory allocation."""
     md_only_boilerplate = False
     """Do not convert boilerplate from MarkDown to LaTex and HTML."""
+    nibabies_dir = None
+    """Root of NiBabies BIDS Derivatives dataset. Depends on output_layout."""
     notrack = False
     """Do not monitor *nibabies* using Sentry.io."""
     output_dir = None
@@ -415,11 +415,11 @@ class execution(_Config):
         "anat_derivatives",
         "bids_dir",
         "bids_database_dir",
-        "fmriprep_dir",
         "fs_license_file",
         "fs_subjects_dir",
         "layout",
         "log_dir",
+        "nibabies_dir",
         "output_dir",
         "segmentation_atlases_dir",
         "templateflow_home",
