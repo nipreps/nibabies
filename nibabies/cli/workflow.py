@@ -14,7 +14,7 @@ def build_workflow(config_file, retval):
     """Create the Nipype Workflow that supports the whole execution graph."""
     from niworkflows.utils.bids import collect_participants, check_pipeline_version
     from niworkflows.utils.misc import check_valid_fs_license
-    from niworkflows.reports import generate_reports
+    from ..reports.core import generate_reports
     from .. import config
     from ..utils.misc import check_deps
     from ..workflows.base import init_nibabies_wf

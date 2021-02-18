@@ -13,13 +13,14 @@ from nipype.interfaces.ants.utils import AI
 
 # niworkflows
 from niworkflows.anat.ants import init_atropos_wf, ATROPOS_MODELS
-from niworkflows.interfaces.images import RegridToZooms, ValidateImage
+from niworkflows.interfaces.header import ValidateImage
+from niworkflows.interfaces.images import RegridToZooms
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
 from niworkflows.interfaces.fixes import (
     FixHeaderRegistration as Registration,
     FixHeaderApplyTransforms as ApplyTransforms,
 )
-from niworkflows.interfaces.registration import (
+from niworkflows.interfaces.reportlets.registration import (
     SimpleBeforeAfterRPT as SimpleBeforeAfter
 )
 from templateflow.api import get as get_template
