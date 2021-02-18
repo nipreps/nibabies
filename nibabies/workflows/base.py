@@ -17,7 +17,8 @@ from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
 from .. import config
-from fmriprep.interfaces import SubjectSummary, AboutSummary, DerivativesDataSink
+from ..interfaces import DerivativesDataSink
+from ..interfaces.reports import SubjectSummary, AboutSummary
 # from .bold import init_func_preproc_wf
 
 
@@ -66,7 +67,7 @@ def init_nibabies_wf():
         single_subject_wf = init_single_subject_wf(subject_id)
 
         single_subject_wf.config["execution"]["crashdump_dir"] = str(
-            config.execution.fmriprep_dir
+            config.execution.nibabies_dir
             / f"sub-{subject_id}"
             / "log"
             / config.execution.run_uuid
@@ -82,7 +83,7 @@ def init_nibabies_wf():
 
         # Dump a copy of the config file into the log directory
         log_dir = (
-            config.execution.fmriprep_dir
+            config.execution.nibabies_dir
             / f"sub-{subject_id}"
             / "log"
             / config.execution.run_uuid
@@ -224,7 +225,7 @@ It is released under the [CC0]\
         nilearn_ver=NILEARN_VERSION
     )
 
-    fmriprep_dir = str(config.execution.fmriprep_dir)
+    nibabies_dir = str(config.execution.nibabies_dir)
 
     inputnode = pe.Node(
         niu.IdentityInterface(fields=["subjects_dir"]), name="inputnode"
@@ -262,7 +263,7 @@ It is released under the [CC0]\
 
     ds_report_summary = pe.Node(
         DerivativesDataSink(
-            base_directory=fmriprep_dir,
+            base_directory=nibabies_dir,
             desc="summary",
             datatype="figures",
             dismiss_entities=("echo",),
@@ -273,7 +274,7 @@ It is released under the [CC0]\
 
     ds_report_about = pe.Node(
         DerivativesDataSink(
-            base_directory=fmriprep_dir,
+            base_directory=nibabies_dir,
             desc="about",
             datatype="figures",
             dismiss_entities=("echo",),
@@ -294,7 +295,7 @@ It is released under the [CC0]\
         freesurfer=config.workflow.run_reconall,
         longitudinal=config.workflow.longitudinal,
         omp_nthreads=config.nipype.omp_nthreads,
-        output_dir=fmriprep_dir,
+        output_dir=nibabies_dir,
         segmentation_atlases=config.execution.segmentation_atlases_dir,
         skull_strip_mode=config.workflow.skull_strip_t1w,
         skull_strip_template=Reference.from_string(

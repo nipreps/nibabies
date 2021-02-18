@@ -75,7 +75,7 @@ def init_infant_anat_wf(
     """
     from nipype.interfaces.base import Undefined
     from nipype.interfaces.ants.base import Info as ANTsInfo
-    from niworkflows.interfaces.images import ValidateImage
+    from niworkflows.interfaces.header import ValidateImage
     from smriprep.workflows.anatomical import init_anat_template_wf, _probseg_fast2bids, _pop
     from smriprep.workflows.norm import init_anat_norm_wf
     from smriprep.workflows.outputs import (
@@ -401,7 +401,8 @@ def init_t2w_template_wf(longitudinal, omp_nthreads, num_t2w, name="anat_t2w_tem
         StructuralReference,
         PatchedLTAConvert as LTAConvert,
     )
-    from niworkflows.interfaces.images import TemplateDimensions, Conform, ValidateImage
+    from niworkflows.interfaces.header import ValidateImage
+    from niworkflows.interfaces.images import TemplateDimensions, Conform
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
     from niworkflows.utils.misc import add_suffix
 

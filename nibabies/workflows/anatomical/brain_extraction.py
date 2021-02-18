@@ -13,22 +13,19 @@ from nipype.interfaces.ants.utils import AI
 
 # niworkflows
 from niworkflows.anat.ants import init_atropos_wf, ATROPOS_MODELS
-from niworkflows.interfaces.images import RegridToZooms, ValidateImage
+from niworkflows.interfaces.header import ValidateImage
+from niworkflows.interfaces.images import RegridToZooms
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
 from niworkflows.interfaces.fixes import (
     FixHeaderRegistration as Registration,
     FixHeaderApplyTransforms as ApplyTransforms,
 )
-from niworkflows.interfaces.registration import (
+from niworkflows.interfaces.reportlets.registration import (
     SimpleBeforeAfterRPT as SimpleBeforeAfter
 )
 from templateflow.api import get as get_template
 
 from ...interfaces.nibabel import IntensityClip
-from ...utils.filtering import (
-    gaussian_filter as _gauss_filter,
-    truncation as _trunc
-)
 from ...utils.misc import cohort_by_months
 
 LOWRES_ZOOMS = (2, 2, 2)
@@ -118,8 +115,6 @@ def init_infant_brain_extraction_wf(
     val_t1w = val_tmpl.clone("val_t1w")
     val_t2w = val_tmpl.clone("val_t2w")
     val_tmpl.inputs.in_file = _pop(tpl_target_path)
-
-    gauss_tmpl = pe.Node(niu.Function(function=_gauss_filter), name="gauss_tmpl")
 
     # Spatial normalization step
     lap_tmpl = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_tmpl")
