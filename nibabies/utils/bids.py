@@ -71,3 +71,57 @@ def write_derivative_description(bids_dir, deriv_dir):
         desc['License'] = orig_desc['License']
 
     Path.write_text(deriv_dir / 'dataset_description.json', json.dumps(desc, indent=4))
+
+
+def group_bolds_ref(*, layout, subject):
+    from contextlib import suppress
+    from itertools import product
+
+    from bids.layout import Query
+    from sdcflows.utils.epimanip import get_trt
+
+    base_entities = {
+        "subject": subject,
+        "extension": (".nii", ".nii.gz"),
+        "scope": "raw",  # Ensure derivatives are not captured
+    }
+    # list of tuples with unique combinations
+    combinations = []
+    # list of lists containing filenames that apply per combination
+    files = []
+
+    for ses, suffix in sorted(product(layout.get_sessions() or (None,), {'bold', })):
+        # bold files same session
+        bolds = layout.get(suffix=suffix, session=ses, **base_entities)
+
+        for bold in bolds:
+            # session, pe, ro
+            meta = bold.get_metadata()
+            pe_dir = meta.get("PhaseEncodingDirection")
+
+            ro = None
+            with suppress(ValueError):
+                ro = get_trt(meta, bold.path)
+            if ro is not None:
+                meta.update({"TotalReadoutTime": ro})
+
+            comb = (ses, pe_dir, ro)
+
+            if any(v is None for v in (pe_dir, ro)):
+                # cannot be certain so treat as unique
+                combinations.append(comb)
+                files.append([bold.path])
+
+            if comb in combinations:
+                # do not add a new entry to the combinations
+                # instead append the file to the existing bucket
+                idx = combinations.index(comb)
+                files[idx].append(bold.path)
+            else:
+                # add a new entry and start a file bucket
+                combinations.append(comb)
+                files.append([bold.path])
+
+        assert len(combinations) == len(files), "Nonequal number of combinations and file buckets"
+
+    return combinations, files
