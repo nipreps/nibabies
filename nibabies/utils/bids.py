@@ -73,7 +73,71 @@ def write_derivative_description(bids_dir, deriv_dir):
     Path.write_text(deriv_dir / 'dataset_description.json', json.dumps(desc, indent=4))
 
 
+def extract_entities(file_list):
+    """
+    Return a dictionary of common entities given a list of files.
+    Examples
+    --------
+    >>> extract_entities('sub-01/anat/sub-01_T1w.nii.gz')
+    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+    >>> extract_entities(['sub-01/anat/sub-01_T1w.nii.gz'] * 2)
+    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+    >>> extract_entities(['sub-01/anat/sub-01_run-1_T1w.nii.gz',
+    ...                   'sub-01/anat/sub-01_run-2_T1w.nii.gz'])
+    {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat',
+     'extension': '.nii.gz'}
+    """
+    from collections import defaultdict
+    from bids.layout import parse_file_entities
+    from niworkflows.utils.connections import listify
+
+    entities = defaultdict(list)
+    for e, v in [
+        ev_pair
+        for f in listify(file_list)
+        for ev_pair in parse_file_entities(f).items()
+    ]:
+        entities[e].append(v)
+
+    def _unique(inlist):
+        inlist = sorted(set(inlist))
+        if len(inlist) == 1:
+            return inlist[0]
+        return inlist
+    return {
+        k: _unique(v) for k, v in entities.items()
+    }
+
+
 def group_bolds_ref(*, layout, subject):
+    """
+    Extracts BOLD files from a BIDS dataset and combines them into buckets.
+    Files in a bucket share:
+    1) Session
+    2) Phase-encoding direction (PEdir)
+    3) Total readout time (TRT)
+
+    Any files with missing data for (2) or (3) are put in their own bucket.
+
+    Parameters
+    ----------
+    layout : pybids.layout.BIDSLayout
+        Initialized BIDSLayout
+    subject : str
+        The subject ID
+
+    Outputs
+    -------
+    combinations : list of tuples
+        Each tuple is composed of (session, PEdir, TRT)
+    files : list of lists
+        Files matching each combination.
+
+    Limitations
+    -----------
+    Single-band reference (sbref) are excluded.
+    Does not group multi-echo data.
+    """
     from contextlib import suppress
     from itertools import product
 
