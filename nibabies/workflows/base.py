@@ -415,7 +415,7 @@ tasks and sessions), the following preprocessing was performed.
             # fmt: off
             workflow.connect([
                 (bold_ref_wf, func_preproc_wf, [
-                    ('outputnode.epi_ref_file', 'inputnode.reference_file'),
+                    ('outputnode.epi_ref_file', 'inputnode.bold_ref'),
                     (
                         ('outputnode.xfm_files', _select_iter_idx, idx),
                         'inputnode.ref_xfm'),
