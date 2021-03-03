@@ -10,7 +10,7 @@ Generate T2* map from multi-echo BOLD images
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
-from ...interfaces import T2SMap
+from ...interfaces.multiecho import T2SMap
 from ... import config
 
 

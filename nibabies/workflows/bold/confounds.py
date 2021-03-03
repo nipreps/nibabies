@@ -9,6 +9,7 @@ Calculate BOLD confounds
 
 """
 from os import getenv
+import warnings
 
 from nipype.algorithms import confounds as nac
 from nipype.interfaces import utility as niu, fsl
@@ -134,7 +135,7 @@ def init_bold_confs_wf(
     from niworkflows.interfaces.plotting import (
         CompCorVariancePlot, ConfoundsCorrelationPlot
     )
-    from niworkflows.interfaces.utils import (
+    from niworkflows.interfaces.utility import (
         AddTSVHeader, TSV2JSON, DictMerge
     )
     from ...interfaces.confounds import aCompCorMasks
@@ -467,13 +468,13 @@ def init_carpetplot_wf(mem_gb, metadata, cifti_output, name="bold_carpet_wf"):
     mrg_xfms = pe.Node(niu.Merge(2), name='mrg_xfms')
 
     # Warp segmentation into EPI space
-    resample_parc = pe.Node(ApplyTransforms(
-        dimension=3,
-        input_image=str(tf.api.get(
-            'MNI152NLin2009cAsym', resolution=1, desc='carpet',
-            suffix='dseg', extension=['.nii', '.nii.gz'])),
-        interpolation='MultiLabel'),
-        name='resample_parc')
+    # resample_parc = pe.Node(ApplyTransforms(
+    #     dimension=3,
+    #     input_image=str(tf.api.get(
+    #         'MNI152NLin2009cAsym', resolution=1, desc='carpet',
+    #         suffix='dseg', extension=['.nii', '.nii.gz'])),
+    #     interpolation='MultiLabel'),
+    #     name='resample_parc')
 
     # Carpetplot and confounds plot
     conf_plot = pe.Node(FMRISummary(
@@ -493,23 +494,13 @@ def init_carpetplot_wf(mem_gb, metadata, cifti_output, name="bold_carpet_wf"):
 
     workflow = Workflow(name=name)
     # no need for segmentations if using CIFTI
-    if cifti_output:
-        workflow.connect(inputnode, 'cifti_bold', conf_plot, 'in_func')
-    else:
-        workflow.connect([
-            (inputnode, mrg_xfms, [('t1_bold_xform', 'in1'),
-                                   ('std2anat_xfm', 'in2')]),
-            (inputnode, resample_parc, [('bold_mask', 'reference_image')]),
-            (mrg_xfms, resample_parc, [('out', 'transforms')]),
-            # Carpetplot
-            (inputnode, conf_plot, [
-                ('bold', 'in_func'),
-                ('bold_mask', 'in_mask')]),
-            (resample_parc, conf_plot, [('output_image', 'in_segm')])
-        ])
+    if not cifti_output:
+        warnings.warn("CIFTI outputs required for carpet plot generation")
 
     workflow.connect([
-        (inputnode, conf_plot, [('confounds_file', 'confounds_file')]),
+        (inputnode, conf_plot, [
+            ('confounds_file', 'confounds_file'),
+            ('cifti_bold', 'in_func')]),
         (conf_plot, ds_report_bold_conf, [('out_file', 'in_file')]),
         (conf_plot, outputnode, [('out_file', 'out_carpetplot')]),
     ])

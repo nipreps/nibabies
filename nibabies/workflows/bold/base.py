@@ -18,7 +18,7 @@ from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
 from niworkflows.utils.connections import pop_file, listify
-from niworkflows.interfaces.headers import ValidateImage
+from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask
 
 from ...interfaces import DerivativesDataSink
@@ -146,8 +146,7 @@ def init_func_preproc_wf(bold_file):
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.nibabel import ApplyMask
-    from niworkflows.interfaces.utility import KeySelect
-    from niworkflows.interfaces.utils import DictMerge
+    from niworkflows.interfaces.utility import KeySelect, DictMerge
     from sdcflows.workflows.base import init_sdc_estimate_wf, fieldmap_wrangler
 
     mem_gb = {'filesize': 1, 'resampled': 1, 'largemem': 1}
@@ -376,15 +375,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     )
     bold_bold_trans_wf.inputs.inputnode.name_source = ref_file
 
-    # Generate a new BOLD reference
-    # This BOLD references *does not use* single-band reference images.
-    final_boldref_wf = init_bold_reference_wf(
-        name='final_boldref_wf',
-        omp_nthreads=omp_nthreads,
-        multiecho=multiecho,
-    )
-    final_boldref_wf.__desc__ = None  # Unset description to avoid second appearance
-
     # SLICE-TIME CORRECTION (or bypass) #############################################
     if run_stc is True:  # bool('TooShort') == True, so check True explicitly
         bold_stc_wf = init_bold_stc_wf(name='bold_stc_wf', metadata=metadata)
@@ -506,7 +496,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('outputnode.itk_t1_to_bold', 'inputnode.t1_bold_xform')]),
         (inputnode, bold_confounds_wf, [
             ('n_dummy_scans', 'inputnode.skip_vols')]),
-        (final_boldref_wf, bold_confounds_wf, [
+        (bold_bold_trans_wf, bold_confounds_wf, [
             ('outputnode.bold_mask', 'inputnode.bold_mask')]),
         (bold_confounds_wf, outputnode, [
             ('outputnode.confounds_file', 'confounds'),
@@ -523,6 +513,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (outputnode, summary, [('confounds', 'confounds_file')]),
     ])
 
+    # MaskEpi bold_bold_trans_wf.outputnode.bold
+    # final bold_ref is in T1w space...
+
     # for standard EPI data, pass along correct file
     if not multiecho:
         workflow.connect([
@@ -530,8 +523,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('bold_file', 'inputnode.source_file')]),
             (bold_bold_trans_wf, bold_confounds_wf, [
                 ('outputnode.bold', 'inputnode.bold')]),
-            (bold_bold_trans_wf, final_boldref_wf, [
-                ('outputnode.bold', 'inputnode.bold_file')]),
+            # (bold_bold_trans_wf, final_boldref_wf, [
+            #     ('outputnode.bold', 'inputnode.bold_file')]),
             (bold_split, bold_t1_trans_wf, [
                 ('out_files', 'inputnode.bold_split')]),
             (bold_hmc_wf, bold_t1_trans_wf, [
@@ -546,8 +539,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 (('bold_file', combine_meepi_source), 'inputnode.source_file')]),
             (bold_bold_trans_wf, join_echos, [
                 ('outputnode.bold', 'bold_files')]),
-            (join_echos, final_boldref_wf, [
-                ('bold_files', 'inputnode.bold_file')]),
+            # (join_echos, final_boldref_wf, [
+            #     ('bold_files', 'inputnode.bold_file')]),
+            # TODO: Check with multi-echo data
             (bold_bold_trans_wf, skullstrip_bold_wf, [
                 ('outputnode.bold', 'inputnode.in_file')]),
             (skullstrip_bold_wf, join_echos, [
@@ -639,7 +633,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('outputnode.itk_bold_to_t1', 'transforms')]),
             (bold_t1_trans_wf, boldmask_to_t1w, [
                 ('outputnode.bold_mask_t1', 'reference_image')]),
-            (final_boldref_wf, boldmask_to_t1w, [
+            # Check
+            (bold_bold_trans_wf, boldmask_to_t1w, [
                 ('outputnode.bold_mask', 'input_image')]),
             (boldmask_to_t1w, outputnode, [
                 ('output_image', 'bold_mask_anat')]),
@@ -647,8 +642,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     if nonstd_spaces.intersection(('func', 'run', 'bold', 'boldref', 'sbref')):
         workflow.connect([
-            (final_boldref_wf, func_derivatives_wf, [
-                ('outputnode.ref_image', 'inputnode.bold_native_ref'),
+            (bold_bold_trans_wf, func_derivatives_wf, [
+                ('outputnode.bold_ref', 'inputnode.bold_native_ref'),
                 ('outputnode.bold_mask', 'inputnode.bold_mask_native')]),
             (bold_bold_trans_wf if not multiecho else bold_t2s_wf, outputnode, [
                 ('outputnode.bold', 'bold_native')])
@@ -672,7 +667,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('bold_file', 'inputnode.name_source'),
                 ('anat_aseg', 'inputnode.bold_aseg'),
                 ('anat_aparc', 'inputnode.bold_aparc')]),
-            (final_boldref_wf, bold_std_trans_wf, [
+            (bold_bold_trans_wf, bold_std_trans_wf, [
                 ('outputnode.bold_mask', 'inputnode.bold_mask')]),
             (bold_reg_wf, bold_std_trans_wf, [
                 ('outputnode.itk_bold_to_t1', 'inputnode.itk_bold_to_t1')]),
@@ -834,24 +829,25 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 bold_grayords_wf, 'outputnode.cifti_bold', carpetplot_wf, 'inputnode.cifti_bold'
             )
         else:
-            # Xform to 'MNI152NLin2009cAsym' is always computed.
-            carpetplot_select_std = pe.Node(
-                KeySelect(fields=['std2anat_xfm'], key='MNI152NLin2009cAsym'),
-                name='carpetplot_select_std', run_without_submitting=True)
+            pass
+            # # Xform to 'MNI152NLin2009cAsym' is always computed.
+            # carpetplot_select_std = pe.Node(
+            #     KeySelect(fields=['std2anat_xfm'], key='MNI152NLin2009cAsym'),
+            #     name='carpetplot_select_std', run_without_submitting=True)
 
-            workflow.connect([
-                (inputnode, carpetplot_select_std, [
-                    ('std2anat_xfm', 'std2anat_xfm'),
-                    ('template', 'keys')]),
-                (carpetplot_select_std, carpetplot_wf, [
-                    ('std2anat_xfm', 'inputnode.std2anat_xfm')]),
-                (bold_bold_trans_wf if not multiecho else bold_t2s_wf, carpetplot_wf, [
-                    ('outputnode.bold', 'inputnode.bold')]),
-                (final_boldref_wf, carpetplot_wf, [
-                    ('outputnode.bold_mask', 'inputnode.bold_mask')]),
-                (bold_reg_wf, carpetplot_wf, [
-                    ('outputnode.itk_t1_to_bold', 'inputnode.t1_bold_xform')]),
-            ])
+            # workflow.connect([
+            #     (inputnode, carpetplot_select_std, [
+            #         ('std2anat_xfm', 'std2anat_xfm'),
+            #         ('template', 'keys')]),
+            #     (carpetplot_select_std, carpetplot_wf, [
+            #         ('std2anat_xfm', 'inputnode.std2anat_xfm')]),
+            #     (bold_bold_trans_wf if not multiecho else bold_t2s_wf, carpetplot_wf, [
+            #         ('outputnode.bold', 'inputnode.bold')]),
+            #     (bold_bold_trans_wf, carpetplot_wf, [
+            #         ('outputnode.bold_mask', 'inputnode.bold_mask')]),
+            #     (bold_reg_wf, carpetplot_wf, [
+            #         ('outputnode.itk_t1_to_bold', 'inputnode.t1_bold_xform')]),
+            # ])
 
         workflow.connect([
             (bold_confounds_wf, carpetplot_wf, [
