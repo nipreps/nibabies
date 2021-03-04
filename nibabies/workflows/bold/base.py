@@ -25,6 +25,7 @@ from ...interfaces import DerivativesDataSink
 from ...interfaces.epi import EPIMask
 from ...interfaces.reports import FunctionalSummary
 from ...utils.bids import extract_entities
+from ...utils.fmap import init_sdc_estimate_wf  # SDC patch
 from ...utils.misc import combine_meepi_source
 # BOLD workflows
 from .confounds import init_bold_confs_wf, init_carpetplot_wf
@@ -40,7 +41,7 @@ from .resampling import (
 from .outputs import init_func_derivatives_wf
 
 
-def init_func_preproc_wf(bold_file, subject_id):
+def init_func_preproc_wf(bold_file):
     """
     This workflow controls the functional preprocessing stages of *fMRIPrep*.
 
@@ -212,18 +213,18 @@ def init_func_preproc_wf(bold_file, subject_id):
 
     # Find fieldmaps. Options: (phase1|phase2|phasediff|epi|fieldmap|syn)
     fmaps = None
-    if 'fieldmaps' not in config.workflow.ignore:
-        # TODO: Port over SDCFlows 2.0
-        # fmaps = fieldmap_wrangler(
-        #     layout,
-        #     ref_file,
-        #     use_syn=config.workflow.use_syn_sdc,
-        #     force_syn=config.workflow.force_syn
-        # )
+    # TODO: Re-enable SDC correction with new API
+    # if 'fieldmaps' not in config.workflow.ignore:
+    #     fmaps = fieldmap_wrangler(
+    #         layout,
+    #         ref_file,
+    #         use_syn=config.workflow.use_syn_sdc,
+    #         force_syn=config.workflow.force_syn
+    #     )
 
-    elif config.workflow.use_syn_sdc or config.workflow.force_syn:
-        # If fieldmaps are not enabled, activate SyN-SDC in unforced (False) mode
-        fmaps = {'syn': False}
+    # elif config.workflow.use_syn_sdc or config.workflow.force_syn:
+    #     # If fieldmaps are not enabled, activate SyN-SDC in unforced (False) mode
+    #     fmaps = {'syn': False}
 
     # Short circuits: (True and True and (False or 'TooShort')) == 'TooShort'
     run_stc = (
@@ -482,8 +483,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (inputnode, bold_ref_mask, [('bold_ref', 'in_file')]),
         (bold_ref_mask, bold_sdc_wf, [('out_file', 'inputnode.epi_mask')]),
         (bold_ref_mask, bold_ref_brain, [('out_file', 'in_file')]),
-        (bold_ref_brain, bold_sdc_wf, [('out_file', 'inputnode.epi_brain')])
-        (inputnode, bold_sdc_wf, [('bold_ref', 'inputnode.epi_file')])
+        (bold_ref_brain, bold_sdc_wf, [('out_file', 'inputnode.epi_brain')]),
+        (inputnode, bold_sdc_wf, [('bold_ref', 'inputnode.epi_file')]),
         (bold_sdc_wf, bold_t1_trans_wf, [
             ('outputnode.epi_mask', 'inputnode.ref_bold_mask'),
             ('outputnode.epi_brain', 'inputnode.ref_bold_brain')]),
@@ -886,15 +887,23 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
 
 def _get_series_len(bold_fname):
-    from niworkflows.interfaces.registration import _get_vols_to_discard
+    from nipype.algorithms.confounds import is_outlier
+    import nibabel as nb
+    import numpy as np
 
     img = nb.load(bold_fname)
     if len(img.shape) < 4:
         return 1
 
-    skip_vols = _get_vols_to_discard(img)
-
-    return img.shape[3] - skip_vols
+    data = img.get_fdata(dtype="float32")
+    # Data can come with outliers showing very high numbers - preemptively prune
+    data = np.clip(
+        data,
+        a_min=0.0,
+        a_max=np.percentile(data, 99.8),
+    )
+    outliers = is_outlier(np.mean(data, axis=(0, 1, 2)))
+    return img.shape[3] - outliers
 
 
 def _create_mem_gb(bold_fname):

@@ -63,7 +63,7 @@ def init_func_derivatives_wf(
     output_dir,
     spaces,
     use_aroma,
-    debug=False,
+    debug,
     name='func_derivatives_wf',
 ):
     """
@@ -387,7 +387,7 @@ def init_func_derivatives_wf(
                                         (('cifti_metadata', _read_json), 'meta_dict')])
         ])
 
-    if "compcor" in config.execution.debug:
+    if debug and "compcor" in debug:
         ds_acompcor_masks = pe.Node(
             DerivativesDataSink(
                 base_directory=output_dir, desc=[f"CompCor{_}" for _ in "CWA"],

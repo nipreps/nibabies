@@ -126,7 +126,6 @@ def init_bold_confs_wf(
     from niworkflows.interfaces.confounds import ExpandModel, SpikeRegressors
     from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
     from niworkflows.interfaces.images import SignalExtraction
-    from niworkflows.interfaces.masks import ROIsPlot
     from niworkflows.interfaces.nibabel import ApplyMask, Binarize
     from niworkflows.interfaces.patches import (
         RobustACompCor as ACompCor,
@@ -135,6 +134,7 @@ def init_bold_confs_wf(
     from niworkflows.interfaces.plotting import (
         CompCorVariancePlot, ConfoundsCorrelationPlot
     )
+    from niworkflows.interfaces.reportlets.masks import ROIsPlot
     from niworkflows.interfaces.utility import (
         AddTSVHeader, TSV2JSON, DictMerge
     )
