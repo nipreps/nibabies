@@ -708,7 +708,7 @@ def init_spaces(checkpoint=True):
     #     # Make sure there's a normalization to FSL for AROMA to use.
     #     spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
 
-    # cifti_output = workflow.cifti_output
+    cifti_output = workflow.cifti_output
     if workflow.cifti_output:
         # CIFTI grayordinates to corresponding FSL-MNI resolutions.
         vol_res = "2" if cifti_output == "91k" else "1"

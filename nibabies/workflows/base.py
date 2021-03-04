@@ -381,7 +381,7 @@ It is released under the [CC0]\
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
     anat_preproc_wf.__postdesc__ = (
-        (anat_preproc_wf.__postdesc__ or "")
+        (anat_preproc_wf.__postdesc__ if hasattr(anat_preproc_wf, '__postdesc__') else "")
         + f"""
 
 Functional data preprocessing
@@ -407,7 +407,11 @@ tasks and sessions), the following preprocessing was performed.
         return workflow
 
     for idx, bold_files in enumerate(bold_groupings):
-        bold_ref_wf = init_epi_reference_wf(auto_bold_nss=True, name=f'bold_reference_wf{idx}')
+        bold_ref_wf = init_epi_reference_wf(
+            auto_bold_nss=True,
+            name=f'bold_reference_wf{idx}',
+            omp_nthreads=config.nipype.omp_nthreads
+        )
         bold_ref_wf.inputs.inputnode.in_files = bold_files
 
         for idx, bold_file in enumerate(bold_files):

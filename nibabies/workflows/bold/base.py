@@ -40,7 +40,7 @@ from .resampling import (
 from .outputs import init_func_derivatives_wf
 
 
-def init_func_preproc_wf(bold_file):
+def init_func_preproc_wf(bold_file, subject_id):
     """
     This workflow controls the functional preprocessing stages of *fMRIPrep*.
 
@@ -147,7 +147,6 @@ def init_func_preproc_wf(bold_file):
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect, DictMerge
-    from sdcflows.workflows.base import init_sdc_estimate_wf, fieldmap_wrangler
 
     mem_gb = {'filesize': 1, 'resampled': 1, 'largemem': 1}
     bold_tlen = 10
@@ -214,9 +213,14 @@ def init_func_preproc_wf(bold_file):
     # Find fieldmaps. Options: (phase1|phase2|phasediff|epi|fieldmap|syn)
     fmaps = None
     if 'fieldmaps' not in config.workflow.ignore:
-        fmaps = fieldmap_wrangler(layout, ref_file,
-                                  use_syn=config.workflow.use_syn_sdc,
-                                  force_syn=config.workflow.force_syn)
+        # TODO: Port over SDCFlows 2.0
+        # fmaps = fieldmap_wrangler(
+        #     layout,
+        #     ref_file,
+        #     use_syn=config.workflow.use_syn_sdc,
+        #     force_syn=config.workflow.force_syn
+        # )
+
     elif config.workflow.use_syn_sdc or config.workflow.force_syn:
         # If fieldmaps are not enabled, activate SyN-SDC in unforced (False) mode
         fmaps = {'syn': False}
@@ -399,9 +403,12 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         boldbuffer.iterables = ('bold_file', bold_file)
 
     # SDC (SUSCEPTIBILITY DISTORTION CORRECTION) or bypass ##########################
-    bold_sdc_wf = init_sdc_estimate_wf(fmaps, metadata,
-                                       omp_nthreads=omp_nthreads,
-                                       debug=config.execution.sloppy)
+    bold_sdc_wf = init_sdc_estimate_wf(
+        fmaps,
+        metadata,
+        omp_nthreads=omp_nthreads,
+        debug=config.execution.sloppy
+    )
 
     # MULTI-ECHO EPI DATA #############################################
     if multiecho:  # instantiate relevant interfaces, imports
@@ -513,9 +520,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (outputnode, summary, [('confounds', 'confounds_file')]),
     ])
 
-    # MaskEpi bold_bold_trans_wf.outputnode.bold
-    # final bold_ref is in T1w space...
-
     # for standard EPI data, pass along correct file
     if not multiecho:
         workflow.connect([
@@ -591,7 +595,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             sdc_select_std = pe.Node(
                 KeySelect(fields=['std2anat_xfm']),
                 name='sdc_select_std', run_without_submitting=True)
-            sdc_select_std.inputs.key = 'UNCInfant'  # changed from MNI
+            sdc_select_std.inputs.key = 'UNCInfant:cohort-1'  # changed from MNI
             workflow.connect([
                 (inputnode, sdc_select_std, [('std2anat_xfm', 'std2anat_xfm'),
                                              ('template', 'keys')]),
