@@ -241,14 +241,10 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
     # Spatial normalization (requires segmentation)
     anat_norm_wf = init_anat_norm_wf(
-        debug=sloppy,
+        sloppy=sloppy,
         omp_nthreads=omp_nthreads,
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
-    # HACK: remove resolution from TFSelect
-    anat_norm_wf.get_node("tf_select").inputs.resolution = Undefined
-    # HACK: requires patched niworkflows to allow setting resolution to none
-    anat_norm_wf.get_node("registration").inputs.template_resolution = None
 
     # fmt: off
     wf.connect([
