@@ -45,7 +45,6 @@ def init_infant_brain_extraction_wf(
     from nipype.interfaces.ants import N4BiasFieldCorrection, ImageMath
 
     # niworkflows
-    from niworkflows.interfaces.header import ValidateImage
     from niworkflows.interfaces.nibabel import ApplyMask, Binarize
     from niworkflows.interfaces.fixes import (
         FixHeaderRegistration as Registration,
@@ -103,9 +102,6 @@ def init_infant_brain_extraction_wf(
         ),
         name="outputnode",
     )
-
-    # validate images
-    val_t2w = pe.Node(ValidateImage(), name="val_t2w")
 
     # truncate target intensity for N4 correction
     clip_tmpl = pe.Node(IntensityClip(in_file=_pop(tpl_target_path)), name="clip_tmpl")
@@ -190,8 +186,8 @@ def init_infant_brain_extraction_wf(
     # fmt:off
     workflow.connect([
         # 1. Massage T2w
-        (inputnode, val_t2w, [("in_t2w", "in_file")]),
-        (val_t2w, clip_t2w, [("out_file", "in_file")]),
+        (inputnode, clip_t2w, [("in_t2w", "in_file")]),
+        (inputnode, map_mask_t2w, [("in_t2w", "reference_image")]),
         (clip_t2w, init_t2w_n4, [("out_file", "input_image")]),
         (init_t2w_n4, clip_t2w_inu, [("output_image", "in_file")]),
         (clip_t2w_inu, lap_t2w, [("out_file", "op1")]),
@@ -207,7 +203,6 @@ def init_infant_brain_extraction_wf(
         (mrg_tmpl, norm, [("out", "fixed_image")]),
         (mrg_t2w, norm, [("out", "moving_image")]),
         # 4. Map template brainmask into T2w space
-        (val_t2w, map_mask_t2w, [("out_file", "reference_image")]),
         (norm, map_mask_t2w, [
             ("reverse_transforms", "transforms"),
             ("reverse_invert_flags", "invert_transform_flags")
