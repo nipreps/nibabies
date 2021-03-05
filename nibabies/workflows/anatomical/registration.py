@@ -55,7 +55,6 @@ def init_coregistration_wf(
 
     """
     from nipype.interfaces.ants import N4BiasFieldCorrection
-    from niworkflows.interfaces.header import ValidateImage
     from niworkflows.interfaces.fixes import (
         FixHeaderRegistration as Registration,
         FixHeaderApplyTransforms as ApplyTransforms,
@@ -77,7 +76,6 @@ def init_coregistration_wf(
         name="outputnode",
     )
 
-    val_t1w = pe.Node(ValidateImage(), name="val_t1w")
     pre_n4_clip = pe.Node(IntensityClip(), name="pre_n4_clip")
     init_n4 = pe.Node(
         N4BiasFieldCorrection(
@@ -139,12 +137,11 @@ def init_coregistration_wf(
 
     # fmt:off
     workflow.connect([
-        (inputnode, val_t1w, [("in_t1w", "in_file")]),
+        (inputnode, map_mask, [("in_t1w", "reference_image")]),
+        (inputnode, pre_n4_clip, [("in_t1w", "in_file")]),
         (inputnode, coreg, [("in_t2w_preproc", "fixed_image")]),
         (inputnode, map_mask, [("in_probmap", "input_image")]),
         (inputnode, fixed_masks_arg, [("in_mask", "in4")]),
-        (val_t1w, map_mask, [("out_file", "reference_image")]),
-        (val_t1w, pre_n4_clip, [("out_file", "in_file")]),
         (pre_n4_clip, init_n4, [("out_file", "input_image")]),
         (init_n4, post_n4_clip, [("output_image", "in_file")]),
         (post_n4_clip, coreg, [("out_file", "moving_image")]),
