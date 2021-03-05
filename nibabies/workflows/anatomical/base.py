@@ -131,6 +131,7 @@ BIDS dataset."""
                 "surfaces",
                 "anat_aseg",
                 "anat_aparc",
+                "template",
             ]
         ),
         name="outputnode",

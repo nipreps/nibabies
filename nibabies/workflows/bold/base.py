@@ -20,9 +20,9 @@ from nipype.interfaces import utility as niu
 from niworkflows.utils.connections import pop_file, listify
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask
+from sdcflows.interfaces.brainmask import BrainExtraction
 
 from ...interfaces import DerivativesDataSink
-from ...interfaces.epi import EPIMask
 from ...interfaces.reports import FunctionalSummary
 from ...utils.bids import extract_entities
 from ...utils.fmap import init_sdc_estimate_wf  # SDC patch
@@ -434,8 +434,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                                        name='bold_t2smap_wf')
 
     # Mask BOLD reference image
-    bold_ref_mask = pe.Node(EPIMask(), name='bold_ref_mask')
-    bold_ref_brain = pe.Node(ApplyMask(), 'bold_ref_brain')
+    bold_ref_mask = pe.Node(BrainExtraction(), name='bold_ref_mask')
 
     # MAIN WORKFLOW STRUCTURE #######################################################
     workflow.connect([
@@ -481,9 +480,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (anat_brain, bold_sdc_wf, [
             ('out_file', 'inputnode.t1w_brain')]),
         (inputnode, bold_ref_mask, [('bold_ref', 'in_file')]),
-        (bold_ref_mask, bold_sdc_wf, [('out_file', 'inputnode.epi_mask')]),
-        (bold_ref_mask, bold_ref_brain, [('out_file', 'in_file')]),
-        (bold_ref_brain, bold_sdc_wf, [('out_file', 'inputnode.epi_brain')]),
+        # also outputs probabilistic mask, which can be thresholded to play around with
+        (bold_ref_mask, bold_sdc_wf, [('out_mask', 'inputnode.epi_mask')]),
+        (bold_ref_mask, bold_sdc_wf, [('out_file', 'inputnode.epi_brain')]),
         (inputnode, bold_sdc_wf, [('bold_ref', 'inputnode.epi_file')]),
         (bold_sdc_wf, bold_t1_trans_wf, [
             ('outputnode.epi_mask', 'inputnode.ref_bold_mask'),
@@ -566,63 +565,64 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         bold_t1_trans_wf.inputs.inputnode.hmc_xforms = 'identity'
 
     if fmaps:
-        from sdcflows.workflows.outputs import init_sdc_unwarp_report_wf
-        # Report on BOLD correction
-        fmap_unwarp_report_wf = init_sdc_unwarp_report_wf()
-        workflow.connect([
-            (inputnode, fmap_unwarp_report_wf, [
-                ('anat_dseg', 'inputnode.in_seg')]),
-            (inputnode, fmap_unwarp_report_wf, [
-                ('bold_ref', 'inputnode.in_pre')]),
-            (bold_reg_wf, fmap_unwarp_report_wf, [
-                ('outputnode.itk_t1_to_bold', 'inputnode.in_xfm')]),
-            (bold_sdc_wf, fmap_unwarp_report_wf, [
-                ('outputnode.epi_corrected', 'inputnode.in_post')]),
-        ])
+        raise NotImplementedError
+        # from sdcflows.workflows.outputs import init_sdc_unwarp_report_wf
+        # # Report on BOLD correction
+        # fmap_unwarp_report_wf = init_sdc_unwarp_report_wf()
+        # workflow.connect([
+        #     (inputnode, fmap_unwarp_report_wf, [
+        #         ('anat_dseg', 'inputnode.in_seg')]),
+        #     (inputnode, fmap_unwarp_report_wf, [
+        #         ('bold_ref', 'inputnode.in_pre')]),
+        #     (bold_reg_wf, fmap_unwarp_report_wf, [
+        #         ('outputnode.itk_t1_to_bold', 'inputnode.in_xfm')]),
+        #     (bold_sdc_wf, fmap_unwarp_report_wf, [
+        #         ('outputnode.epi_corrected', 'inputnode.in_post')]),
+        # ])
 
-        # Overwrite ``out_path_base`` of unwarping DataSinks
-        # And ensure echo is dropped from report
-        for node in fmap_unwarp_report_wf.list_node_names():
-            if node.split('.')[-1].startswith('ds_'):
-                fmap_unwarp_report_wf.get_node(node).interface.out_path_base = ""
-                fmap_unwarp_report_wf.get_node(node).inputs.dismiss_entities = ("echo",)
+        # # Overwrite ``out_path_base`` of unwarping DataSinks
+        # # And ensure echo is dropped from report
+        # for node in fmap_unwarp_report_wf.list_node_names():
+        #     if node.split('.')[-1].startswith('ds_'):
+        #         fmap_unwarp_report_wf.get_node(node).interface.out_path_base = ""
+        #         fmap_unwarp_report_wf.get_node(node).inputs.dismiss_entities = ("echo",)
 
-        for node in bold_sdc_wf.list_node_names():
-            if node.split('.')[-1].startswith('ds_'):
-                bold_sdc_wf.get_node(node).interface.out_path_base = ""
-                bold_sdc_wf.get_node(node).inputs.dismiss_entities = ("echo",)
+        # for node in bold_sdc_wf.list_node_names():
+        #     if node.split('.')[-1].startswith('ds_'):
+        #         bold_sdc_wf.get_node(node).interface.out_path_base = ""
+        #         bold_sdc_wf.get_node(node).inputs.dismiss_entities = ("echo",)
 
-        if 'syn' in fmaps:
-            sdc_select_std = pe.Node(
-                KeySelect(fields=['std2anat_xfm']),
-                name='sdc_select_std', run_without_submitting=True)
-            sdc_select_std.inputs.key = 'UNCInfant:cohort-1'  # changed from MNI
-            workflow.connect([
-                (inputnode, sdc_select_std, [('std2anat_xfm', 'std2anat_xfm'),
-                                             ('template', 'keys')]),
-                (sdc_select_std, bold_sdc_wf, [('std2anat_xfm', 'inputnode.std2anat_xfm')]),
-            ])
+        # if 'syn' in fmaps:
+        #     sdc_select_std = pe.Node(
+        #         KeySelect(fields=['std2anat_xfm']),
+        #         name='sdc_select_std', run_without_submitting=True)
+        #     sdc_select_std.inputs.key = 'UNCInfant:cohort-1'  # changed from MNI
+        #     workflow.connect([
+        #         (inputnode, sdc_select_std, [('std2anat_xfm', 'std2anat_xfm'),
+        #                                      ('template', 'keys')]),
+        #         (sdc_select_std, bold_sdc_wf, [('std2anat_xfm', 'inputnode.std2anat_xfm')]),
+        #     ])
 
-        if fmaps.get('syn') is True:  # SyN forced
-            syn_unwarp_report_wf = init_sdc_unwarp_report_wf(
-                name='syn_unwarp_report_wf', forcedsyn=True)
-            workflow.connect([
-                (inputnode, syn_unwarp_report_wf, [
-                    ('anat_dseg', 'inputnode.in_seg')]),
-                (inputnode, syn_unwarp_report_wf, [
-                    ('bold_ref', 'inputnode.in_pre')]),
-                (bold_reg_wf, syn_unwarp_report_wf, [
-                    ('outputnode.itk_t1_to_bold', 'inputnode.in_xfm')]),
-                (bold_sdc_wf, syn_unwarp_report_wf, [
-                    ('outputnode.syn_ref', 'inputnode.in_post')]),
-            ])
+        # if fmaps.get('syn') is True:  # SyN forced
+        #     syn_unwarp_report_wf = init_sdc_unwarp_report_wf(
+        #         name='syn_unwarp_report_wf', forcedsyn=True)
+        #     workflow.connect([
+        #         (inputnode, syn_unwarp_report_wf, [
+        #             ('anat_dseg', 'inputnode.in_seg')]),
+        #         (inputnode, syn_unwarp_report_wf, [
+        #             ('bold_ref', 'inputnode.in_pre')]),
+        #         (bold_reg_wf, syn_unwarp_report_wf, [
+        #             ('outputnode.itk_t1_to_bold', 'inputnode.in_xfm')]),
+        #         (bold_sdc_wf, syn_unwarp_report_wf, [
+        #             ('outputnode.syn_ref', 'inputnode.in_post')]),
+        #     ])
 
-            # Overwrite ``out_path_base`` of unwarping DataSinks
-            # And ensure echo is dropped from report
-            for node in syn_unwarp_report_wf.list_node_names():
-                if node.split('.')[-1].startswith('ds_'):
-                    syn_unwarp_report_wf.get_node(node).interface.out_path_base = ""
-                    syn_unwarp_report_wf.get_node(node).inputs.dismiss_entities = ("echo",)
+        #     # Overwrite ``out_path_base`` of unwarping DataSinks
+        #     # And ensure echo is dropped from report
+        #     for node in syn_unwarp_report_wf.list_node_names():
+        #         if node.split('.')[-1].startswith('ds_'):
+        #             syn_unwarp_report_wf.get_node(node).interface.out_path_base = ""
+        #             syn_unwarp_report_wf.get_node(node).inputs.dismiss_entities = ("echo",)
 
     # Map final BOLD mask into T1w space (if required)
     nonstd_spaces = set(spaces.get_nonstandard())

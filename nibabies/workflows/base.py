@@ -422,10 +422,10 @@ tasks and sessions), the following preprocessing was performed.
                     ('outputnode.epi_ref_file', 'inputnode.bold_ref'),
                     (
                         ('outputnode.xfm_files', _select_iter_idx, idx),
-                        'inputnode.ref_xfm'),
+                        'inputnode.bold_ref_xfm'),
                     (
-                        ('outputnode.n_dummy_scans', _select_iter_idx, idx),
-                        'inputnode.dummy_scans'),
+                        ('outputnode.n_dummy', _select_iter_idx, idx),
+                        'inputnode.n_dummy_scans'),
                 ]),
                 (anat_preproc_wf, func_preproc_wf, [
                     ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
@@ -440,8 +440,8 @@ tasks and sessions), the following preprocessing was performed.
                     # Undefined if --fs-no-reconall, but this is safe
                     ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                     ('outputnode.subject_id', 'inputnode.subject_id'),
-                    ('outputnode.anat2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
-                    ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
+                    ('outputnode.anat2fsnative_xfm', 'inputnode.anat2fsnative_xfm'),
+                    ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
                 ]),
             ])
             # fmt: on
