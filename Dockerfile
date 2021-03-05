@@ -145,6 +145,13 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
 
+# Install Connectome workbench
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        connectome-workbench=1.3.2-2~nd16.04+1 \
+        convert3d && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 # copy niftyreg from previous build stage
 COPY --from=niftyreg-build /opt/niftyreg /opt/niftyreg
 ENV PATH="/opt/niftyreg/bin:${PATH}" \
