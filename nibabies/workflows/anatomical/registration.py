@@ -35,7 +35,7 @@ def init_coregistration_wf(
     ------
     in_t1w : :obj:`str`
         The unprocessed input T1w image.
-    in_t2w : :obj:`str`
+    in_t2w_preproc : :obj:`str`
         The preprocessed input T2w image, from the brain extraction workflow.
     in_mask : :obj:`str`
         The brainmask, as obtained in T2w space.
@@ -67,7 +67,7 @@ def init_coregistration_wf(
     workflow = pe.Workflow(name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_t1w", "in_t2w", "in_mask", "in_probmap"]),
+        niu.IdentityInterface(fields=["in_t1w", "in_t2w_preproc", "in_mask", "in_probmap"]),
         name="inputnode",
     )
     outputnode = pe.Node(
@@ -140,7 +140,7 @@ def init_coregistration_wf(
     # fmt:off
     workflow.connect([
         (inputnode, val_t1w, [("in_t1w", "in_file")]),
-        (inputnode, coreg, [("in_t2w", "fixed_image")]),
+        (inputnode, coreg, [("in_t2w_preproc", "fixed_image")]),
         (inputnode, map_mask, [("in_probmap", "input_image")]),
         (inputnode, fixed_masks_arg, [("in_mask", "in4")]),
         (val_t1w, map_mask, [("out_file", "reference_image")]),
