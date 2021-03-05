@@ -298,13 +298,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     workflow.connect([
         (outputnode, func_derivatives_wf, [
-            ('bold_t1', 'inputnode.bold_t1'),
-            ('bold_t1_ref', 'inputnode.bold_t1_ref'),
+            ('bold_anat', 'inputnode.bold_t1'),
+            ('bold_anat_ref', 'inputnode.bold_t1_ref'),
             ('bold2anat_xfm', 'inputnode.bold2anat_xfm'),
             ('anat2bold_xfm', 'inputnode.anat2bold_xfm'),
-            ('bold_aseg_t1', 'inputnode.bold_aseg_t1'),
-            ('bold_aparc_t1', 'inputnode.bold_aparc_t1'),
-            ('bold_mask_t1', 'inputnode.bold_mask_t1'),
+            ('bold_aseg_anat', 'inputnode.bold_aseg_t1'),
+            ('bold_aparc_anat', 'inputnode.bold_aparc_t1'),
+            ('bold_mask_anat', 'inputnode.bold_mask_t1'),
             ('bold_native', 'inputnode.bold_native'),
             ('confounds', 'inputnode.confounds'),
             ('surfaces', 'inputnode.surf_files'),
@@ -328,6 +328,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         iterfield=["in_file"],
     )
+    val_bold.inputs.in_file = listify(bold_file)
 
     # Top-level BOLD splitter
     bold_split = pe.Node(FSLSplit(dimension='t'), name='bold_split',
