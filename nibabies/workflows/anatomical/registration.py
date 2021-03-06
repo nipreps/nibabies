@@ -66,7 +66,9 @@ def init_coregistration_wf(
     workflow = pe.Workflow(name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_t1w", "in_t2w_preproc", "in_mask", "in_probmap"]),
+        niu.IdentityInterface(
+            fields=["in_t1w", "in_t2w_preproc", "in_mask", "in_probmap"]
+        ),
         name="inputnode",
     )
     outputnode = pe.Node(
@@ -115,7 +117,7 @@ def init_coregistration_wf(
     coreg.inputs.float = sloppy
 
     map_mask = pe.Node(
-        ApplyTransforms(interpolation="Gaussian", float=True), name="map_mask", mem_gb=1
+        ApplyTransforms(interpolation="Gaussian"), name="map_mask", mem_gb=1
     )
     thr_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_mask")
 

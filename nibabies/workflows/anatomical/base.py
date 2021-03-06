@@ -88,6 +88,7 @@ def init_infant_anat_wf(
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_seg_wf
     from .surfaces import init_infant_surface_recon_wf
+    from .outputs import init_coreg_report_wf
 
     # for now, T1w only
     num_t1w = len(t1w) if t1w else 0
@@ -225,6 +226,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
     )
+    coreg_report_wf = init_coreg_report_wf(
+        output_dir=output_dir,
+    )
 
     # Ensure single outputs
     be_buffer = pe.Node(
@@ -318,6 +322,17 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         # reports
         (inputnode, anat_reports_wf, [
             ("t1w", "inputnode.source_file"),
+        ]),
+        (inputnode, coreg_report_wf, [
+            ("t1w", "inputnode.source_file"),
+        ]),
+        (brain_extraction_wf, coreg_report_wf, [
+            ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
+            ("outputnode.out_mask", "inputnode.t2w_mask"),
+        ]),
+        (coregistration_wf, coreg_report_wf, [
+            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
+            ("outputnode.t1w2t2w_xfm", "inputnode.t1w2t2w_xfm"),
         ]),
         (outputnode, anat_reports_wf, [
             ("anat_preproc", "inputnode.t1w_preproc"),
