@@ -33,9 +33,6 @@ def init_coreg_report_wf(*, output_dir, name="coreg_report_wf"):
         Mapping to resample T1w-space data into T2w-space.
 
     """
-    from niworkflows.interfaces.fixes import (
-        FixHeaderApplyTransforms as ApplyTransforms,
-    )
     from niworkflows.interfaces.reportlets.registration import (
         SimpleBeforeAfterRPT as SimpleBeforeAfter,
     )
@@ -46,12 +43,9 @@ def init_coreg_report_wf(*, output_dir, name="coreg_report_wf"):
         "source_file",
         "t1w_preproc",
         "t2w_preproc",
-        "t2w_mask",
-        "t1w2t2w_xfm",
+        "in_mask",
     ]
     inputnode = pe.Node(niu.IdentityInterface(fields=inputfields), name="inputnode")
-
-    map_t1w = pe.Node(ApplyTransforms(interpolation="BSpline"), name="map_t1w")
     # Generate reportlets showing spatial normalization
     norm_rpt = pe.Node(
         SimpleBeforeAfter(before_label="T2w", after_label="T1w"),
@@ -69,12 +63,9 @@ def init_coreg_report_wf(*, output_dir, name="coreg_report_wf"):
 
     # fmt:off
     workflow.connect([
-        (inputnode, map_t1w, [("t1w_preproc", "input_image"),
-                              ("t2w_preproc", "reference_image"),
-                              ("t1w2t2w_xfm", "transforms")]),
         (inputnode, norm_rpt, [("t2w_preproc", "before"),
-                               ("t2w_mask", "wm_seg")]),
-        (map_t1w, norm_rpt, [("output_image", "after")]),
+                               ("t1w_preproc", "after"),
+                               ("in_mask", "wm_seg")]),
         (inputnode, ds_t1w_t2w_report, [("source_file", "source_file")]),
         (norm_rpt, ds_t1w_t2w_report, [("out_report", "in_file")]),
     ])

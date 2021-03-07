@@ -73,12 +73,18 @@ def init_coregistration_wf(
     )
     outputnode = pe.Node(
         niu.IdentityInterface(
-            fields=["t1w_preproc", "t1w_brain", "t1w_mask", "t1w2t2w_xfm"]
+            fields=[
+                "t1w_preproc",
+                "t1w_brain",
+                "t1w_mask",
+                "t1w2t2w_xfm",
+                "t2w_preproc",
+            ]
         ),
         name="outputnode",
     )
 
-    pre_n4_clip = pe.Node(IntensityClip(), name="pre_n4_clip")
+    pre_n4_clip = pe.Node(IntensityClip(p_min=45, p_max=98.0), name="pre_n4_clip")
     init_n4 = pe.Node(
         N4BiasFieldCorrection(
             dimension=3,
@@ -115,9 +121,15 @@ def init_coregistration_wf(
         mem_gb=mem_gb,
     )
     coreg.inputs.float = sloppy
+    coreg.inputs.args = "--write-interval-volumes 5" * sloppy
+    coreg.inputs.output_inverse_warped_image = sloppy
+    coreg.inputs.output_warped_image = sloppy
 
     map_mask = pe.Node(
         ApplyTransforms(interpolation="Gaussian"), name="map_mask", mem_gb=1
+    )
+    map_t2w = pe.Node(
+        ApplyTransforms(interpolation="BSpline"), name="map_t2w", mem_gb=1
     )
     thr_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_mask")
 
@@ -144,13 +156,19 @@ def init_coregistration_wf(
         (inputnode, coreg, [("in_t2w_preproc", "fixed_image")]),
         (inputnode, map_mask, [("in_probmap", "input_image")]),
         (inputnode, fixed_masks_arg, [("in_mask", "in4")]),
+        (inputnode, map_t2w, [("in_t1w", "reference_image")]),
+        (inputnode, map_t2w, [("in_t2w_preproc", "input_image")]),
         (pre_n4_clip, init_n4, [("out_file", "input_image")]),
         (init_n4, post_n4_clip, [("output_image", "in_file")]),
         (post_n4_clip, coreg, [("out_file", "moving_image")]),
         (fixed_masks_arg, coreg, [("out", "fixed_image_masks")]),
         (coreg, map_mask, [
-            ("reverse_transforms", "transforms"),
-            ("reverse_invert_flags", "invert_transform_flags"),
+            ("reverse_forward_transforms", "transforms"),
+            ("reverse_forward_invert_flags", "invert_transform_flags"),
+        ]),
+        (coreg, map_t2w, [
+            ("reverse_forward_transforms", "transforms"),
+            ("reverse_forward_invert_flags", "invert_transform_flags"),
         ]),
         (map_mask, thr_mask, [("output_image", "in_file")]),
         (pre_n4_clip, final_n4, [("out_file", "input_image")]),
@@ -158,6 +176,7 @@ def init_coregistration_wf(
         (final_n4, apply_mask, [("output_image", "in_file")]),
         (thr_mask, apply_mask, [("out_mask", "in_mask")]),
         (final_n4, outputnode, [("output_image", "t1w_preproc")]),
+        (map_t2w, outputnode, [("output_image", "t2w_preproc")]),
         (thr_mask, outputnode, [("out_mask", "t1w_mask")]),
         (apply_mask, outputnode, [("out_file", "t1w_corrected_brain")]),
         (coreg, outputnode, [("forward_transforms", "t1w2t2w_xfm")]),

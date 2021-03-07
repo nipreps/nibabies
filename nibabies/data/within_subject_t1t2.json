@@ -1,5 +1,5 @@
 {
-  "collapse_output_transforms": false,
+  "collapse_output_transforms": true,
   "convergence_threshold": [ 1E-5, 1E-6, 1E-7, 1E-9 ],
   "convergence_window_size": [ 3, 5, 3, 2],
   "dimension": 3,
@@ -38,6 +38,7 @@
   "use_estimate_learning_rate_once": [ false, false, true, true ],
   "use_histogram_matching": [ true, true, true, true ],
   "verbose": true,
-  "winsorize_lower_quantile": 0.001,
-  "winsorize_upper_quantile": 0.999
+  "winsorize_lower_quantile": 0.0001,
+  "winsorize_upper_quantile": 0.9999,
+  "write_composite_transform": false
 }

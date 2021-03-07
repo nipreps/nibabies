@@ -105,7 +105,7 @@ def init_infant_brain_extraction_wf(
 
     # truncate target intensity for N4 correction
     clip_tmpl = pe.Node(IntensityClip(in_file=_pop(tpl_target_path)), name="clip_tmpl")
-    clip_t2w = pe.Node(IntensityClip(), name="clip_t2w")
+    clip_t2w = pe.Node(IntensityClip(p_min=45), name="clip_t2w")
 
     # INU correction of the t1w
     init_t2w_n4 = pe.Node(
@@ -181,6 +181,7 @@ def init_infant_brain_extraction_wf(
         n_procs=omp_nthreads,
         name="final_n4",
     )
+    final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=98.0), name="final_clip")
     apply_mask = pe.Node(ApplyMask(), name="apply_mask")
 
     # fmt:off
@@ -215,8 +216,9 @@ def init_infant_brain_extraction_wf(
         (clip_t2w, final_n4, [("out_file", "input_image")]),
         (bspline_grid, final_n4, [("out", "args")]),
         (map_mask_t2w, final_n4, [("output_image", "weight_image")]),
+        (final_n4, final_clip, [("output_image", "in_file")]),
         # 9. Outputs
-        (final_n4, outputnode, [("output_image", "t2w_preproc")]),
+        (final_clip, outputnode, [("out_file", "t2w_preproc")]),
         (map_mask_t2w, outputnode, [("output_image", "out_probmap")]),
         (thr_t2w_mask, outputnode, [("out_mask", "out_mask")]),
         (apply_mask, outputnode, [("out_file", "t2w_brain")]),

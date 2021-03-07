@@ -326,13 +326,10 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (inputnode, coreg_report_wf, [
             ("t1w", "inputnode.source_file"),
         ]),
-        (brain_extraction_wf, coreg_report_wf, [
-            ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
-            ("outputnode.out_mask", "inputnode.t2w_mask"),
-        ]),
         (coregistration_wf, coreg_report_wf, [
             ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
-            ("outputnode.t1w2t2w_xfm", "inputnode.t1w2t2w_xfm"),
+            ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
+            ("outputnode.t1w_mask", "inputnode.in_mask"),
         ]),
         (outputnode, anat_reports_wf, [
             ("anat_preproc", "inputnode.t1w_preproc"),
