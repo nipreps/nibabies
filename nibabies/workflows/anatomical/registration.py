@@ -1,16 +1,13 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
-"""Nipype translation of ANTs' workflows."""
-# import numpy as np
-# general purpose
+"""Within-baby registration of a T1w into a T2w image."""
 from pkg_resources import resource_filename as pkgr_fn
-
-# nipype
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
 
 def init_coregistration_wf(
+    *,
     bspline_fitting_distance=200,
     mem_gb=3.0,
     name="coregistration_wf",
@@ -20,8 +17,27 @@ def init_coregistration_wf(
     """
     Set-up a T2w-to-T1w within-baby co-registration framework.
 
+    See the ANTs' registration config file (under ``nibabies/data``) for further
+    details.
+    The main surprise in it is that, for some participants, accurate registration
+    requires extra degrees of freedom (one affine level and one SyN level) to ensure
+    that the T1w and T2w images align well.
+    I attribute this requirement to the following potential reasons:
+
+      * The T1w image and the T2w image were acquired in different sessions, apart in
+        time enough for growth to happen.
+        Although this is, in theory possible, it doesn't seem the images we have tested
+        on are acquired on different sessions.
+      * The skull is still so malleable that a change of position of the baby inside the
+        coil made an actual change on the overall shape of their head.
+      * Nonlinear distortions of the T1w and T2w images are, for some reason, more notorious
+        for babies than they are for adults.
+        We would need to look into each sequence's details to confirm this.
+
     Parameters
     ----------
+    bspline_fitting_distance : :obj:`float`
+        Distance in mm between B-Spline control points for N4 INU estimation.
     mem_gb : :obj:`float`
         Base memory fingerprint unit.
     name : :obj:`str`
@@ -46,6 +62,8 @@ def init_coregistration_wf(
     -------
     t1w_preproc : :obj:`str`
         The preprocessed T1w image (INU and clipping).
+    t2w_preproc : :obj:`str`
+        The preprocessed T2w image (INU and clipping), aligned into the T1w's space.
     t1w_brain : :obj:`str`
         The preprocessed, brain-extracted T1w image.
     t1w_mask : :obj:`str`
@@ -107,11 +125,9 @@ def init_coregistration_wf(
     fixed_masks_arg.inputs.in2 = "NULL"
     fixed_masks_arg.inputs.in3 = "NULL"
 
-    # dilate t2w mask for easier t1->t2 registration
-    # Unclear whether this is necessary
-    # dil_brainmask = pe.Node(
-    #     ImageMath(operation="MD", op2="8", copy_header=True), name="dil_brainmask"
-    # )
+    # REMOVED old step: dilate t2w mask for easier t1->t2 registration
+    # Unclear whether this is necessary, if reintroduced, we probably want to use
+    # the dilated mask in in3 and potentially in2 of the above node.
 
     # Set up T2w -> T1w within-subject registration
     coreg = pe.Node(

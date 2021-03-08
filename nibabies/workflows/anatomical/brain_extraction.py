@@ -1,11 +1,8 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
-"""Nipype translation of ANTs' workflows."""
-# import numpy as np
-# general purpose
+"""Baby brain extraction from T2w images."""
 from pkg_resources import resource_filename as pkgr_fn
 
-# nipype
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
@@ -22,7 +19,7 @@ def init_infant_brain_extraction_wf(
     omp_nthreads=None,
 ):
     """
-    Build an atlas-based brain extraction pipeline for infant T1w/T2w MRI data.
+    Build an atlas-based brain extraction pipeline for infant T2w MRI data.
 
     Pros/Cons of available templates
     --------------------------------
@@ -38,8 +35,43 @@ def init_infant_brain_extraction_wf(
 
     Parameters
     ----------
+    age_months : :obj:`int`
+        Age of this participant, in months.
     ants_affine_init : :obj:`bool`, optional
         Set-up a pre-initialization step with ``antsAI`` to account for mis-oriented images.
+    bspline_fitting_distance : :obj:`float`
+        Distance in mm between B-Spline control points for N4 INU estimation.
+    sloppy : :obj:`bool`
+        Run in *sloppy* mode.
+    skull_strip_template : :obj:`str`
+        A TemplateFlow ID indicating which template will be used as target for atlas-based
+        segmentation.
+    template_specs : :obj:`dict`
+        Additional template specifications (e.g., resolution or cohort) to correctly select
+        the adequate template instance.
+    mem_gb : :obj:`float`
+        Base memory fingerprint unit.
+    name : :obj:`str`
+        This particular workflow's unique name (Nipype requirement).
+    omp_nthreads : :obj:`int`
+        The number of threads for individual processes in this workflow.
+
+    Inputs
+    ------
+    in_t2w : :obj:`str`
+        The unprocessed input T2w image.
+
+    Outputs
+    -------
+    t2w_preproc : :obj:`str`
+        The preprocessed T2w image (INU and clipping).
+    t2w_brain : :obj:`str`
+        The preprocessed, brain-extracted T2w image.
+    out_mask : :obj:`str`
+        The brainmask projected from the template into the T2w, after
+        binarization.
+    out_probmap : :obj:`str`
+        The same as above, before binarization.
 
     """
     from nipype.interfaces.ants import N4BiasFieldCorrection, ImageMath

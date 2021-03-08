@@ -26,11 +26,9 @@ def init_coreg_report_wf(*, output_dir, name="coreg_report_wf"):
     t1w_preproc
         Preprocessed T1w image.
     t2w_preproc
-        Preprocessed T2w image.
-    t2w_mask
-        Brain mask in T2w space.
-    t1w2t2w_xfm
-        Mapping to resample T1w-space data into T2w-space.
+        Preprocessed T2w image, aligned with the T1w image.
+    in_mask
+        Brain mask.
 
     """
     from niworkflows.interfaces.reportlets.registration import (
