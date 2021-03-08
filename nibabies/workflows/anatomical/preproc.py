@@ -17,10 +17,11 @@ def init_anat_average_wf(
     """
     from pkg_resources import resource_filename as pkgr
     from nipype.interfaces.ants import N4BiasFieldCorrection
+    from nipype.interfaces.image import Reorient
 
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.header import ValidateImage
-    from niworkflows.interfaces.nibabel import IntensityClip
+    from niworkflows.interfaces.nibabel import IntensityClip, SplitSeries
     from niworkflows.interfaces.freesurfer import (
         StructuralReference,
         PatchedLTAConvert as LTAConvert,
@@ -47,7 +48,10 @@ def init_anat_average_wf(
         run_without_submitting=True,
     )
 
-    # 2. INU correction of all independent volumes
+    # 2. Ensure we don't have two timepoints and implicitly squeeze image
+    split = pe.MapNode(SplitSeries(), iterfield="in_file", name="split")
+
+    # 3. INU correction of all independent volumes
     clip_preinu = pe.MapNode(
         IntensityClip(p_min=45), iterfield="in_file", name="clip_preinu"
     )
@@ -69,13 +73,14 @@ def init_anat_average_wf(
         IntensityClip(p_min=2.0, p_max=100.0), iterfield="in_file", name="clip_postinu"
     )
 
-    # 3. Reorient T2w image(s) to RAS and resample to common voxel space
+    # 4. Reorient T2w image(s) to RAS and resample to common voxel space
     ref_dimensions = pe.Node(TemplateDimensions(), name="ref_dimensions")
     conform = pe.MapNode(Conform(), iterfield="in_file", name="conform")
     # fmt:off
     wf.connect([
         (inputnode, validate, [("in_files", "in_file")]),
-        (validate, clip_preinu, [("out_file", "in_file")]),
+        (validate, split, [("out_file", "in_file")]),
+        (split, clip_preinu, [(("out_files", _flatten), "in_file")]),
         (clip_preinu, correct_inu, [("out_file", "input_image")]),
         (correct_inu, clip_postinu, [("output_image", "in_file")]),
         (clip_postinu, ref_dimensions, [("out_file", "t1w_list")]),
@@ -88,6 +93,9 @@ def init_anat_average_wf(
     ])
     # fmt:on
 
+    # 5. Reorient template to RAS, if needed (mri_robust_template may set to LIA)
+    ensure_ras = pe.Node(Reorient(), name="ensure_ras")
+
     if num_maps == 1:
         get1st = pe.Node(niu.Select(index=[0]), name="get1st")
         outputnode.inputs.realign_xfms = [
@@ -96,13 +104,13 @@ def init_anat_average_wf(
         # fmt:off
         wf.connect([
             (conform, get1st, [("out_file", "inlist")]),
-            (get1st, outputnode, [("out", "out_file")]),
+            (get1st, ensure_ras, [("out", "in_file")]),
+            (ensure_ras, outputnode, [("out_file", "out_file")]),
         ])
         # fmt:on
         return wf
 
     from nipype.interfaces import freesurfer as fs
-    from nipype.interfaces.image import Reorient
 
     wf.__desc__ = f"""\
 An anatomical reference-map was computed after registration of
@@ -116,7 +124,7 @@ An anatomical reference-map was computed after registration of
         name="conform_xfm",
     )
 
-    # 4. StructuralReference is fs.RobustTemplate if > 1 volume, copying otherwise
+    # 6. StructuralReference is fs.RobustTemplate if > 1 volume, copying otherwise
     merge = pe.Node(
         StructuralReference(
             auto_detect_sensitivity=True,
@@ -131,10 +139,7 @@ An anatomical reference-map was computed after registration of
         name="merge",
     )
 
-    # 5. Reorient template to RAS, if needed (mri_robust_template may set to LIA)
-    ensure_ras = pe.Node(Reorient(), name="ensure_ras")
-
-    # 6. Final intensity equalization/conformation
+    # 7. Final intensity equalization/conformation
     clip_final = pe.Node(IntensityClip(p_min=2.0, p_max=99.9), name="clip_final")
 
     merge_xfm = pe.MapNode(
@@ -174,3 +179,8 @@ An anatomical reference-map was computed after registration of
     # fmt:on
 
     return wf
+
+
+def _flatten(inlist):
+    from bids.utils import listify
+    return [el for items in listify(inlist) for el in listify(items)]
