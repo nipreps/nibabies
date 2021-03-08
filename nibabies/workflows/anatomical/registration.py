@@ -163,12 +163,12 @@ def init_coregistration_wf(
         (post_n4_clip, coreg, [("out_file", "moving_image")]),
         (fixed_masks_arg, coreg, [("out", "fixed_image_masks")]),
         (coreg, map_mask, [
-            ("reverse_forward_transforms", "transforms"),
-            ("reverse_forward_invert_flags", "invert_transform_flags"),
+            ("reverse_transforms", "transforms"),
+            ("reverse_invert_flags", "invert_transform_flags"),
         ]),
         (coreg, map_t2w, [
-            ("reverse_forward_transforms", "transforms"),
-            ("reverse_forward_invert_flags", "invert_transform_flags"),
+            ("reverse_transforms", "transforms"),
+            ("reverse_invert_flags", "invert_transform_flags"),
         ]),
         (map_mask, thr_mask, [("output_image", "in_file")]),
         (pre_n4_clip, final_n4, [("out_file", "input_image")]),
