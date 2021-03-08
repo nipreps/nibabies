@@ -93,6 +93,8 @@ def init_anat_norm_wf(
         Template specifications extracted from the input parameter ``template``, for
         further use in downstream nodes.
     """
+    from ...utils.patches import set_reg_resolution, set_tf_resolution
+
     ntpls = len(templates)
     workflow = Workflow(name=name)
 
@@ -162,9 +164,9 @@ The following template{tpls} selected for spatial normalization:
     split_desc = pe.Node(TemplateDesc(), run_without_submitting=True, name="split_desc")
 
     # Nibabies hacks
-    set_tf_res = pe.Node(niu.Function(function=_set_tf_resolution), name='set_tf_res')
+    set_tf_res = pe.Node(niu.Function(function=set_tf_resolution), name='set_tf_res')
     set_tf_res.inputs.sloppy = sloppy
-    set_reg_res = pe.Node(niu.Function(function=_set_reg_resolution), name='set_reg_res')
+    set_reg_res = pe.Node(niu.Function(function=set_reg_resolution), name='set_reg_res')
 
     tf_select = pe.Node(
         TemplateFlowSelect(),
@@ -264,18 +266,3 @@ The following template{tpls} selected for spatial normalization:
     # fmt:on
 
     return workflow
-
-
-def _set_tf_resolution(template, sloppy):
-    "'Dynamic' workaround to apply tweaks based on templates"
-    if template in ('UNCInfant', 'MNIInfant'):
-        from nipype.interfaces.base import Undefined
-        return Undefined
-    return sloppy + 1
-
-
-def _set_reg_resolution(template):
-    if template in ('UNCInfant', 'MNIInfant'):
-        return None
-    from nipype.interfaces.base import Undefined
-    return Undefined

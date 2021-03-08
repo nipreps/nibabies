@@ -77,14 +77,12 @@ def init_infant_anat_wf(
     from nipype.interfaces.base import Undefined
     from nipype.interfaces.ants.base import Info as ANTsInfo
     from smriprep.workflows.anatomical import _pop
-    from smriprep.workflows.norm import init_anat_norm_wf
-    from smriprep.workflows.outputs import (
-        init_anat_reports_wf,
-        init_anat_derivatives_wf,
-    )
+    from smriprep.workflows.outputs import init_anat_derivatives_wf
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import init_infant_brain_extraction_wf
+    from .norm import init_anat_norm_wf
+    from .outputs import init_anat_reports_wf
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_seg_wf
@@ -137,12 +135,6 @@ BIDS dataset."""
         name="outputnode",
     )
 
-    # Connect reportlets workflows
-    anat_reports_wf = init_anat_reports_wf(
-        freesurfer=freesurfer,
-        output_dir=output_dir,
-    )
-
     if existing_derivatives:
         raise NotImplementedError("Reusing derivatives is not yet supported.")
 
@@ -178,9 +170,11 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         skullstrip_tpl=skull_strip_template.fullname,
     )
     # Define output workflows
-    anat_reports_wf = init_anat_reports_wf(freesurfer=freesurfer, output_dir=output_dir)
-    # HACK: remove resolution from TFSelect
-    anat_reports_wf.get_node("tf_select").inputs.resolution = Undefined
+    anat_reports_wf = init_anat_reports_wf(
+        freesurfer=freesurfer,
+        output_dir=output_dir,
+        sloppy=sloppy
+    )
 
     anat_derivatives_wf = init_anat_derivatives_wf(
         bids_root=bids_root,

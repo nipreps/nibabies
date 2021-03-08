@@ -680,6 +680,10 @@ def _select_template(template):
 
     # Sanitize resolution
     res = specs.pop('res', None) or specs.pop('resolution', None) or 'native'
+    # workaround for templates without res- identifier
+    if template in ('UNCInfant',):
+        res = None
+
     if res != 'native':
         specs['resolution'] = res
         return get_template_specs(template, template_spec=specs)[0]
