@@ -53,7 +53,7 @@ def init_anat_average_wf(
 
     # 3. INU correction of all independent volumes
     clip_preinu = pe.MapNode(
-        IntensityClip(p_min=45), iterfield="in_file", name="clip_preinu"
+        IntensityClip(p_min=50), iterfield="in_file", name="clip_preinu"
     )
     correct_inu = pe.MapNode(
         N4BiasFieldCorrection(
@@ -70,7 +70,7 @@ def init_anat_average_wf(
         name="correct_inu",
     )
     clip_postinu = pe.MapNode(
-        IntensityClip(p_min=2.0, p_max=100.0), iterfield="in_file", name="clip_postinu"
+        IntensityClip(p_min=10.0, p_max=99.5), iterfield="in_file", name="clip_postinu"
     )
 
     # 4. Reorient T2w image(s) to RAS and resample to common voxel space

@@ -78,6 +78,7 @@ def init_coregistration_wf(
         FixHeaderApplyTransforms as ApplyTransforms,
     )
     from niworkflows.interfaces.nibabel import ApplyMask, Binarize
+    from ...interfaces.nibabel import BinaryDilation
 
     workflow = pe.Workflow(name)
 
@@ -101,15 +102,11 @@ def init_coregistration_wf(
     )
 
     fixed_masks_arg = pe.Node(
-        niu.Merge(4), name="fixed_masks_arg", run_without_submitting=True
+        niu.Merge(3), name="fixed_masks_arg", run_without_submitting=True
     )
-    fixed_masks_arg.inputs.in1 = "NULL"
-    fixed_masks_arg.inputs.in2 = "NULL"
-    fixed_masks_arg.inputs.in3 = "NULL"
 
-    # REMOVED old step: dilate t2w mask for easier t1->t2 registration
-    # Unclear whether this is necessary, if reintroduced, we probably want to use
-    # the dilated mask in in3 and potentially in2 of the above node.
+    # Dilate t2w mask for easier t1->t2 registration
+    mask_dilate = pe.Node(BinaryDilation(radius=8, iterations=3), name="mask_dilate")
 
     # Set up T2w -> T1w within-subject registration
     coreg = pe.Node(
@@ -154,7 +151,10 @@ def init_coregistration_wf(
         (inputnode, coreg, [("in_t1w", "moving_image"),
                             ("in_t2w_preproc", "fixed_image")]),
         (inputnode, map_mask, [("in_probmap", "input_image")]),
-        (inputnode, fixed_masks_arg, [("in_mask", "in4")]),
+        (inputnode, fixed_masks_arg, [("in_mask", "in3")]),
+        (inputnode, mask_dilate, [("in_mask", "in_file")]),
+        (mask_dilate, fixed_masks_arg, [("out_file", "in1")]),
+        (mask_dilate, fixed_masks_arg, [("out_file", "in2")]),
         (inputnode, map_t2w, [("in_t1w", "reference_image")]),
         (inputnode, map_t2w, [("in_t2w_preproc", "input_image")]),
         (fixed_masks_arg, coreg, [("out", "fixed_image_masks")]),
