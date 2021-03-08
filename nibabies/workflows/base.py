@@ -19,6 +19,7 @@ from nipype.interfaces import utility as niu
 from .. import config
 from ..interfaces import DerivativesDataSink
 from ..interfaces.reports import SubjectSummary, AboutSummary
+
 # from .bold import init_func_preproc_wf
 
 
@@ -288,8 +289,8 @@ It is released under the [CC0]\
         ants_affine_init=config.workflow.ants_affine_init or True,
         age_months=config.workflow.age_months,
         anat_modality=anat_modality,
-        t1w=subject_data['t1w'],
-        t2w=subject_data['t2w'],
+        t1w=subject_data["t1w"],
+        t2w=subject_data["t2w"],
         bids_root=config.execution.bids_dir,
         existing_derivatives=anat_derivatives,
         freesurfer=config.workflow.run_reconall,

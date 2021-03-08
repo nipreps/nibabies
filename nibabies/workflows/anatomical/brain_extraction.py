@@ -77,14 +77,13 @@ def init_infant_brain_extraction_wf(
     from nipype.interfaces.ants import N4BiasFieldCorrection, ImageMath
 
     # niworkflows
-    from niworkflows.interfaces.nibabel import ApplyMask, Binarize
+    from niworkflows.interfaces.nibabel import ApplyMask, Binarize, IntensityClip
     from niworkflows.interfaces.fixes import (
         FixHeaderRegistration as Registration,
         FixHeaderApplyTransforms as ApplyTransforms,
     )
     from templateflow.api import get as get_template
 
-    from ...interfaces.nibabel import IntensityClip
     from ...utils.misc import cohort_by_months
 
     # handle template specifics
@@ -264,7 +263,7 @@ def init_infant_brain_extraction_wf(
         # fmt:off
         workflow.connect([
             (clip_tmpl, init_aff, [("out_file", "fixed_image")]),
-            (clip_t2w_inu, init_aff, [("out_file", "moving_image")]),
+            (inputnode, init_aff, [("in_t2w", "moving_image")]),
             (init_aff, norm, [("output_transform", "initial_moving_transform")]),
         ])
         # fmt:on

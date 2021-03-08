@@ -74,8 +74,7 @@ def init_infant_anat_wf(
     """
     from nipype.interfaces.base import Undefined
     from nipype.interfaces.ants.base import Info as ANTsInfo
-    from niworkflows.interfaces.header import ValidateImage
-    from smriprep.workflows.anatomical import init_anat_template_wf, _pop
+    from smriprep.workflows.anatomical import _pop
     from smriprep.workflows.norm import init_anat_norm_wf
     from smriprep.workflows.outputs import (
         init_anat_reports_wf,
@@ -84,7 +83,7 @@ def init_infant_anat_wf(
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import init_infant_brain_extraction_wf
-    from .preproc import init_anat_template_wf
+    from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_seg_wf
     from .surfaces import init_infant_surface_recon_wf
@@ -191,14 +190,14 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     anat_derivatives_wf.get_node("select_tpl").inputs.resolution = Undefined
 
     # Multiple T1w files -> generate average reference
-    t1w_template_wf = init_anat_template_wf(
+    t1w_template_wf = init_anat_average_wf(
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
         num_maps=num_t1w,
         name="t1w_template_wf",
     )
 
-    t2w_template_wf = init_anat_template_wf(
+    t2w_template_wf = init_anat_average_wf(
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
         num_maps=num_t2w,
@@ -253,7 +252,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
     # fmt: off
     wf.connect([
-        (inputnode, t1w_template_wf, [("t1w", "inputnode.in_file"),]),
+        (inputnode, t1w_template_wf, [("t1w", "inputnode.in_file")]),
         (inputnode, t2w_template_wf, [("t2w", "inputnode.in_file")]),
         (t1w_template_wf, outputnode, [
             ("outputnode.t1w_realign_xfm", "anat_ref_xfms"),

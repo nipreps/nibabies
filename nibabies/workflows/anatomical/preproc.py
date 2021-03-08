@@ -183,4 +183,5 @@ An anatomical reference-map was computed after registration of
 
 def _flatten(inlist):
     from bids.utils import listify
+
     return [el for items in listify(inlist) for el in listify(items)]
