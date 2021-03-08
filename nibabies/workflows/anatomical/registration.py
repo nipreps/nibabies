@@ -79,8 +79,6 @@ def init_coregistration_wf(
     )
     from niworkflows.interfaces.nibabel import ApplyMask, Binarize
 
-    from ...interfaces.nibabel import IntensityClip
-
     workflow = pe.Workflow(name)
 
     inputnode = pe.Node(
@@ -101,22 +99,6 @@ def init_coregistration_wf(
         ),
         name="outputnode",
     )
-
-    pre_n4_clip = pe.Node(IntensityClip(p_min=45, p_max=98.0), name="pre_n4_clip")
-    init_n4 = pe.Node(
-        N4BiasFieldCorrection(
-            dimension=3,
-            save_bias=False,
-            copy_header=True,
-            n_iterations=[50] * (4 - sloppy),
-            convergence_threshold=1e-7,
-            shrink_factor=4,
-            bspline_fitting_distance=bspline_fitting_distance,
-        ),
-        n_procs=omp_nthreads,
-        name="init_n4",
-    )
-    post_n4_clip = pe.Node(IntensityClip(p_min=2.0, p_max=100), name="post_n4_clip")
 
     fixed_masks_arg = pe.Node(
         niu.Merge(4), name="fixed_masks_arg", run_without_submitting=True
@@ -168,15 +150,13 @@ def init_coregistration_wf(
     # fmt:off
     workflow.connect([
         (inputnode, map_mask, [("in_t1w", "reference_image")]),
-        (inputnode, pre_n4_clip, [("in_t1w", "in_file")]),
-        (inputnode, coreg, [("in_t2w_preproc", "fixed_image")]),
+        (inputnode, final_n4, [("in_t1w", "input_image")]),
+        (inputnode, coreg, [("in_t1w", "moving_image"),
+                            ("in_t2w_preproc", "fixed_image")]),
         (inputnode, map_mask, [("in_probmap", "input_image")]),
         (inputnode, fixed_masks_arg, [("in_mask", "in4")]),
         (inputnode, map_t2w, [("in_t1w", "reference_image")]),
         (inputnode, map_t2w, [("in_t2w_preproc", "input_image")]),
-        (pre_n4_clip, init_n4, [("out_file", "input_image")]),
-        (init_n4, post_n4_clip, [("output_image", "in_file")]),
-        (post_n4_clip, coreg, [("out_file", "moving_image")]),
         (fixed_masks_arg, coreg, [("out", "fixed_image_masks")]),
         (coreg, map_mask, [
             ("reverse_transforms", "transforms"),
@@ -187,7 +167,6 @@ def init_coregistration_wf(
             ("reverse_invert_flags", "invert_transform_flags"),
         ]),
         (map_mask, thr_mask, [("output_image", "in_file")]),
-        (pre_n4_clip, final_n4, [("out_file", "input_image")]),
         (map_mask, final_n4, [("output_image", "weight_image")]),
         (final_n4, apply_mask, [("output_image", "in_file")]),
         (thr_mask, apply_mask, [("out_mask", "in_mask")]),

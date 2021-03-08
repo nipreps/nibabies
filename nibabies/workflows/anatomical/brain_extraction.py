@@ -135,37 +135,18 @@ def init_infant_brain_extraction_wf(
         name="outputnode",
     )
 
-    # truncate target intensity for N4 correction
+    # Ensure template comes with a range of intensities ANTs will like
     clip_tmpl = pe.Node(IntensityClip(in_file=_pop(tpl_target_path)), name="clip_tmpl")
-    clip_t2w = pe.Node(IntensityClip(p_min=45), name="clip_t2w")
 
-    # INU correction of the t1w
-    init_t2w_n4 = pe.Node(
-        N4BiasFieldCorrection(
-            dimension=3,
-            save_bias=False,
-            copy_header=True,
-            n_iterations=[50] * (4 - sloppy),
-            convergence_threshold=1e-7,
-            shrink_factor=4,
-            bspline_fitting_distance=bspline_fitting_distance,
-        ),
-        n_procs=omp_nthreads,
-        name="init_t2w_n4",
-    )
-
-    clip_t2w_inu = pe.Node(IntensityClip(p_min=2.0, p_max=100.0), name="clip_t2w_inu")
-
-    # Spatial normalization step
+    # Generate laplacian registration targets
     lap_tmpl = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_tmpl")
     lap_t2w = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_t2w")
+    norm_lap_tmpl = pe.Node(IntensityClip(), name="norm_lap_tmpl")
+    norm_lap_t2w = pe.Node(IntensityClip(), name="norm_lap_t2w")
 
     # Merge image nodes
     mrg_tmpl = pe.Node(niu.Merge(2), name="mrg_tmpl", run_without_submitting=True)
     mrg_t2w = pe.Node(niu.Merge(2), name="mrg_t2w", run_without_submitting=True)
-
-    norm_lap_tmpl = pe.Node(IntensityClip(), name="norm_lap_tmpl")
-    norm_lap_t2w = pe.Node(IntensityClip(), name="norm_lap_t2w")
 
     # Set up initial spatial normalization
     ants_params = "testing" if sloppy else "precise"
@@ -218,14 +199,13 @@ def init_infant_brain_extraction_wf(
 
     # fmt:off
     workflow.connect([
+        (inputnode, bspline_grid, [("in_t2w", "in_file")]),
+        (inputnode, final_n4, [("in_t2w", "input_image")]),
         # 1. Massage T2w
-        (inputnode, clip_t2w, [("in_t2w", "in_file")]),
+        (inputnode, mrg_t2w, [("in_t2w", "in1")]),
+        (inputnode, lap_t2w, [("in_t2w", "op1")]),
         (inputnode, map_mask_t2w, [("in_t2w", "reference_image")]),
-        (clip_t2w, init_t2w_n4, [("out_file", "input_image")]),
-        (init_t2w_n4, clip_t2w_inu, [("output_image", "in_file")]),
-        (clip_t2w_inu, lap_t2w, [("out_file", "op1")]),
         (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
-        (clip_t2w_inu, mrg_t2w, [("out_file", "in1")]),
         (norm_lap_t2w, mrg_t2w, [("out_file", "in2")]),
         # 2. Prepare template
         (clip_tmpl, lap_tmpl, [("out_file", "op1")]),
@@ -244,8 +224,6 @@ def init_infant_brain_extraction_wf(
         (thr_t2w_mask, apply_mask, [("out_mask", "in_mask")]),
         (final_n4, apply_mask, [("output_image", "in_file")]),
         # 5. Refine T2w INU correction with brain mask
-        (clip_t2w, bspline_grid, [("out_file", "in_file")]),
-        (clip_t2w, final_n4, [("out_file", "input_image")]),
         (bspline_grid, final_n4, [("out", "args")]),
         (map_mask_t2w, final_n4, [("output_image", "weight_image")]),
         (final_n4, final_clip, [("output_image", "in_file")]),
