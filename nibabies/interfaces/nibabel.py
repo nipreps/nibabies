@@ -19,7 +19,7 @@ class _BinaryDilationOutputSpec(TraitedSpec):
 
 
 class BinaryDilation(SimpleInterface):
-    """Brain extraction for EPI and GRE data."""
+    """Morphological binary dilation using Scipy."""
 
     input_spec = _BinaryDilationInputSpec
     output_spec = _BinaryDilationOutputSpec

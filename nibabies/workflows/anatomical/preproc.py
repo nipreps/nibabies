@@ -7,13 +7,55 @@ def init_anat_average_wf(
     *,
     bspline_fitting_distance=200,
     longitudinal=False,
-    omp_nthreads=None,
-    num_maps=1,
     name="anat_average_wf",
+    num_maps=1,
+    omp_nthreads=None,
     sloppy=False,
 ):
     """
-    Adapts :py:func:`~smriprep.workflows.anatomical.init_anat_template_wf` for T2w image reference
+    Create an average from several images of the same modality.
+
+    Each image undergoes a clipping step, removing background noise and
+    high-intensity outliers, which is required by INU correction with the
+    N4 algorithm.
+    Then INU correction is performed for each of the inputs and the range
+    of the image clipped again to fit within uint8.
+    Finally, each image is reoriented to have RAS+ data matrix and, if
+    more than one inputs, aligned and averaged with FreeSurfer's
+    ``mri_robust_template``.
+
+    Parameters
+    ----------
+    bspline_fitting_distance : :obj:`float`
+        Distance in mm between B-Spline control points for N4 INU estimation.
+    longitudinal : :obj:`bool`
+        Whether an unbiased middle point should be calculated.
+    name : :obj:`str`
+        This particular workflow's unique name (Nipype requirement).
+    num_maps : :obj:`int`
+        Then number of input 3D volumes to be averaged.
+    omp_nthreads : :obj:`int`
+        The number of threads for individual processes in this workflow.
+    sloppy : :obj:`bool`
+        Run in *sloppy* mode.
+
+    Inputs
+    ------
+    in_files : :obj:`list`
+        A list of one or more input files. They can be 3D or 4D.
+
+    Outputs
+    -------
+    out_file : :obj:`str`
+        The output averaged reference file.
+    valid_list : :obj:`list`
+        A list of accepted/discarded volumes from the input list.
+    realign_xfms : :obj:`list`
+        List of rigid-body transformation matrices that bring every volume
+        into alignment with the average reference.
+    out_report : :obj:`str`
+        Path to a reportlet summarizing what happened in this workflow.
+
     """
     from pkg_resources import resource_filename as pkgr
     from nipype.interfaces.ants import N4BiasFieldCorrection
