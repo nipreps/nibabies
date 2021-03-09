@@ -2,6 +2,8 @@
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
+from ... import config
+
 
 def init_infant_anat_wf(
     *,
@@ -215,11 +217,13 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         template_specs=skull_strip_template.spec,
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
+        debug="registration" in config.execution.debug,
     )
 
     coregistration_wf = init_coregistration_wf(
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
+        debug="registration" in config.execution.debug,
     )
     coreg_report_wf = init_coreg_report_wf(
         output_dir=output_dir,

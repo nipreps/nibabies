@@ -13,6 +13,7 @@ def init_coregistration_wf(
     name="coregistration_wf",
     omp_nthreads=None,
     sloppy=False,
+    debug=False,
 ):
     """
     Set-up a T2w-to-T1w within-baby co-registration framework.
@@ -46,6 +47,9 @@ def init_coregistration_wf(
         The number of threads for individual processes in this workflow.
     sloppy : :obj:`bool`
         Run in *sloppy* mode.
+    debug : :obj:`bool`
+        Produce intermediate registration files
+
 
     Inputs
     ------
@@ -117,9 +121,10 @@ def init_coregistration_wf(
         mem_gb=mem_gb,
     )
     coreg.inputs.float = sloppy
-    coreg.inputs.args = "--write-interval-volumes 5" * sloppy
-    coreg.inputs.output_inverse_warped_image = sloppy
-    coreg.inputs.output_warped_image = sloppy
+    if debug:
+        coreg.inputs.args = "--write-interval-volumes 5"
+        coreg.inputs.output_inverse_warped_image = sloppy
+        coreg.inputs.output_warped_image = sloppy
 
     map_mask = pe.Node(
         ApplyTransforms(interpolation="Gaussian"), name="map_mask", mem_gb=1

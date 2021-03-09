@@ -15,6 +15,7 @@ def init_infant_brain_extraction_wf(
     skull_strip_template="UNCInfant",
     template_specs=None,
     mem_gb=3.0,
+    debug=False,
     name="infant_brain_extraction_wf",
     omp_nthreads=None,
 ):
@@ -55,6 +56,8 @@ def init_infant_brain_extraction_wf(
         This particular workflow's unique name (Nipype requirement).
     omp_nthreads : :obj:`int`
         The number of threads for individual processes in this workflow.
+    debug : :obj:`bool`
+        Produce intermediate registration files
 
     Inputs
     ------
@@ -170,7 +173,8 @@ def init_infant_brain_extraction_wf(
         mem_gb=mem_gb,
     )
     norm.inputs.float = sloppy
-    norm.inputs.args = "--write-interval-volumes 5"
+    if debug:
+        norm.inputs.args = "--write-interval-volumes 5"
 
     map_mask_t2w = pe.Node(
         ApplyTransforms(interpolation="Gaussian", float=True),
