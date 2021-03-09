@@ -174,10 +174,6 @@ def init_infant_brain_extraction_wf(
 
     thr_t2w_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_t2w_mask")
 
-    bspline_grid = pe.Node(
-        niu.Function(function=_bspline_distance), name="bspline_grid"
-    )
-
     # Refine INU correction
     final_n4 = pe.Node(
         N4BiasFieldCorrection(
@@ -193,12 +189,11 @@ def init_infant_brain_extraction_wf(
         n_procs=omp_nthreads,
         name="final_n4",
     )
-    final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=98.0), name="final_clip")
+    final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=99.5), name="final_clip")
     apply_mask = pe.Node(ApplyMask(), name="apply_mask")
 
     # fmt:off
     workflow.connect([
-        (inputnode, bspline_grid, [("in_t2w", "in_file")]),
         (inputnode, final_n4, [("in_t2w", "input_image")]),
         # 1. Massage T2w
         (inputnode, mrg_t2w, [("in_t2w", "in1")]),
@@ -223,7 +218,6 @@ def init_infant_brain_extraction_wf(
         (thr_t2w_mask, apply_mask, [("out_mask", "in_mask")]),
         (final_n4, apply_mask, [("output_image", "in_file")]),
         # 5. Refine T2w INU correction with brain mask
-        (bspline_grid, final_n4, [("out", "args")]),
         (map_mask_t2w, final_n4, [("output_image", "weight_image")]),
         (final_n4, final_clip, [("output_image", "in_file")]),
         # 9. Outputs
@@ -275,13 +269,3 @@ def _pop(in_files):
     if isinstance(in_files, (list, tuple)):
         return in_files[0]
     return in_files
-
-
-def _bspline_distance(in_file, spacings=(20, 20, 20)):
-    import numpy as np
-    import nibabel as nb
-
-    img = nb.load(in_file)
-    extent = (np.array(img.shape[:3]) - 1) * img.header.get_zooms()[:3]
-    retval = [f"{v}" for v in np.ceil(extent / np.array(spacings)).astype(int)]
-    return f"-b {'x'.join(retval)}"
