@@ -252,16 +252,16 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
     # fmt: off
     wf.connect([
-        (inputnode, t1w_template_wf, [("t1w", "inputnode.in_file")]),
-        (inputnode, t2w_template_wf, [("t2w", "inputnode.in_file")]),
+        (inputnode, t1w_template_wf, [("t1w", "inputnode.in_files")]),
+        (inputnode, t2w_template_wf, [("t2w", "inputnode.in_files")]),
         (t1w_template_wf, outputnode, [
-            ("outputnode.t1w_realign_xfm", "anat_ref_xfms"),
+            ("outputnode.realign_xfms", "anat_ref_xfms"),
         ]),
         (t2w_template_wf, brain_extraction_wf, [
             ("outputnode.out_file", "inputnode.in_t2w"),
         ]),
         (t1w_template_wf, coregistration_wf, [
-            ("outputnode.out_file", "inputnode.in_t1w_preproc"),
+            ("outputnode.out_file", "inputnode.in_t1w"),
         ]),
         (brain_extraction_wf, coregistration_wf, [
             ("outputnode.t2w_preproc", "inputnode.in_t2w_preproc"),
@@ -334,8 +334,8 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         ]),
         # derivatives
         (t1w_template_wf, anat_derivatives_wf, [
-            ("outputnode.t1w_valid_list", "inputnode.source_files"),
-            ("outputnode.t1w_realign_xfm", "inputnode.t1w_ref_xfms"),
+            ("outputnode.valid_list", "inputnode.source_files"),
+            ("outputnode.realign_xfms", "inputnode.t1w_ref_xfms"),
         ]),
         (be_buffer, anat_derivatives_wf, [
             ("anat_mask", "inputnode.t1w_mask"),
