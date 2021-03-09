@@ -106,7 +106,8 @@ def init_coregistration_wf(
     )
 
     # Dilate t2w mask for easier t1->t2 registration
-    mask_dilate = pe.Node(BinaryDilation(radius=8, iterations=3), name="mask_dilate")
+    reg_mask = pe.Node(BinaryDilation(radius=8, iterations=3), name="reg_mask")
+    refine_mask = pe.Node(BinaryDilation(radius=8, iterations=1), name="refine_mask")
 
     # Set up T2w -> T1w within-subject registration
     coreg = pe.Node(
@@ -151,10 +152,11 @@ def init_coregistration_wf(
         (inputnode, coreg, [("in_t1w", "moving_image"),
                             ("in_t2w_preproc", "fixed_image")]),
         (inputnode, map_mask, [("in_probmap", "input_image")]),
-        (inputnode, fixed_masks_arg, [("in_mask", "in3")]),
-        (inputnode, mask_dilate, [("in_mask", "in_file")]),
-        (mask_dilate, fixed_masks_arg, [("out_file", "in1")]),
-        (mask_dilate, fixed_masks_arg, [("out_file", "in2")]),
+        (inputnode, reg_mask, [("in_mask", "in_file")]),
+        (inputnode, refine_mask, [("in_mask", "in_file")]),
+        (reg_mask, fixed_masks_arg, [("out_file", "in1")]),
+        (reg_mask, fixed_masks_arg, [("out_file", "in2")]),
+        (refine_mask, fixed_masks_arg, [("out_file", "in3")]),
         (inputnode, map_t2w, [("in_t1w", "reference_image")]),
         (inputnode, map_t2w, [("in_t2w_preproc", "input_image")]),
         (fixed_masks_arg, coreg, [("out", "fixed_image_masks")]),

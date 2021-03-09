@@ -84,6 +84,7 @@ def init_infant_brain_extraction_wf(
     )
     from templateflow.api import get as get_template
 
+    from ...interfaces.nibabel import BinaryDilation
     from ...utils.misc import cohort_by_months
 
     # handle template specifics
@@ -147,12 +148,14 @@ def init_infant_brain_extraction_wf(
     # Merge image nodes
     mrg_tmpl = pe.Node(niu.Merge(2), name="mrg_tmpl", run_without_submitting=True)
     mrg_t2w = pe.Node(niu.Merge(2), name="mrg_t2w", run_without_submitting=True)
+    bin_regmask = pe.Node(Binarize(thresh_low=0.20), name="bin_regmask")
+    bin_regmask.inputs.in_file = str(tpl_brainmask_path)
+    refine_mask = pe.Node(BinaryDilation(radius=3, iterations=2), name="refine_mask")
 
     fixed_masks = pe.Node(niu.Merge(4), name="fixed_masks", run_without_submitting=True)
     fixed_masks.inputs.in1 = "NULL"
     fixed_masks.inputs.in2 = "NULL"
     fixed_masks.inputs.in3 = "NULL" if not tpl_regmask_path else _pop(tpl_regmask_path)
-    fixed_masks.inputs.in4 = "NULL" if not tpl_regmask_path else _pop(tpl_regmask_path)
 
     # Set up initial spatial normalization
     ants_params = "testing" if sloppy else "precise"
@@ -205,6 +208,8 @@ def init_infant_brain_extraction_wf(
         (inputnode, mrg_t2w, [("in_t2w", "in1")]),
         (inputnode, lap_t2w, [("in_t2w", "op1")]),
         (inputnode, map_mask_t2w, [("in_t2w", "reference_image")]),
+        (bin_regmask, refine_mask, [("out_file", "in_file")]),
+        (refine_mask, fixed_masks, [("out_file", "in4")]),
         (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
         (norm_lap_t2w, mrg_t2w, [("out", "in2")]),
         # 2. Prepare template
