@@ -205,7 +205,7 @@ An anatomical reference-map was computed after registration of
         (ref_dimensions, conform_xfm, [("t1w_valid_list", "source_file")]),
         (conform, conform_xfm, [("out_file", "target_file")]),
         (conform, merge, [
-            ("out_file", "in_file"),
+            ("out_file", "in_files"),
             (("out_file", _set_threads, omp_nthreads), "num_threads"),
             (("out_file", add_suffix, "_template"), "out_file")]),
         (merge, ensure_ras, [("out_file", "in_file")]),

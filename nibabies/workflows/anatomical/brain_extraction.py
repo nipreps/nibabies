@@ -135,24 +135,31 @@ def init_infant_brain_extraction_wf(
     )
 
     # Ensure template comes with a range of intensities ANTs will like
-    clip_tmpl = pe.Node(IntensityClip(in_file=_pop(tpl_target_path)), name="clip_tmpl")
+    clip_tmpl = pe.Node(IntensityClip(p_max=99), name="clip_tmpl")
+    clip_tmpl.inputs.in_file = _pop(tpl_target_path)
 
     # Generate laplacian registration targets
     lap_tmpl = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_tmpl")
     lap_t2w = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_t2w")
-    norm_lap_tmpl = pe.Node(IntensityClip(), name="norm_lap_tmpl")
-    norm_lap_t2w = pe.Node(IntensityClip(), name="norm_lap_t2w")
+    norm_lap_tmpl = pe.Node(niu.Function(function=_norm_lap), name="norm_lap_tmpl")
+    norm_lap_t2w = pe.Node(niu.Function(function=_norm_lap), name="norm_lap_t2w")
 
     # Merge image nodes
     mrg_tmpl = pe.Node(niu.Merge(2), name="mrg_tmpl", run_without_submitting=True)
     mrg_t2w = pe.Node(niu.Merge(2), name="mrg_t2w", run_without_submitting=True)
+
+    fixed_masks = pe.Node(niu.Merge(4), name="fixed_masks", run_without_submitting=True)
+    fixed_masks.inputs.in1 = "NULL"
+    fixed_masks.inputs.in2 = "NULL"
+    fixed_masks.inputs.in3 = "NULL" if not tpl_regmask_path else _pop(tpl_regmask_path)
+    fixed_masks.inputs.in4 = "NULL" if not tpl_regmask_path else _pop(tpl_regmask_path)
 
     # Set up initial spatial normalization
     ants_params = "testing" if sloppy else "precise"
     norm = pe.Node(
         Registration(
             from_file=pkgr_fn(
-                "niworkflows.data", f"antsBrainExtraction_{ants_params}.json"
+                "nibabies.data", f"antsBrainExtraction_{ants_params}.json"
             )
         ),
         name="norm",
@@ -160,8 +167,7 @@ def init_infant_brain_extraction_wf(
         mem_gb=mem_gb,
     )
     norm.inputs.float = sloppy
-    if tpl_regmask_path:
-        norm.inputs.fixed_image_masks = tpl_regmask_path
+    norm.inputs.args = "--write-interval-volumes 5"
 
     map_mask_t2w = pe.Node(
         ApplyTransforms(interpolation="Gaussian", float=True),
@@ -200,15 +206,16 @@ def init_infant_brain_extraction_wf(
         (inputnode, lap_t2w, [("in_t2w", "op1")]),
         (inputnode, map_mask_t2w, [("in_t2w", "reference_image")]),
         (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
-        (norm_lap_t2w, mrg_t2w, [("out_file", "in2")]),
+        (norm_lap_t2w, mrg_t2w, [("out", "in2")]),
         # 2. Prepare template
         (clip_tmpl, lap_tmpl, [("out_file", "op1")]),
         (lap_tmpl, norm_lap_tmpl, [("output_image", "in_file")]),
         (clip_tmpl, mrg_tmpl, [("out_file", "in1")]),
-        (norm_lap_tmpl, mrg_tmpl, [("out_file", "in2")]),
+        (norm_lap_tmpl, mrg_tmpl, [("out", "in2")]),
         # 3. Set normalization node inputs
         (mrg_tmpl, norm, [("out", "fixed_image")]),
         (mrg_t2w, norm, [("out", "moving_image")]),
+        (fixed_masks, norm, [("out", "fixed_image_masks")]),
         # 4. Map template brainmask into T2w space
         (norm, map_mask_t2w, [
             ("reverse_transforms", "transforms"),
@@ -269,3 +276,27 @@ def _pop(in_files):
     if isinstance(in_files, (list, tuple)):
         return in_files[0]
     return in_files
+
+
+def _norm_lap(in_file):
+    from pathlib import Path
+    import numpy as np
+    import nibabel as nb
+    from nipype.utils.filemanip import fname_presuffix
+
+    img = nb.load(in_file)
+    data = img.get_fdata()
+    data -= np.median(data)
+    l_max = np.percentile(data[data > 0], 99.8)
+    l_min = np.percentile(data[data < 0], 0.2)
+    data[data < 0] *= -1.0 / l_min
+    data[data > 0] *= 1.0 / l_max
+    data = np.clip(data, a_min=-1.0, a_max=1.0)
+
+    out_file = fname_presuffix(
+        Path(in_file).name, suffix="_norm", newpath=str(Path.cwd().absolute())
+    )
+    hdr = img.header.copy()
+    hdr.set_data_dtype("float32")
+    img.__class__(data.astype("float32"), img.affine, hdr).to_filename(out_file)
+    return out_file
