@@ -22,7 +22,7 @@
     [100, 100, 50, 10],
     [5, 0]
   ],
-  "output_transform_prefix": "anat_to_template",
+  "output_transform_prefix": "anat2std",
   "radius_or_number_of_bins": [
     32,
     32,
