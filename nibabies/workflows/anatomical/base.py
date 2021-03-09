@@ -229,11 +229,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         output_dir=output_dir,
     )
 
-    # Ensure single outputs
-    be_buffer = pe.Node(
-        niu.IdentityInterface(fields=["anat_preproc", "anat_brain"]), name="be_buffer"
-    )
-
     # Segmentation - initial implementation should be simple: JLF
     anat_seg_wf = init_anat_seg_wf(
         age_months=age_months,
@@ -272,18 +267,17 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ("outputnode.out_mask", "inputnode.in_mask"),
             ("outputnode.out_probmap", "inputnode.in_probmap"),
         ]),
-        (coregistration_wf, be_buffer, [
-            (("outputnode.t1w_preproc", _pop), "anat_preproc"),
-            (("outputnode.t1w_brain", _pop), "anat_brain"),
-            (("outputnode.t1w_mask", _pop), "anat_mask"),
+        (coregistration_wf, anat_norm_wf, [
+            ("outputnode.t1w_preproc", "inputnode.moving_image"),
+            ("outputnode.t1w_mask", "inputnode.moving_mask"),
         ]),
-        (be_buffer, outputnode, [
-            ("anat_preproc", "anat_preproc"),
-            ("anat_brain", "anat_brain"),
-            ("anat_mask", "anat_mask"),
+        (coregistration_wf, outputnode, [
+            ("outputnode.t1w_preproc", "anat_preproc"),
+            ("outputnode.t1w_brain", "anat_brain"),
+            ("outputnode.t1w_mask", "anat_mask"),
         ]),
-        (be_buffer, anat_seg_wf, [
-            ("anat_brain", "inputnode.anat_brain"),
+        (coregistration_wf, anat_seg_wf, [
+            ("outputnode.t1w_preproc", "inputnode.anat_brain")
         ]),
         (anat_seg_wf, outputnode, [
             ("outputnode.anat_dseg", "anat_dseg"),
@@ -291,10 +285,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (anat_seg_wf, anat_norm_wf, [
             ("outputnode.anat_dseg", "inputnode.moving_segmentation"),
             ("outputnode.anat_tpms", "inputnode.moving_tpms"),
-        ]),
-        (be_buffer, anat_norm_wf, [
-            ("anat_preproc", "inputnode.moving_image"),
-            ("anat_mask", "inputnode.moving_mask"),
         ]),
         (anat_norm_wf, outputnode, [
             ("poutputnode.standardized", "std_preproc"),
@@ -341,9 +331,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ("outputnode.valid_list", "inputnode.source_files"),
             ("outputnode.realign_xfms", "inputnode.t1w_ref_xfms"),
         ]),
-        (be_buffer, anat_derivatives_wf, [
-            ("anat_mask", "inputnode.t1w_mask"),
-            ("anat_preproc", "inputnode.t1w_preproc"),
+        (coregistration_wf, anat_derivatives_wf, [
+            ("outputnode.t1w_mask", "inputnode.t1w_mask"),
+            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
         ]),
         (anat_norm_wf, anat_derivatives_wf, [
             ("outputnode.template", "inputnode.template"),
