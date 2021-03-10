@@ -180,7 +180,7 @@ def init_coregistration_wf(
         (final_n4, outputnode, [("output_image", "t1w_preproc")]),
         (map_t2w, outputnode, [("output_image", "t2w_preproc")]),
         (thr_mask, outputnode, [("out_mask", "t1w_mask")]),
-        (apply_mask, outputnode, [("out_file", "t1w_corrected_brain")]),
+        (apply_mask, outputnode, [("out_file", "t1w_brain")]),
         (coreg, outputnode, [("forward_transforms", "t1w2t2w_xfm")]),
     ])
     # fmt:on

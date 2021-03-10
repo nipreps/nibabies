@@ -277,7 +277,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ("outputnode.t1w_mask", "anat_mask"),
         ]),
         (coregistration_wf, anat_seg_wf, [
-            ("outputnode.t1w_preproc", "inputnode.anat_brain")
+            ("outputnode.t1w_brain", "inputnode.anat_brain")
         ]),
         (anat_seg_wf, outputnode, [
             ("outputnode.anat_dseg", "anat_dseg"),
