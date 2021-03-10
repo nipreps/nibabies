@@ -120,12 +120,12 @@ def init_anat_average_wf(
     conform = pe.MapNode(Conform(), iterfield="in_file", name="conform")
     # fmt:off
     wf.connect([
+        (inputnode, ref_dimensions, [("in_files", "t1w_list")]),
         (inputnode, validate, [("in_files", "in_file")]),
         (validate, split, [("out_file", "in_file")]),
         (split, clip_preinu, [(("out_files", _flatten), "in_file")]),
         (clip_preinu, correct_inu, [("out_file", "input_image")]),
         (correct_inu, clip_postinu, [("output_image", "in_file")]),
-        (clip_postinu, ref_dimensions, [("out_file", "t1w_list")]),
         (ref_dimensions, conform, [
             ("t1w_valid_list", "in_file"),
             ("target_zooms", "target_zooms"),
