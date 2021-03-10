@@ -458,8 +458,6 @@ def init_bold_preproc_trans_wf(mem_gb, omp_nthreads,
     ------
     bold_file
         Individual 3D volumes, not motion corrected
-    bold_mask
-        Skull-stripping mask of reference image
     name_source
         BOLD series NIfTI file
         Used to recover original information lost during processing
@@ -491,12 +489,12 @@ susceptibility distortions""" if use_fieldwarp else """\
 the transforms to correct for head-motion""")
 
     inputnode = pe.Node(niu.IdentityInterface(fields=[
-        'name_source', 'bold_file', 'bold_mask', 'hmc_xforms', 'fieldwarp']),
+        'name_source', 'bold_file', 'hmc_xforms', 'fieldwarp']),
         name='inputnode'
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['bold', 'bold_mask', 'bold_ref', 'bold_ref_brain']),
+        niu.IdentityInterface(fields=['bold']),
         name='outputnode')
 
     merge_xforms = pe.Node(niu.Merge(2), name='merge_xforms',
