@@ -249,7 +249,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     inputnode = pe.Node(niu.IdentityInterface(
         fields=['bold_file', 'subjects_dir', 'subject_id',
-                'anat_preproc', 'anat_mask', 'anat_dseg', 'anat_tpms',
+                'anat_preproc', 'anat_brain', 'anat_mask', 'anat_dseg', 'anat_tpms',
                 'anat_aseg', 'anat_aparc',
                 'anat2std_xfm', 'std2anat_xfm', 'template',
                 'anat2fsnative_xfm', 'fsnative2anat_xfm',
@@ -266,9 +266,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 'confounds_metadata']),
         name='outputnode')
 
-    # Generate a brain-masked conversion of the t1w
-    anat_brain = pe.Node(ApplyMask(), name='anat_brain')
-
     # BOLD buffer: an identity used as a pointer to either the original BOLD
     # or the STC'ed one for further use.
     boldbuffer = pe.Node(niu.IdentityInterface(fields=['bold_file']), name='boldbuffer')
@@ -284,6 +281,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             tr=metadata.get("RepetitionTime")),
         name='summary', mem_gb=config.DEFAULT_MEMORY_MIN_GB, run_without_submitting=True)
     summary.inputs.dummy_scans = config.workflow.dummy_scans
+    # TODO: Add SDC
+    summary.inputs.distortion_correction = 'None'
 
     func_derivatives_wf = init_func_derivatives_wf(
         bids_root=layout.root,
@@ -404,13 +403,14 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # for meepi, iterate over all meepi echos to boldbuffer
         boldbuffer.iterables = ('bold_file', bold_file)
 
-    # SDC (SUSCEPTIBILITY DISTORTION CORRECTION) or bypass ##########################
-    bold_sdc_wf = init_sdc_estimate_wf(
-        fmaps,
-        metadata,
-        omp_nthreads=omp_nthreads,
-        debug=config.execution.sloppy
-    )
+    # TODO: Add SDC
+    # SDC (SUSCEPTIBILITY DISTORTION CORRECTION)
+    # bold_sdc_wf = init_sdc_estimate_wf(
+    #     fmaps,
+    #     metadata,
+    #     omp_nthreads=omp_nthreads,
+    #     debug=config.execution.sloppy
+    # )
 
     # MULTI-ECHO EPI DATA #############################################
     if multiecho:  # instantiate relevant interfaces, imports
@@ -435,12 +435,10 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                                        name='bold_t2smap_wf')
 
     # Mask BOLD reference image
-    bold_ref_mask = pe.Node(BrainExtraction(), name='bold_ref_mask')
+    bold_ref_masker = pe.Node(BrainExtraction(), name='bold_ref_masker')
 
     # MAIN WORKFLOW STRUCTURE #######################################################
     workflow.connect([
-        (inputnode, anat_brain, [('anat_preproc', 'in_file'),
-                                 ('anat_mask', 'in_mask')]),
         # BOLD buffer has slice-time corrected if it was run, original otherwise
         (boldbuffer, bold_split, [('bold_file', 'in_file')]),
         # HMC
@@ -458,15 +456,14 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('subjects_dir', 'inputnode.subjects_dir'),
             ('subject_id', 'inputnode.subject_id'),
             ('fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm')]),
-        (anat_brain, bold_reg_wf, [
-            ('out_file', 'inputnode.t1w_brain')]),
+        (inputnode, bold_reg_wf, [
+            ('anat_brain', 'inputnode.t1w_brain')]),
         (inputnode, bold_t1_trans_wf, [
             ('bold_file', 'inputnode.name_source'),
             ('anat_mask', 'inputnode.t1w_mask'),
+            ('anat_brain', 'inputnode.t1w_brain'),
             ('anat_aseg', 'inputnode.t1w_aseg'),
             ('anat_aparc', 'inputnode.t1w_aparc')]),
-        (anat_brain, bold_t1_trans_wf, [
-            ('out_file', 'inputnode.t1w_brain')]),
         (bold_reg_wf, outputnode, [
             ('outputnode.itk_bold_to_t1', 'bold2anat_xfm'),
             ('outputnode.itk_t1_to_bold', 'anat2bold_xfm')]),
@@ -478,22 +475,27 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                                         ('outputnode.bold_aparc_t1', 'bold_aparc_anat')]),
         (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
         # SDC (or pass-through workflow)
-        (anat_brain, bold_sdc_wf, [
-            ('out_file', 'inputnode.t1w_brain')]),
-        (inputnode, bold_ref_mask, [('bold_ref', 'in_file')]),
+        (inputnode, bold_ref_masker, [('bold_ref', 'in_file')]),
         # also outputs probabilistic mask, which can be thresholded to play around with
-        (bold_ref_mask, bold_sdc_wf, [('out_mask', 'inputnode.epi_mask')]),
-        (bold_ref_mask, bold_sdc_wf, [('out_file', 'inputnode.epi_brain')]),
-        (inputnode, bold_sdc_wf, [('bold_ref', 'inputnode.epi_file')]),
-        (bold_sdc_wf, bold_t1_trans_wf, [
-            ('outputnode.epi_mask', 'inputnode.ref_bold_mask'),
-            ('outputnode.epi_brain', 'inputnode.ref_bold_brain')]),
-        (bold_sdc_wf, bold_bold_trans_wf, [
-            ('outputnode.out_warp', 'inputnode.fieldwarp'),
-            ('outputnode.epi_mask', 'inputnode.bold_mask')]),
-        (bold_sdc_wf, bold_reg_wf, [
-            ('outputnode.epi_brain', 'inputnode.ref_bold_brain')]),
-        (bold_sdc_wf, summary, [('outputnode.method', 'distortion_correction')]),
+        # (bold_ref_mask, bold_sdc_wf, [('out_mask', 'inputnode.epi_mask')]),
+        # (bold_ref_mask, bold_sdc_wf, [('out_file', 'inputnode.epi_brain')]),
+        # (inputnode, bold_sdc_wf, [('bold_ref', 'inputnode.epi_file')]),
+        # (bold_sdc_wf, bold_t1_trans_wf, [
+        #     ('outputnode.epi_mask', 'inputnode.ref_bold_mask'),
+        #     ('outputnode.epi_brain', 'inputnode.ref_bold_brain')]),
+        # (bold_sdc_wf, bold_bold_trans_wf, [
+        #     ('outputnode.out_warp', 'inputnode.fieldwarp'),
+        #     ('outputnode.epi_mask', 'inputnode.bold_mask')]),
+        # (bold_sdc_wf, bold_reg_wf, [
+        #     ('outputnode.epi_brain', 'inputnode.ref_bold_brain')]),
+        # (bold_sdc_wf, summary, [('outputnode.method', 'distortion_correction')]),
+        (bold_ref_masker, bold_t1_trans_wf, [
+            ('out_mask', 'inputnode.ref_bold_mask'),
+            ('out_file', 'inputnode.ref_bold_brain'),
+        ]),
+        (bold_ref_masker, bold_reg_wf, [
+            ('out_file', 'inputnode.ref_bold_brain'),
+        ]),
         # Connect bold_confounds_wf
         (inputnode, bold_confounds_wf, [('anat_tpms', 'inputnode.t1w_tpms'),
                                         ('anat_mask', 'inputnode.t1w_mask')]),
@@ -504,8 +506,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('outputnode.itk_t1_to_bold', 'inputnode.t1_bold_xform')]),
         (inputnode, bold_confounds_wf, [
             ('n_dummy_scans', 'inputnode.skip_vols')]),
-        (bold_bold_trans_wf, bold_confounds_wf, [
-            ('outputnode.bold_mask', 'inputnode.bold_mask')]),
+        (bold_ref_masker, bold_confounds_wf, [
+            ('out_mask', 'inputnode.bold_mask')]),
         (bold_confounds_wf, outputnode, [
             ('outputnode.confounds_file', 'confounds'),
             ('outputnode.confounds_metadata', 'confounds_metadata'),
@@ -523,6 +525,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     # for standard EPI data, pass along correct file
     if not multiecho:
+        # TODO: Add SDC
+        bold_t1_trans_wf.inputs.inputnode.fieldwarp = 'identity'
         workflow.connect([
             (inputnode, func_derivatives_wf, [
                 ('bold_file', 'inputnode.source_file')]),
@@ -534,8 +538,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('out_files', 'inputnode.bold_split')]),
             (bold_hmc_wf, bold_t1_trans_wf, [
                 ('outputnode.xforms', 'inputnode.hmc_xforms')]),
-            (bold_sdc_wf, bold_t1_trans_wf, [
-                ('outputnode.out_warp', 'inputnode.fieldwarp')])
+            # (bold_sdc_wf, bold_t1_trans_wf, [
+            #     ('outputnode.out_warp', 'inputnode.fieldwarp')])
         ])
     else:  # for meepi, use optimal combination
         workflow.connect([
@@ -639,18 +643,19 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('outputnode.itk_bold_to_t1', 'transforms')]),
             (bold_t1_trans_wf, boldmask_to_t1w, [
                 ('outputnode.bold_mask_t1', 'reference_image')]),
-            # Check
-            (bold_bold_trans_wf, boldmask_to_t1w, [
-                ('outputnode.bold_mask', 'input_image')]),
+            (bold_ref_masker, boldmask_to_t1w, [
+                ('out_mask', 'input_image')]),
             (boldmask_to_t1w, outputnode, [
                 ('output_image', 'bold_mask_anat')]),
         ])
 
     if nonstd_spaces.intersection(('func', 'run', 'bold', 'boldref', 'sbref')):
         workflow.connect([
-            (bold_bold_trans_wf, func_derivatives_wf, [
-                ('outputnode.bold_ref', 'inputnode.bold_native_ref'),
-                ('outputnode.bold_mask', 'inputnode.bold_mask_native')]),
+            (inputnode, func_derivatives_wf, [
+                ('bold_ref', 'inputnode.bold_native_ref'),
+            ]),
+            (bold_ref_masker, func_derivatives_wf, [
+                ('out_mask', 'inputnode.bold_mask_native')]),
             (bold_bold_trans_wf if not multiecho else bold_t2s_wf, outputnode, [
                 ('outputnode.bold', 'bold_native')])
         ])
@@ -673,8 +678,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('bold_file', 'inputnode.name_source'),
                 ('anat_aseg', 'inputnode.bold_aseg'),
                 ('anat_aparc', 'inputnode.bold_aparc')]),
-            (bold_bold_trans_wf, bold_std_trans_wf, [
-                ('outputnode.bold_mask', 'inputnode.bold_mask')]),
+            (bold_ref_masker, bold_std_trans_wf, [
+                ('out_mask', 'inputnode.bold_mask')]),
             (bold_reg_wf, bold_std_trans_wf, [
                 ('outputnode.itk_bold_to_t1', 'inputnode.itk_bold_to_t1')]),
             (bold_std_trans_wf, outputnode, [('outputnode.bold_std', 'bold_std'),
@@ -694,11 +699,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ])
 
         if not multiecho:
+            # TODO: Add SDC
+            bold_std_trans_wf.inputs.inputnode.fieldwarp = 'identity'
             workflow.connect([
                 (bold_split, bold_std_trans_wf, [
                     ('out_files', 'inputnode.bold_split')]),
-                (bold_sdc_wf, bold_std_trans_wf, [
-                    ('outputnode.out_warp', 'inputnode.fieldwarp')]),
+                # (bold_sdc_wf, bold_std_trans_wf, [
+                #     ('outputnode.out_warp', 'inputnode.fieldwarp')]),
                 (bold_hmc_wf, bold_std_trans_wf, [
                     ('outputnode.xforms', 'inputnode.hmc_xforms')]),
             ])

@@ -430,6 +430,7 @@ tasks and sessions), the following preprocessing was performed.
                 (anat_preproc_wf, func_preproc_wf, [
                     ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
                     ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                    ('outputnode.anat_brain', 'inputnode.anat_brain'),
                     ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
                     ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
                     ('outputnode.anat_aparc', 'inputnode.anat_aparc'),
