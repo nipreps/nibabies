@@ -272,6 +272,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         ]),
         (anat_seg_wf, outputnode, [
             ("outputnode.anat_dseg", "anat_dseg"),
+            ("outputnode.anat_tpms", "anat_tpms"),
         ]),
         (anat_seg_wf, anat_norm_wf, [
             ("outputnode.anat_dseg", "inputnode.moving_segmentation"),
