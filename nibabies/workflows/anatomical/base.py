@@ -360,9 +360,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (t1w_template_wf, surface_recon_wf, [
             ("outputnode.out_file", "inputnode.anat_orig"),
         ]),
-        (be_buffer, surface_recon_wf, [
-            ("anat_brain", "inputnode.anat_skullstripped"),
-            ("anat_preproc", "inputnode.anat_preproc"),
+        (coregistration_wf, surface_recon_wf, [
+            ("outputnode.t1w_brain", "inputnode.anat_skullstripped"),
+            ("outputnode.t1w_preproc", "inputnode.anat_preproc"),
         ]),
         (surface_recon_wf, outputnode, [
             ("outputnode.subjects_dir", "subjects_dir"),
