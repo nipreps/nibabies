@@ -14,7 +14,6 @@ import warnings
 from nipype.algorithms import confounds as nac
 from nipype.interfaces import utility as niu, fsl
 from nipype.pipeline import engine as pe
-import templateflow as tf
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 from ...interfaces import DerivativesDataSink
@@ -463,9 +462,6 @@ def init_carpetplot_wf(mem_gb, metadata, cifti_output, name="bold_carpet_wf"):
 
     outputnode = pe.Node(niu.IdentityInterface(
         fields=['out_carpetplot']), name='outputnode')
-
-    # List transforms
-    mrg_xfms = pe.Node(niu.Merge(2), name='mrg_xfms')
 
     # Warp segmentation into EPI space
     # resample_parc = pe.Node(ApplyTransforms(

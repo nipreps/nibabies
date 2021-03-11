@@ -16,7 +16,7 @@ def main():
 
     parse_args()
 
-    sentry_sdk = None
+    # sentry_sdk = None
     # if not config.execution.notrack:
     #     import sentry_sdk
     #     from ..utils.sentry import sentry_setup
@@ -88,7 +88,7 @@ def main():
         ),
     )
     config.loggers.workflow.log(25, "nibabies started!")
-    errno = 1  # Default is error exit unless otherwise set
+    # errno = 1  # Default is error exit unless otherwise set
     try:
         nibabies_wf.run(**config.nipype.get_plugin())
     except Exception as e:
@@ -145,13 +145,13 @@ def main():
             _copy_any(
                 dseg_tsv, str(config.execution.nibabies_dir / "desc-aparcaseg_dseg.tsv")
             )
-        errno = 0
+        # errno = 0
     finally:
         from ..reports.core import generate_reports
         from pkg_resources import resource_filename as pkgrf
 
         # Generate reports phase
-        failed_reports = generate_reports(
+        generate_reports(
             config.execution.participant_label,
             config.execution.nibabies_dir,
             config.execution.run_uuid,

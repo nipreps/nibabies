@@ -76,7 +76,6 @@ def init_infant_anat_wf(
     """
     from nipype.interfaces.base import Undefined
     from nipype.interfaces.ants.base import Info as ANTsInfo
-    from smriprep.workflows.anatomical import _pop
     from smriprep.workflows.outputs import init_anat_derivatives_wf
 
     from ...utils.misc import fix_multi_source_name

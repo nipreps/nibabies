@@ -118,8 +118,6 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     )
     from ...utils.patches import set_tf_resolution
 
-    BIDS_TISSUE_ORDER = ("GM", "WM", "CSF")
-
     workflow = Workflow(name=name)
 
     inputfields = [
@@ -182,7 +180,6 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
 
     set_tf_res = pe.Node(niu.Function(function=set_tf_resolution), name='set_tf_res')
     set_tf_res.inputs.sloppy = sloppy
-
 
     norm_msk = pe.Node(
         niu.Function(

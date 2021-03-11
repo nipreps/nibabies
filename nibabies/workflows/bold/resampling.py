@@ -620,20 +620,24 @@ surface space.
                    'new_sphere', 'new_area',
                    'current_sphere', 'current_area'])
     resample.inputs.current_sphere = [
-        str(tf.api.get('fsaverage', hemi=hemi, density='164k', desc='std', suffix='sphere'))
-        for hemi in 'LR'
+        str(tf.api.get(
+            'fsaverage', hemi=hemi, density='164k', desc='std', suffix='sphere'
+        )) for hemi in 'LR'
     ]
     resample.inputs.current_area = [
-        str(tf.api.get('fsaverage', hemi=hemi, density='164k', desc='vaavg', suffix='midthickness'))
-        for hemi in 'LR'
+        str(tf.api.get(
+            'fsaverage', hemi=hemi, density='164k', desc='vaavg', suffix='midthickness'
+        )) for hemi in 'LR'
     ]
     resample.inputs.new_sphere = [
-        str(tf.api.get('fsLR', space='fsaverage', hemi=hemi, density=fslr_density, suffix='sphere'))
-        for hemi in 'LR'
+        str(tf.api.get(
+            'fsLR', space='fsaverage', hemi=hemi, density=fslr_density, suffix='sphere'
+        )) for hemi in 'LR'
     ]
     resample.inputs.new_area = [
-        str(tf.api.get('fsLR', hemi=hemi, density=fslr_density, desc='vaavg', suffix='midthickness'))
-        for hemi in 'LR'
+        str(tf.api.get(
+            'fsLR', hemi=hemi, density=fslr_density, desc='vaavg', suffix='midthickness'
+        )) for hemi in 'LR'
     ]
     resample.inputs.out_file = [
         'space-fsLR_hemi-%s_den-%s_bold.gii' % (h, grayord_density) for h in 'LR'

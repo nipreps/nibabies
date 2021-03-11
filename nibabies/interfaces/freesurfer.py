@@ -84,7 +84,6 @@ class InfantReconAll(CommandLine):
                     raise RuntimeError("Neither T1 or mask present!")
         # warn users that this might fail...
         if not check_total_memory(recommended_gb=20):
-            import logging
             logging.getLogger('nipype.interface').warning(
                 f"For best results, run {self._cmd} with at least 20GB available RAM."
             )

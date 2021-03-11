@@ -19,13 +19,11 @@ from nipype.interfaces import utility as niu
 
 from niworkflows.utils.connections import pop_file, listify
 from niworkflows.interfaces.header import ValidateImage
-from niworkflows.interfaces.nibabel import ApplyMask
 from sdcflows.interfaces.brainmask import BrainExtraction
 
 from ...interfaces import DerivativesDataSink
 from ...interfaces.reports import FunctionalSummary
 from ...utils.bids import extract_entities
-from ...utils.fmap import init_sdc_estimate_wf  # SDC patch
 from ...utils.misc import combine_meepi_source
 # BOLD workflows
 from .confounds import init_bold_confs_wf, init_carpetplot_wf
@@ -146,8 +144,7 @@ def init_func_preproc_wf(bold_file):
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.nibabel import ApplyMask
-    from niworkflows.interfaces.utility import KeySelect, DictMerge
+    from niworkflows.interfaces.utility import DictMerge
 
     mem_gb = {'filesize': 1, 'resampled': 1, 'largemem': 1}
     bold_tlen = 10
@@ -954,41 +951,6 @@ def _to_join(in_file, join_file):
         return in_file
     res = JoinTSVColumns(in_file=in_file, join_file=join_file).run()
     return res.outputs.out_file
-
-
-def extract_entities(file_list):
-    """
-    Return a dictionary of common entities given a list of files.
-    Examples
-    --------
-    >>> extract_entities('sub-01/anat/sub-01_T1w.nii.gz')
-    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
-    >>> extract_entities(['sub-01/anat/sub-01_T1w.nii.gz'] * 2)
-    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
-    >>> extract_entities(['sub-01/anat/sub-01_run-1_T1w.nii.gz',
-    ...                   'sub-01/anat/sub-01_run-2_T1w.nii.gz'])
-    {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat',
-     'extension': '.nii.gz'}
-    """
-    from collections import defaultdict
-    from bids.layout import parse_file_entities
-
-    entities = defaultdict(list)
-    for e, v in [
-        ev_pair
-        for f in listify(file_list)
-        for ev_pair in parse_file_entities(f).items()
-    ]:
-        entities[e].append(v)
-
-    def _unique(inlist):
-        inlist = sorted(set(inlist))
-        if len(inlist) == 1:
-            return inlist[0]
-        return inlist
-    return {
-        k: _unique(v) for k, v in entities.items()
-    }
 
 
 def get_img_orientation(imgf):

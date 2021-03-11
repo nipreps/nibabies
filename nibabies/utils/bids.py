@@ -3,7 +3,6 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Utilities to handle BIDS inputs."""
 import os
-import sys
 import json
 from pathlib import Path
 
@@ -141,7 +140,6 @@ def group_bolds_ref(*, layout, subject):
     from contextlib import suppress
     from itertools import product
 
-    from bids.layout import Query
     from sdcflows.utils.epimanip import get_trt
 
     base_entities = {
