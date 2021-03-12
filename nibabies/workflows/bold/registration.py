@@ -10,17 +10,15 @@ Registration workflows
 .. autofunction:: init_fsl_bbr_wf
 
 """
+import logging
 import os
 import pkg_resources as pkgr
 
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, fsl, c3
 
-from ... import config
-from ...interfaces import DerivativesDataSink
 
-DEFAULT_MEMORY_MIN_GB = config.DEFAULT_MEMORY_MIN_GB
-LOGGER = config.loggers.workflow
+LOGGER = logging.getLogger("nipype.workflow")
 
 
 def init_bold_reg_wf(
@@ -32,7 +30,6 @@ def init_bold_reg_wf(
         omp_nthreads,
         name='bold_reg_wf',
         sloppy=False,
-        use_compression=True,
         write_report=True,
 ):
     """
@@ -77,8 +74,6 @@ def init_bold_reg_wf(
         Maximum number of threads an individual process may use
     name : :obj:`str`
         Name of workflow (default: ``bold_reg_wf``)
-    use_compression : :obj:`bool`
-        Save registered BOLD series as ``.nii.gz``
     use_fieldwarp : :obj:`bool`
         Include SDC warp in single-shot transform from BOLD to T1
     write_report : :obj:`bool`
@@ -116,6 +111,7 @@ def init_bold_reg_wf(
       * :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`
 
     """
+    from ...interfaces import DerivativesDataSink
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     workflow = Workflow(name=name)
@@ -133,6 +129,7 @@ def init_bold_reg_wf(
     )
 
     if freesurfer:
+        # Replace with volumetric registration until better WM/GM contrasts
         bbr_wf = init_bbreg_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
                                bold2t1w_init=bold2t1w_init, omp_nthreads=omp_nthreads)
     else:
@@ -156,7 +153,7 @@ def init_bold_reg_wf(
         ds_report_reg = pe.Node(
             DerivativesDataSink(datatype="figures", dismiss_entities=("echo",)),
             name='ds_report_reg', run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB)
+            mem_gb=mem_gb)
 
         def _bold_reg_suffix(fallback, freesurfer):
             if fallback:
