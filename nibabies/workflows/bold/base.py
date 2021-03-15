@@ -345,7 +345,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         omp_nthreads=omp_nthreads,
         sloppy=config.execution.sloppy,
         use_bbr=config.workflow.use_bbr,
-        use_compression=False,
     )
 
     # apply BOLD registration to T1w

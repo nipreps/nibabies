@@ -18,6 +18,9 @@ from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, fsl, c3
 
 
+from ...config import DEFAULT_MEMORY_MIN_GB
+
+
 LOGGER = logging.getLogger("nipype.workflow")
 
 
@@ -616,7 +619,7 @@ def init_fsl_bbr_wf(use_bbr, bold2t1w_dof, bold2t1w_init, sloppy=False, name='fs
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.utils.images import dseg_label as _dseg_label
     from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
-    from niworkflows.interfaces.registration import FLIRTRPT
+    from niworkflows.interfaces.reportlets.registration import FLIRTRPT
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
 The BOLD reference was then co-registered to the T1w reference using
