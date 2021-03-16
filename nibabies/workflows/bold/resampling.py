@@ -127,7 +127,7 @@ The BOLD time-series were resampled onto the following surfaces
         (inputnode, rename_src, [('source_file', 'in_file')]),
         (inputnode, itk2lta, [('source_file', 'src_file'),
                               ('t1w2fsnative_xfm', 'in_file')]),
-        (get_fsnative, itk2lta, [('T1', 'dst_file')]),
+        (get_fsnative, itk2lta, [('brain', 'dst_file')]),  # InfantFS: Use brain instead of T1
         (inputnode, sampler, [('subjects_dir', 'subjects_dir'),
                               ('subject_id', 'subject_id')]),
         (itersource, targets, [('target', 'space')]),
@@ -339,9 +339,10 @@ preprocessed BOLD runs*: {tpl}.
         name='bold_to_std_transform', mem_gb=mem_gb * 3 * omp_nthreads, n_procs=omp_nthreads)
 
     merge = pe.Node(Merge(compress=use_compression), name='merge',
-                    mem_gb=mem_gb * 3)
+                    mem_gb=3)  # TODO: Lessen expensive restrictions
 
     # Generate a reference on the target standard space
+    # TODO: Replace with masking interface?
     gen_final_ref = init_bold_reference_wf(
         omp_nthreads=omp_nthreads, pre_mask=True)
 
@@ -708,6 +709,8 @@ def _first(inlist):
 def _aslist(in_value):
     if isinstance(in_value, list):
         return in_value
+    elif isinstance(in_value, str):
+        return [in_value]
     return list(in_value)
 
 

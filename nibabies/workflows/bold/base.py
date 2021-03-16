@@ -162,6 +162,8 @@ def init_func_preproc_wf(bold_file):
     # Take first file as reference
     ref_file = pop_file(bold_file)
     metadata = layout.get_metadata(ref_file)
+    # get original image orientation
+    ref_orientation = get_img_orientation(ref_file)
 
     echo_idxs = listify(entities.get("echo", []))
     multiecho = len(echo_idxs) > 2
@@ -275,7 +277,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             registration_init=config.workflow.bold2t1w_init,
             pe_direction=metadata.get("PhaseEncodingDirection"),
             echo_idx=echo_idxs,
-            tr=metadata.get("RepetitionTime")),
+            tr=metadata.get("RepetitionTime"),
+            orientation=ref_orientation),
         name='summary', mem_gb=config.DEFAULT_MEMORY_MIN_GB, run_without_submitting=True)
     summary.inputs.dummy_scans = config.workflow.dummy_scans
     # TODO: Add SDC

@@ -182,8 +182,8 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         output_dir=output_dir,
         spaces=spaces,
     )
-    # HACK: remove resolution from TFSelect
-    anat_derivatives_wf.get_node("select_tpl").inputs.resolution = Undefined
+    # # HACK: remove resolution from TFSelect
+    # anat_derivatives_wf.get_node("select_tpl").inputs.resolution = Undefined
 
     # Multiple T1w files -> generate average reference
     t1w_template_wf = init_anat_average_wf(
