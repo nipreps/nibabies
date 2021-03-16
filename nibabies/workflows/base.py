@@ -1,7 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """
-fMRIPrep base processing workflows
+NiBabies base processing workflows
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: init_nibabies_wf
@@ -9,6 +9,7 @@ fMRIPrep base processing workflows
 
 """
 
+from nibabies.utils.bids import group_bolds_ref
 import sys
 import os
 from copy import deepcopy
@@ -19,8 +20,7 @@ from nipype.interfaces import utility as niu
 from .. import config
 from ..interfaces import DerivativesDataSink
 from ..interfaces.reports import SubjectSummary, AboutSummary
-
-# from .bold import init_func_preproc_wf
+from .bold import init_func_preproc_wf
 
 
 def init_nibabies_wf():
@@ -378,12 +378,10 @@ It is released under the [CC0]\
     if anat_only:
         return workflow
 
-    raise NotImplementedError("BOLD processing is not yet implemented.")
-
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
     anat_preproc_wf.__postdesc__ = (
-        (anat_preproc_wf.__postdesc__ or "")
+        (anat_preproc_wf.__postdesc__ if hasattr(anat_preproc_wf, '__postdesc__') else "")
         + f"""
 
 Functional data preprocessing
@@ -393,32 +391,70 @@ tasks and sessions), the following preprocessing was performed.
 """
     )
 
-    for bold_file in subject_data["bold"]:
-        func_preproc_wf = init_func_preproc_wf(bold_file)
+    # calculate reference image(s) for BOLD images
+    # group all BOLD files based on same:
+    # 1) session
+    # 2) PE direction
+    # 3) total readout time
+    from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
-        # fmt: off
-        workflow.connect([
-            (anat_preproc_wf, func_preproc_wf, [
-                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
-                ('outputnode.anat_mask', 'inputnode.anat_mask'),
-                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
-                ('outputnode.anat_aparc', 'inputnode.anat_aparc'),
-                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-                ('outputnode.template', 'inputnode.template'),
-                ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
-                ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
-                # Undefined if --fs-no-reconall, but this is safe
-                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-                ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.anat2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
-                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
-            ]),
-        ])
-        # fmt: on
+    _, bold_groupings = group_bolds_ref(
+        layout=config.execution.layout,
+        subject=subject_id
+    )
+    if any(not x for x in bold_groupings):
+        print("No BOLD files found for one or more reference groupings")
+        return workflow
 
+    for idx, bold_files in enumerate(bold_groupings):
+        bold_ref_wf = init_epi_reference_wf(
+            auto_bold_nss=True,
+            name=f'bold_reference_wf{idx}',
+            omp_nthreads=config.nipype.omp_nthreads
+        )
+        bold_ref_wf.inputs.inputnode.in_files = bold_files
+
+        for idx, bold_file in enumerate(bold_files):
+            func_preproc_wf = init_func_preproc_wf(bold_file)
+            # fmt: off
+            workflow.connect([
+                (bold_ref_wf, func_preproc_wf, [
+                    ('outputnode.epi_ref_file', 'inputnode.bold_ref'),
+                    (
+                        ('outputnode.xfm_files', _select_iter_idx, idx),
+                        'inputnode.bold_ref_xfm'),
+                    (
+                        ('outputnode.n_dummy', _select_iter_idx, idx),
+                        'inputnode.n_dummy_scans'),
+                ]),
+                (anat_preproc_wf, func_preproc_wf, [
+                    ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                    ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                    ('outputnode.anat_brain', 'inputnode.anat_brain'),
+                    ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                    ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+                    ('outputnode.anat_aparc', 'inputnode.anat_aparc'),
+                    ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                    ('outputnode.template', 'inputnode.template'),
+                    ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                    ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
+                    # Undefined if --fs-no-reconall, but this is safe
+                    ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                    ('outputnode.subject_id', 'inputnode.subject_id'),
+                    ('outputnode.anat2fsnative_xfm', 'inputnode.anat2fsnative_xfm'),
+                    ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                ]),
+            ])
+            # fmt: on
     return workflow
 
 
 def _prefix(subid):
     return subid if subid.startswith("sub-") else f"sub-{subid}"
+
+
+def _select_iter_idx(in_list, idx):
+    """Returns a specific index of a list/tuple"""
+    if isinstance(in_list, (tuple, list)):
+        return in_list[idx]
+    raise AttributeError(f"Input {in_list} is incompatible type: {type(in_list)}")

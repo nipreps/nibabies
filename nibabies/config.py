@@ -68,6 +68,7 @@ The :py:mod:`config` is responsible for other conveniency actions.
 
 """
 import os
+import sys
 from multiprocessing import set_start_method
 
 # Disable NiPype etelemetry always
@@ -86,7 +87,6 @@ except RuntimeError:
 finally:
     # Defer all custom import for after initializing the forkserver and
     # ignoring the most annoying warnings
-    import sys
     import random
     from uuid import uuid4
     from time import strftime
@@ -113,6 +113,8 @@ elif os.getenv("NIBABIES_WARNINGS", "0").lower() in ("1", "on", "true", "y", "ye
     # allow disabling warnings on development versions
     # https://github.com/nipreps/fmriprep/pull/2080#discussion_r409118765
     from ._warnings import logging
+
+    os.environ["PYTHONWARNINGS"] = "ignore"
 else:
     import logging
 
@@ -686,17 +688,6 @@ def init_spaces(checkpoint=True):
     if checkpoint and not spaces.is_cached():
         spaces.checkpoint()
 
-    if "UNCInfant" not in [s.space for s in spaces.references]:
-        age = workflow.age_months or 12
-        if age <= 2:
-            cohort = 1
-        elif age <= 12:
-            cohort = 2
-        else:
-            cohort = 3
-        # add the UNC space
-        spaces.add(Reference("UNCInfant", {'cohort': cohort}))
-
     # # Add the default standard space if not already present (required by several sub-workflows)
     # if "MNI152NLin2009cAsym" not in spaces.get_spaces(nonstandard=False, dim=(3,)):
     #     spaces.add(Reference("MNI152NLin2009cAsym", {}))
@@ -708,12 +699,12 @@ def init_spaces(checkpoint=True):
     #     # Make sure there's a normalization to FSL for AROMA to use.
     #     spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
 
-    # cifti_output = workflow.cifti_output
-    # if cifti_output:
-    #     # CIFTI grayordinates to corresponding FSL-MNI resolutions.
-    #     vol_res = "2" if cifti_output == "91k" else "1"
-    #     spaces.add(Reference("fsaverage", {"den": "164k"}))
-    #     spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
+    cifti_output = workflow.cifti_output
+    if workflow.cifti_output:
+        # CIFTI grayordinates to corresponding FSL-MNI resolutions.
+        vol_res = "2" if cifti_output == "91k" else "1"
+        spaces.add(Reference("fsaverage", {"den": "164k"}))
+        spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
 
     # Make the SpatialReferences object available
     workflow.spaces = spaces

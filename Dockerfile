@@ -62,17 +62,17 @@ RUN mkdir -p $ANTSPATH && \
     | tar -xzC $ANTSPATH --strip-components 1
 ENV PATH=$ANTSPATH/bin:$PATH
 
-# # Install AFNI
-# RUN apt-get update && \
-#     apt-get install -y --no-install-recommends \
-#                     afni=16.2.07~dfsg.1-5~nd16.04+1 && \
-#     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# Install AFNI
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+                    afni=16.2.07~dfsg.1-5~nd16.04+1 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# ENV AFNI_MODELPATH="/usr/lib/afni/models" \
-#     AFNI_IMSAVE_WARNINGS="NO" \
-#     AFNI_TTATLAS_DATASET="/usr/share/afni/atlases" \
-#     AFNI_PLUGINPATH="/usr/lib/afni/plugins"
-# ENV PATH="/usr/lib/afni/bin:$PATH"
+ENV AFNI_MODELPATH="/usr/lib/afni/models" \
+    AFNI_IMSAVE_WARNINGS="NO" \
+    AFNI_TTATLAS_DATASET="/usr/share/afni/atlases" \
+    AFNI_PLUGINPATH="/usr/lib/afni/plugins"
+ENV PATH="/usr/lib/afni/bin:$PATH"
 
 # Install FSL
 # no templates for now; re-add if necessary
@@ -144,6 +144,13 @@ ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
 ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
+
+# Install Connectome workbench
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        connectome-workbench=1.3.2-2~nd16.04+1 \
+        convert3d && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copy niftyreg from previous build stage
 COPY --from=niftyreg-build /opt/niftyreg /opt/niftyreg

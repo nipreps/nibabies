@@ -2,9 +2,7 @@
 
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, freesurfer as fs
-from niworkflows.interfaces.nibabel import ApplyMask
 from niworkflows.interfaces.freesurfer import (
-    PatchedRobustRegister as RobustRegister,
     PatchedLTAConvert as LTAConvert,
 )
 from smriprep.workflows.surfaces import init_gifti_surface_wf

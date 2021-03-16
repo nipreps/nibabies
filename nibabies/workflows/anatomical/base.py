@@ -76,15 +76,12 @@ def init_infant_anat_wf(
     """
     from nipype.interfaces.base import Undefined
     from nipype.interfaces.ants.base import Info as ANTsInfo
-    from smriprep.workflows.anatomical import _pop
-    from smriprep.workflows.norm import init_anat_norm_wf
-    from smriprep.workflows.outputs import (
-        init_anat_reports_wf,
-        init_anat_derivatives_wf,
-    )
+    from smriprep.workflows.outputs import init_anat_derivatives_wf
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import init_infant_brain_extraction_wf
+    from .norm import init_anat_norm_wf
+    from .outputs import init_anat_reports_wf
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_seg_wf
@@ -131,15 +128,10 @@ BIDS dataset."""
                 "surfaces",
                 "anat_aseg",
                 "anat_aparc",
+                "template",
             ]
         ),
         name="outputnode",
-    )
-
-    # Connect reportlets workflows
-    anat_reports_wf = init_anat_reports_wf(
-        freesurfer=freesurfer,
-        output_dir=output_dir,
     )
 
     if existing_derivatives:
@@ -177,9 +169,11 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         skullstrip_tpl=skull_strip_template.fullname,
     )
     # Define output workflows
-    anat_reports_wf = init_anat_reports_wf(freesurfer=freesurfer, output_dir=output_dir)
-    # HACK: remove resolution from TFSelect
-    anat_reports_wf.get_node("tf_select").inputs.resolution = Undefined
+    anat_reports_wf = init_anat_reports_wf(
+        freesurfer=freesurfer,
+        output_dir=output_dir,
+        sloppy=sloppy
+    )
 
     anat_derivatives_wf = init_anat_derivatives_wf(
         bids_root=bids_root,
@@ -188,8 +182,8 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         output_dir=output_dir,
         spaces=spaces,
     )
-    # HACK: remove resolution from TFSelect
-    anat_derivatives_wf.get_node("select_tpl").inputs.resolution = Undefined
+    # # HACK: remove resolution from TFSelect
+    # anat_derivatives_wf.get_node("select_tpl").inputs.resolution = Undefined
 
     # Multiple T1w files -> generate average reference
     t1w_template_wf = init_anat_average_wf(
@@ -240,14 +234,10 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
 
     # Spatial normalization (requires segmentation)
     anat_norm_wf = init_anat_norm_wf(
-        debug=sloppy,
+        sloppy=sloppy,
         omp_nthreads=omp_nthreads,
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
-    # HACK: remove resolution from TFSelect
-    anat_norm_wf.get_node("tf_select").inputs.resolution = Undefined
-    # HACK: requires patched niworkflows to allow setting resolution to none
-    anat_norm_wf.get_node("registration").inputs.template_resolution = None
 
     # fmt: off
     wf.connect([
@@ -281,6 +271,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         ]),
         (anat_seg_wf, outputnode, [
             ("outputnode.anat_dseg", "anat_dseg"),
+            ("outputnode.anat_tpms", "anat_tpms"),
         ]),
         (anat_seg_wf, anat_norm_wf, [
             ("outputnode.anat_dseg", "inputnode.moving_segmentation"),
@@ -369,9 +360,9 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (t1w_template_wf, surface_recon_wf, [
             ("outputnode.out_file", "inputnode.anat_orig"),
         ]),
-        (be_buffer, surface_recon_wf, [
-            ("anat_brain", "inputnode.anat_skullstripped"),
-            ("anat_preproc", "inputnode.anat_preproc"),
+        (coregistration_wf, surface_recon_wf, [
+            ("outputnode.t1w_brain", "inputnode.anat_skullstripped"),
+            ("outputnode.t1w_preproc", "inputnode.anat_preproc"),
         ]),
         (surface_recon_wf, outputnode, [
             ("outputnode.subjects_dir", "subjects_dir"),

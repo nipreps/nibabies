@@ -625,11 +625,7 @@ def parse_args(args=None, namespace=None):
 
     # Initialize --output-spaces if not defined
     if config.execution.output_spaces is None:
-        from niworkflows.utils.spaces import Reference, SpatialReferences
-
-        config.execution.output_spaces = SpatialReferences(
-            [Reference("UNCInfant", {"cohort": "1"})]
-        )
+        # TODO: Set a default volumetric output space
 
     # Retrieve logging level
     build_log = config.loggers.cli
