@@ -218,8 +218,8 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
         ACompCor(components_file='acompcor.tsv', header_prefix='a_comp_cor_', pre_filter='cosine',
                  save_pre_filter=True, save_metadata=True, mask_names=['CSF', 'WM', 'combined'],
                  merge_method='none', failure_mode='NaN'),
-        name="acompcor", mem_gb=mem_gb, n_procs=6)
-        # name="acompcor", mem_gb=8, n_procs=6)  # TODO: Lessen expensive restrictions
+        name="acompcor", mem_gb=mem_gb, n_procs=6  # TODO: Lessen expensive restrictions
+    )
 
     tcompcor = pe.Node(
         TCompCor(components_file='tcompcor.tsv', header_prefix='t_comp_cor_', pre_filter='cosine',
@@ -246,9 +246,10 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
     ]
     merge_rois = pe.Node(niu.Merge(3, ravel_inputs=True), name='merge_rois',
                          run_without_submitting=True)
-    signals = pe.Node(SignalExtraction(class_labels=signals_class_labels),
-                      name="signals", mem_gb=mem_gb, n_procs=6)
-                    #   name="signals", mem_gb=8, n_procs=6)  # TODO: Lessen expensive restrictions
+    signals = pe.Node(
+        SignalExtraction(class_labels=signals_class_labels),
+        name="signals", mem_gb=mem_gb, n_procs=6  # TODO: Lessen expensive restrictions
+    )
 
     # Arrange confounds
     add_dvars_header = pe.Node(
@@ -295,8 +296,10 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
     # Generate reportlet (ROIs)
     mrg_compcor = pe.Node(niu.Merge(2, ravel_inputs=True),
                           name='mrg_compcor', run_without_submitting=True)
-    rois_plot = pe.Node(ROIsPlot(colors=['b', 'magenta'], generate_report=True),
-                        name='rois_plot', mem_gb=mem_gb, n_procs=6)  # 4 TODO: Lessen expensive restrictions
+    rois_plot = pe.Node(
+        ROIsPlot(colors=['b', 'magenta'], generate_report=True),
+        name='rois_plot', mem_gb=mem_gb, n_procs=6  # 4 TODO: Lessen expensive restrictions
+    )
 
     ds_report_bold_rois = pe.Node(
         DerivativesDataSink(desc='rois', datatype="figures", dismiss_entities=("echo",)),
@@ -455,7 +458,6 @@ def init_carpetplot_wf(mem_gb, metadata, cifti_output, name="bold_carpet_wf"):
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 
     inputnode = pe.Node(niu.IdentityInterface(
         fields=['bold', 'bold_mask', 'confounds_file',
