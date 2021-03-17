@@ -131,16 +131,14 @@ def init_bold_reg_wf(
         name='outputnode'
     )
 
-    # if freesurfer:
-    #     bbr_wf = init_bbreg_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
-    #                            bold2t1w_init=bold2t1w_init, omp_nthreads=omp_nthreads)
-    # else:
-    #     bbr_wf = init_fsl_bbr_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
-    #                              bold2t1w_init=bold2t1w_init, sloppy=sloppy)
-    # Replace with volumetric registration until better WM/GM contrasts
-
-    bbr_wf = init_fsl_bbr_wf(use_bbr=False, bold2t1w_dof=bold2t1w_dof,
-                             bold2t1w_init=bold2t1w_init, sloppy=sloppy)
+    # Default to no bbr for the moment
+    use_bbr = False
+    if freesurfer:
+        bbr_wf = init_bbreg_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
+                               bold2t1w_init=bold2t1w_init, omp_nthreads=omp_nthreads)
+    else:
+        bbr_wf = init_fsl_bbr_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
+                                 bold2t1w_init=bold2t1w_init, sloppy=sloppy)
 
     workflow.connect([
         (inputnode, bbr_wf, [
