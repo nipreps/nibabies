@@ -339,7 +339,7 @@ preprocessed BOLD runs*: {tpl}.
         name='bold_to_std_transform', mem_gb=mem_gb * 3 * omp_nthreads, n_procs=omp_nthreads)
 
     merge = pe.Node(Merge(compress=use_compression), name='merge',
-                    mem_gb=3)  # TODO: Lessen expensive restrictions
+                    mem_gb=mem_gb * 3)  # TODO: Lessen expensive restrictions
 
     # Generate a reference on the target standard space
     # TODO: Replace with masking interface?
