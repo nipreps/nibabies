@@ -626,6 +626,7 @@ def parse_args(args=None, namespace=None):
     # Initialize --output-spaces if not defined
     if config.execution.output_spaces is None:
         # TODO: Set a default volumetric output space
+        pass
 
     # Retrieve logging level
     build_log = config.loggers.cli
