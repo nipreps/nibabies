@@ -205,13 +205,12 @@ RUN python -c "from matplotlib import font_manager" && \
 RUN pip install --no-cache-dir templateflow && \
     rm -rf $HOME/.cache/pip
 
-RUN python -c "from templateflow import api as tfapi; \
-               tfapi.get('MNIInfant', cohort=1); \
-               tfapi.get('UNCInfant', cohort=1);"
-
 WORKDIR /src
 COPY . nibabies
 WORKDIR /src/nibabies
+
+# fetch the necessary templateflow files
+RUN python scripts/fetch_templates.py
 
 RUN pip install --no-cache-dir -e .[all] && \
     rm -rf $HOME/.cache/pip

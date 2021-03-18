@@ -74,7 +74,6 @@ def init_infant_anat_wf(
     surfaces
         GIFTI surfaces (gray/white boundary, midthickness, pial, inflated)
     """
-    from nipype.interfaces.base import Undefined
     from nipype.interfaces.ants.base import Info as ANTsInfo
     from smriprep.workflows.outputs import init_anat_derivatives_wf
 
