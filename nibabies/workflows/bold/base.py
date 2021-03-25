@@ -214,11 +214,12 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
 
     if has_fieldmap:
         # Search for intended fieldmap
+        from pathlib import Path
         import re
         from sdcflows.fieldmaps import get_identifier
 
         bold_rel = re.sub(
-            r"^sub-[a-zA-Z0-9]*/", "", str(bold_file.relative_to(layout.root))
+            r"^sub-[a-zA-Z0-9]*/", "", str(Path(bold_file).relative_to(layout.root))
         )
         estimator_key = get_identifier(bold_rel)
         if not estimator_key:
@@ -418,7 +419,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         mem_gb=mem_gb['resampled'],
         omp_nthreads=omp_nthreads,
         use_compression=not config.execution.low_mem,
-        use_fieldwarp=bool(fmaps),
+        use_fieldwarp=False,  # TODO: Add fieldmaps
         name='bold_bold_trans_wf'
     )
     bold_bold_trans_wf.inputs.inputnode.name_source = ref_file
@@ -809,7 +810,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         carpetplot_wf = init_carpetplot_wf(
             mem_gb=mem_gb['resampled'],
             metadata=metadata,
-            cifti_output=config.workflow.cifti_output,
+            cifti_output=bool(config.workflow.cifti_output),
             name='carpetplot_wf')
 
         if not config.workflow.cifti_output:
@@ -860,12 +861,12 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     from sdcflows.workflows.apply.correction import init_unwarp_wf
 
     coeff2epi_wf = init_coeff2epi_wf(
-        debug=config.execution.debug,
+        debug="fieldmaps" in config.execution.debug,
         omp_nthreads=config.nipype.omp_nthreads,
         write_coeff=True,
     )
     unwarp_wf = init_unwarp_wf(
-        debug=config.execution.debug, omp_nthreads=config.nipype.omp_nthreads
+        debug="fieldmaps" in config.execution.debug, omp_nthreads=config.nipype.omp_nthreads
     )
     unwarp_wf.inputs.inputnode.metadata = layout.get_metadata(str(bold_file))
 
@@ -913,7 +914,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("bold_ref", "inputnode.target_ref")]),
         (bold_ref_masker, coeff2epi_wf, [
             ("out_file", "inputnode.target_mask")]),
-        (inputnode, unwarp_wf, unwarp_wf, [("bold_ref", "inputnode.distored")]),
+        (inputnode, unwarp_wf, [("bold_ref", "inputnode.distorted")]),
         (coeff2epi_wf, unwarp_wf, [
             ("outputnode.fmap_coeff", "inputnode.fmap_coeff")]),
         (inputnode, sdc_report, [("bold_ref", "before")]),
