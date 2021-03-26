@@ -953,6 +953,25 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # TODO: Add distortion correction method to sdcflow outputs?
         # (bold_sdc_wf, summary, [('outputnode.method', 'distortion_correction')]),
     ])
+
+    if nonstd_spaces.intersection(('T1w', 'anat')):
+        workflow.connect([
+            (unwarp_masker, boldmask_to_t1w, [
+                ('out_mask', 'input_image')]),
+        ])
+
+    if nonstd_spaces.intersection(('func', 'run', 'bold', 'boldref', 'sbref')):
+        workflow.connect([
+            (unwarp_masker, func_derivatives_wf, [
+                ('out_file', 'inputnode.bold_native_ref'),
+                ('out_mask', 'inputnode.bold_mask_native')]),
+        ])
+
+    if spaces.get_spaces(nonstandard=False, dim=(3,)):
+        workflow.connect([
+            (unwarp_masker, bold_std_trans_wf, [
+                ('out_mask', 'inputnode.bold_mask')]),
+        ])
     # fmt: on
 
     # if not multiecho:
