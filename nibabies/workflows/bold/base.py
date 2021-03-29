@@ -904,15 +904,15 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     )
 
     ds_report_sdc = pe.Node(
-            DerivativesDataSink(
-                base_directory=nibabies_dir,
-                desc="sdc",
-                suffix="bold",
-                datatype="figures",
-                dismiss_entities=("echo",)
-            ),
-            name="ds_report_sdc",
-            run_without_submitting=True,
+        DerivativesDataSink(
+            base_directory=nibabies_dir,
+            desc="sdc",
+            suffix="bold",
+            datatype="figures",
+            dismiss_entities=("echo",)
+        ),
+        name="ds_report_sdc",
+        run_without_submitting=True,
     )
 
     unwarp_masker = pe.Node(BrainExtraction(), name='unwarp_masker')
