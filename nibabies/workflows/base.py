@@ -378,6 +378,21 @@ It is released under the [CC0]\
     if anat_only:
         return workflow
 
+    # Susceptibility distortion correction
+    fmap_estimators = None
+    if "fieldmap" not in config.workflow.ignore:
+        from sdcflows.utils.wrangler import find_estimators
+        from sdcflows.workflows.base import init_fmap_preproc_wf
+
+        # SDC Step 1: Run basic heuristics to identify available data for fieldmap estimation
+        # For now, no fmapless
+        fmap_estimators = find_estimators(
+            layout=config.execution.layout,
+            subject=subject_id,
+            fmapless=False,  # config.workflow.use_syn,
+            force_fmapless=False,  # config.workflow.force_syn,
+        )
+
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
     anat_preproc_wf.__postdesc__ = (
@@ -406,6 +421,7 @@ tasks and sessions), the following preprocessing was performed.
         print("No BOLD files found for one or more reference groupings")
         return workflow
 
+    func_preproc_wfs = []
     for idx, bold_files in enumerate(bold_groupings):
         bold_ref_wf = init_epi_reference_wf(
             auto_bold_nss=True,
@@ -413,9 +429,11 @@ tasks and sessions), the following preprocessing was performed.
             omp_nthreads=config.nipype.omp_nthreads
         )
         bold_ref_wf.inputs.inputnode.in_files = bold_files
-
         for idx, bold_file in enumerate(bold_files):
-            func_preproc_wf = init_func_preproc_wf(bold_file)
+            func_preproc_wf = init_func_preproc_wf(
+                bold_file,
+                has_fieldmap=bool(fmap_estimators)
+            )
             # fmt: off
             workflow.connect([
                 (bold_ref_wf, func_preproc_wf, [
@@ -446,6 +464,79 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
             ])
             # fmt: on
+            func_preproc_wfs.append(func_preproc_wf)
+
+    if not fmap_estimators:
+        config.loggers.workflow.warning(
+            "Data for fieldmap estimation not present. Please note that these data "
+            "will not be corrected for susceptibility distortions."
+        )
+        return workflow
+
+    config.loggers.workflow.info(
+        f"Fieldmap estimators found: {[e.method for e in fmap_estimators]}"
+    )
+
+    from sdcflows.workflows.base import init_fmap_preproc_wf
+    from sdcflows import fieldmaps as fm
+
+    fmap_wf = init_fmap_preproc_wf(
+        debug=bool(config.execution.debug),  # TODO: Add debug option for fieldmaps
+        estimators=fmap_estimators,
+        omp_nthreads=config.nipype.omp_nthreads,
+        output_dir=nibabies_dir,
+        subject=subject_id,
+    )
+    fmap_wf.__desc__ = f"""
+
+Fieldmap data preprocessing
+
+: A total of {len(fmap_estimators)} fieldmaps were found available within the input
+BIDS structure for this particular subject.
+"""
+
+    for func_preproc_wf in func_preproc_wfs:
+        # fmt: off
+        workflow.connect([
+            (fmap_wf, func_preproc_wf, [
+                ("outputnode.fmap", "inputnode.fmap"),
+                ("outputnode.fmap_ref", "inputnode.fmap_ref"),
+                ("outputnode.fmap_coeff", "inputnode.fmap_coeff"),
+                ("outputnode.fmap_mask", "inputnode.fmap_mask"),
+                ("outputnode.fmap_id", "inputnode.fmap_id"),
+            ]),
+        ])
+        # fmt: on
+
+    # Overwrite ``out_path_base`` of sdcflows's DataSinks
+    for node in fmap_wf.list_node_names():
+        if node.split(".")[-1].startswith("ds_"):
+            fmap_wf.get_node(node).interface.out_path_base = ""
+
+    # Step 3: Manually connect PEPOLAR
+    for estimator in fmap_estimators:
+        config.loggers.workflow.info(f"""\
+Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
+<{', '.join(s.path.name for s in estimator.sources)}>""")
+        if estimator.method in (fm.EstimatorType.MAPPED, fm.EstimatorType.PHASEDIFF):
+            continue
+
+        suffices = set(s.suffix for s in estimator.sources)
+
+        if estimator.method == fm.EstimatorType.PEPOLAR and sorted(suffices) == ["epi"]:
+            getattr(fmap_wf.inputs, f"in_{estimator.bids_id}").in_data = [
+                str(s.path) for s in estimator.sources
+            ]
+            getattr(fmap_wf.inputs, f"in_{estimator.bids_id}").metadata = [
+                s.metadata for s in estimator.sources
+            ]
+            continue
+
+        if estimator.method == fm.EstimatorType.PEPOLAR:
+            raise NotImplementedError(
+                "Sophisticated PEPOLAR schemes (e.g., using DWI+EPI) are unsupported."
+            )
+
     return workflow
 
 
