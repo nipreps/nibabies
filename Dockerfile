@@ -1,34 +1,3 @@
-FROM ubuntu:xenial-20200114 as niftyreg-build
-
-ARG DEBIAN_FRONTEND="noninteractive"
-ENV LANG="en_US.UTF-8" \
-    LC_ALL="en_US.UTF-8"
-RUN apt update && apt-get install -y --no-install-recommends \
-           bzip2 \
-           ca-certificates \
-           cmake \
-           gcc \
-           g++ \
-           build-essential \
-           make \
-           unzip \
-           wget \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-WORKDIR /opt
-RUN wget -O niftyreg.tar.gz 'https://github.com/KCL-BMEIS/niftyreg/archive/CBSI.tar.gz' \
-    && tar xzfv niftyreg.tar.gz \
-    && rm niftyreg.tar.gz
-
-# compile niftyreg
-WORKDIR /opt/niftyreg-CBSI/niftyreg-build
-RUN mkdir -p ../../niftyreg \
-    && cmake -DCMAKE_INSTALL_PREFIX=/opt/niftyreg -DBUILD_TESTING=OFF .. \
-    && make -j8 \
-    && make install
-
-
 # Use Ubuntu 16.04 LTS
 FROM ubuntu:xenial-20200114 as main
 
@@ -151,11 +120,6 @@ RUN apt-get update -y && \
         connectome-workbench=1.3.2-2~nd16.04+1 \
         convert3d && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# copy niftyreg from previous build stage
-COPY --from=niftyreg-build /opt/niftyreg /opt/niftyreg
-ENV PATH="/opt/niftyreg/bin:${PATH}" \
-    LD_LIBRARY_PATH="/opt/niftyreg/lib:${LD_LIBRARY_PATH}"
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users nibabies
