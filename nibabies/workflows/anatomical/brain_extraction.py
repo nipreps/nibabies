@@ -20,7 +20,7 @@ def init_infant_brain_extraction_wf(
     omp_nthreads=None,
 ):
     """
-    Build an atlas-based brain extraction pipeline for infant T2w MRI data.
+    Build an atlas-based brain extraction pipeline specialized for infant anatomicals.
 
     Pros/Cons of available templates
     --------------------------------
@@ -61,17 +61,18 @@ def init_infant_brain_extraction_wf(
 
     Inputs
     ------
-    in_t2w : :obj:`str`
-        The unprocessed input T2w image.
+    in_anat : :obj:`str`
+        A single anatomical volume. This should be an image with high contrast (generally `T2w`),
+        but `T1w` images are also acceptable.
 
     Outputs
     -------
-    t2w_preproc : :obj:`str`
-        The preprocessed T2w image (INU and clipping).
-    t2w_brain : :obj:`str`
-        The preprocessed, brain-extracted T2w image.
+    anat_preproc : :obj:`str`
+        The preprocessed anatomical image (INU and clipping).
+    anat_brain : :obj:`str`
+        The preprocessed, brain-extracted anatomical image.
     out_mask : :obj:`str`
-        The brainmask projected from the template into the T2w, after
+        The brainmask projected from the template into the anatomical, after
         binarization.
     out_probmap : :obj:`str`
         The same as above, before binarization.
@@ -130,10 +131,10 @@ def init_infant_brain_extraction_wf(
     # main workflow
     workflow = pe.Workflow(name)
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=["in_t2w"]), name="inputnode")
+    inputnode = pe.Node(niu.IdentityInterface(fields=["in_anat"]), name="inputnode")
     outputnode = pe.Node(
         niu.IdentityInterface(
-            fields=["t2w_preproc", "t2w_brain", "out_mask", "out_probmap"]
+            fields=["anat_preproc", "anat_brain", "out_mask", "out_probmap"]
         ),
         name="outputnode",
     )
@@ -144,13 +145,13 @@ def init_infant_brain_extraction_wf(
 
     # Generate laplacian registration targets
     lap_tmpl = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_tmpl")
-    lap_t2w = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_t2w")
+    lap_anat = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_anat")
     norm_lap_tmpl = pe.Node(niu.Function(function=_norm_lap), name="norm_lap_tmpl")
-    norm_lap_t2w = pe.Node(niu.Function(function=_norm_lap), name="norm_lap_t2w")
+    norm_lap_anat = pe.Node(niu.Function(function=_norm_lap), name="norm_lap_anat")
 
     # Merge image nodes
     mrg_tmpl = pe.Node(niu.Merge(2), name="mrg_tmpl", run_without_submitting=True)
-    mrg_t2w = pe.Node(niu.Merge(2), name="mrg_t2w", run_without_submitting=True)
+    mrg_anat = pe.Node(niu.Merge(2), name="mrg_anat", run_without_submitting=True)
     bin_regmask = pe.Node(Binarize(thresh_low=0.20), name="bin_regmask")
     bin_regmask.inputs.in_file = str(tpl_brainmask_path)
     refine_mask = pe.Node(BinaryDilation(radius=3, iterations=2), name="refine_mask")
@@ -176,16 +177,15 @@ def init_infant_brain_extraction_wf(
     if debug:
         norm.inputs.args = "--write-interval-volumes 5"
 
-    map_mask_t2w = pe.Node(
+    map_mask_anat = pe.Node(
         ApplyTransforms(interpolation="Gaussian", float=True),
-        name="map_mask_t2w",
+        name="map_mask_anat",
         mem_gb=1,
     )
+    # map template brainmask to anatomical space
+    map_mask_anat.inputs.input_image = str(tpl_brainmask_path)
 
-    # map template brainmask to t2w space
-    map_mask_t2w.inputs.input_image = str(tpl_brainmask_path)
-
-    thr_t2w_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_t2w_mask")
+    thr_anat_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_anat_mask")
 
     # Refine INU correction
     final_n4 = pe.Node(
@@ -207,15 +207,15 @@ def init_infant_brain_extraction_wf(
 
     # fmt:off
     workflow.connect([
-        (inputnode, final_n4, [("in_t2w", "input_image")]),
-        # 1. Massage T2w
-        (inputnode, mrg_t2w, [("in_t2w", "in1")]),
-        (inputnode, lap_t2w, [("in_t2w", "op1")]),
-        (inputnode, map_mask_t2w, [("in_t2w", "reference_image")]),
+        (inputnode, final_n4, [("in_anat", "input_image")]),
+        # 1. Massage anatomical
+        (inputnode, mrg_anat, [("in_anat", "in1")]),
+        (inputnode, lap_anat, [("in_anat", "op1")]),
+        (inputnode, map_mask_anat, [("in_anat", "reference_image")]),
         (bin_regmask, refine_mask, [("out_file", "in_file")]),
         (refine_mask, fixed_masks, [("out_file", "in4")]),
-        (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
-        (norm_lap_t2w, mrg_t2w, [("out", "in2")]),
+        (lap_anat, norm_lap_anat, [("output_image", "in_file")]),
+        (norm_lap_anat, mrg_anat, [("out", "in2")]),
         # 2. Prepare template
         (clip_tmpl, lap_tmpl, [("out_file", "op1")]),
         (lap_tmpl, norm_lap_tmpl, [("output_image", "in_file")]),
@@ -223,24 +223,24 @@ def init_infant_brain_extraction_wf(
         (norm_lap_tmpl, mrg_tmpl, [("out", "in2")]),
         # 3. Set normalization node inputs
         (mrg_tmpl, norm, [("out", "fixed_image")]),
-        (mrg_t2w, norm, [("out", "moving_image")]),
+        (mrg_anat, norm, [("out", "moving_image")]),
         (fixed_masks, norm, [("out", "fixed_image_masks")]),
-        # 4. Map template brainmask into T2w space
-        (norm, map_mask_t2w, [
+        # 4. Map template brainmask into anatomical space
+        (norm, map_mask_anat, [
             ("reverse_transforms", "transforms"),
             ("reverse_invert_flags", "invert_transform_flags")
         ]),
-        (map_mask_t2w, thr_t2w_mask, [("output_image", "in_file")]),
-        (thr_t2w_mask, apply_mask, [("out_mask", "in_mask")]),
+        (map_mask_anat, thr_anat_mask, [("output_image", "in_file")]),
+        (thr_anat_mask, apply_mask, [("out_mask", "in_mask")]),
         (final_n4, apply_mask, [("output_image", "in_file")]),
-        # 5. Refine T2w INU correction with brain mask
-        (map_mask_t2w, final_n4, [("output_image", "weight_image")]),
+        # 5. Refine anatomical INU correction with brain mask
+        (map_mask_anat, final_n4, [("output_image", "weight_image")]),
         (final_n4, final_clip, [("output_image", "in_file")]),
         # 9. Outputs
-        (final_clip, outputnode, [("out_file", "t2w_preproc")]),
-        (map_mask_t2w, outputnode, [("output_image", "out_probmap")]),
-        (thr_t2w_mask, outputnode, [("out_mask", "out_mask")]),
-        (apply_mask, outputnode, [("out_file", "t2w_brain")]),
+        (final_clip, outputnode, [("out_file", "anat_preproc")]),
+        (map_mask_anat, outputnode, [("output_image", "out_probmap")]),
+        (thr_anat_mask, outputnode, [("out_mask", "out_mask")]),
+        (apply_mask, outputnode, [("out_file", "anat_brain")]),
     ])
     # fmt:on
 
@@ -273,7 +273,7 @@ def init_infant_brain_extraction_wf(
         # fmt:off
         workflow.connect([
             (clip_tmpl, init_aff, [("out_file", "fixed_image")]),
-            (inputnode, init_aff, [("in_t2w", "moving_image")]),
+            (inputnode, init_aff, [("in_anat", "moving_image")]),
             (init_aff, norm, [("output_transform", "initial_moving_transform")]),
         ])
         # fmt:on

@@ -10,7 +10,13 @@ from smriprep.workflows.surfaces import init_gifti_surface_wf
 from ...interfaces.freesurfer import InfantReconAll
 
 
-def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
+def init_infant_surface_recon_wf(
+    *,
+    age_months,
+    use_aseg=False,
+    use_t2w=False,
+    name="infant_surface_recon_wf"
+):
     wf = pe.Workflow(name=name)
     inputnode = pe.Node(
         niu.IdentityInterface(
