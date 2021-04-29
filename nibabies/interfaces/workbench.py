@@ -14,16 +14,19 @@ class CiftiDilateInputSpec(CommandLineInputSpec):
         "ROW",
         "COLUMN",
         mandatory=True,
+        argstr="%s",
         position=1,
         desc="Which dimension to dilate along, ROW or COLUMN",
     )
     surface_distance = traits.Int(
         mandatory=True,
+        argstr="%d",
         position=2,
         desc="The distance to dilate on surfaces, in mm",
     )
     volume_distance = traits.Int(
         mandatory=True,
+        argstr="%d",
         position=3,
         desc="The distance to dilate in the volume, in mm",
     )
@@ -37,7 +40,6 @@ class CiftiDilateInputSpec(CommandLineInputSpec):
     )
     left_surface = File(
         exists=True,
-        mandatory=True,
         position=5,
         argstr="-left-surface %s",
         desc="Specify the left surface to use",
@@ -51,7 +53,6 @@ class CiftiDilateInputSpec(CommandLineInputSpec):
     )
     right_surface = File(
         exists=True,
-        mandatory=True,
         position=7,
         argstr="-right-surface %s",
         desc="Specify the right surface to use",
@@ -72,7 +73,7 @@ class CiftiDilateInputSpec(CommandLineInputSpec):
     cerebellum_corrected_areas = File(
         exists=True,
         position=10,
-        requires=["cerebellum_surf"],
+        requires=["cerebellum_surface"],
         argstr="-cerebellum-corrected-areas %s",
         desc="vertex areas (as a metric) to use instead of computing them from the cerebellum "
         "surface",
