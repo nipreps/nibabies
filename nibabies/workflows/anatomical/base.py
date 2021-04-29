@@ -205,15 +205,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         debug="registration" in config.execution.debug,
     )
 
-    coregistration_wf = init_coregistration_wf(
-        omp_nthreads=omp_nthreads,
-        sloppy=sloppy,
-        debug="registration" in config.execution.debug,
-    )
-    coreg_report_wf = init_coreg_report_wf(
-        output_dir=output_dir,
-    )
-
     # Segmentation - initial implementation should be simple: JLF
     anat_seg_wf = init_anat_seg_wf(
         age_months=age_months,
@@ -267,6 +258,15 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             name="t2w_template_wf",
         )
 
+        coregistration_wf = init_coregistration_wf(
+            omp_nthreads=omp_nthreads,
+            sloppy=sloppy,
+            debug="registration" in config.execution.debug,
+        )
+        coreg_report_wf = init_coreg_report_wf(
+            output_dir=output_dir,
+        )
+
         wf.connect([
             (inputnode, t2w_template_wf, [("t2w", "inputnode.in_files")]),
             (t2w_template_wf, brain_extraction_wf, [
@@ -288,6 +288,14 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
                 ("outputnode.t1w_mask", "anat_mask")]),
             (coregistration_wf, anat_seg_wf, [
                 ("outputnode.t1w_brain", "inputnode.anat_brain")]),
+            (inputnode, coreg_report_wf, [
+                ("t1w", "inputnode.source_file")]),
+            (coregistration_wf, coreg_report_wf, [
+                ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
+                ("outputnode.t1w_mask", "inputnode.in_mask")]),
+            (coregistration_wf, anat_derivatives_wf, [
+                ("outputnode.t1w_mask", "inputnode.t1w_mask"),
+                ("outputnode.t1w_preproc", "inputnode.t1w_preproc")]),
         ])
     else:
         # Use the T1w directly within brain extraction
@@ -305,19 +313,15 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
                 ("outputnode.out_mask", "anat_mask")]),
             (brain_extraction_wf, anat_seg_wf, [
                 ("outputnode.anat_brain", "inputnode.anat_brain")]),
+            (brain_extraction_wf, anat_derivatives_wf, [
+                ("outputnode.out_mask", "inputnode.t1w_mask"),
+                ("outputnode.anat_preproc", "inputnode.t1w_preproc")]),
         ])
 
     wf.connect([
         # reports
         (inputnode, anat_reports_wf, [
             ("t1w", "inputnode.source_file"),
-        ]),
-        (inputnode, coreg_report_wf, [
-            ("t1w", "inputnode.source_file"),
-        ]),
-        (coregistration_wf, coreg_report_wf, [
-            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
-            ("outputnode.t1w_mask", "inputnode.in_mask"),
         ]),
         (outputnode, anat_reports_wf, [
             ("anat_preproc", "inputnode.t1w_preproc"),
@@ -336,10 +340,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (t1w_template_wf, anat_derivatives_wf, [
             ("outputnode.valid_list", "inputnode.source_files"),
             ("outputnode.realign_xfms", "inputnode.t1w_ref_xfms"),
-        ]),
-        (coregistration_wf, anat_derivatives_wf, [
-            ("outputnode.t1w_mask", "inputnode.t1w_mask"),
-            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
         ]),
         (anat_norm_wf, anat_derivatives_wf, [
             ("outputnode.template", "inputnode.template"),
@@ -376,10 +376,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         (t1w_template_wf, surface_recon_wf, [
             ("outputnode.out_file", "inputnode.anat_orig"),
         ]),
-        (coregistration_wf, surface_recon_wf, [
-            ("outputnode.t1w_brain", "inputnode.anat_skullstripped"),
-            ("outputnode.t1w_preproc", "inputnode.anat_preproc"),
-        ]),
         (surface_recon_wf, outputnode, [
             ("outputnode.subjects_dir", "subjects_dir"),
             ("outputnode.subject_id", "subject_id"),
@@ -401,5 +397,18 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ("outputnode.surfaces", "inputnode.surfaces"),
         ]),
     ])
+
+    if num_t2w > 0:
+        wf.connect([
+            (coregistration_wf, surface_recon_wf, [
+                ("outputnode.t1w_brain", "inputnode.anat_skullstripped"),
+                ("outputnode.t1w_preproc", "inputnode.anat_preproc")]),
+        ])
+    else:
+        wf.connect([
+            (brain_extraction_wf, surface_recon_wf, [
+                ("outputnode.anat_brain", "inputnode.anat_skullstripped"),
+                ("outputnode.anat_preproc", "inputnode.anat_preproc")]),
+        ])
     # fmt: on
     return wf
