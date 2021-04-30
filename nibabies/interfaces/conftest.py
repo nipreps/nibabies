@@ -9,6 +9,7 @@ FILES = (
     'anatomical.nii',
     'epi.nii',
     'T1w.nii',
+    'rois.nii',
     'func_to_struct.mat',
     'sub-01_run-01_echo-1_bold.nii.gz',
     'sub-01_run-01_echo-2_bold.nii.gz',
