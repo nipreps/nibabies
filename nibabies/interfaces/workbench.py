@@ -1,4 +1,4 @@
-from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec
+from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec, Str
 from nipype.interfaces.workbench.base import WBCommand
 
 
@@ -384,3 +384,52 @@ class VolumeAffineResample(WBCommand):
                 self.inputs.flirt_target_volume or self.inputs.volume_space,
             )
         return super()._format_arg(opt, spec, val)
+
+
+class VolumeAllLabelsToROIsInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="the input volume label file",
+    )
+    label_map = traits.Either(
+        traits.Int, Str,
+        mandatory=True,
+        argstr="%s",
+        position=1,
+        desc="the number or name of the label map to use",
+    )
+    out_file = File(
+        name_source=["in_file"],
+        name_template="%s_rois.nii.gz",
+        argstr="%s",
+        position=2,
+        desc="the output volume",
+    )
+
+
+class VolumeAllLabelsToROIsOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="the output volume")
+
+
+class VolumeAllLabelsToROIs(WBCommand):
+    """
+    Make ROIs from all labels in a volume frame
+
+    The output volume has a frame for each label in the specified input
+    frame, other than the ??? label, each of which contains an ROI of all
+    voxels that are set to the corresponding label.
+
+    >>> from nibabies.interfaces.workbench import VolumeAllLabelsToROIs
+    >>> rois = VolumeAllLabelsToROIs()
+    >>> rois.inputs.in_file = data_dir / 'labels.nii'
+    >>> rois.inputs.label_map = 1
+    >>> rois.cmdline  #doctest: +ELLIPSIS
+    'wb_command -volume-all-labels-to-rois .../labels.nii 1 labels_rois.nii.gz'
+    """
+
+    input_spec = VolumeAllLabelsToROIsInputSpec
+    output_spec = VolumeAllLabelsToROIsOutputSpec
+    _cmd = "wb_command -volume-all-labels-to-rois"
