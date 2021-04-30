@@ -2,6 +2,151 @@ from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSp
 from nipype.interfaces.workbench.base import WBCommand
 
 
+class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
+    out_file = File(
+        name_source=["in_file"],
+        name_template="%s.dtseries.nii",
+        keep_extension=False,
+        argstr="%s",
+        position=0,
+        desc="The output CIFTI file",
+    )
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="-volume %s",
+        position=1,
+        desc="volume file containing all voxel data for all volume structures",
+    )
+    structure_label_volume = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=2,
+        desc="label volume file containing labels for cifti structures",
+    )
+    left_metric = File(
+        exists=True,
+        argstr="-left-metric %s",
+        position=3,
+        desc="metric file for left surface",
+    )
+    roi_left = File(
+        exists=True,
+        argstr="-roi-left %s",
+        position=4,
+        requires=['left_metric'],
+        desc="ROI (as metric file) of vertices to use from left surface",
+    )
+    right_metric = File(
+        exists=True,
+        argstr="-right-metric %s",
+        position=5,
+        desc="metric file for right surface",
+    )
+    roi_right = File(
+        exists=True,
+        argstr="-roi-right %s",
+        position=6,
+        requires=['right_metric'],
+        desc="ROI (as metric file) of vertices to use from right surface",
+    )
+    cerebellum_metric = File(
+        exists=True,
+        argstr="-cerebellum-metric %s",
+        position=7,
+        desc="metric file for cerebellum",
+    )
+    roi_cerebellum = File(
+        exists=True,
+        argstr="-roi-cerebellum %s",
+        position=8,
+        requires=['cerebellum_metric'],
+        desc="ROI (as metric file) of vertices to use from cerebellum",
+    )
+    timestep = traits.Float(
+        1.0,
+        usedefault=True,
+        argstr="-timestep %g",
+        desc="the timestep, in seconds",
+    )
+    timestart = traits.Float(
+        0.0,
+        usedefault=True,
+        argstr="-timestart %g",
+        desc="the time at the first frame, in seconds",
+    )
+    unit = traits.Enum(
+        "SECOND", "HERTZ", "METER", "RADIAN",
+        usedefault=True,
+        argstr="-unit %s",
+        desc="use a unit other than time")
+
+
+class CiftiCreateDenseTimeseriesOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="CIFTI dense timeseries file")
+
+
+class CiftiCreateDenseTimeseries(WBCommand):
+    """
+    Create a CIFTI dense timeseries.
+
+    All input files must have the same number of columns/subvolumes.  Only
+    the specified components will be in the output cifti.  At least one
+    component must be specified.
+
+    See -volume-label-import and -volume-help for format details of label
+    volume files.  The structure-label-volume should have some of the label
+    names from this list, all other label names will be ignored:
+
+    CORTEX_LEFT
+    CORTEX_RIGHT
+    CEREBELLUM
+    ACCUMBENS_LEFT
+    ACCUMBENS_RIGHT
+    ALL_GREY_MATTER
+    ALL_WHITE_MATTER
+    AMYGDALA_LEFT
+    AMYGDALA_RIGHT
+    BRAIN_STEM
+    CAUDATE_LEFT
+    CAUDATE_RIGHT
+    CEREBELLAR_WHITE_MATTER_LEFT
+    CEREBELLAR_WHITE_MATTER_RIGHT
+    CEREBELLUM_LEFT
+    CEREBELLUM_RIGHT
+    CEREBRAL_WHITE_MATTER_LEFT
+    CEREBRAL_WHITE_MATTER_RIGHT
+    CORTEX
+    DIENCEPHALON_VENTRAL_LEFT
+    DIENCEPHALON_VENTRAL_RIGHT
+    HIPPOCAMPUS_LEFT
+    HIPPOCAMPUS_RIGHT
+    INVALID
+    OTHER
+    OTHER_GREY_MATTER
+    OTHER_WHITE_MATTER
+    PALLIDUM_LEFT
+    PALLIDUM_RIGHT
+    PUTAMEN_LEFT
+    PUTAMEN_RIGHT
+    THALAMUS_LEFT
+    THALAMUS_RIGHT
+
+    >>> from nibabies.interfaces.workbench import CiftiCreateDenseTimeseries
+    >>> createdts = CiftiCreateDenseTimeseries()
+    >>> createdts.inputs.in_file = data_dir /'functional.nii'
+    >>> createdts.inputs.structure_label_volume = data_dir /'rois.nii'
+    >>> createdts.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-create-dense-timeseries functional.dtseries.nii \
+    -volume .../functional.nii .../rois.nii -timestart 0 -timestep 1 -unit SECOND'
+    """
+
+    input_spec = CiftiCreateDenseTimeseriesInputSpec
+    output_spec = CiftiCreateDenseTimeseriesOutputSpec
+    _cmd = "wb_command -cifti-create-dense-timeseries"
+
+
 class CiftiDilateInputSpec(CommandLineInputSpec):
     in_file = File(
         exists=True,
