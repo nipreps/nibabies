@@ -28,7 +28,7 @@ jobs:
         python -m venv /tmp/venv
         source /tmp/venv/bin/activate
         python -m pip install -U pip
-        python -m pip install ".[test]"
+        python -m pip install --use-feature=in-tree-build ".[test]"
     - name: Run Pytest
       run: |
         source /tmp/venv/bin/activate
