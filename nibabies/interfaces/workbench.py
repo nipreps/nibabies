@@ -132,3 +132,110 @@ class CiftiDilate(WBCommand):
     input_spec = CiftiDilateInputSpec
     output_spec = CiftiDilateOutputSpec
     _cmd = "wb_command -cifti-dilate"
+
+
+class VolumeAffineResampleInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="volume to resample",
+    )
+    volume_space = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=1,
+        desc="a volume file in the volume space you want for the output",
+    )
+    method = traits.Enum(
+        "CUBIC", "ENCLOSING_VOXEL", "TRILINEAR",
+        mandatory=True,
+        argstr="%s",
+        position=2,
+        desc="The resampling method. The recommended methods are CUBIC "
+             "(cubic spline) for most data, and ENCLOSING_VOXEL for label data.",
+    )
+    out_file = File(
+        name_source=["in_file"],
+        name_template="resampled_%s.nii.gz",
+        keep_extension=True,
+        argstr="%s",
+        position=3,
+        desc="the output volume",
+    )
+    affine = File(
+        exists=True,
+        mandatory=True,
+        argstr="-affine %s",
+        position=4,
+        desc="the affine file to apply",
+    )
+    flirt = traits.Bool(
+        argstr="-flirt %s %s",
+        position=5,
+        desc="Set ``True`` if ``affine`` is a FLIRT affine.",
+    )
+    flirt_source_volume = File(
+        exists=True,
+        desc="the source volume used when generating the affine; defaults to in_file",
+        requires=['flirt'],
+    )
+    flirt_target_volume = File(
+        exists=True,
+        desc="the target volume used when generating the affine; defaults to volume_space",
+        requires=['flirt'],
+    )
+
+
+class VolumeAffineResampleOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="the output volume")
+
+
+class VolumeAffineResample(WBCommand):
+    """
+    Resample a volume file with an affine transformation.
+
+    >>> from nibabies.interfaces.workbench import VolumeAffineResample
+    >>> resample = VolumeAffineResample()
+    >>> resample.inputs.in_file = data_dir /'functional.nii'
+    >>> resample.inputs.volume_space = data_dir /'anatomical.nii'
+    >>> resample.inputs.method = 'CUBIC'
+    >>> resample.inputs.affine = data_dir / 'func_to_struct.mat'
+    >>> resample.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
+    resampled_functional.nii.gz -affine .../func_to_struct.mat'
+
+    If the affine was generated with FLIRT, this should be indicated.
+    By default, the interface will use the ``in_file`` and ``volume_space``
+    for references.
+
+    >>> resample.inputs.flirt = True
+    >>> resample.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
+    resampled_functional.nii.gz -affine .../func_to_struct.mat \
+    -flirt .../functional.nii .../anatomical.nii'
+
+    However, if other volumes were used to calculate the affine, they can
+    be provided:
+
+    >>> resample.inputs.flirt_source_volume = data_dir / 'epi.nii'
+    >>> resample.inputs.flirt_target_volume = data_dir /'T1w.nii'
+    >>> resample.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
+    resampled_functional.nii.gz -affine .../func_to_struct.mat \
+    -flirt .../epi.nii .../T1w.nii'
+    """
+
+    input_spec = VolumeAffineResampleInputSpec
+    output_spec = VolumeAffineResampleOutputSpec
+    _cmd = "wb_command -volume-resample"
+
+    def _format_arg(self, opt, spec, val):
+        if opt == "flirt" and val:
+            val = (
+                self.inputs.flirt_source_volume or self.inputs.in_file,
+                self.inputs.flirt_target_volume or self.inputs.volume_space,
+            )
+        return super()._format_arg(opt, spec, val)
