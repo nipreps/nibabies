@@ -1,0 +1,40 @@
+name: Pytest
+
+on:
+  push:
+    branches: [ '*' ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ master, 'maint/*' ]
+
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+
+    steps:
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Install nibabies
+      run: |
+        python -m venv /tmp/venv
+        source /tmp/venv/bin/activate
+        python -m pip install -U pip
+        python -m pip install ".[test]"
+    - name: Run Pytest
+      run: |
+        source /tmp/venv/bin/activate
+        pytest -sv --doctest-modules --cov nibabies --cov-report xml nibabies
+    - name: Submit coverage
+      run: |
+        # Pin codecov version to reduce scope for malicious updates
+        python -m pip install "codecov==2.1.11"
+        python -m codecov --file coverage.xml
