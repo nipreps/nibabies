@@ -136,10 +136,10 @@ class CiftiCreateDenseTimeseries(WBCommand):
     >>> from nibabies.interfaces.workbench import CiftiCreateDenseTimeseries
     >>> createdts = CiftiCreateDenseTimeseries()
     >>> createdts.inputs.in_file = data_dir /'functional.nii'
-    >>> createdts.inputs.structure_label_volume = data_dir /'rois.nii'
+    >>> createdts.inputs.structure_label_volume = data_dir /'atlas.nii'
     >>> createdts.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -cifti-create-dense-timeseries functional.dtseries.nii \
-    -volume .../functional.nii .../rois.nii -timestart 0 -timestep 1 -unit SECOND'
+    -volume .../functional.nii .../atlas.nii -timestart 0 -timestep 1 -unit SECOND'
     """
 
     input_spec = CiftiCreateDenseTimeseriesInputSpec
@@ -424,12 +424,60 @@ class VolumeAllLabelsToROIs(WBCommand):
 
     >>> from nibabies.interfaces.workbench import VolumeAllLabelsToROIs
     >>> rois = VolumeAllLabelsToROIs()
-    >>> rois.inputs.in_file = data_dir / 'labels.nii'
+    >>> rois.inputs.in_file = data_dir / 'atlas.nii'
     >>> rois.inputs.label_map = 1
     >>> rois.cmdline  #doctest: +ELLIPSIS
-    'wb_command -volume-all-labels-to-rois .../labels.nii 1 labels_rois.nii.gz'
+    'wb_command -volume-all-labels-to-rois .../atlas.nii 1 atlas_rois.nii.gz'
     """
 
     input_spec = VolumeAllLabelsToROIsInputSpec
     output_spec = VolumeAllLabelsToROIsOutputSpec
     _cmd = "wb_command -volume-all-labels-to-rois"
+
+
+class VolumeLabelExportTableInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="the input volume label file",
+    )
+    label_map = traits.Either(
+        traits.Int, Str,
+        mandatory=True,
+        argstr="%s",
+        position=1,
+        desc="the number or name of the label map to use",
+    )
+    out_file = File(
+        name_source=["in_file"],
+        name_template="%s_labels.txt",
+        argstr="%s",
+        position=2,
+        desc="the output text file",
+    )
+
+
+class VolumeLabelExportTableOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="the output text file")
+
+
+class VolumeLabelExportTable(WBCommand):
+    """
+    Export label table from volume as text
+
+    Takes the label table from the volume label map, and writes it to a text
+    format matching what is expected by -volume-label-import.
+
+    >>> from nibabies.interfaces.workbench import VolumeLabelExportTable
+    >>> label_export = VolumeLabelExportTable()
+    >>> label_export.inputs.in_file = data_dir / 'atlas.nii'
+    >>> label_export.inputs.label_map = 1
+    >>> label_export.cmdline  #doctest: +ELLIPSIS
+    'wb_command -volume-label-export-table .../atlas.nii 1 atlas_labels.txt'
+    """
+
+    input_spec = VolumeLabelExportTableInputSpec
+    output_spec = VolumeLabelExportTableOutputSpec
+    _cmd = "wb_command -volume-label-export-table"
