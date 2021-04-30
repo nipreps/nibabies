@@ -449,7 +449,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # for meepi, iterate over all meepi echos to boldbuffer
         boldbuffer.iterables = ('bold_file', bold_file)
 
-
     # MULTI-ECHO EPI DATA #############################################
     if multiecho:  # instantiate relevant interfaces, imports
         from niworkflows.func.util import init_skullstrip_bold_wf

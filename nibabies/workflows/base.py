@@ -382,7 +382,6 @@ It is released under the [CC0]\
     fmap_estimators = None
     if "fieldmap" not in config.workflow.ignore:
         from sdcflows.utils.wrangler import find_estimators
-        from sdcflows.workflows.base import init_fmap_preproc_wf
 
         # SDC Step 1: Run basic heuristics to identify available data for fieldmap estimation
         # For now, no fmapless
