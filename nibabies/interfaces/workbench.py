@@ -481,3 +481,93 @@ class VolumeLabelExportTable(WBCommand):
     input_spec = VolumeLabelExportTableInputSpec
     output_spec = VolumeLabelExportTableOutputSpec
     _cmd = "wb_command -volume-label-export-table"
+
+
+class VolumeLabelImportInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="the input volume file",
+    )
+    label_list_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=1,
+        desc="text file containing the values and names for labels",
+    )
+    out_file = File(
+        name_source=["in_file"],
+        name_template="%s_labels.nii.gz",
+        argstr="%s",
+        position=2,
+        desc="the output workbench label volume",
+    )
+    discard_others = traits.Bool(
+        argstr="-discard-others",
+        desc="set any voxels with values not mentioned in the label list to the ??? label",
+    )
+    unlabeled_values = traits.Int(
+        0,
+        usedefault=True,
+        argstr="-unlabeled-value %d",
+        desc="the value that will be interpreted as unlabeled",
+    )
+    subvolume = traits.Either(
+        traits.Int, Str,
+        argstr="-subvolume %s",
+        desc="select a single subvolume to import (number or name)",
+    )
+    drop_unused_labels = traits.Bool(
+        argstr="-drop-unused-labels",
+        desc="remove any unused label values from the label table",
+    )
+
+
+class VolumeLabelImportOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="the output workbench label volume")
+
+
+class VolumeLabelImport(WBCommand):
+    """
+    Import a label volume to workbench format
+
+    Creates a label volume from an integer-valued volume file.  The label
+    name and color information is stored in the volume header in a nifti
+    extension, with a similar format as in caret5, see -volume-help.  You may
+    specify the empty string (use "") for <label-list-file>, which will be
+    treated as if it is an empty file.  The label list file must have the
+    following format (2 lines per label):
+
+    <labelname>
+    <key> <red> <green> <blue> <alpha>
+    ...
+
+    Label names are specified on a separate line from their value and color,
+    in order to let label names contain spaces.  Whitespace is trimmed from
+    both ends of the label name, but is kept if it is in the middle of a
+    label.  Do not specify the "unlabeled" key in the file, it is assumed
+    that 0 means not labeled unless -unlabeled-value is specified.  The value
+    of <key> specifies what value in the imported file should be used as this
+    label.  The values of <red>, <green>, <blue> and <alpha> must be integers
+    from 0 to 255, and will specify the color the label is drawn as (alpha of
+    255 means fully opaque, which is probably what you want).
+
+    By default, it will create new label names with names like LABEL_5 for
+    any values encountered that are not mentioned in the list file, specify
+    -discard-others to instead set these values to the "unlabeled" key.
+
+    >>> from nibabies.interfaces.workbench import VolumeLabelImport
+    >>> label_import = VolumeLabelImport()
+    >>> label_import.inputs.in_file = data_dir / 'atlas.nii'
+    >>> label_import.inputs.label_list_file = data_dir / 'label_list.txt'
+    >>> label_import.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -volume-label-import .../atlas.nii .../label_list.txt \
+    atlas_labels.nii.gz -unlabeled-value 0'
+    """
+
+    input_spec = VolumeLabelImportInputSpec
+    output_spec = VolumeLabelImportOutputSpec
+    _cmd = "wb_command -volume-label-import"
