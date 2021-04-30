@@ -83,8 +83,7 @@ def extract_entities(file_list):
     {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
     >>> extract_entities(['sub-01/anat/sub-01_run-1_T1w.nii.gz',
     ...                   'sub-01/anat/sub-01_run-2_T1w.nii.gz'])
-    {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat',
-     'extension': '.nii.gz'}
+    {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
     """
     from collections import defaultdict
     from bids.layout import parse_file_entities
