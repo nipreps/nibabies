@@ -63,15 +63,17 @@ class T2SMap(CommandLine):
 
     Example
     =======
-    >>> from fmriprep.interfaces import multiecho
+    >>> from nibabies.interfaces import multiecho
     >>> t2smap = multiecho.T2SMap()
-    >>> t2smap.inputs.in_files = ['sub-01_run-01_echo-1_bold.nii.gz', \
-                                  'sub-01_run-01_echo-2_bold.nii.gz', \
-                                  'sub-01_run-01_echo-3_bold.nii.gz']
+    >>> t2smap.inputs.in_files = [
+    ...     data_dir / 'sub-01_run-01_echo-1_bold.nii.gz',
+    ...     data_dir / 'sub-01_run-01_echo-2_bold.nii.gz',
+    ...     data_dir / 'sub-01_run-01_echo-3_bold.nii.gz']
     >>> t2smap.inputs.echo_times = [0.013, 0.027, 0.043]
-    >>> t2smap.cmdline  # doctest: +ELLIPSIS
-    't2smap -d sub-01_run-01_echo-1_bold.nii.gz sub-01_run-01_echo-2_bold.nii.gz \
-sub-01_run-01_echo-3_bold.nii.gz -e 13.0 27.0 43.0 --fittype curvefit'
+    >>> t2smap.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    't2smap -d .../sub-01_run-01_echo-1_bold.nii.gz \
+    .../sub-01_run-01_echo-2_bold.nii.gz \
+    .../sub-01_run-01_echo-3_bold.nii.gz -e 13.0 27.0 43.0 --fittype curvefit'
     """
     _cmd = 't2smap'
     input_spec = T2SMapInputSpec
