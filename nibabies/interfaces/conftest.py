@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 FILES = (
     'functional.nii',
     'anatomical.nii',
+    'func.dtseries.nii',
     'epi.nii',
     'T1w.nii',
     'func_to_struct.mat',

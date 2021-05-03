@@ -1,5 +1,184 @@
 from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec, Str
+from nipype.interfaces.base.traits_extension import InputMultiObject
 from nipype.interfaces.workbench.base import WBCommand
+
+
+VALID_STRUCTURES = (
+    "CORTEX_LEFT",
+    "CORTEX_RIGHT",
+    "CEREBELLUM",
+    "ACCUMBENS_LEFT",
+    "ACCUMBENS_RIGHT",
+    "ALL_GREY_MATTER",
+    "ALL_WHITE_MATTER",
+    "AMYGDALA_LEFT",
+    "AMYGDALA_RIGHT",
+    "BRAIN_STEM",
+    "CAUDATE_LEFT",
+    "CAUDATE_RIGHT",
+    "CEREBELLAR_WHITE_MATTER_LEFT",
+    "CEREBELLAR_WHITE_MATTER_RIGHT",
+    "CEREBELLUM_LEFT",
+    "CEREBELLUM_RIGHT",
+    "CEREBRAL_WHITE_MATTER_LEFT",
+    "CEREBRAL_WHITE_MATTER_RIGHT",
+    "CORTEX",
+    "DIENCEPHALON_VENTRAL_LEFT",
+    "DIENCEPHALON_VENTRAL_RIGHT",
+    "HIPPOCAMPUS_LEFT",
+    "HIPPOCAMPUS_RIGHT",
+    "INVALID",
+    "OTHER",
+    "OTHER_GREY_MATTER",
+    "OTHER_WHITE_MATTER",
+    "PALLIDUM_LEFT",
+    "PALLIDUM_RIGHT",
+    "PUTAMEN_LEFT",
+    "PUTAMEN_RIGHT",
+    "THALAMUS_LEFT",
+    "THALAMUS_RIGHT"
+)
+
+
+class CiftiCreateDenseFromTemplateInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="File to match brainordinates of",
+    )
+    out_file = File(
+        name_source=["in_file"],
+        argstr="%s",
+        position=1,
+        desc="The output CIFTI file",
+    )
+    series = traits.Bool(
+        argstr="-series",
+        position=2,
+        desc="Make a dtseries file instead of a dscalar",
+    )
+    series_step = traits.Float(
+        requires=["series"],
+        argstr="%.1f",
+        position=3,
+        desc="Increment between series points",
+    )
+    series_start = traits.Float(
+        requires=["series"],
+        argstr="%.1f",
+        position=4,
+        desc="Start value of the series",
+    )
+    series_unit = traits.Enum(
+        "SECOND",
+        "HERTZ",
+        "METER",
+        "RADIAN",
+        requries=["series"],
+        argstr="-unit %s",
+        position=5,
+        desc="select unit for series (default SECOND)",
+    )
+    volume_all = traits.File(
+        exists=True,
+        argstr="-volume-all %s",
+        position=6,
+        desc="the input volume file for all voxel data",
+    )
+    volume_all_from_cropped = traits.Bool(
+        requires=["volume_all"],
+        argstr="-from-cropped",
+        position=7,
+        desc="the input is cropped to the size of the voxel data in the template file",
+    )
+    label_collision = traits.Enum(
+        'ERROR',
+        'SURFACES_FIRST',
+        'LEGACY',
+        argstr="-label-collision %s",
+        position=8,
+        desc="how to handle conflicts between label keys, use 'LEGACY' to match v1.4.2 and earlier",
+    )
+    cifti = InputMultiObject(
+        File(exists=True),
+        argstr="-cifti %s",
+        position=9,
+        desc="use input data from one or more CIFTI files",
+    )
+    metric = InputMultiObject(
+        traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True)),
+        argstr="%s",
+        position=10,
+        desc="use input data from one or more metric files",
+    )
+    label = InputMultiObject(
+        traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True)),
+        argstr="%s",
+        position=11,
+        desc="use input data from one or more surface label files",
+    )
+    volume = InputMultiObject(
+        traits.Either(
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True)),
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True), traits.Bool())
+        ),
+        argstr="%s",
+        position=12,
+        desc="use a volume file for a single volume structure's data",
+    )
+
+
+class CiftiCreateDenseFromTemplateOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="The output CIFTI file")
+
+
+class CiftiCreateDenseFromTemplate(WBCommand):
+    """
+    This command helps you make a new dscalar, dtseries, or dlabel cifti file
+    that matches the brainordinate space used in another cifti file.  The
+    template file must have the desired brainordinate space in the mapping
+    along the column direction (for dtseries, dscalar, dlabel, and symmetric
+    dconn this is always the case).  All input cifti files must have a brain
+    models mapping along column and use the same volume space and/or surface
+    vertex count as the template for structures that they contain.  If any
+    input files contain label data, then input files with non-label data are
+    not allowed, and the -series option may not be used.
+
+    Any structure that isn't covered by an input is filled with zeros or the
+    unlabeled key.
+
+    >>> from nibabies.interfaces import workbench as wb
+    >>> frmtpl = wb.CiftiCreateDenseFromTemplate()
+    >>> frmtpl.inputs.in_file = data_dir / "func.dtseries.nii"
+    >>> frmtpl.inputs.out_file = "out.dtseries.nii"
+    >>> frmtpl.inputs.series = True
+    >>> frmtpl.inputs.series_step = 0.8
+    >>> frmtpl.inputs.series_start = 0
+    >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii out.dtseries.nii \
+    -series 0.8 0.0'
+
+    >>> frmtpl.inputs.volume = [("OTHER", data_dir / 'functional.nii', True), ("PUTAMEN_LEFT", data_dir / 'functional.nii')]
+    >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii out.dtseries.nii \
+    -series 0.8 0.0 -volume OTHER .../functional.nii -from-cropped -volume PUTAMEN_LEFT .../functional.nii'
+    """
+
+    input_spec = CiftiCreateDenseFromTemplateInputSpec
+    output_spec = CiftiCreateDenseFromTemplateOutputSpec
+    _cmd = "wb_command -cifti-create-dense-from-template"
+
+    def _format_arg(self, name, trait_spec, value):
+        if name in ("metric", "label", "volume"):
+            argstr = ""
+            for val in value:
+                if val[-1] is True:  # volume specific
+                    val = val[:2] + ("-from-cropped ",)
+                argstr += " ".join((f"-{name}",) + val)
+            return trait_spec.argstr % argstr
+        return super()._format_arg(name, trait_spec, value)
 
 
 class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
