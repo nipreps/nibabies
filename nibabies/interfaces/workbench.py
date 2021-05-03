@@ -426,6 +426,131 @@ class CiftiDilateInputSpec(CommandLineInputSpec):
     )
 
 
+class CiftiCreateLabelInputSpec(CommandLineInputSpec):
+    out_file = File(mandatory=True, argstr="%s", position=0, desc="the output CIFTI file")
+    volume_label = File(
+        exists=True,
+        requires=["structure_label_volume"],
+        argstr="-volume %s",
+        position=1,
+        desc="label volume file containing the data to be copied",
+    )
+    structure_label_volume = File(
+        exists=True,
+        requires=["volume_label"],
+        argstr="%s",
+        position=2,
+        desc="label volume file that defines which voxels to use",
+    )
+    left_label = File(
+        exists=True,
+        argstr="-left-label %s",
+        position=3,
+        desc="Label file for left surface",
+    )
+    left_roi = File(
+        exists=True,
+        requires=["left_label"],
+        argstr="-roi-left %s",
+        position=4,
+        desc="roi of vertices to use from left surface as a metric file"
+    )
+    right_label = File(
+        exists=True,
+        argstr="-right-label %s",
+        position=5,
+        desc="Label file for right surface",
+    )
+    right_roi = File(
+        exists=True,
+        requires=["right_label"],
+        argstr="-roi-right %s",
+        position=6,
+        desc="roi of vertices to use from right surface as a metric file"
+    )
+    cerebellum_label = File(
+        exists=True,
+        argstr="-cerebellum-label %s",
+        position=7,
+        desc="label for the cerebellum",
+    )
+    cerebellum_roi = File(
+        exists=True,
+        requires=["cerebellum_label"],
+        argstr="-roi-cerebellum %s",
+        position=8,
+        desc="roi of vertices to use from cerebellum"
+    )
+
+class CiftiCreateLabelOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="the output CIFTI file")
+
+
+class CiftiCreateLabel(WBCommand):
+    """
+    All input files must have the same number of columns/subvolumes.  Only
+    the specified components will be in the output cifti.  At least one
+    component must be specified.
+
+    The -volume option requires two volume arguments, the label-volume
+    argument contains all labels you want to display (e.g. nuclei of the
+    thalamus), whereas the structure-label-volume argument contains all CIFTI
+    voxel-based structures you want to include data within (e.g.
+    THALAMUS_LEFT, THALAMUS_RIGHT, etc).  See -volume-label-import and
+    -volume-help for format details of label volume files.  If you just want
+    the labels in voxels to be the structure names, you may use the same file
+    for both arguments.  The structure-label-volume must use some of the
+    label names from this list, all other label names in the
+    structure-label-volume will be ignored:
+
+    CORTEX_LEFT
+    CORTEX_RIGHT
+    CEREBELLUM
+    ACCUMBENS_LEFT
+    ACCUMBENS_RIGHT
+    ALL_GREY_MATTER
+    ALL_WHITE_MATTER
+    AMYGDALA_LEFT
+    AMYGDALA_RIGHT
+    BRAIN_STEM
+    CAUDATE_LEFT
+    CAUDATE_RIGHT
+    CEREBELLAR_WHITE_MATTER_LEFT
+    CEREBELLAR_WHITE_MATTER_RIGHT
+    CEREBELLUM_LEFT
+    CEREBELLUM_RIGHT
+    CEREBRAL_WHITE_MATTER_LEFT
+    CEREBRAL_WHITE_MATTER_RIGHT
+    CORTEX
+    DIENCEPHALON_VENTRAL_LEFT
+    DIENCEPHALON_VENTRAL_RIGHT
+    HIPPOCAMPUS_LEFT
+    HIPPOCAMPUS_RIGHT
+    INVALID
+    OTHER
+    OTHER_GREY_MATTER
+    OTHER_WHITE_MATTER
+    PALLIDUM_LEFT
+    PALLIDUM_RIGHT
+    PUTAMEN_LEFT
+    PUTAMEN_RIGHT
+    THALAMUS_LEFT
+    THALAMUS_RIGHT
+
+    >>> from nibabies.interfaces import workbench as wb
+    >>> lab = wb.CiftiCreateLabel()
+    >>> lab.inputs.out_file = "out.dlabel.nii"
+    >>> lab.inputs.volume_label = data_dir / "functional.nii"
+    >>> lab.inputs.structure_label_volume = data_dir / "functional.nii"
+    >>> lab.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-create-label out.dlabel.nii -volume .../functional.nii .../functional.nii'
+    """
+
+    input_spec = CiftiCreateLabelInputSpec
+    output_spec = CiftiCreateLabelOutputSpec
+    _cmd = "wb_command -cifti-create-label"
+
+
 class CiftiDilateOutputSpec(TraitedSpec):
     out_file = File(exists=True, desc="Dilated CIFTI file")
 
