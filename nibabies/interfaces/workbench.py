@@ -1,5 +1,189 @@
 from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec, Str
+from nipype.interfaces.base.traits_extension import InputMultiObject
 from nipype.interfaces.workbench.base import WBCommand
+
+
+VALID_STRUCTURES = (
+    "CORTEX_LEFT",
+    "CORTEX_RIGHT",
+    "CEREBELLUM",
+    "ACCUMBENS_LEFT",
+    "ACCUMBENS_RIGHT",
+    "ALL_GREY_MATTER",
+    "ALL_WHITE_MATTER",
+    "AMYGDALA_LEFT",
+    "AMYGDALA_RIGHT",
+    "BRAIN_STEM",
+    "CAUDATE_LEFT",
+    "CAUDATE_RIGHT",
+    "CEREBELLAR_WHITE_MATTER_LEFT",
+    "CEREBELLAR_WHITE_MATTER_RIGHT",
+    "CEREBELLUM_LEFT",
+    "CEREBELLUM_RIGHT",
+    "CEREBRAL_WHITE_MATTER_LEFT",
+    "CEREBRAL_WHITE_MATTER_RIGHT",
+    "CORTEX",
+    "DIENCEPHALON_VENTRAL_LEFT",
+    "DIENCEPHALON_VENTRAL_RIGHT",
+    "HIPPOCAMPUS_LEFT",
+    "HIPPOCAMPUS_RIGHT",
+    "INVALID",
+    "OTHER",
+    "OTHER_GREY_MATTER",
+    "OTHER_WHITE_MATTER",
+    "PALLIDUM_LEFT",
+    "PALLIDUM_RIGHT",
+    "PUTAMEN_LEFT",
+    "PUTAMEN_RIGHT",
+    "THALAMUS_LEFT",
+    "THALAMUS_RIGHT",
+)
+
+
+class CiftiCreateDenseFromTemplateInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="File to match brainordinates of",
+    )
+    out_file = File(
+        name_source=["in_file"],
+        argstr="%s",
+        position=1,
+        desc="The output CIFTI file",
+    )
+    series = traits.Bool(
+        argstr="-series",
+        position=2,
+        desc="Make a dtseries file instead of a dscalar",
+    )
+    series_step = traits.Float(
+        requires=["series"],
+        argstr="%.1f",
+        position=3,
+        desc="Increment between series points",
+    )
+    series_start = traits.Float(
+        requires=["series"],
+        argstr="%.1f",
+        position=4,
+        desc="Start value of the series",
+    )
+    series_unit = traits.Enum(
+        "SECOND",
+        "HERTZ",
+        "METER",
+        "RADIAN",
+        requries=["series"],
+        argstr="-unit %s",
+        position=5,
+        desc="select unit for series (default SECOND)",
+    )
+    volume_all = traits.File(
+        exists=True,
+        argstr="-volume-all %s",
+        position=6,
+        desc="the input volume file for all voxel data",
+    )
+    volume_all_from_cropped = traits.Bool(
+        requires=["volume_all"],
+        argstr="-from-cropped",
+        position=7,
+        desc="the input is cropped to the size of the voxel data in the template file",
+    )
+    label_collision = traits.Enum(
+        "ERROR",
+        "SURFACES_FIRST",
+        "LEGACY",
+        argstr="-label-collision %s",
+        position=8,
+        desc="how to handle conflicts between label keys, use 'LEGACY' to match v1.4.2 "
+        "and earlier",
+    )
+    cifti = InputMultiObject(
+        File(exists=True),
+        argstr="-cifti %s",
+        position=9,
+        desc="use input data from one or more CIFTI files",
+    )
+    metric = InputMultiObject(
+        traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True)),
+        argstr="%s",
+        position=10,
+        desc="use input data from one or more metric files",
+    )
+    label = InputMultiObject(
+        traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True)),
+        argstr="%s",
+        position=11,
+        desc="use input data from one or more surface label files",
+    )
+    volume = InputMultiObject(
+        traits.Either(
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True)),
+            traits.Tuple(
+                traits.Enum(VALID_STRUCTURES), File(exists=True), traits.Bool()
+            ),
+        ),
+        argstr="%s",
+        position=12,
+        desc="use a volume file for a single volume structure's data",
+    )
+
+
+class CiftiCreateDenseFromTemplateOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="The output CIFTI file")
+
+
+class CiftiCreateDenseFromTemplate(WBCommand):
+    """
+    This command helps you make a new dscalar, dtseries, or dlabel cifti file
+    that matches the brainordinate space used in another cifti file.  The
+    template file must have the desired brainordinate space in the mapping
+    along the column direction (for dtseries, dscalar, dlabel, and symmetric
+    dconn this is always the case).  All input cifti files must have a brain
+    models mapping along column and use the same volume space and/or surface
+    vertex count as the template for structures that they contain.  If any
+    input files contain label data, then input files with non-label data are
+    not allowed, and the -series option may not be used.
+
+    Any structure that isn't covered by an input is filled with zeros or the
+    unlabeled key.
+
+    >>> from nibabies.interfaces import workbench as wb
+    >>> frmtpl = wb.CiftiCreateDenseFromTemplate()
+    >>> frmtpl.inputs.in_file = data_dir / "func.dtseries.nii"
+    >>> frmtpl.inputs.out_file = "out.dtseries.nii"
+    >>> frmtpl.inputs.series = True
+    >>> frmtpl.inputs.series_step = 0.8
+    >>> frmtpl.inputs.series_start = 0
+    >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii out.dtseries.nii \
+    -series 0.8 0.0'
+
+    >>> frmtpl.inputs.volume = [("OTHER", data_dir / 'functional.nii', True), \
+        ("PUTAMEN_LEFT", data_dir / 'functional.nii')]
+    >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii out.dtseries.nii \
+    -series 0.8 0.0 -volume OTHER .../functional.nii -from-cropped \
+    -volume PUTAMEN_LEFT .../functional.nii'
+    """
+
+    input_spec = CiftiCreateDenseFromTemplateInputSpec
+    output_spec = CiftiCreateDenseFromTemplateOutputSpec
+    _cmd = "wb_command -cifti-create-dense-from-template"
+
+    def _format_arg(self, name, trait_spec, value):
+        if name in ("metric", "label", "volume"):
+            argstr = ""
+            for val in value:
+                if val[-1] is True:  # volume specific
+                    val = val[:2] + ("-from-cropped ",)
+                argstr += " ".join((f"-{name}",) + val)
+            return trait_spec.argstr % argstr
+        return super()._format_arg(name, trait_spec, value)
 
 
 class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
@@ -35,7 +219,7 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         exists=True,
         argstr="-roi-left %s",
         position=4,
-        requires=['left_metric'],
+        requires=["left_metric"],
         desc="ROI (as metric file) of vertices to use from left surface",
     )
     right_metric = File(
@@ -48,7 +232,7 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         exists=True,
         argstr="-roi-right %s",
         position=6,
-        requires=['right_metric'],
+        requires=["right_metric"],
         desc="ROI (as metric file) of vertices to use from right surface",
     )
     cerebellum_metric = File(
@@ -61,7 +245,7 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         exists=True,
         argstr="-roi-cerebellum %s",
         position=8,
-        requires=['cerebellum_metric'],
+        requires=["cerebellum_metric"],
         desc="ROI (as metric file) of vertices to use from cerebellum",
     )
     timestep = traits.Float(
@@ -77,10 +261,14 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         desc="the time at the first frame, in seconds",
     )
     unit = traits.Enum(
-        "SECOND", "HERTZ", "METER", "RADIAN",
+        "SECOND",
+        "HERTZ",
+        "METER",
+        "RADIAN",
         usedefault=True,
         argstr="-unit %s",
-        desc="use a unit other than time")
+        desc="use a unit other than time",
+    )
 
 
 class CiftiCreateDenseTimeseriesOutputSpec(TraitedSpec):
@@ -247,6 +435,134 @@ class CiftiDilateInputSpec(CommandLineInputSpec):
     )
 
 
+class CiftiCreateLabelInputSpec(CommandLineInputSpec):
+    out_file = File(
+        mandatory=True, argstr="%s", position=0, desc="the output CIFTI file"
+    )
+    volume_label = File(
+        exists=True,
+        requires=["structure_label_volume"],
+        argstr="-volume %s",
+        position=1,
+        desc="label volume file containing the data to be copied",
+    )
+    structure_label_volume = File(
+        exists=True,
+        requires=["volume_label"],
+        argstr="%s",
+        position=2,
+        desc="label volume file that defines which voxels to use",
+    )
+    left_label = File(
+        exists=True,
+        argstr="-left-label %s",
+        position=3,
+        desc="Label file for left surface",
+    )
+    left_roi = File(
+        exists=True,
+        requires=["left_label"],
+        argstr="-roi-left %s",
+        position=4,
+        desc="roi of vertices to use from left surface as a metric file",
+    )
+    right_label = File(
+        exists=True,
+        argstr="-right-label %s",
+        position=5,
+        desc="Label file for right surface",
+    )
+    right_roi = File(
+        exists=True,
+        requires=["right_label"],
+        argstr="-roi-right %s",
+        position=6,
+        desc="roi of vertices to use from right surface as a metric file",
+    )
+    cerebellum_label = File(
+        exists=True,
+        argstr="-cerebellum-label %s",
+        position=7,
+        desc="label for the cerebellum",
+    )
+    cerebellum_roi = File(
+        exists=True,
+        requires=["cerebellum_label"],
+        argstr="-roi-cerebellum %s",
+        position=8,
+        desc="roi of vertices to use from cerebellum",
+    )
+
+
+class CiftiCreateLabelOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="the output CIFTI file")
+
+
+class CiftiCreateLabel(WBCommand):
+    """
+    All input files must have the same number of columns/subvolumes.  Only
+    the specified components will be in the output cifti.  At least one
+    component must be specified.
+
+    The -volume option requires two volume arguments, the label-volume
+    argument contains all labels you want to display (e.g. nuclei of the
+    thalamus), whereas the structure-label-volume argument contains all CIFTI
+    voxel-based structures you want to include data within (e.g.
+    THALAMUS_LEFT, THALAMUS_RIGHT, etc).  See -volume-label-import and
+    -volume-help for format details of label volume files.  If you just want
+    the labels in voxels to be the structure names, you may use the same file
+    for both arguments.  The structure-label-volume must use some of the
+    label names from this list, all other label names in the
+    structure-label-volume will be ignored:
+
+    CORTEX_LEFT
+    CORTEX_RIGHT
+    CEREBELLUM
+    ACCUMBENS_LEFT
+    ACCUMBENS_RIGHT
+    ALL_GREY_MATTER
+    ALL_WHITE_MATTER
+    AMYGDALA_LEFT
+    AMYGDALA_RIGHT
+    BRAIN_STEM
+    CAUDATE_LEFT
+    CAUDATE_RIGHT
+    CEREBELLAR_WHITE_MATTER_LEFT
+    CEREBELLAR_WHITE_MATTER_RIGHT
+    CEREBELLUM_LEFT
+    CEREBELLUM_RIGHT
+    CEREBRAL_WHITE_MATTER_LEFT
+    CEREBRAL_WHITE_MATTER_RIGHT
+    CORTEX
+    DIENCEPHALON_VENTRAL_LEFT
+    DIENCEPHALON_VENTRAL_RIGHT
+    HIPPOCAMPUS_LEFT
+    HIPPOCAMPUS_RIGHT
+    INVALID
+    OTHER
+    OTHER_GREY_MATTER
+    OTHER_WHITE_MATTER
+    PALLIDUM_LEFT
+    PALLIDUM_RIGHT
+    PUTAMEN_LEFT
+    PUTAMEN_RIGHT
+    THALAMUS_LEFT
+    THALAMUS_RIGHT
+
+    >>> from nibabies.interfaces import workbench as wb
+    >>> lab = wb.CiftiCreateLabel()
+    >>> lab.inputs.out_file = "out.dlabel.nii"
+    >>> lab.inputs.volume_label = data_dir / "functional.nii"
+    >>> lab.inputs.structure_label_volume = data_dir / "functional.nii"
+    >>> lab.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-create-label out.dlabel.nii -volume .../functional.nii .../functional.nii'
+    """
+
+    input_spec = CiftiCreateLabelInputSpec
+    output_spec = CiftiCreateLabelOutputSpec
+    _cmd = "wb_command -cifti-create-label"
+
+
 class CiftiDilateOutputSpec(TraitedSpec):
     out_file = File(exists=True, desc="Dilated CIFTI file")
 
@@ -279,6 +595,349 @@ class CiftiDilate(WBCommand):
     _cmd = "wb_command -cifti-dilate"
 
 
+class CiftiResampleInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="the CIFTI file to resample",
+    )
+    direction = traits.Enum(
+        "ROW",
+        "COLUMN",
+        mandatory=True,
+        argstr="%s",
+        position=1,
+        desc="the direction of the input that should be resampled",
+    )
+    template = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=2,
+        desc="a CIFTI file containing the CIFTI space to resample to",
+    )
+    template_direction = traits.Enum(
+        "ROW",
+        "COLUMN",
+        mandatory=True,
+        argstr="%s",
+        position=3,
+        desc="the direction of the template to use as the resampling space",
+    )
+    surface_method = traits.Enum(
+        "ADAP_BARY_AREA",
+        "BARYCENTRIC",
+        mandatory=True,
+        argstr="%s",
+        position=4,
+        desc="surface resampling method",
+    )
+    volume_method = traits.Enum(
+        "CUBIC",
+        "ENCLOSING_VOXEL",
+        "TRILINEAR",
+        mandatory=True,
+        argstr="%s",
+        position=5,
+        desc="volume interpolation method",
+    )
+    out_file = File(
+        name_source=["in_file"],
+        keep_extension=True,
+        name_template="resampled_%s.nii",
+        argstr="%s",
+        position=6,
+        desc="the output cifti file",
+    )
+    surface_largest = traits.Bool(
+        argstr="-surface-largest",
+        position=7,
+        desc="use largest weight instead of weighted average or popularity when doing "
+        "surface resampling",
+    )
+    volume_predilate = traits.Int(
+        argstr="-volume-predilate %d",
+        position=8,
+        desc="distance, in mm, to dilate the volume components before resampling",
+    )
+    volume_predilate_nearest = traits.Bool(
+        requires=["volume_predilate"],
+        xor=["volume_predilate_weighted"],
+        argstr="-nearest",
+        position=9,
+        desc="use nearest value dilation",
+    )
+    volume_predilate_weighted = traits.Bool(
+        requires=["volume_predilate"],
+        xor=["volume_predilate_nearest"],
+        argstr="-weighted",
+        position=10,
+        desc="use weighted dilation (default)",
+    )
+    volume_predilate_weighted_exponent = traits.Int(
+        requires=["volume_predilate_weighted"],
+        argstr="-exponent %d",
+        position=11,
+        desc="exponent 'n' to use in (1 / (distance ^ n)) as the weighting function (default 7)",
+    )
+    volume_predilate_weighted_legacy = traits.Bool(
+        requires=["volume_predilate_weighted"],
+        argstr="-legacy-cutoff",
+        position=12,
+        desc="use v1.3.2 logic for the kernel cutoff",
+    )
+    surface_postdilate = traits.Int(
+        argstr="-surface-postdilate %d",
+        position=13,
+        desc="distance, in mm, to dilate the surface components after resampling",
+    )
+    surface_postdilate_nearest = traits.Bool(
+        requires=["surface_postdilate"],
+        xor=["surface_postdilate_weighted", "surface_postdilate_linear"],
+        argstr="-nearest",
+        position=14,
+        desc="use nearest value dilation",
+    )
+    surface_postdilate_linear = traits.Bool(
+        requires=["surface_postdilate"],
+        xor=["surface_postdilate_weighted", "surface_postdilate_nearest"],
+        argstr="-linear",
+        position=15,
+        desc="use linear dilation",
+    )
+    surface_postdilate_weighted = traits.Bool(
+        requires=["surface_postdilate"],
+        xor=["surface_postdilate_nearest", "surface_postdilate_linear"],
+        argstr="-weighted",
+        position=16,
+        desc="use weighted dilation (default for non-label data)",
+    )
+    surface_postdilate_weighted_exponent = traits.Int(
+        requires=["surface_postdilate_weighted"],
+        argstr="-exponent %d",
+        position=17,
+        desc="exponent 'n' to use in (area / (distance ^ n)) as the weighting function "
+        "(default 6)",
+    )
+    surface_postdilate_weighted_legacy = traits.Bool(
+        requires=["surface_postdilate_weighted"],
+        argstr="-legacy-cutoff",
+        position=18,
+        desc="use v1.3.2 logic for the kernel cutoff",
+    )
+    affine = File(
+        exists=True,
+        argstr="-affine %s",
+        position=19,
+        desc="affine file for transformation on the volume components",
+    )
+    affine_flirt_source = File(
+        exists=True,
+        requires=["affine", "affine_flirt_target"],
+        argstr="-flirt %s",
+        position=20,
+        desc="the source volume used when generating the affine. MUST be used if affine is "
+        "a flirt affine",
+    )
+    affine_flirt_target = File(
+        exists=True,
+        requires=["affine", "affine_flirt_source"],
+        argstr="%s",
+        position=21,
+        desc="the target volume used when generating the affine. MUST be used if affine is "
+        "a flirt affine",
+    )
+    warpfield = File(
+        exists=True,
+        argstr="-warpfield %s",
+        position=22,
+        desc="the warpfield to use on the volume components",
+    )
+    warpfield_fnirt_source = File(
+        exists=True,
+        requires=["warpfield"],
+        argstr="-fnirt %s",
+        position=23,
+        desc="the source volume used when generating the warpfield. MUST be used if using "
+        "a fnirt warpfield",
+    )
+    left_sphere_current = File(
+        exists=True,
+        requires=["left_sphere_new"],
+        argstr="-left-spheres %s",
+        position=24,
+        desc="a sphere with the same mesh as the current left surface",
+    )
+    left_sphere_new = File(
+        exists=True,
+        requires=["left_sphere_current"],
+        argstr="%s",
+        position=25,
+        desc="a sphere with the new left mesh that is in register with the current sphere",
+    )
+    left_area_surf_current = File(
+        exists=True,
+        requires=["left_sphere_current", "left_area_surf_new"],
+        argstr="-left-area-surfs %s",
+        position=26,
+        desc="a relevant left anatomical surface with current mesh",
+    )
+    left_area_surf_new = File(
+        exists=True,
+        requires=["left_sphere_new", "left_area_surf_current"],
+        argstr="%s",
+        position=27,
+        desc="a relevant left anatomical surface with new mesh",
+    )
+    left_area_metric_current = File(
+        exists=True,
+        requires=["left_sphere_current", "left_area_metric_new"],
+        argstr="-left-area-metrics %s",
+        position=28,
+        desc="a metric file with vertex areas for the current mesh",
+    )
+    left_area_metric_new = File(
+        exists=True,
+        requires=["left_sphere_new", "left_area_metric_current"],
+        argstr="%s",
+        position=29,
+        desc="a metric file with vertex areas for the new mesh",
+    )
+    right_sphere_current = File(
+        exists=True,
+        requires=["right_sphere_new"],
+        argstr="-right-spheres %s",
+        position=30,
+        desc="a sphere with the same mesh as the current right surface",
+    )
+    right_sphere_new = File(
+        exists=True,
+        requires=["right_sphere_current"],
+        argstr="%s",
+        position=31,
+        desc="a sphere with the new right mesh that is in register with the current sphere",
+    )
+    right_area_surf_current = File(
+        exists=True,
+        requires=["right_sphere_current", "right_area_surf_new"],
+        argstr="-right-area-surfs %s",
+        position=32,
+        desc="a relevant right anatomical surface with current mesh",
+    )
+    right_area_surf_new = File(
+        exists=True,
+        requires=["right_sphere_new", "right_area_surf_current"],
+        argstr="%s",
+        position=33,
+        desc="a relevant right anatomical surface with new mesh",
+    )
+    right_area_metric_current = File(
+        exists=True,
+        requires=["right_sphere_current", "right_area_metric_new"],
+        argstr="-right-area-metrics %s",
+        position=34,
+        desc="a metric file with vertex areas for the current mesh",
+    )
+    right_area_metric_new = File(
+        exists=True,
+        requires=["right_sphere_new", "right_area_metric_current"],
+        argstr="%s",
+        position=35,
+        desc="a metric file with vertex areas for the new mesh",
+    )
+    cerebellum_sphere_current = File(
+        exists=True,
+        requires=["cerebellum_sphere_new"],
+        argstr="-cerebellum-spheres %s",
+        position=36,
+        desc="a sphere with the same mesh as the current cerebellum surface",
+    )
+    cerebellum_sphere_new = File(
+        exists=True,
+        requires=["cerebellum_sphere_current"],
+        argstr="%s",
+        position=37,
+        desc="a sphere with the new cerebellum mesh that is in register with the current sphere",
+    )
+    cerebellum_area_surf_current = File(
+        exists=True,
+        requires=["cerebellum_sphere_current", "cerebellum_area_surf_new"],
+        argstr="-cerebellum-area-surfs %s",
+        position=38,
+        desc="a relevant cerebellum anatomical surface with current mesh",
+    )
+    cerebellum_area_surf_new = File(
+        exists=True,
+        requires=["cerebellum_sphere_new", "cerebellum_area_surf_current"],
+        argstr="%s",
+        position=39,
+        desc="a relevant cerebellum anatomical surface with new mesh",
+    )
+    cerebellum_area_metric_current = File(
+        exists=True,
+        requires=["cerebellum_sphere_current", "cerebellum_area_metric_new"],
+        argstr="-cerebellum-area-metrics %s",
+        position=40,
+        desc="a metric file with vertex areas for the current mesh",
+    )
+    cerebellum_area_metric_new = File(
+        exists=True,
+        requires=["cerebellum_sphere_new", "cerebellum_area_metric_current"],
+        argstr="%s",
+        position=41,
+        desc="a metric file with vertex areas for the new mesh",
+    )
+
+
+class CiftiResampleOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="the resampled CIFTI file")
+
+
+class CiftiResample(WBCommand):
+    """
+    Resample cifti data to a different brainordinate space.  Use COLUMN for
+    the direction to resample dscalar, dlabel, or dtseries.  Resampling both
+    dimensions of a dconn requires running this command twice, once with
+    COLUMN and once with ROW.  If you are resampling a dconn and your machine
+    has a large amount of memory, you might consider using
+    -cifti-resample-dconn-memory to avoid writing and rereading an
+    intermediate file.  The <template-direction> argument should usually be
+    COLUMN, as dtseries, dscalar, and dlabel all have brainordinates on that
+    direction.  If spheres are not specified for a surface structure which
+    exists in the cifti files, its data is copied without resampling or
+    dilation.  Dilation is done with the 'nearest' method, and is done on
+    <new-sphere> for surface data.  Volume components are padded before
+    dilation so that dilation doesn't run into the edge of the component
+    bounding box.  If neither -affine nor -warpfield are specified, the
+    identity transform is assumed for the volume data.
+
+    The recommended resampling methods are ADAP_BARY_AREA and CUBIC (cubic
+    spline), except for label data which should use ADAP_BARY_AREA and
+    ENCLOSING_VOXEL.  Using ADAP_BARY_AREA requires specifying an area option
+    to each used -*-spheres option.
+
+    >>> from nibabies.interfaces import workbench as wb
+    >>> res = wb.CiftiResample()
+    >>> res.inputs.in_file = data_dir / "func.dtseries.nii"
+    >>> res.inputs.direction = "COLUMN"
+    >>> res.inputs.template = data_dir / "func.dlabel.nii"
+    >>> res.inputs.template_direction = "COLUMN"
+    >>> res.inputs.surface_method = "ADAP_BARY_AREA"
+    >>> res.inputs.volume_method = "CUBIC"
+    >>> res.inputs.out_file = "resampled.dtseries.nii"
+    >>> res.inputs.volume_predilate = 10
+    >>> res.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-resample .../func.dtseries.nii COLUMN .../func.dlabel.nii COLUMN \
+    ADAP_BARY_AREA CUBIC resampled.dtseries.nii -volume-predilate 10'
+    """
+
+    input_spec = CiftiResampleInputSpec
+    output_spec = CiftiResampleOutputSpec
+    _cmd = "wb_command -cifti-resample"
+
+
 class VolumeAffineResampleInputSpec(CommandLineInputSpec):
     in_file = File(
         exists=True,
@@ -295,12 +954,14 @@ class VolumeAffineResampleInputSpec(CommandLineInputSpec):
         desc="a volume file in the volume space you want for the output",
     )
     method = traits.Enum(
-        "CUBIC", "ENCLOSING_VOXEL", "TRILINEAR",
+        "CUBIC",
+        "ENCLOSING_VOXEL",
+        "TRILINEAR",
         mandatory=True,
         argstr="%s",
         position=2,
         desc="The resampling method. The recommended methods are CUBIC "
-             "(cubic spline) for most data, and ENCLOSING_VOXEL for label data.",
+        "(cubic spline) for most data, and ENCLOSING_VOXEL for label data.",
     )
     out_file = File(
         name_source=["in_file"],
@@ -325,12 +986,12 @@ class VolumeAffineResampleInputSpec(CommandLineInputSpec):
     flirt_source_volume = File(
         exists=True,
         desc="the source volume used when generating the affine; defaults to in_file",
-        requires=['flirt'],
+        requires=["flirt"],
     )
     flirt_target_volume = File(
         exists=True,
         desc="the target volume used when generating the affine; defaults to volume_space",
-        requires=['flirt'],
+        requires=["flirt"],
     )
 
 
@@ -395,7 +1056,8 @@ class VolumeAllLabelsToROIsInputSpec(CommandLineInputSpec):
         desc="the input volume label file",
     )
     label_map = traits.Either(
-        traits.Int, Str,
+        traits.Int,
+        Str,
         mandatory=True,
         argstr="%s",
         position=1,
@@ -444,7 +1106,8 @@ class VolumeLabelExportTableInputSpec(CommandLineInputSpec):
         desc="the input volume label file",
     )
     label_map = traits.Either(
-        traits.Int, Str,
+        traits.Int,
+        Str,
         mandatory=True,
         argstr="%s",
         position=1,
@@ -516,7 +1179,8 @@ class VolumeLabelImportInputSpec(CommandLineInputSpec):
         desc="the value that will be interpreted as unlabeled",
     )
     subvolume = traits.Either(
-        traits.Int, Str,
+        traits.Int,
+        Str,
         argstr="-subvolume %s",
         desc="select a single subvolume to import (number or name)",
     )
