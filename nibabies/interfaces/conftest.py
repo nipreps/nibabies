@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 FILES = (
     'functional.nii',
     'anatomical.nii',
+    'func.dlabel.nii',
     'func.dtseries.nii',
     'epi.nii',
     'T1w.nii',
