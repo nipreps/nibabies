@@ -480,7 +480,8 @@ tasks and sessions), the following preprocessing was performed.
     from sdcflows import fieldmaps as fm
 
     fmap_wf = init_fmap_preproc_wf(
-        debug=bool(config.execution.debug),  # TODO: Add debug option for fieldmaps
+        sloppy=bool(config.execution.sloppy),
+        debug=config.execution.debug in ("all", "fieldmaps"),
         estimators=fmap_estimators,
         omp_nthreads=config.nipype.omp_nthreads,
         output_dir=nibabies_dir,
