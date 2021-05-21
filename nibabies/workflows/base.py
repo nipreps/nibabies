@@ -152,7 +152,7 @@ def init_single_subject_wf(subject_id):
 
     anat_only = config.workflow.anat_only
     anat_derivatives = config.execution.anat_derivatives
-    anat_modality = config.workflow.anat_modality
+    anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     spaces = config.workflow.spaces
     # Make sure we always go through these two checks
     if not anat_only and not subject_data["bold"]:
@@ -286,7 +286,7 @@ It is released under the [CC0]\
 
     # Preprocessing of anatomical (includes registration to UNCInfant)
     anat_preproc_wf = init_infant_anat_wf(
-        ants_affine_init=config.workflow.ants_affine_init or True,
+        ants_affine_init=True,
         age_months=config.workflow.age_months,
         anat_modality=anat_modality,
         t1w=subject_data["t1w"],
