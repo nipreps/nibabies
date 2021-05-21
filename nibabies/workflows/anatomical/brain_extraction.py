@@ -257,11 +257,6 @@ def init_infant_brain_extraction_wf(
             verbose=True,
         )
 
-        if ants_affine_init == "random":
-            ants_kwargs["metric"] = ("Mattes", 32, "Random", 0.2)
-        if ants_affine_init == "search":
-            ants_kwargs["search_grid"] = (20, (20, 40, 40))
-
         init_aff = pe.Node(
             AI(**ants_kwargs),
             name="init_aff",

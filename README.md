@@ -289,17 +289,11 @@ Other options:
                         (default: False)
 
 NiBabies specific options:
-  --anat-modality {t1w,t2w}
-                        Preferred modality to use for anatomical processing
-                        (default: t1w)
   --age-months AGE_MONTHS
                         Age in months (default: None)
   --segmentation-atlases-dir SEGMENTATION_ATLASES_DIR
                         Directory containing precalculated segmentations to
                         use for JointLabelFusion. (default: None)
-  --ants-affine-init {random,search}
-                        TESTING: Customize parameters for ants AI
-                        initialization. (default: None)
 ```
 
 </details>

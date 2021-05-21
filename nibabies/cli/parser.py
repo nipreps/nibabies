@@ -594,11 +594,6 @@ discourage its usage."""
         "--segmentation-atlases-dir",
         help="Directory containing precalculated segmentations to use for JointLabelFusion."
     )
-    g_baby.add_argument(
-        "--ants-affine-init",
-        choices=("random", "search"),
-        help="TESTING: Customize parameters for ants AI initialization."
-    )
     return parser
 
 
