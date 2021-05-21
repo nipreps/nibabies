@@ -585,12 +585,6 @@ discourage its usage."""
     # Add new options
     g_baby = parser.add_argument_group("NiBabies specific options")
     g_baby.add_argument(
-        "--anat-modality",
-        default="t1w",
-        choices=("t1w", "t2w"),
-        help="Preferred modality to use for anatomical processing",
-    )
-    g_baby.add_argument(
         "--age-months",
         dest="age_months",
         type=int,
