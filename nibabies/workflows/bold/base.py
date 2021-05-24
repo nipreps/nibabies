@@ -823,7 +823,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # fmt: off
         # Finalize workflow with fieldmap-less connections
         workflow.connect([
-            (inputnode, final_boldref_masker, [('bold_ref', 'in_file')]),
             (final_boldref_masker, bold_t1_trans_wf, [
                 ('out_mask', 'inputnode.ref_bold_mask'),
                 ('out_file', 'inputnode.ref_bold_brain'),
