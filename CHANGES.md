@@ -1,5 +1,13 @@
 ## Changelog
 
+0.1.0 (May 26, 2021)
+--------------------
+- Implements susceptibility distortion correction for BOLDs
+- Improved documentation
+- Adds estimated fieldmap report
+- Removed unused commandline arguments
+
+
 0.0.3 (March 17, 2021)
 -----------------------
 - Adds functional processing to the workflow
