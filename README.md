@@ -11,7 +11,7 @@
 ----
 ### Requirements
 
-Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using the available Docker / Singularity containers.
+Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using the available [Docker](https://hub.docker.com/r/mgxd/nibabies/tags?page=1&ordering=last_updated) or [Singularity](https://cloud.sylabs.io/library/mathiasg/default/nibabies) containers.
 
 If you insist on installing this tool locally, you can use the [Dockerfile](./Dockerfile) as a guide.
 
