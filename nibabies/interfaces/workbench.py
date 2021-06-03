@@ -195,18 +195,18 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         position=0,
         desc="The output CIFTI file",
     )
-    in_file = File(
+    volume_data = File(
         exists=True,
-        mandatory=True,
         argstr="-volume %s",
         position=1,
+        requires=["volume_structure_labels"],
         desc="volume file containing all voxel data for all volume structures",
     )
-    structure_label_volume = File(
+    volume_structure_labels = File(
         exists=True,
-        mandatory=True,
         argstr="%s",
         position=2,
+        requires=["volume_data"],
         desc="label volume file containing labels for cifti structures",
     )
     left_metric = File(
@@ -323,8 +323,8 @@ class CiftiCreateDenseTimeseries(WBCommand):
 
     >>> from nibabies.interfaces.workbench import CiftiCreateDenseTimeseries
     >>> createdts = CiftiCreateDenseTimeseries()
-    >>> createdts.inputs.in_file = data_dir /'functional.nii'
-    >>> createdts.inputs.structure_label_volume = data_dir /'atlas.nii'
+    >>> createdts.inputs.volume_data = data_dir /'functional.nii'
+    >>> createdts.inputs.volume_structure_labels = data_dir / 'atlas.nii'
     >>> createdts.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -cifti-create-dense-timeseries functional.dtseries.nii \
     -volume .../functional.nii .../atlas.nii -timestart 0 -timestep 1 -unit SECOND'
