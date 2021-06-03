@@ -188,9 +188,8 @@ class CiftiCreateDenseFromTemplate(WBCommand):
 
 class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
     out_file = File(
-        name_source=["in_file"],
-        name_template="%s.dtseries.nii",
-        keep_extension=False,
+        default_value="dtseries.nii",
+        usedefault=True,
         argstr="%s",
         position=0,
         desc="The output CIFTI file",
@@ -326,7 +325,7 @@ class CiftiCreateDenseTimeseries(WBCommand):
     >>> createdts.inputs.volume_data = data_dir /'functional.nii'
     >>> createdts.inputs.volume_structure_labels = data_dir / 'atlas.nii'
     >>> createdts.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-dense-timeseries functional.dtseries.nii \
+    'wb_command -cifti-create-dense-timeseries dtseries.nii \
     -volume .../functional.nii .../atlas.nii -timestart 0 -timestep 1 -unit SECOND'
     """
 
