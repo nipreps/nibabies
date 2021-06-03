@@ -436,7 +436,11 @@ class CiftiDilateInputSpec(CommandLineInputSpec):
 
 class CiftiCreateLabelInputSpec(CommandLineInputSpec):
     out_file = File(
-        mandatory=True, argstr="%s", position=0, desc="the output CIFTI file"
+        default_value="dlabel.nii",
+        usedefault=True,
+        argstr="%s",
+        position=0,
+        desc="the output CIFTI file",
     )
     volume_label = File(
         exists=True,
@@ -550,11 +554,10 @@ class CiftiCreateLabel(WBCommand):
 
     >>> from nibabies.interfaces import workbench as wb
     >>> lab = wb.CiftiCreateLabel()
-    >>> lab.inputs.out_file = "out.dlabel.nii"
     >>> lab.inputs.volume_label = data_dir / "functional.nii"
     >>> lab.inputs.structure_label_volume = data_dir / "functional.nii"
     >>> lab.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-label out.dlabel.nii -volume .../functional.nii .../functional.nii'
+    'wb_command -cifti-create-label dlabel.nii -volume .../functional.nii .../functional.nii'
     """
 
     input_spec = CiftiCreateLabelInputSpec
