@@ -52,17 +52,11 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
-    # inputs
-    # ${VolumefMRI}.nii.gz
-    # ${ROIFolder}/Atlas_ROIs.${GrayordinatesResolution}.nii.gz
-    # ${ROIFolder}/ROIs.${GrayordinatesResolution}.nii.gz
-    # $HCPPIPEDIR_Templates/InfMNI_2AdultMNI_Step2.mat
     inputnode = pe.Node(
         niu.IdentityInterface(fields=["bold_file", "bold_roi", "atlas_roi", "atlas_xfm"]),
         name="inputnode",
     )
     outputnode = pe.Node(niu.IdentityInterface(fields=["subcortical_file"]), name='outputnode')
-
 
     applyxfm_atlas = pe.Node(fsl.FLIRT(), name="applyxfm_atlas")
     vol_resample = pe.Node(VolumeAffineResample(method="ENCLOSING_VOXEL"), name="vol_resample")
@@ -77,8 +71,8 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
         name="parse_labels",
     )
 
-    ### The following is wrapped in a for-loop, iterating across each roi
-    ### Instead, we will use MapNodes and iter across the varying inputs
+    # The following is wrapped in a for-loop, iterating across each roi
+    # Instead, we will use MapNodes and iter across the varying inputs
     roi2atlas = pe.MapNode(
         fsl.FLIRT(
             searchr_x=[-20, 20],
