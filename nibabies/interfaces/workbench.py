@@ -1,5 +1,5 @@
 from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec, Str
-from nipype.interfaces.base.traits_extension import InputMultiObject
+from nipype.interfaces.base.traits_extension import InputMultiObject, OutputMultiObject, isdefined
 from nipype.interfaces.workbench.base import WBCommand
 
 
@@ -938,6 +938,173 @@ class CiftiResample(WBCommand):
     input_spec = CiftiResampleInputSpec
     output_spec = CiftiResampleOutputSpec
     _cmd = "wb_command -cifti-resample"
+
+
+class CiftiSeparateInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        argstr="%s",
+        position=0,
+        desc="the cifti to separate a component of",
+    )
+    direction = traits.Enum(
+        "ROW",
+        "COLUMN",
+        mandatory=True,
+        argstr="%s",
+        position=1,
+        desc="which dimension to smooth along, ROW or COLUMN",
+    )
+    volume_all_file = File(
+        argstr="-volume-all %s",
+        position=2,
+        desc="separate all volume structures into a volume file",
+    )
+    volume_all_roi = File(
+        argstr="-roi %s",
+        position=3,
+        requires=["volume_all_file"],
+        desc="output the roi of which voxels have data",
+    )
+    volume_all_label = File(
+        argstr="-label %s",
+        position=4,
+        requires=["volume_all_file"],
+        desc="output a volume label file indicating the location of structures",
+    )
+    volume_all_crop = traits.Bool(
+        argstr="-crop",
+        position=5,
+        requires=["volume_all_file"],
+        desc="crop volume to the size of the data rather than using the original volume size",
+    )
+    # the following can be repeated
+    label = InputMultiObject(
+        traits.Either(
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File()),
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(), File()),
+        ),
+        argstr="%s",
+        position=6,
+        desc="separate one or more surface models into a surface label file",
+    )
+    metric = InputMultiObject(
+        traits.Either(
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File()),
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(), File()),  # -roi
+        ),
+        argstr="%s",
+        position=7,
+        desc="separate one or more surface models into a metric file",
+    )
+    volume = InputMultiObject(
+        traits.Either(
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File()),
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(), File()),  # -roi
+            traits.Tuple(traits.Enum(VALID_STRUCTURES, File(), traits.Bool)),  # -crop
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(), File(), traits.Bool),  # -roi -crop
+        ),
+        argstr="%s",
+        position=8,
+        desc="separate one or more volume structures into a volume file",
+    )
+
+
+class CiftiSeparateOutputSpec(TraitedSpec):
+    volume_all_file = File(desc="File containing all volume structures")
+    volume_all_roi_file = File(desc="Output the roi of which voxels have data")
+    volume_all_label_file = File(
+        desc="output a volume label file indicating the location of structures"
+    )
+    label_files = OutputMultiObject(File(), desc="Output label files")
+    label_roi_files = OutputMultiObject(File(), desc="Output label rois files")
+    metric_files = OutputMultiObject(File(), desc="Output metric files")
+    metric_roi_files = OutputMultiObject(File(), desc="Output metric rois files")
+    volume_files = OutputMultiObject(File(), desc="Output volume files")
+    volume_roi_files = OutputMultiObject(File(), desc="Output volume roi files")
+
+
+class CiftiSeparate(WBCommand):
+    """
+    Extract left or right hemisphere surface from CIFTI file (.dtseries)
+    other structure can also be extracted
+    The input cifti file must have a brain models mapping on the chosen
+    dimension, columns for .dtseries.
+
+    >>> separate = CiftiSeparate()
+    >>> separate.inputs.in_file = data_dir / "func.dtseries.nii"
+    >>> separate.inputs.direction = "COLUMN"
+    >>> separate.inputs.volume_all_file = "volume_all.nii.gz"
+    >>> separate.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-separate .../func.dtseries.nii COLUMN \
+    -volume-all volume_all.nii.gz'
+
+    Metrics, labels, and volumes can also be freely extracted
+    >>> separate.inputs.metric = [("CORTEX_LEFT", "cortexleft.func.gii")]
+    >>> separate.inputs.volume = [("HIPPOCAMPUS_LEFT", "hippoL.nii.gz"), \
+        ("HIPPOCAMPUS_RIGHT", "hippoR.nii.gz", "hippoR.roi.nii.gz")]
+    >>> separate.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'wb_command -cifti-separate .../func.dtseries.nii COLUMN \
+    -volume-all volume_all.nii.gz -metric CORTEX_LEFT cortexleft.func.gii \
+    -volume HIPPOCAMPUS_LEFT hippoL.nii.gz \
+    -volume HIPPOCAMPUS_RIGHT hippoR.nii.gz -roi hippoR.roi.nii.gz'
+
+    """
+    input_spec = CiftiSeparateInputSpec
+    output_spec = CiftiSeparateOutputSpec
+    _cmd = "wb_command -cifti-separate"
+    _label_roi_files = []
+    _metric_roi_files = []
+    _volume_roi_files = []
+
+    def _format_arg(self, name, trait_spec, value):
+        if name in ("label", "metric", "volume"):
+            cmds = []
+            for i, val in enumerate(value):
+                if len(val) == 3:
+                    if val[-1] is True:
+                        val = val[:-1] + ("-crop",)
+                    else:
+                        val = val[:-1] + ("-roi", val[-1])
+                        self._set_roi_file(name, val[-1])
+                elif len(val) == 4:
+                    val = val[:-2] + ("-roi", val[-2]) + ("crop") if val[-1] is True else ()
+                    self._set_roi_file(name, val[-2])
+                cmds.append(" ".join((f"-{name}",) + val))
+            return trait_spec.argstr % " ".join(cmds)
+        return super()._format_arg(name, trait_spec, value)
+
+    def _list_outputs(self):
+        outputs = super()._list_outputs()
+        if self.inputs.volume_all_file:
+            outputs["volume_all_file"] = self.inputs.volume_all_file
+        if self.inputs.volume_all_roi_file:
+            outputs["volume_all_roi_file"] = self.inputs.volume_all_roi_file
+        if self.inputs.volume_all_label_file:
+            outputs["volume_all_label_file"] = self.inputs.volume_all_label_file
+        if self.inputs.label:
+            for label in self.inputs.label:
+                outputs["label_files"] = (outputs["label_files"] or []) + \
+                    self._gen_filename(label[2])
+            if self._label_roi_files:
+                outputs["label_roi_files"] = self._label_roi_files
+        if self.inputs.metric:
+            for metric in self.inputs.metric:
+                outputs["metric_files"] = (outputs["metric_files"] or []) + \
+                    self._gen_filename(metric[2])
+            if self._metric_roi_files:
+                outputs["metric_roi_files"] = self._metric_roi_files
+        if self.inputs.volume:
+            for volume in self.inputs.volume:
+                outputs["volume_files"] = (outputs["volume_files"] or []) + \
+                    self._gen_filename(volume[2])
+            if self._volume_roi_files:
+                outputs["volume_roi_files"] = self._volume_roi_files
+
+    def _set_roi_file(self, name, file):
+        rois = getattr(self, f"_{name}_roi_files")
+        rois.append(self._gen_filename(file))
 
 
 class VolumeAffineResampleInputSpec(CommandLineInputSpec):
