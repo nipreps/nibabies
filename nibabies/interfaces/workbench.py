@@ -177,12 +177,12 @@ class CiftiCreateDenseFromTemplate(WBCommand):
 
     def _format_arg(self, name, trait_spec, value):
         if name in ("metric", "label", "volume"):
-            argstr = ""
+            cmds = []
             for val in value:
                 if val[-1] is True:  # volume specific
-                    val = val[:2] + ("-from-cropped ",)
-                argstr += " ".join((f"-{name}",) + val)
-            return trait_spec.argstr % argstr
+                    val = val[:2] + ("-from-cropped",)
+                cmds.append(" ".join((f"-{name}",) + val))
+            return trait_spec.argstr % " ".join(cmds)
         return super()._format_arg(name, trait_spec, value)
 
 
