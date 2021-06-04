@@ -145,7 +145,7 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
         name="smooth"
     )
     separate = pe.MapNode(
-        CiftiSeparate(direction="COLUMN", volume_all=True),
+        CiftiSeparate(direction="COLUMN", volume_all_file='volume_all.nii.gz'),
         iterfield=["in_file"],
         name="separate"
     )
@@ -163,7 +163,10 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
         name='fmt_agg_rois',
     )
     agg_rois = pe.MapNode(fsl.MultiImageMaths(), name='agg_rois')
-    final_vol = pe.Node(CiftiSeparate(direction="COLUMN", volume_all=True), name="final_vol")
+    final_vol = pe.Node(
+        CiftiSeparate(direction="COLUMN", volume_all_file='volume_all.nii.gz'),
+        name="final_vol"
+    )
 
     workflow = Workflow(name=name)
     # fmt: off
