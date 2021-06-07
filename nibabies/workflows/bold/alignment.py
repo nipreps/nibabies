@@ -232,14 +232,11 @@ def parse_roi_labels(label_file):
 
     Return a list of structure names and label keys.
 
-    Example
-    -------
-    CEREBELLUM_LEFT
-    8 230 148 34 255
-    THALAMUS_LEFT
-    10 0 118 14 255
-
-    TODO: Add unit test
+    >>> structs, ids = parse_roi_labels(test_data / "labelfile.txt")
+    >>> structs
+    '["CEREBELLUM_LEFT", "THALAMUS_LEFT", "CAUDATE_LEFT"]'
+    >>> ids
+    '[8, 10, 11]'
     """
 
     with open(label_file) as fp:

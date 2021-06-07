@@ -1,8 +1,9 @@
 """py.test configuration"""
 from pathlib import Path
-import pytest
 from tempfile import TemporaryDirectory
+from pkg_resources import resource_filename
 
+import pytest
 
 FILES = (
     'functional.nii',
@@ -32,3 +33,4 @@ def data_dir():
 @pytest.fixture(autouse=True)
 def set_namespace(doctest_namespace, data_dir):
     doctest_namespace["data_dir"] = data_dir
+    doctest_namespace["test_data"] = Path(resource_filename("nibabies", "tests/data"))
