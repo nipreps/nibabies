@@ -234,9 +234,9 @@ def parse_roi_labels(label_file):
 
     >>> structs, ids = parse_roi_labels(test_data / "labelfile.txt")
     >>> structs
-    '["CEREBELLUM_LEFT", "THALAMUS_LEFT", "CAUDATE_LEFT"]'
+    ['CEREBELLUM_LEFT', 'THALAMUS_LEFT', 'CAUDATE_LEFT']
     >>> ids
-    '[8, 10, 11]'
+    ['8', '10', '11']
     """
 
     with open(label_file) as fp:
