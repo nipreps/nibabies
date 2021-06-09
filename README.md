@@ -1,6 +1,8 @@
 ## *NiBabies*: A robust preprocessing workflow tailored for neonate and infant MRI
 
 ![nibabies](https://github.com/nipreps/nibabies/actions/workflows/pytest.yml/badge.svg)
+[![DOI](https://zenodo.org/badge/264223087.svg)](https://zenodo.org/badge/latestdoi/264223087)
+
 
 <p align="center">
     <img src="./docs/_static/nibabies_anat.png" width="600" height="600" alt="nibabies-anat">
