@@ -15,6 +15,14 @@
 
 Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using the available [Docker](https://hub.docker.com/r/mgxd/nibabies/tags?page=1&ordering=last_updated) or [Singularity](https://cloud.sylabs.io/library/mathiasg/default/nibabies) containers.
 
+Images are all tagged with the release number, which must be specified in order to pull the images. For example, if you wanted to pull version `0.1.0`, you would use the following command.
+```
+# Docker
+docker pull mgxd/nibabies:0.1.0
+# Singularity
+singularity pull library://mathiasg/default/nibabies:0.1.0
+```
+
 If you insist on installing this tool locally, you can use the [Dockerfile](./Dockerfile) as a guide.
 
 
@@ -31,6 +39,10 @@ However, as infant brains can vastly differ depending on age, providing the foll
 
 - **--age-months** - participant age in months
 - **--segmentation-dir** - directory containing pre-labeled segmentations to use for Joint Label Fusion.
+
+> **_NOTE:_** The segmentation directory should consist of one or more template directories containing:
+> - A segmented and labelled NIfTI that includes `Segmentation` in the filename.
+> - A brainmasked T1w NIfTI that includes `T1w` in the filename.
 
 <details>
 <summary>Extensive argument list</summary>
