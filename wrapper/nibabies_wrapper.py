@@ -185,7 +185,7 @@ class ContainerManager(object):
                 ["docker", "version", "--format", "{{.Server.Version}}"], stdout=subprocess.PIPE
             )
         elif self.service == 'singularity':
-            ret = subprocess.run(["singularity version"], stdout=subprocess.PIPE)
+            ret = subprocess.run(["singularity", "version"], stdout=subprocess.PIPE)
         version = ret.stdout.decode("ascii").strip()
         version_env = "{}_VERSION_8395080871".format(self.service.upper())
         self.add_envvar((version_env, version))
