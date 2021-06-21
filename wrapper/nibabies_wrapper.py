@@ -261,8 +261,8 @@ def merge_help(wrapper_help, target_help):
     t_flags = sum(map(flag_re.findall, t_options), [])
 
     # The following code makes this assumption
-    #assert w_flags[:2] == ["h", "version"]
-    #assert w_posargs.replace("]", "").replace("[", "") == t_posargs
+    # assert w_flags[:2] == ["h", "version"]
+    # assert w_posargs.replace("]", "").replace("[", "") == t_posargs
 
     # Make sure we're not clobbering options we don't mean to
     overlap = set(w_flags).intersection(t_flags)
@@ -619,7 +619,7 @@ def main():
             container.add_envvar(tuple(envvar))
 
     if opts.fs_license_file:
-        container.add_mount(opts.fs_license_file, "opt/freesurfer/license.txt")
+        container.add_mount(opts.fs_license_file, "/opt/freesurfer/license.txt")
 
     main_args = []
     if opts.bids_dir:
@@ -629,7 +629,7 @@ def main():
         if not os.path.exists(opts.output_dir):
             # create it before the container does
             os.makedirs(opts.output_dir)
-        container.add_mount(opts.output_dir, "/out")
+        container.add_mount(opts.output_dir, "/out", read_only=False)
         main_args.append("/out")
     main_args.append(opts.analysis_level)
 
