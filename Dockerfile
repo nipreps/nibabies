@@ -126,6 +126,13 @@ RUN useradd -m -s /bin/bash -G users nibabies
 WORKDIR /home/nibabies
 ENV HOME="/home/nibabies"
 
+# Install node + npm packages
+RUN curl -sSL https://deb.nodesource.com/setup_14.x | bash - && \
+    apt-get install -y --no-install-recommends \
+                    nodejs && \
+    npm install -g svgo bids-validator@1.5.7 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.npm ~/.empty
+
 # Installing and setting up miniconda
 RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
     bash Miniconda3-4.5.11-Linux-x86_64.sh -b -p /usr/local/miniconda && \
@@ -143,11 +150,10 @@ RUN conda install -y python=3.7.1 \
                      numpy=1.20 \
                      scipy=1.6 \
                      scikit-learn=0.19 \
-                     matplotlib=2.2.2 \
-                     pandas=0.23.4 \
-                     libxml2=2.9.8 \
-                     libxslt=1.1.32 \
-                     graphviz=2.40.1 \
+                     matplotlib=2.2 \
+                     libxml2=2.9 \
+                     libxslt=1.1 \
+                     graphviz=2.40 \
                      traits=4.6.0 \
                      pip=19.1 \
                      zlib; sync && \
