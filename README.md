@@ -38,7 +38,8 @@ If you insist on installing this tool locally, you can use the [Dockerfile](./Do
 However, as infant brains can vastly differ depending on age, providing the following arguments is highly recommended:
 
 - **--age-months** - participant age in months
-- **--segmentation-dir** - directory containing pre-labeled segmentations to use for Joint Label Fusion.
+> **_NOTE:_** This is required when using Infant FreeSurfer
+- **--segmentation-atlases-dir** - directory containing pre-labeled segmentations to use for Joint Label Fusion.
 
 > **_NOTE:_** The segmentation directory should consist of one or more template directories containing:
 > - A segmented and labelled NIfTI that includes `Segmentation` in the filename.
