@@ -219,8 +219,6 @@ class ContainerManager(object):
         self.add_cmd(self.image)
 
 
-
-
 def merge_help(wrapper_help, target_help):
     def _get_posargs(usage):
         """
@@ -274,6 +272,7 @@ def merge_help(wrapper_help, target_help):
         "fs-license-file",
         "fs-subjects-dir",
         "config-file",
+        "segmentation-atlases-dir",
         "h",
         "use-plugin",
         "version",
@@ -463,6 +462,12 @@ the spatial normalization."""
         help="Path to an existing PyBIDS database folder, for faster indexing "
         "(especially useful for large datasets).",
     )
+    g_wrap.add_argument(
+        "--segmentation-atlases-dir",
+        metavar="PATH",
+        type=os.path.abspath,
+        help="Directory containing prelabeled segmentations to use for JointLabelFusion."
+    )
 
     # Developer patch/shell options
     g_dev = parser.add_argument_group(
@@ -639,6 +644,9 @@ def main():
     if opts.anat_derivatives:
         container.add_mount(opts.anat_derivatives, "/opt/smriprep/subjects", read_only=False)
         unknown_args.extend(["--anat-derivatives", "/opt/smriprep/subjects"])
+    if opts.segmentation_atlases_dir:
+        container.add_mount(opts.segmentation_atlases_dir, "/opt/segmentations")
+        unknown_args.extend(["--segmentation-atlases-dir", "/opt/segmentations"])
 
     # Check that work_dir is not a child of bids_dir
     if opts.work_dir and opts.bids_dir:
