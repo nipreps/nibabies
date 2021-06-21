@@ -261,8 +261,8 @@ def merge_help(wrapper_help, target_help):
     t_flags = sum(map(flag_re.findall, t_options), [])
 
     # The following code makes this assumption
-    assert w_flags[:2] == ["h", "version"]
-    assert w_posargs.replace("]", "").replace("[", "") == t_posargs
+    #assert w_flags[:2] == ["h", "version"]
+    #assert w_posargs.replace("]", "").replace("[", "") == t_posargs
 
     # Make sure we're not clobbering options we don't mean to
     overlap = set(w_flags).intersection(t_flags)
