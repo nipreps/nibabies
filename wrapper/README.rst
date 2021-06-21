@@ -20,3 +20,15 @@ Please report any feedback to our `GitHub repository
 <https://github.com/nipreps/nibabies>`_ and do not
 forget to `credit <https://fmriprep.readthedocs.io/en/latest/citing.html>`_ all
 the authors of software that NiBabies uses.
+
+
+Usage
+-----
+
+Example Docker usage ::
+
+  nibabies-wrapper docker <data-path> <output-path> participant <nibabies-arguments>
+
+Example Singularity usage ::
+
+  nibabies-wrapper singularity <data-path> <output-path> participant -i <img-path> <nibabies-arguments>
