@@ -1,5 +1,12 @@
 ## Changelog
 
+0.1.1 (June 21, 2021)
+---------------------
+- FIX: BIDS validation error
+- ENH: Additional wrapper script (``nibabies-wrapper``) to facilitate running through Docker/Singularity
+- DOC: Updates anatomical processing figure, adds functional processing figure
+- DOC: Fixes typo in README usage
+
 0.1.0 (May 26, 2021)
 --------------------
 - Implements susceptibility distortion correction for BOLDs
