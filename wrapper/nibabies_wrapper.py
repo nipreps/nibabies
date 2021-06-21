@@ -187,7 +187,7 @@ class ContainerManager(object):
         elif self.service == 'singularity':
             ret = subprocess.run(["singularity version"], stdout=subprocess.PIPE)
         version = ret.stdout.decode("ascii").strip()
-        version_env = "{service}_VERSION_8395080871".format(self.service.upper())
+        version_env = "{}_VERSION_8395080871".format(self.service.upper())
         self.add_envvar((version_env, version))
 
     def add_envvar(self, envtuple):
