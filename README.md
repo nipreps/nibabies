@@ -3,11 +3,9 @@
 ![nibabies](https://github.com/nipreps/nibabies/actions/workflows/pytest.yml/badge.svg)
 [![DOI](https://zenodo.org/badge/264223087.svg)](https://zenodo.org/badge/latestdoi/264223087)
 
-
-<p align="center">
-    <img src="./docs/_static/nibabies_anat.png" width="600" height="600" alt="nibabies-anat">
-    <img src="./docs/_static/nibabies_func.png" width="600" height="600" alt="nibabies-func">
-</p>
+Anatomical | Functional
+---------- | ----------
+![nibabies-anat](./docs/_static/nibabies_anat.png) | ![nibabies-func](./docs/_static/nibabies_func.png)
 
 *NiBabies* is an extension of [fMRIPrep](https://fmriprep.org/en/stable/) designed and tested for infants 0-2 years old. *NiBabies* offers structural and functional MRI preprocessing.
 
