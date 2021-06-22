@@ -44,8 +44,10 @@ However, as infant brains can vastly differ depending on age, providing the foll
 > - A segmented and labelled NIfTI that includes `Segmentation` in the filename.
 > - A brainmasked T1w NIfTI that includes `T1w` in the filename.
 
+
+##### Extensive Usage
 <details>
-<summary>Extensive argument list</summary>
+<summary>Click to view all options</summary>
 
 ```
 usage: nibabies [-h] [--version] [--skip_bids_validation]
@@ -335,6 +337,8 @@ $ nibabies-wrapper singularity /path/to/data /path/to/output participant --age-m
 RUNNING: singularity run --cleanenv -B /path/to/data:/data:ro \
 -B /path/to/output:/out nibabies-0.1.1.sif /data /out participant --age-months 12
 ```
+
+The ``nibabies-wrapper`` accepts all of the [available options for NiBabies](#extensive-usage), automatically translating local files and directories into mount points.
 
 ### Outputs
 
