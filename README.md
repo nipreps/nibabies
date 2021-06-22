@@ -9,7 +9,8 @@ Anatomical | Functional
 
 *NiBabies* is an extension of [fMRIPrep](https://fmriprep.org/en/stable/) designed and tested for infants 0-2 years old. *NiBabies* offers structural and functional MRI preprocessing.
 
-----
+---
+
 ### Requirements
 
 Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using the available [Docker](https://hub.docker.com/r/mgxd/nibabies/tags?page=1&ordering=last_updated) or [Singularity](https://cloud.sylabs.io/library/mathiasg/default/nibabies) containers.
@@ -24,6 +25,7 @@ singularity pull library://mathiasg/default/nibabies:0.1.0
 
 If you insist on installing this tool locally, you can use the [Dockerfile](./Dockerfile) as a guide.
 
+---
 
 ### Usage
 
@@ -317,8 +319,9 @@ NiBabies specific options:
 
 </details>
 
+---
 
-#### Running with ``nibabies-wrapper``
+### Running with ``nibabies-wrapper``
 
 The ``nibabies-wrapper`` is a lightweight Python 2/3 wrapper for running *NiBabies* via Docker and Singularity.
 It will generate a Docker/Singularity command line for you, print it out for reporting purposes, and then execute it without further action needed, e.g.:
@@ -339,6 +342,8 @@ RUNNING: singularity run --cleanenv -B /path/to/data:/data:ro \
 ```
 
 The ``nibabies-wrapper`` accepts all of the [available options for NiBabies](#extensive-usage), automatically translating local files and directories into mount points.
+
+---
 
 ### Outputs
 
