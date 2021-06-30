@@ -1,5 +1,9 @@
 ## Changelog
 
+0.1.2 (June 30, 2021)
+---------------------
+- FIX: BOLD file duplication error
+
 0.1.1 (June 21, 2021)
 ---------------------
 - FIX: BIDS validation error
