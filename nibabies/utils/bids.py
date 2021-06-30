@@ -173,8 +173,7 @@ def group_bolds_ref(*, layout, subject):
                 # cannot be certain so treat as unique
                 combinations.append(comb)
                 files.append([bold.path])
-
-            if comb in combinations:
+            elif comb in combinations:
                 # do not add a new entry to the combinations
                 # instead append the file to the existing bucket
                 idx = combinations.index(comb)
@@ -185,6 +184,7 @@ def group_bolds_ref(*, layout, subject):
                 files.append([bold.path])
 
         assert len(combinations) == len(files), "Nonequal number of combinations and file buckets"
+        assert len(bolds) == sum([len(x) for x in files]), "Final BOLD images count is off"
 
     return combinations, files
 
