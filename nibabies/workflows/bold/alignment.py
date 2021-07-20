@@ -19,12 +19,13 @@ from ...interfaces.workbench import (
 )
 
 
-def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf'):
+def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_alignment_wf'):
     """
     Align individual subcortical structures into MNI space.
 
     This is a nipype workflow port of the DCAN infant pipeline.
-    https://github.com/DCAN-Labs/dcan-infant-pipeline/blob/247e19/fMRISurface/scripts/SubcorticalAlign_ROIs.sh
+    https://github.com/DCAN-Labs/dcan-infant-pipeline/ \
+    blob/247e19/fMRISurface/scripts/SubcorticalAlign_ROIs.sh
 
 
     Parameters
@@ -67,7 +68,7 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
     split_atlas_rois = pe.Node(fsl.Split(dimension="t"), name="split_atlas_rois")
     atlas_labels = pe.Node(VolumeLabelExportTable(label_map=1), name="atlas_labels")
     parse_labels = pe.Node(
-        niu.Function(function=parse_roi_labels, output_names=["structures", "label_id"]),
+        niu.Function(function=parse_roi_labels, output_names=["structures", "label_ids"]),
         name="parse_labels",
     )
 
@@ -85,22 +86,22 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
     )
     applyxfm_roi = pe.MapNode(
         fsl.ApplyXFM(interp="spline"),
-        iterfield=["reference"],
+        iterfield=["reference", "in_matrix_file"],
         name='applyxfm_roi',
     )
     bold_mask_roi = pe.MapNode(
         fsl.ApplyMask(),
-        iterfield=["in_file", "operand_file"],
+        iterfield=["in_file", "operand_value"],
         name='bold_mask_roi',
     )
     mul_roi = pe.MapNode(
         fsl.BinaryMaths(operation="mul"),
-        iterfield=["in_file", "operand_file"],
+        iterfield=["in_file", "operand_value"],
         name='mul_roi',
     )
     mul_atlas_roi = pe.MapNode(
         fsl.BinaryMaths(operation="mul"),
-        iterfield=["in_file", "operand_file"],
+        iterfield=["in_file", "operand_value"],
         name='mul_atlas_roi',
     )
     vol_label = pe.MapNode(
@@ -116,7 +117,7 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
     create_dtseries = pe.MapNode(
         CiftiCreateDenseTimeseries(),
         iterfield=["volume_data", "volume_structure_labels"],
-        name='create_dtseries'
+        name='create_dtseries',
     )
     create_label = pe.MapNode(
         CiftiCreateLabel(),
@@ -151,9 +152,9 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
     )
 
     fmt_vols = pe.Node(niu.Function(function=format_volume_rois), name='fmt_vols')
-    create_dtseries = pe.Node(
+    create_dtseries_tmpl = pe.Node(
         CiftiCreateDenseFromTemplate(series=True, series_step=repetition_time, series_start=0),
-        name='create_dtseries',
+        name='create_dtseries_tmpl',
     )
     fmt_agg_rois = pe.Node(
         niu.Function(
@@ -162,7 +163,7 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
         ),
         name='fmt_agg_rois',
     )
-    agg_rois = pe.MapNode(fsl.MultiImageMaths(), name='agg_rois')
+    agg_rois = pe.Node(fsl.MultiImageMaths(), name='agg_rois')
     final_vol = pe.Node(
         CiftiSeparate(direction="COLUMN", volume_all_file='volume_all.nii.gz'),
         name="final_vol"
@@ -186,14 +187,16 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
         (atlas_labels, parse_labels, [("out_file", "label_file")]),
         # for loop across ROIs
         (split_rois, roi2atlas, [("out_files", "in_file")]),
+        (split_atlas_rois, roi2atlas, [("out_files", "reference")]),
         (inputnode, applyxfm_roi, [("bold_file", "in_file")]),
         (split_atlas_rois, applyxfm_roi, [("out_files", "reference")]),
+        (roi2atlas, applyxfm_roi, [("out_matrix_file", "in_matrix_file")]),
         (applyxfm_roi, bold_mask_roi, [("out_file", "in_file")]),
         (roi2atlas, bold_mask_roi, [("out_file", "mask_file")]),
         (roi2atlas, mul_roi, [("out_file", "in_file")]),
-        (parse_labels, mul_roi, [("label_ids", "operand_file")]),
+        (parse_labels, mul_roi, [("label_ids", "operand_value")]),
         (split_atlas_rois, mul_atlas_roi, [("out_files", "in_file")]),
-        (parse_labels, mul_atlas_roi, [("label_ids", "operand_file")]),
+        (parse_labels, mul_atlas_roi, [("label_ids", "operand_value")]),
         (mul_roi, vol_label, [("out_file", "in_file")]),
         (atlas_labels, vol_label, [("out_file", "label_list_file")]),
         (mul_atlas_roi, vol_atlas_label, [("out_file", "in_file")]),
@@ -211,17 +214,18 @@ def gen_subcortical_alignment_wf(repetition_time, name='subcortical_alignment_wf
         # end loop
         (parse_labels, fmt_vols, [("structures", "structs")]),
         (separate, fmt_vols, [("volume_all_file", "rois")]),
-        (create_dense, create_dtseries, [("out_file", "in_file")]),
-        (fmt_vols, create_dtseries, [("out", "volume")]),
+        (create_dense, create_dtseries_tmpl, [("out_file", "in_file")]),
+        (fmt_vols, create_dtseries_tmpl, [("out", "volume")]),
         (mul_roi, fmt_agg_rois, [("out_file", "rois")]),
         (fmt_agg_rois, agg_rois, [
             ("first_image", "in_file"),
             ("op_files", "operand_files"),
             ("op_string", "op_string")]),
-        (create_dtseries, final_vol, [("out_file", "in_file")]),
-        (final_vol, outputnode, [("out_file", "subcortical_file")]),
+        (create_dtseries_tmpl, final_vol, [("out_file", "in_file")]),
+        (final_vol, outputnode, [("volume_all_file", "subcortical_file")]),
     ])
     # fmt: on
+    return workflow
 
 
 def parse_roi_labels(label_file):
@@ -236,7 +240,7 @@ def parse_roi_labels(label_file):
     >>> structs
     ['CEREBELLUM_LEFT', 'THALAMUS_LEFT', 'CAUDATE_LEFT']
     >>> ids
-    ['8', '10', '11']
+    [8, 10, 11]
     """
 
     with open(label_file) as fp:
@@ -248,7 +252,7 @@ def parse_roi_labels(label_file):
         if idx % 2 == 0:
             structs.append(line.strip())
         else:
-            label_ids.append(line.split(' ', 1)[0])
+            label_ids.append(int(line.split(' ', 1)[0]))
     return structs, label_ids
 
 
@@ -273,4 +277,4 @@ def format_agg_rois(rois):
     op_string
 
     """
-    return rois[0], rois[1:], "-add %s " * (len(rois) - 1).strip()
+    return rois[0], rois[1:], ("-add %s " * (len(rois) - 1)).strip()
