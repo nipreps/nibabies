@@ -60,7 +60,10 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
     outputnode = pe.Node(niu.IdentityInterface(fields=["subcortical_file"]), name='outputnode')
 
     applyxfm_atlas = pe.Node(fsl.FLIRT(), name="applyxfm_atlas")
-    vol_resample = pe.Node(VolumeAffineResample(method="ENCLOSING_VOXEL"), name="vol_resample")
+    vol_resample = pe.Node(
+        VolumeAffineResample(method="ENCLOSING_VOXEL", flirt=True),
+        name="vol_resample"
+    )
     create_dense = pe.Node(CiftiCreateDenseTimeseries(), name="create_dense")
     subj_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name="subj_rois")
     split_rois = pe.Node(fsl.Split(dimension="t"), name="split_rois")
@@ -91,7 +94,7 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
     )
     bold_mask_roi = pe.MapNode(
         fsl.ApplyMask(),
-        iterfield=["in_file", "operand_value"],
+        iterfield=["in_file", "mask_file"],
         name='bold_mask_roi',
     )
     mul_roi = pe.MapNode(
@@ -175,8 +178,13 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         (inputnode, applyxfm_atlas, [
             ("bold_file", "in_file"),
             ("atlas_roi", "reference")]),
-        (inputnode, vol_resample, [("bold_roi", "in_file")]),
-        (applyxfm_atlas, vol_resample, [("out_file", "volume_space")]),
+        (inputnode, vol_resample, [
+            ("bold_roi", "in_file"),
+            ("atlas_xfm", "affine"),
+            ("bold_roi", "flirt_source_volume")]),
+        (applyxfm_atlas, vol_resample, [
+            ("out_file", "volume_space"),
+            ("out_file", "flirt_target_volume")]),
         (applyxfm_atlas, create_dense, [("out_file", "volume_data")]),
         (inputnode, create_dense, [("atlas_roi", "volume_structure_labels")]),
         (inputnode, subj_rois, [("bold_roi", "in_file")]),
