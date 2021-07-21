@@ -188,7 +188,7 @@ class CiftiCreateDenseFromTemplate(WBCommand):
 
 class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
     out_file = File(
-        value="dtseries.nii",
+        value="out.dtseries.nii",
         usedefault=True,
         argstr="%s",
         position=0,
@@ -336,7 +336,7 @@ class CiftiCreateDenseTimeseries(WBCommand):
 
 class CiftiCreateLabelInputSpec(CommandLineInputSpec):
     out_file = File(
-        value="dlabel.nii",
+        value="out.dlabel.nii",
         usedefault=True,
         argstr="%s",
         position=0,
