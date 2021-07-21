@@ -3,6 +3,7 @@ from pathlib import Path
 
 
 def init_workflow(bold_file, bold_roi, bold_atlas_roi, atlas_xfm, TR=None):
+    from nibabies import config
     from nibabies.workflows.bold.alignment import init_subcortical_mni_alignment_wf
 
     if TR is None:
@@ -61,4 +62,4 @@ if __name__ == "__main__":
         opts.bold_atlas_roi.absolute(),
         opts.atlas_xfm.absolute(),
         TR=opts.tr,
-    ).run()
+    ).run(plugin="MultiProc")
