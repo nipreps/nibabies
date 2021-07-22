@@ -4,7 +4,7 @@ Subcortical alignment into MNI space
 
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, fsl
-from nipype.interfaces.workbench.cifti import CiftiSmooth
+# from nipype.interfaces.workbench.cifti import CiftiSmooth
 from ...interfaces.workbench import (
     CiftiCreateDenseFromTemplate,
     CiftiCreateDenseTimeseries,
@@ -12,6 +12,7 @@ from ...interfaces.workbench import (
     CiftiDilate,
     CiftiResample,
     CiftiSeparate,
+    CiftiSmooth,
     VolumeAffineResample,
     VolumeAllLabelsToROIs,
     VolumeLabelExportTable,
@@ -91,6 +92,7 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         fsl.ApplyXFM(interp="spline"),
         iterfield=["reference", "in_matrix_file"],
         name='applyxfm_roi',
+        mem_gb=2,
     )
     bold_mask_roi = pe.MapNode(
         fsl.ApplyMask(),
@@ -144,7 +146,7 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         name='resample',
     )
     smooth = pe.MapNode(
-        CiftiSmooth(direction="COLUMN", fix_zeros_vol=True),
+        CiftiSmooth(direction="COLUMN", fix_zeros_vol=True, sigma_surf=0, sigma_vol=0.8),
         iterfield=["in_file"],
         name="smooth"
     )
