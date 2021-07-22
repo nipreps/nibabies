@@ -11,22 +11,24 @@ COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
                     apt-utils \
-                    curl \
+                    autoconf \
+                    build-essential \
                     bzip2 \
                     ca-certificates \
-                    xvfb \
-                    build-essential \
-                    autoconf \
-                    libtool \
-                    lsb-release \
-                    pkg-config \
+                    curl \
+                    git \
                     graphviz \
+                    libtool \
+                    locales \
+                    lsb-release \
                     pandoc \
                     pandoc-citeproc \
-                    git && \
+                    pkg-config \
+                    xvfb && \
     curl -sSL https://deb.nodesource.com/setup_14.x | bash - && \
     apt-get install -y --no-install-recommends \
                     nodejs && \
+    locale-gen en_US.UTF-8 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Installing Neurodebian packages (workbench, git-annex)
@@ -258,7 +260,7 @@ COPY . /src/nibabies
 # Force static versioning within container
 RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
     echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
-    pip install --no-cache-dir "/src/nibabies[all]" && \
+    pip install --no-cache-dir -e "/src/nibabies[all]" && \
     rm ${FREESURFER_HOME}/build-stamp.txt
 
 # Final settings
