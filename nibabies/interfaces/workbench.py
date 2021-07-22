@@ -252,26 +252,21 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         requires=["cerebellum_metric"],
         desc="ROI (as metric file) of vertices to use from cerebellum",
     )
-    timestep = traits.Float(
-        1.0,
-        usedefault=True,
-        argstr="-timestep %g",
-        position=9,
-        desc="the timestep, in seconds",
-    )
     timestart = traits.Float(
-        0.0,
-        usedefault=True,
         argstr="-timestart %g",
-        position=10,
+        position=9,
         desc="the time at the first frame, in seconds",
+    )
+    timestep = traits.Float(
+        argstr="-timestep %g",
+        position=10,
+        desc="the timestep, in seconds",
     )
     unit = traits.Enum(
         "SECOND",
         "HERTZ",
         "METER",
         "RADIAN",
-        usedefault=True,
         argstr="-unit %s",
         position=11,
         desc="use a unit other than time",
@@ -334,7 +329,7 @@ class CiftiCreateDenseTimeseries(WBCommand):
     >>> createdts.inputs.volume_structure_labels = data_dir / 'atlas.nii'
     >>> createdts.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -cifti-create-dense-timeseries out.dtseries.nii \
-    -volume .../functional.nii .../atlas.nii -timestart 0 -timestep 1 -unit SECOND'
+    -volume .../functional.nii .../atlas.nii'
     """
 
     input_spec = CiftiCreateDenseTimeseriesInputSpec
@@ -470,7 +465,7 @@ class CiftiCreateLabel(WBCommand):
     >>> lab.inputs.volume_label = data_dir / "functional.nii"
     >>> lab.inputs.structure_label_volume = data_dir / "functional.nii"
     >>> lab.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-label dlabel.nii -volume .../functional.nii .../functional.nii'
+    'wb_command -cifti-create-label out.dlabel.nii -volume .../functional.nii .../functional.nii'
     """
 
     input_spec = CiftiCreateLabelInputSpec
