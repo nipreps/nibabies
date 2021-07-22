@@ -55,6 +55,8 @@ class CiftiCreateDenseFromTemplateInputSpec(CommandLineInputSpec):
     )
     out_file = File(
         name_source=["in_file"],
+        name_template="template_%s.nii",
+        keep_extension=True,
         argstr="%s",
         position=1,
         desc="The output CIFTI file",
@@ -160,18 +162,17 @@ class CiftiCreateDenseFromTemplate(WBCommand):
     >>> from nibabies.interfaces import workbench as wb
     >>> frmtpl = wb.CiftiCreateDenseFromTemplate()
     >>> frmtpl.inputs.in_file = data_dir / "func.dtseries.nii"
-    >>> frmtpl.inputs.out_file = "out.dtseries.nii"
     >>> frmtpl.inputs.series = True
     >>> frmtpl.inputs.series_step = 0.8
     >>> frmtpl.inputs.series_start = 0
     >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii out.dtseries.nii \
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii template_func.dtseries.nii \
     -series 0.8 0.0'
 
     >>> frmtpl.inputs.volume = [("OTHER", data_dir / 'functional.nii', True), \
         ("PUTAMEN_LEFT", data_dir / 'functional.nii')]
     >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii out.dtseries.nii \
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii template_func.dtseries.nii \
     -series 0.8 0.0 -volume OTHER .../functional.nii -from-cropped \
     -volume PUTAMEN_LEFT .../functional.nii'
     """
