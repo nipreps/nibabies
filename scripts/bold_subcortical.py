@@ -3,7 +3,6 @@ from pathlib import Path
 
 
 def init_workflow(bold_file, bold_roi, bold_atlas_roi, atlas_xfm, TR=None):
-    from nibabies import config
     from nibabies.workflows.bold.alignment import init_subcortical_mni_alignment_wf
 
     if TR is None:
@@ -56,10 +55,14 @@ if __name__ == "__main__":
         help="BOLD repetition time. If not provided, NIfTI header information is used",
     )
     opts = parser.parse_args()
-    init_workflow(
+    wf = init_workflow(
         opts.bold_file.absolute(),
         opts.bold_roi.absolute(),
         opts.bold_atlas_roi.absolute(),
         opts.atlas_xfm.absolute(),
         TR=opts.tr,
-    ).run(plugin="MultiProc")
+    )
+
+    wf.config['execution']['crashfile_format'] = 'txt'
+    # wf.run(plugin="MultiProc", plugin_args={"n_procs": 4})
+    wf.run()
