@@ -1,7 +1,12 @@
+import os
 from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec, Str
 from nipype.interfaces.base.traits_extension import InputMultiObject, OutputMultiObject, isdefined
 from nipype.interfaces.workbench.base import WBCommand
-
+# patch
+from nipype.interfaces.workbench.cifti import (
+    CiftiSmoothInputSpec as _CiftiSmoothInputSpec,
+    CiftiSmooth as _CiftiSmooth
+)
 
 VALID_STRUCTURES = (
     "CORTEX_LEFT",
@@ -188,7 +193,7 @@ class CiftiCreateDenseFromTemplate(WBCommand):
 
 class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
     out_file = File(
-        value="out.dtseries.nii",
+        value='out.dtseries.nii',
         usedefault=True,
         argstr="%s",
         position=0,
@@ -251,12 +256,14 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         1.0,
         usedefault=True,
         argstr="-timestep %g",
+        position=9,
         desc="the timestep, in seconds",
     )
     timestart = traits.Float(
         0.0,
         usedefault=True,
         argstr="-timestart %g",
+        position=10,
         desc="the time at the first frame, in seconds",
     )
     unit = traits.Enum(
@@ -266,6 +273,7 @@ class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
         "RADIAN",
         usedefault=True,
         argstr="-unit %s",
+        position=11,
         desc="use a unit other than time",
     )
 
@@ -325,13 +333,18 @@ class CiftiCreateDenseTimeseries(WBCommand):
     >>> createdts.inputs.volume_data = data_dir /'functional.nii'
     >>> createdts.inputs.volume_structure_labels = data_dir / 'atlas.nii'
     >>> createdts.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-dense-timeseries dtseries.nii \
+    'wb_command -cifti-create-dense-timeseries out.dtseries.nii \
     -volume .../functional.nii .../atlas.nii -timestart 0 -timestep 1 -unit SECOND'
     """
 
     input_spec = CiftiCreateDenseTimeseriesInputSpec
     output_spec = CiftiCreateDenseTimeseriesOutputSpec
     _cmd = "wb_command -cifti-create-dense-timeseries"
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        outputs["out_file"] = os.path.abspath(self.inputs.out_file)
+        return outputs
 
 
 class CiftiCreateLabelInputSpec(CommandLineInputSpec):
@@ -463,6 +476,11 @@ class CiftiCreateLabel(WBCommand):
     input_spec = CiftiCreateLabelInputSpec
     output_spec = CiftiCreateLabelOutputSpec
     _cmd = "wb_command -cifti-create-label"
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        outputs["out_file"] = os.path.abspath(self.inputs.out_file)
+        return outputs
 
 
 class CiftiDilateInputSpec(CommandLineInputSpec):
@@ -961,13 +979,13 @@ class CiftiSeparateInputSpec(CommandLineInputSpec):
         position=2,
         desc="separate all volume structures into a volume file",
     )
-    volume_all_roi = File(
+    volume_all_roi_file = File(
         argstr="-roi %s",
         position=3,
         requires=["volume_all_file"],
         desc="output the roi of which voxels have data",
     )
-    volume_all_label = File(
+    volume_all_label_file = File(
         argstr="-label %s",
         position=4,
         requires=["volume_all_file"],
@@ -1076,13 +1094,13 @@ class CiftiSeparate(WBCommand):
         return super()._format_arg(name, trait_spec, value)
 
     def _list_outputs(self):
-        outputs = super()._list_outputs()
+        outputs = self.output_spec().get()
         if self.inputs.volume_all_file:
-            outputs["volume_all_file"] = self.inputs.volume_all_file
+            outputs["volume_all_file"] = os.path.abspath(self.inputs.volume_all_file)
         if self.inputs.volume_all_roi_file:
-            outputs["volume_all_roi_file"] = self.inputs.volume_all_roi_file
+            outputs["volume_all_roi_file"] = os.path.abspath(self.inputs.volume_all_roi_file)
         if self.inputs.volume_all_label_file:
-            outputs["volume_all_label_file"] = self.inputs.volume_all_label_file
+            outputs["volume_all_label_file"] = os.path.abspath(self.inputs.volume_all_label_file)
         if self.inputs.label:
             for label in self.inputs.label:
                 outputs["label_files"] = (outputs["label_files"] or []) + \
@@ -1101,10 +1119,30 @@ class CiftiSeparate(WBCommand):
                     self._gen_filename(volume[2])
             if self._volume_roi_files:
                 outputs["volume_roi_files"] = self._volume_roi_files
+        return outputs
 
     def _set_roi_file(self, name, file):
         rois = getattr(self, f"_{name}_roi_files")
         rois.append(self._gen_filename(file))
+
+
+class CiftiSmoothInputSpec(_CiftiSmoothInputSpec):
+    left_surf = File(
+        exists=True,
+        position=5,
+        argstr="-left-surface %s",
+        desc="Specify the left surface to use",
+    )
+    right_surf = File(
+        exists=True,
+        position=7,
+        argstr="-right-surface %s",
+        desc="Specify the right surface to use",
+    )
+
+
+class CiftiSmooth(_CiftiSmooth):
+    input_spec = CiftiSmoothInputSpec
 
 
 class VolumeAffineResampleInputSpec(CommandLineInputSpec):
