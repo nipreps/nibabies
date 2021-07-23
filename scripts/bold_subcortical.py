@@ -54,6 +54,11 @@ if __name__ == "__main__":
         type=float,
         help="BOLD repetition time. If not provided, NIfTI header information is used",
     )
+    parser.add_argument(
+        "--nipype-plugin",
+        default="MultiProc",
+        help="Nipype plugin to run workflow with",
+    )
     opts = parser.parse_args()
     wf = init_workflow(
         opts.bold_file.absolute(),
@@ -64,5 +69,4 @@ if __name__ == "__main__":
     )
 
     wf.config['execution']['crashfile_format'] = 'txt'
-    # wf.run(plugin="MultiProc", plugin_args={"n_procs": 4})
-    wf.run()
+    wf.run(plugin=opts.nipype_plugin)
