@@ -87,7 +87,7 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         fsl.ApplyXFM(interp="spline"),
         iterfield=["reference", "in_matrix_file"],
         name='applyxfm_roi',
-        mem_gb=2,
+        mem_gb=4,
     )
     bold_mask_roi = pe.MapNode(
         fsl.ApplyMask(),
