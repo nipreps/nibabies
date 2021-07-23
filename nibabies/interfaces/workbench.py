@@ -166,14 +166,15 @@ class CiftiCreateDenseFromTemplate(WBCommand):
     >>> frmtpl.inputs.series_step = 0.8
     >>> frmtpl.inputs.series_start = 0
     >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii template_func.dtseries.nii \
-    -series 0.8 0.0'
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii \
+    template_func.dtseries.nii -series 0.8 0.0'
 
     >>> frmtpl.inputs.volume = [("OTHER", data_dir / 'functional.nii', True), \
         ("PUTAMEN_LEFT", data_dir / 'functional.nii')]
     >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii template_func.dtseries.nii \
-    -series 0.8 0.0 -volume OTHER .../functional.nii -from-cropped \
+    'wb_command -cifti-create-dense-from-template .../func.dtseries.nii \
+    template_func.dtseries.nii -series 0.8 0.0 \
+    -volume OTHER .../functional.nii -from-cropped \
     -volume PUTAMEN_LEFT .../functional.nii'
     """
 
