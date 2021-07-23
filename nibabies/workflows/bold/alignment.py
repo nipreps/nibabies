@@ -2,24 +2,6 @@
 Subcortical alignment into MNI space
 """
 
-from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, fsl
-# from nipype.interfaces.workbench.cifti import CiftiSmooth
-from ...interfaces.workbench import (
-    CiftiCreateDenseFromTemplate,
-    CiftiCreateDenseTimeseries,
-    CiftiCreateLabel,
-    CiftiDilate,
-    CiftiResample,
-    CiftiSeparate,
-    CiftiSmooth,
-    VolumeAffineResample,
-    VolumeAllLabelsToROIs,
-    VolumeLabelExportTable,
-    VolumeLabelImport,
-)
-
-
 def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_alignment_wf'):
     """
     Align individual subcortical structures into MNI space.
@@ -52,6 +34,20 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
     subcortical_file : :obj:`str`
         The BOLD file in atlas space with each ROI individually aligned.
     """
+    from nipype.pipeline import engine as pe
+    from nipype.interfaces import utility as niu, fsl
+    from ...interfaces.workbench import (
+        CiftiCreateDenseTimeseries,
+        CiftiCreateLabel,
+        CiftiDilate,
+        CiftiResample,
+        CiftiSeparate,
+        CiftiSmooth,
+        VolumeAffineResample,
+        VolumeAllLabelsToROIs,
+        VolumeLabelExportTable,
+        VolumeLabelImport,
+    )
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     inputnode = pe.Node(
@@ -65,7 +61,6 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         VolumeAffineResample(method="ENCLOSING_VOXEL", flirt=True),
         name="vol_resample"
     )
-    create_dense = pe.Node(CiftiCreateDenseTimeseries(), name="create_dense")
     subj_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name="subj_rois")
     split_rois = pe.Node(fsl.Split(dimension="t"), name="split_rois")
     atlas_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name="atlas_rois")
@@ -155,12 +150,6 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         iterfield=["in_file"],
         name="separate"
     )
-
-    fmt_vols = pe.Node(niu.Function(function=format_volume_rois), name='fmt_vols')
-    create_dtseries_tmpl = pe.Node(
-        CiftiCreateDenseFromTemplate(series=True, series_step=repetition_time, series_start=0),
-        name='create_dtseries_tmpl',
-    )
     fmt_agg_rois = pe.Node(
         niu.Function(
             function=format_agg_rois,
@@ -169,10 +158,7 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         name='fmt_agg_rois',
     )
     agg_rois = pe.Node(fsl.MultiImageMaths(), name='agg_rois')
-    final_vol = pe.Node(
-        CiftiSeparate(direction="COLUMN", volume_all_file='volume_all.nii.gz'),
-        name="final_vol"
-    )
+    combine_rois = pe.Node(niu.Function(function=merge_rois), name="combine_rois")
 
     workflow = Workflow(name=name)
     # fmt: off
@@ -187,8 +173,6 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         (applyxfm_atlas, vol_resample, [
             ("out_file", "volume_space"),
             ("out_file", "flirt_target_volume")]),
-        (applyxfm_atlas, create_dense, [("out_file", "volume_data")]),
-        (inputnode, create_dense, [("atlas_roi", "volume_structure_labels")]),
         (inputnode, subj_rois, [("bold_roi", "in_file")]),
         (inputnode, atlas_rois, [("atlas_roi", "in_file")]),
         (subj_rois, split_rois, [("out_file", "in_file")]),
@@ -222,17 +206,13 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         (resample, smooth, [("out_file", "in_file")]),
         (smooth, separate, [("out_file", "in_file")]),
         # end loop
-        (parse_labels, fmt_vols, [("structures", "structs")]),
-        (separate, fmt_vols, [("volume_all_file", "rois")]),
-        (create_dense, create_dtseries_tmpl, [("out_file", "in_file")]),
-        (fmt_vols, create_dtseries_tmpl, [("out", "volume")]),
         (mul_roi, fmt_agg_rois, [("out_file", "rois")]),
         (fmt_agg_rois, agg_rois, [
             ("first_image", "in_file"),
             ("op_files", "operand_files"),
             ("op_string", "op_string")]),
-        (create_dtseries_tmpl, final_vol, [("out_file", "in_file")]),
-        (final_vol, outputnode, [("volume_all_file", "subcortical_file")]),
+        (separate, combine_rois, [("volume_all_file", "in_files")]),
+        (combine_rois, outputnode, [("out", "subcortical_file")]),
     ])
     # fmt: on
     return workflow
@@ -288,3 +268,43 @@ def format_agg_rois(rois):
 
     """
     return rois[0], rois[1:], ("-add %s " * (len(rois) - 1)).strip()
+
+
+def merge_rois(in_files):
+    """
+    Aggregate individual 4D ROI files together into a single subcortical NIfTI.
+    All ROI images are sanity checked with regards to:
+    1) Shape
+    2) Affine
+    3) Overlap
+
+    If any of these checks fail, an ``AssertionError`` will be raised.
+    """
+    import os
+    import nibabel as nb
+    import numpy as np
+
+    data = None
+    nonzero = 0
+    shape = None
+    for roi in in_files:
+        img = nb.load(roi)
+        roi_data = np.asanyarray(img.dataobj)
+        roi_nonzero = np.count_nonzero(roi_data)
+        if data is None:
+            # set first ROI as template
+            shape = img.shape
+            affine = img.affine
+            data = roi_data
+            nonzero += roi_nonzero
+            continue
+        assert img.shape == shape, "Mismatch in image shape"
+        assert np.allclose(img.affine, affine), "Mismatch in affine"
+        nonzero += roi_nonzero
+        data += roi_data
+        del roi_data
+
+    assert np.count_nonzero(data) == nonzero, "There was some overlap in the ROIs"
+    out_file = os.path.abspath("combined.nii.gz")
+    img.__class__(data, affine).to_filename(out_file)
+    return out_file
