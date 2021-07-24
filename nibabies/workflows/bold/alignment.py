@@ -2,6 +2,9 @@
 Subcortical alignment into MNI space
 """
 
+from nibabies.interfaces.nibabel import MergeROIs
+
+
 def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_alignment_wf'):
     """
     Align individual subcortical structures into MNI space.
@@ -158,7 +161,7 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
         name='fmt_agg_rois',
     )
     agg_rois = pe.Node(fsl.MultiImageMaths(), name='agg_rois')
-    combine_rois = pe.Node(niu.Function(function=merge_rois), name="combine_rois")
+    merge_rois = pe.Node(MergeROIs(), name="merge_rois")
 
     workflow = Workflow(name=name)
     # fmt: off
@@ -211,8 +214,8 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
             ("first_image", "in_file"),
             ("op_files", "operand_files"),
             ("op_string", "op_string")]),
-        (separate, combine_rois, [("volume_all_file", "in_files")]),
-        (combine_rois, outputnode, [("out", "subcortical_file")]),
+        (separate, merge_rois, [("volume_all_file", "in_files")]),
+        (merge_rois, outputnode, [("out_file", "subcortical_file")]),
     ])
     # fmt: on
     return workflow
@@ -246,11 +249,6 @@ def parse_roi_labels(label_file):
     return structs, label_ids
 
 
-def format_volume_rois(structs, rois):
-    """Format volume arguments for CiftiCreateDenseFromTemplate."""
-    return [(struct, roi) for struct, roi in zip(structs, rois)]
-
-
 def format_agg_rois(rois):
     """
     Helper function to format MultiImageMaths command.
@@ -268,39 +266,3 @@ def format_agg_rois(rois):
 
     """
     return rois[0], rois[1:], ("-add %s " * (len(rois) - 1)).strip()
-
-
-def merge_rois(in_files):
-    """
-    Aggregate individual 4D ROI files together into a single subcortical NIfTI.
-    All ROI images are sanity checked with regards to:
-    1) Shape
-    2) Affine
-    3) Overlap
-
-    If any of these checks fail, an ``AssertionError`` will be raised.
-    """
-    import os
-    import nibabel as nb
-    import numpy as np
-
-    img = nb.load(in_files[0])
-    data = np.array(img.dataobj)
-    affine = img.affine
-    header = img.header
-    
-    nonzero = np.any(data, axis=3)
-    for roi in in_files[1:]:
-        img = nb.load(roi)
-        assert img.shape == data.shape, "Mismatch in image shape"
-        assert np.allclose(img.affine, affine), "Mismatch in affine"
-        roi_data = np.asanyarray(img.dataobj)
-        roi_nonzero = np.any(roi_data, axis=3)
-        assert not np.any(roi_nonzero & nonzero), "Overlapping ROIs"
-        nonzero |= roi_nonzero
-        data += roi_data
-        del roi_data
-
-    out_file = os.path.abspath("combined.nii.gz")
-    img.__class__(data, affine, header).to_filename(out_file)
-    return out_file
