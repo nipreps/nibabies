@@ -301,7 +301,6 @@ def merge_rois(in_files):
         data += roi_data
         del roi_data
 
-    assert np.count_nonzero(data) == nonzero, "There was some overlap in the ROIs"
     out_file = os.path.abspath("combined.nii.gz")
     img.__class__(data, affine).to_filename(out_file)
     return out_file
