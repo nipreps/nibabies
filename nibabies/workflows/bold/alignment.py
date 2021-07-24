@@ -302,5 +302,5 @@ def merge_rois(in_files):
         del roi_data
 
     out_file = os.path.abspath("combined.nii.gz")
-    img.__class__(data, affine).to_filename(out_file)
+    img.__class__(data, affine, header).to_filename(out_file)
     return out_file
