@@ -284,23 +284,20 @@ def merge_rois(in_files):
     import nibabel as nb
     import numpy as np
 
-    data = None
-    nonzero = 0
-    shape = None
-    for roi in in_files:
+    img = nb.load(in_files[0])
+    data = np.array(img.dataobj)
+    affine = img.affine
+    header = img.header
+    
+    nonzero = np.any(data, axis=3)
+    for roi in in_files[1:]:
         img = nb.load(roi)
-        roi_data = np.asanyarray(img.dataobj)
-        roi_nonzero = np.count_nonzero(roi_data)
-        if data is None:
-            # set first ROI as template
-            shape = img.shape
-            affine = img.affine
-            data = roi_data
-            nonzero += roi_nonzero
-            continue
-        assert img.shape == shape, "Mismatch in image shape"
+        assert img.shape == data.shape, "Mismatch in image shape"
         assert np.allclose(img.affine, affine), "Mismatch in affine"
-        nonzero += roi_nonzero
+        roi_data = np.asanyarray(img.dataobj)
+        roi_nonzero = np.any(roi_data, axis=3)
+        assert not np.any(roi_nonzero & nonzero), "Overlapping ROIs"
+        nonzero |= roi_nonzero
         data += roi_data
         del roi_data
 
