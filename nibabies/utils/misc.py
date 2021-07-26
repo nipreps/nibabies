@@ -41,9 +41,29 @@ def check_deps(workflow):
 
 
 def cohort_by_months(template, months):
+    """
+    Produce a recommended cohort based on partipants age
+    """
     cohort_key = {
-        'MNIInfant': (2, 5, 8, 11, 14, 17, 21, 27, 33, 44, 60),
-        'UNCInfant': (8, 12, 24),
+        'MNIInfant': (
+            # upper bound of template | cohort
+            2,  # 1
+            5,  # 2
+            8,  # 3
+            11,  # 4
+            14,  # 5
+            17,  # 6
+            21,  # 7
+            27,  # 8
+            33,  # 9
+            44,  # 10
+            60,  # 11
+        ),
+        'UNCInfant': (
+            8,  # 1
+            12,  # 2
+            24,  # 3
+        ),
     }
     ages = cohort_key.get(template)
     if ages is None:
@@ -52,7 +72,6 @@ def cohort_by_months(template, months):
     for cohort, age in enumerate(ages, 1):
         if months <= age:
             return cohort
-
     raise KeyError("Age exceeds all cohorts!")
 
 
