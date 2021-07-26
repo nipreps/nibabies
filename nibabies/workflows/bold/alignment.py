@@ -59,7 +59,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     )
     outputnode = pe.Node(niu.IdentityInterface(fields=["subcortical_file"]), name='outputnode')
 
-    applyxfm_atlas = pe.Node(fsl.FLIRT(), name="applyxfm_atlas")
+    applyxfm_atlas = pe.Node(fsl.ApplyXFM(), name="applyxfm_atlas")
     vol_resample = pe.Node(
         VolumeAffineResample(method="ENCLOSING_VOXEL", flirt=True),
         name="vol_resample"
