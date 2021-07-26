@@ -5,19 +5,17 @@ Subcortical alignment into MNI space
 from nibabies.interfaces.nibabel import MergeROIs
 
 
-def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_alignment_wf'):
+def init_subcortical_mni_alignment_wf(*, name='subcortical_mni_alignment_wf'):
     """
     Align individual subcortical structures into MNI space.
 
-    This is a nipype workflow port of the DCAN infant pipeline.
-    https://github.com/DCAN-Labs/dcan-infant-pipeline/ \
-    blob/247e19/fMRISurface/scripts/SubcorticalAlign_ROIs.sh
+    This is a nipype workflow port of the DCAN infant pipeline:
+    https://github.com/DCAN-Labs/dcan-infant-pipeline/blob\
+    /master/fMRISurface/scripts/SubcorticalAlign_ROIs.sh
 
 
     Parameters
     ----------
-    repetition_time : :obj:`int`
-        BOLD file's TR
     name : :obj:`str`
         Name of the workflow
 
@@ -35,7 +33,7 @@ def init_subcortical_mni_alignment_wf(*, repetition_time, name='subcortical_mni_
     Outputs
     -------
     subcortical_file : :obj:`str`
-        The BOLD file in atlas space with each ROI individually aligned.
+        Volume file containing all ROIs individually aligned to standard
     """
     from nipype.pipeline import engine as pe
     from nipype.interfaces import utility as niu, fsl
