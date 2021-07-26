@@ -2,17 +2,10 @@
 from pathlib import Path
 
 
-def init_workflow(bold_file, bold_roi, bold_atlas_roi, atlas_xfm, TR=None):
+def init_workflow(bold_file, bold_roi, bold_atlas_roi, atlas_xfm, vol_sigma):
     from nibabies.workflows.bold.alignment import init_subcortical_mni_alignment_wf
 
-    if TR is None:
-        # guess TR from header
-        import nibabel as nb
-        img = nb.load(bold_file)
-        assert len(img.shape) > 3, "Not a 4D file"
-        TR = img.header['pixdim'][4]
-
-    wf = init_subcortical_mni_alignment_wf(repetition_time=TR)
+    wf = init_subcortical_mni_alignment_wf(vol_sigma=vol_sigma)
     wf.inputs.inputnode.bold_file = bold_file
     wf.inputs.inputnode.bold_roi = bold_roi
     wf.inputs.inputnode.atlas_roi = bold_atlas_roi
@@ -50,9 +43,10 @@ if __name__ == "__main__":
         help="transformation of input BOLD file to MNI space",
     )
     parser.add_argument(
-        "--tr",
+        "--vol-sigma",
         type=float,
-        help="BOLD repetition time. If not provided, NIfTI header information is used",
+        default=0.8,
+        help="The sigma for the gaussian volume smoothing kernel, in mm",
     )
     parser.add_argument(
         "--nipype-plugin",
@@ -65,7 +59,7 @@ if __name__ == "__main__":
         opts.bold_roi.absolute(),
         opts.bold_atlas_roi.absolute(),
         opts.atlas_xfm.absolute(),
-        TR=opts.tr,
+        vol_sigma=opts.vol_sigma,
     )
 
     wf.config['execution']['crashfile_format'] = 'txt'
