@@ -5,7 +5,7 @@ Subcortical alignment into MNI space
 from nibabies.interfaces.nibabel import MergeROIs
 
 
-def init_subcortical_mni_alignment_wf(*, name='subcortical_mni_alignment_wf'):
+def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_alignment_wf'):
     """
     Align individual subcortical structures into MNI space.
 
@@ -18,6 +18,8 @@ def init_subcortical_mni_alignment_wf(*, name='subcortical_mni_alignment_wf'):
     ----------
     name : :obj:`str`
         Name of the workflow
+    vol_sigma : :obj:`float`
+        The sigma for the gaussian volume smoothing kernel, in mm
 
     Inputs
     ------
@@ -142,7 +144,7 @@ def init_subcortical_mni_alignment_wf(*, name='subcortical_mni_alignment_wf'):
         name='resample',
     )
     smooth = pe.MapNode(
-        CiftiSmooth(direction="COLUMN", fix_zeros_vol=True, sigma_surf=0, sigma_vol=0.8),
+        CiftiSmooth(direction="COLUMN", fix_zeros_vol=True, sigma_surf=0, sigma_vol=vol_sigma),
         iterfield=["in_file"],
         name="smooth"
     )
@@ -166,7 +168,8 @@ def init_subcortical_mni_alignment_wf(*, name='subcortical_mni_alignment_wf'):
     workflow.connect([
         (inputnode, applyxfm_atlas, [
             ("bold_file", "in_file"),
-            ("atlas_roi", "reference")]),
+            ("atlas_roi", "reference"),
+            ("atlas_xfm", "in_matrix_file")]),
         (inputnode, vol_resample, [
             ("bold_roi", "in_file"),
             ("atlas_xfm", "affine"),
