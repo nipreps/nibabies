@@ -2,9 +2,6 @@
 Subcortical alignment into MNI space
 """
 
-from nibabies.interfaces.nibabel import MergeROIs
-
-
 def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_alignment_wf'):
     """
     Align individual subcortical structures into MNI space.
@@ -37,8 +34,11 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     subcortical_file : :obj:`str`
         Volume file containing all ROIs individually aligned to standard
     """
+    from pkg_resources import resource_filename
     from nipype.pipeline import engine as pe
     from nipype.interfaces import utility as niu, fsl
+    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+    from ...interfaces.nibabel import MergeROIs
     from ...interfaces.workbench import (
         CiftiCreateDenseTimeseries,
         CiftiCreateLabel,
@@ -51,17 +51,17 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
         VolumeLabelExportTable,
         VolumeLabelImport,
     )
-    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-
+    # reuse saved atlas to atlas transform
+    atlas_xfm = resource_filename("nibabies", "data/MNIInfant_to_MNI1526NLinAsym.mat")
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["bold_file", "bold_roi", "atlas_roi", "atlas_xfm"]),
+        niu.IdentityInterface(fields=["bold_file", "bold_roi", "atlas_roi"]),
         name="inputnode",
     )
     outputnode = pe.Node(niu.IdentityInterface(fields=["subcortical_file"]), name='outputnode')
 
-    applyxfm_atlas = pe.Node(fsl.ApplyXFM(), name="applyxfm_atlas")
+    applyxfm_atlas = pe.Node(fsl.ApplyXFM(in_matrix_file=atlas_xfm), name="applyxfm_atlas")
     vol_resample = pe.Node(
-        VolumeAffineResample(method="ENCLOSING_VOXEL", flirt=True),
+        VolumeAffineResample(method="ENCLOSING_VOXEL", flirt=True, affine=atlas_xfm),
         name="vol_resample"
     )
     subj_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name="subj_rois")
@@ -168,11 +168,9 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     workflow.connect([
         (inputnode, applyxfm_atlas, [
             ("bold_file", "in_file"),
-            ("atlas_roi", "reference"),
-            ("atlas_xfm", "in_matrix_file")]),
+            ("atlas_roi", "reference")]),
         (inputnode, vol_resample, [
             ("bold_roi", "in_file"),
-            ("atlas_xfm", "affine"),
             ("bold_roi", "flirt_source_volume")]),
         (applyxfm_atlas, vol_resample, [
             ("out_file", "volume_space"),
