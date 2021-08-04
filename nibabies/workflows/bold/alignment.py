@@ -2,6 +2,79 @@
 Subcortical alignment into MNI space
 """
 
+import pkg_resources
+from nipype.interfaces import utility as niu, fsl
+from nipype.pipeline import engine as pe
+from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+
+from pkg_resources import resource_filename
+
+
+def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
+    """
+    Refine segmentations into volumes of expected CIFTI subcortical structures.
+
+
+    Parameters
+    ----------
+    name : :obj:`str`
+        Name of the workflow
+
+    Inputs
+    ------
+    anat_aseg : :obj:`str`
+        FreeSurfer's aseg in subject space
+    std_aseg : :obj:`str`
+        FreeSurfer's aseg in `MNI152NLin6Asym` space
+
+    Outputs
+    -------
+    anat_subc_rois : :obj:`str`
+        Subcortical ROIs in subject space
+    std_subc_rois : :obj:`str`
+        Subcortical ROIs in `MNI152NLin6Asym` space
+    """
+    from templateflow.api import get as get_template
+
+    # TODO: Implement anatomical refinement once InfantFS outputs subj/mri/wmparc.mgz
+    # The code is found at
+    # https://github.com/DCAN-Labs/dcan-infant-pipeline/blob/
+    # 0e9c2fe32fb4a5032d0a2a3e0905ad97fa52b398/PostFreeSurfer/scripts/
+    # FreeSurfer2CaretConvertAndRegisterNonlinear.sh
+    # Lines 70-78 & 116-127
+    # #
+    # For now, just use the aseg
+
+    tpl_rois = get_template(
+        'MNI152NLin6Asym', resolution=2, atlas="HCP", suffix="dseg", raise_empty=True
+    )
+    # TODO: Move to TemplateFlow
+    tpl_avgwmparc = pkg_resources(
+        'nibabies', 'data/tpl-MNI152NLin6Asym_res-01_desc-avgwmparc_dseg.nii.gz'
+    )
+
+    workflow = Workflow(name="aseg_refinement_wf")
+    inputnode = pe.Node(niu.IdentityInterface(fields=["anat_aseg"]), name='inputnode')
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=["anat_subcortical_rois", "std_subcortical_rois"]), name='outputnode',
+    )
+
+    applywarp_tpl = pe.Node(
+        fsl.ApplyWarp(in_file=tpl_avgwmparc, ref_file=tpl_rois, interp="nn"),
+        name="applywarp_std"
+    )
+    refine_anat_rois = pe.Node(niu.Function(function=drop_labels), name="refine_anat_rois")
+    refine_std_rois = pe.Node(niu.Function(function=drop_labels), name="refine_std_rois")
+
+    workflow.connect(
+        (inputnode, refine_anat_rois, [("anat_aseg", "in_file")]),
+        (applywarp_tpl, refine_std_rois, [("out_file", "in_file")]),
+        (refine_anat_rois, outputnode, [("out", "anat_subcortical_rois")]),
+        (refine_std_rois, outputnode, [("out", "std_subcortical_rois")]),
+    )
+    return workflow
+
+
 def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_alignment_wf'):
     """
     Align individual subcortical structures into MNI space.
@@ -34,9 +107,6 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     subcortical_file : :obj:`str`
         Volume file containing all ROIs individually aligned to standard
     """
-    from pkg_resources import resource_filename
-    from nipype.pipeline import engine as pe
-    from nipype.interfaces import utility as niu, fsl
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from ...interfaces.nibabel import MergeROIs
     from ...interfaces.workbench import (
@@ -265,3 +335,29 @@ def format_agg_rois(rois):
 
     """
     return rois[0], rois[1:], ("-add %s " * (len(rois) - 1)).strip()
+
+
+def drop_labels(in_file):
+    """Drop non-subcortical labels"""
+    from pathlib import Path
+    import nibabel as nb
+    import numpy as np
+    from niworkflows.interfaces.cifti import _reorient_image
+
+    # FreeSurfer LUT values
+    expected_labels = {
+        8, 10, 11, 12, 13, 16, 17, 18, 26, 28, 47, 49, 50, 51, 52, 53, 54, 58, 60,
+    }
+    img = _reorient_image(nb.load(in_file), orientation="LAS")
+    hdr = img.header
+    data = np.asanyarray(img.dataobj).astype("int16")
+    hdr.set_data_dtype("int16")
+    labels = np.unique(data)
+
+    for label in labels:
+        if label not in expected_labels:
+            data[data == label] = 0
+
+    out_file = str(Path("ROIs.nii.gz").absolute())
+    img.__class__(data, img.affine, header=hdr).to_filename(out_file)
+    return out_file
