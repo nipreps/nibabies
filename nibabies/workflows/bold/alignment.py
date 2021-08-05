@@ -22,21 +22,19 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
 
     Inputs
     ------
-    anat_aseg : :obj:`str`
-        FreeSurfer's aseg in subject space
-    std_aseg : :obj:`str`
-        FreeSurfer's aseg in `MNI152NLin6Asym` space
+    bold_aseg : :obj:`str`
+        FreeSurfer's aseg in BOLD space
 
     Outputs
     -------
-    anat_subc_rois : :obj:`str`
-        Subcortical ROIs in subject space
-    std_subc_rois : :obj:`str`
+    bold_subcortical_rois : :obj:`str`
+        Subcortical ROIs in BOLD space
+    std_subcortical_rois : :obj:`str`
         Subcortical ROIs in `MNI152NLin6Asym` space
     """
     from templateflow.api import get as get_template
 
-    # TODO: Implement anatomical refinement once InfantFS outputs subj/mri/wmparc.mgz
+    # TODO: Implement BOLD refinement once InfantFS outputs subj/mri/wmparc.mgz
     # The code is found at
     # https://github.com/DCAN-Labs/dcan-infant-pipeline/blob/
     # 0e9c2fe32fb4a5032d0a2a3e0905ad97fa52b398/PostFreeSurfer/scripts/
@@ -54,22 +52,23 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     )
 
     workflow = Workflow(name="aseg_refinement_wf")
-    inputnode = pe.Node(niu.IdentityInterface(fields=["anat_aseg"]), name='inputnode')
+    inputnode = pe.Node(niu.IdentityInterface(fields=["bold_aseg"]), name='inputnode')
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_subcortical_rois", "std_subcortical_rois"]), name='outputnode',
+        niu.IdentityInterface(fields=["bold_subcortical_rois", "std_subcortical_rois"]),
+        name='outputnode',
     )
 
     applywarp_tpl = pe.Node(
         fsl.ApplyWarp(in_file=tpl_avgwmparc, ref_file=tpl_rois, interp="nn"),
         name="applywarp_std"
     )
-    refine_anat_rois = pe.Node(niu.Function(function=drop_labels), name="refine_anat_rois")
+    refine_bold_rois = pe.Node(niu.Function(function=drop_labels), name="refine_bold_rois")
     refine_std_rois = pe.Node(niu.Function(function=drop_labels), name="refine_std_rois")
 
     workflow.connect(
-        (inputnode, refine_anat_rois, [("anat_aseg", "in_file")]),
+        (inputnode, refine_bold_rois, [("bold_aseg", "in_file")]),
         (applywarp_tpl, refine_std_rois, [("out_file", "in_file")]),
-        (refine_anat_rois, outputnode, [("out", "anat_subcortical_rois")]),
+        (refine_bold_rois, outputnode, [("out", "bold_subcortical_rois")]),
         (refine_std_rois, outputnode, [("out", "std_subcortical_rois")]),
     )
     return workflow
@@ -99,8 +98,6 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
         File containing ROIs in BOLD space
     atlas_roi : :obj:`str`
         File containing ROIs in atlas space
-    std_xfm : :obj:`str`
-        File containing transform to the standard (MNI) space
 
     Outputs
     -------
