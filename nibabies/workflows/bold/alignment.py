@@ -106,6 +106,8 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     -------
     subcortical_file : :obj:`str`
         Volume file containing all ROIs individually aligned to standard
+    subcortical_labels : :obj:`str`
+        Volume file containing all labels
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from ...interfaces.nibabel import MergeROIs
@@ -127,7 +129,10 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
         niu.IdentityInterface(fields=["bold_file", "bold_roi", "atlas_roi"]),
         name="inputnode",
     )
-    outputnode = pe.Node(niu.IdentityInterface(fields=["subcortical_file"]), name='outputnode')
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=["subcortical_file", "subcortical_labels"]),
+        name='outputnode'
+    )
 
     applyxfm_atlas = pe.Node(fsl.ApplyXFM(in_matrix_file=atlas_xfm), name="applyxfm_atlas")
     vol_resample = pe.Node(
@@ -285,6 +290,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
             ("op_string", "op_string")]),
         (separate, merge_rois, [("volume_all_file", "in_files")]),
         (merge_rois, outputnode, [("out_file", "subcortical_file")]),
+        (inputnode, outputnode, [("atlas_roi", "subcortical_labels")]),
     ])
     # fmt: on
     return workflow
