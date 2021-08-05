@@ -1377,8 +1377,6 @@ class VolumeLabelImportInputSpec(CommandLineInputSpec):
         desc="set any voxels with values not mentioned in the label list to the ??? label",
     )
     unlabeled_values = traits.Int(
-        0,
-        usedefault=True,
         argstr="-unlabeled-value %d",
         desc="the value that will be interpreted as unlabeled",
     )
