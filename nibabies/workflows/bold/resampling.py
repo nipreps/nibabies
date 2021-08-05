@@ -551,12 +551,10 @@ def init_bold_grayords_wf(
 
     Inputs
     ------
-    bold_std : :obj:`str`
-        List of BOLD conversions to standard spaces.
-    spatial_reference :obj:`str`
-        List of unique identifiers corresponding to the BOLD standard-conversions.
-    subjects_dir : :obj:`str`
-        FreeSurfer's subjects directory.
+    subcortical_volume : :obj:`str`
+        The subcortical structures in MNI152NLin6Asym space.
+    subcortical_labels : :obj:`str`
+        Volume file containing all subcortical labels
     surf_files : :obj:`str`
         List of BOLD files resampled on the fsaverage (ico7) surfaces.
     surf_refs :
@@ -576,8 +574,8 @@ def init_bold_grayords_wf(
     """
     import templateflow as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.cifti import GenerateCifti
     from niworkflows.interfaces.utility import KeySelect
+    from ..interfaces.workbench import CiftiCreateDenseTimeseries
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
@@ -586,12 +584,11 @@ generated using the highest-resolution ``fsaverage`` as intermediate standardize
 surface space.
 """.format(density=grayord_density)
 
-    fslr_density, mni_density = ('32k', '2') if grayord_density == '91k' else ('59k', '1')
+    fslr_density = '32k' if grayord_density == '91k' else '59k'
 
     inputnode = pe.Node(niu.IdentityInterface(fields=[
-        'bold_std',
-        'spatial_reference',
-        'subjects_dir',
+        'subcortical_volume',
+        'subcortical_label',
         'surf_files',
         'surf_refs',
     ]), name='inputnode')
@@ -602,11 +599,6 @@ surface space.
         'cifti_metadata',
         'cifti_density',
     ]), name='outputnode')
-
-    # extract out to BOLD base
-    select_std = pe.Node(KeySelect(fields=['bold_std']), name='select_std',
-                         run_without_submitting=True, nohash=True)
-    select_std.inputs.key = 'MNI152NLin6Asym_res-%s' % mni_density
 
     select_fs_surf = pe.Node(KeySelect(
         fields=['surf_files']), name='select_fs_surf',
@@ -644,28 +636,66 @@ surface space.
         'space-fsLR_hemi-%s_den-%s_bold.gii' % (h, grayord_density) for h in 'LR'
     ]
 
-    gen_cifti = pe.Node(GenerateCifti(
-        volume_target='MNI152NLin6Asym',
-        surface_target='fsLR',
-        TR=repetition_time,
-        surface_density=fslr_density,
-    ), name="gen_cifti")
+    split_surfaces = pe.Node(
+        niu.Function(function=_split_surfaces, output_names=["left_surface", "right_surface"]),
+        name="split_surfaces"
+    )
+    gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
+    gen_cifti.inputs.volume_structure_labels = str(
+        tf.api.get('MNI152NLin6Asym', resolution=2, atlas='HCP', suffix='dseg')
+    )
+    gen_cifti_metadata = pe.Node(
+        niu.Function(function=_gen_metadata, output_names=["out_metadata", "variant", "density"]),
+        name="gen_cifti_metadata",
+    )
 
     workflow.connect([
-        (inputnode, gen_cifti, [('subjects_dir', 'subjects_dir')]),
-        (inputnode, select_std, [('bold_std', 'bold_std'),
-                                 ('spatial_reference', 'keys')]),
+        (inputnode, gen_cifti, [
+            ('subcortical_volume', 'volume_data'),
+            ('subcortical_labels', 'volume_structure_labels')]),
         (inputnode, select_fs_surf, [('surf_files', 'surf_files'),
                                      ('surf_refs', 'keys')]),
         (select_fs_surf, resample, [('surf_files', 'in_file')]),
-        (select_std, gen_cifti, [('bold_std', 'bold_file')]),
-        (resample, gen_cifti, [('out_file', 'surface_bolds')]),
-        (gen_cifti, outputnode, [('out_file', 'cifti_bold'),
-                                 ('variant', 'cifti_variant'),
-                                 ('out_metadata', 'cifti_metadata'),
-                                 ('density', 'cifti_density')]),
+        (resample, split_surfaces, [('out_file', 'in_surfaces')]),
+        (split_surfaces, gen_cifti, [
+            ('left_surface', 'left_metric'),
+            ('right_surface', 'right_metric')]),
+        (gen_cifti, outputnode, [('out_file', 'cifti_bold')]),
+        (gen_cifti_metadata, outputnode, [
+            ('variant', 'cifti_variant'),
+            ('out_metadata', 'cifti_metadata'),
+            ('density', 'cifti_density')]),
     ])
     return workflow
+
+
+def _gen_metadata(grayord_density):
+    from pathlib import Path
+    import json
+
+    space = "HCP grayordinates"
+    out_json = {
+        "grayordinates": grayord_density,
+        "space": space,
+        "surface": "fsLR",
+        "volume": "MNI152NLin6Asym",
+        "surface_density": "32k" if grayord_density == "91k" else "59k",
+    }
+    out_metadata = Path("dtseries_variant.json")
+    out_metadata.write_text(json.dumps(out_json, indent=2))
+    return str(out_metadata), space, grayord_density
+
+
+def _split_surfaces(in_surfaces):
+    """
+    Split surfaces to differentiate left and right
+
+    Returns
+    -------
+    Left surface
+    Right surface
+    """
+    return in_surfaces[0], in_surfaces[1]
 
 
 def _split_spec(in_target):
