@@ -575,7 +575,7 @@ def init_bold_grayords_wf(
     import templateflow as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.utility import KeySelect
-    from ..interfaces.workbench import CiftiCreateDenseTimeseries
+    from ...interfaces.workbench import CiftiCreateDenseTimeseries
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
@@ -588,7 +588,7 @@ surface space.
 
     inputnode = pe.Node(niu.IdentityInterface(fields=[
         'subcortical_volume',
-        'subcortical_label',
+        'subcortical_labels',
         'surf_files',
         'surf_refs',
     ]), name='inputnode')
@@ -648,6 +648,7 @@ surface space.
         niu.Function(function=_gen_metadata, output_names=["out_metadata", "variant", "density"]),
         name="gen_cifti_metadata",
     )
+    gen_cifti_metadata.inputs.grayord_density = grayord_density
 
     workflow.connect([
         (inputnode, gen_cifti, [
