@@ -706,7 +706,8 @@ def init_anat_derivatives_wf(
 def _set_tpl_res(space, resolution):
     if space in ("UNCInfant", "Fischer344"):
         from nipype.interfaces.base import Undefined
-        resolution = Undefined
-    elif resolution == "native":
-        resolution = 1
-    return resolution
+        return Undefined
+    try:
+        return int(resolution)
+    except ValueError:
+        return 1
