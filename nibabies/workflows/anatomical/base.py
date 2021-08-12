@@ -75,17 +75,15 @@ def init_infant_anat_wf(
         GIFTI surfaces (gray/white boundary, midthickness, pial, inflated)
     """
     from nipype.interfaces.ants.base import Info as ANTsInfo
-    from smriprep.workflows.outputs import init_anat_derivatives_wf
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import init_infant_brain_extraction_wf
     from .norm import init_anat_norm_wf
-    from .outputs import init_anat_reports_wf
+    from .outputs import init_anat_reports_wf, init_coreg_report_wf, init_anat_derivatives_wf
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_seg_wf
     from .surfaces import init_infant_surface_recon_wf
-    from .outputs import init_coreg_report_wf
 
     # for now, T1w only
     num_t1w = len(t1w) if t1w else 0
