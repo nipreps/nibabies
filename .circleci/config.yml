@@ -1,0 +1,504 @@
+version: 2.1
+orbs:
+  docker: circleci/docker@1.6.0
+
+jobs:
+  build:
+    environment:
+      TZ: "/usr/share/zoneinfo/America/New_York"
+      SCRATCH: "/scratch"
+    machine:
+      image: ubuntu-2004:202107-02
+    working_directory: /tmp/src/nibabies
+    steps:
+      - checkout
+      - run:
+          name: Check whether build should be skipped
+          command: |
+            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+              echo "Only docs build"
+              circleci step halt
+            fi
+      - restore_cache:
+          keys:
+            - build-v4-{{ .Branch }}-{{ .Revision }}
+            - build-v4--{{ .Revision }}
+            - build-v4-{{ .Branch }}-
+            - build-v4-master-
+            - build-v4-
+          paths:
+            - /tmp/docker
+            - /tmp/images
+      - docker/install-docker-credential-helper
+      - run:
+          name: Docker authentication
+          command: |
+            if [[ -n $DOCKER_PAT ]]; then
+              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+            fi
+      - run:
+          name: Set up Docker registry
+          command: |
+            if [[ -f /tmp/images/registry.tar.gz ]]; then
+              echo "Loading saved registry image"
+              docker load < /tmp/images/registry.tar.gz
+            else
+              echo "Pulling registry image from DockerHub"
+              docker pull registry:2
+              mkdir -p /tmp/images
+              docker save registry:2 | gzip > /tmp/images/registry.tar.gz
+            fi
+            docker run -d -p 5000:5000 --restart=always --name=registry \
+                -v /tmp/docker:/var/lib/registry registry:2
+      - run:
+          name: Pull images
+          command: |
+            set +e
+            docker pull localhost:5000/ubuntu
+            success=$?
+            set -e
+            if [[ "$success" = "0" ]]; then
+                echo "Pulling from local registry"
+                docker tag localhost:5000/ubuntu ubuntu:focal
+                docker pull localhost:5000/nibabies
+                docker tag localhost:5000/nibabies nipreps/nibabies:latest
+                docker tag localhost:5000/nibabies nipreps/nibabies
+            else
+                echo "Pulling from Docker Hub"
+                docker pull ubuntu:focal
+                docker tag ubuntu:focal localhost:5000/ubuntu
+                docker push localhost:5000/ubuntu
+                # docker pull nipreps/nibabies:latest
+            fi
+      - run:
+          name: Build Docker image
+          no_output_timeout: 60m
+          command: |
+            export PY3=$(pyenv versions | grep '3\.' |
+                         sed -e 's/.* 3\./3./' -e 's/ .*//')
+            pyenv local $PY3
+            # Get version, update files.
+            THISVERSION=$( python3 get_version.py )
+            if [[ ${THISVERSION:0:1} == "0" ]] ; then
+              echo "WARNING: latest git tag could not be found"
+              echo "Please, make sure you fetch all tags from upstream with"
+              echo "the command ``git fetch --tags --verbose`` and push"
+              echo "them to your fork with ``git push origin --tags``"
+            fi
+            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
+            sed -i "s/title = {nibabies}/title = {nibabies ${CIRCLE_TAG:-$THISVERSION}}/" nibabies/data/boilerplate.bib
+            # Build docker image
+            e=1 && for i in {1..5}; do
+              docker build --rm \
+                --cache-from=nipreps/nibabies \
+                -t nipreps/nibabies:latest \
+                --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
+                --build-arg VCS_REF=`git rev-parse --short HEAD` \
+                --build-arg VERSION="${CIRCLE_TAG:-$THISVERSION}" . \
+              && e=0 && break || sleep 15
+            done && [ "$e" -eq "0" ]
+      - run:
+          name: Docker push to local registry
+          no_output_timeout: 40m
+          command: |
+            docker tag nipreps/nibabies:latest localhost:5000/nibabies
+            docker push localhost:5000/nibabies
+      - run:
+          name: Docker registry garbage collection
+          command: |
+            docker exec -it registry /bin/registry garbage-collect --delete-untagged \
+              /etc/docker/registry/config.yml
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - src/nibabies
+      - save_cache:
+         key: build-v4-{{ .Branch }}-{{ .Revision }}
+         paths:
+            - /tmp/docker
+            - /tmp/images
+
+  test_pytest:
+    machine:
+      image: ubuntu-2004:202107-02
+    working_directory: /tmp/src/nibabies
+    steps:
+      - checkout:
+          path: /home/circleci/src/nibabies
+      - run:
+          name: Check whether build should be skipped
+          command: |
+            cd /home/circleci/src/nibabies
+            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+              echo "Only docs build"
+              circleci step halt
+            fi
+            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[skip[ _]?tests\]' )" != "" ]]; then
+              echo "Skipping pytest job"
+              circleci step halt
+            fi
+
+      - attach_workspace:
+          at: /tmp
+      - restore_cache:
+          keys:
+            - build-v4-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/docker
+            - /tmp/images
+      - restore_cache:
+          keys:
+            - data-v9-{{ .Branch }}-{{ .Revision }}
+      - docker/install-docker-credential-helper
+      - run:
+          name: Docker authentication
+          command: |
+            if [[ -n $DOCKER_PAT ]]; then
+              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+            fi
+      - run:
+          name: Set-up a Docker registry
+          command: |
+            if [[ -f /tmp/images/registry.tar.gz ]]; then
+              echo "Loading saved registry image"
+              docker load < /tmp/images/registry.tar.gz
+            else
+              echo "Pulling registry image from DockerHub"
+              docker pull registry:2
+            fi
+            docker run -d -p 5000:5000 --restart=always --name=registry \
+                -v /tmp/docker:/var/lib/registry registry:2
+      - run:
+          name: Pull images from local registry
+          command: |
+            docker pull localhost:5000/nibabies
+            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run:
+          name: Run nibabies tests
+          no_output_timeout: 2h
+          command: |
+            docker run -ti --rm=false \
+              -e TEST_READONLY_FILESYSTEM=1 -v $HOME:/home/readonly:ro \
+              --entrypoint="pytest" nipreps/nibabies:latest \
+              /src/nibabies/nibabies -svx --doctest-modules
+      - run:
+          name: Test nibabies-wrapper (Python 2)
+          command: |
+            export PY2=$(pyenv versions | grep '2\.' |
+                         sed -e 's/.* 2\./2./' -e 's/ .*//')
+            pyenv local $PY2
+            echo -n "Python version: "
+            python --version
+            pip install --upgrade "pip<21" "setuptools<45"
+            pip install --upgrade wrapper/
+            which nibabies-wrapper
+            nibabies-wrapper docker -i nipreps/nibabies:latest --help
+            nibabies-wrapper docker -i nipreps/nibabies:latest --version
+      - run:
+          name: Test nibabies-wrapper (Python 3)
+          command: |
+            export PY3=$(pyenv versions | grep '3\.' |
+                         sed -e 's/.* 3\./3./' -e 's/ .*//')
+            pyenv local $PY3
+            echo -n "Python version: "
+            python --version
+            pip install --upgrade pip setuptools
+            pip install --upgrade wrapper/
+            which nibabies-wrapper
+            nibabies-wrapper docker -i nipreps/nibabies:latest --help
+            nibabies-wrapper docker -i nipreps/nibabies:latest --version
+      - store_artifacts:
+          path: /tmp/data/reports
+
+  deploy_docker_patches:
+    machine:
+      image: ubuntu-2004:202107-02
+    working_directory: /tmp/src/nibabies
+    steps:
+
+      - run:
+          name: Check whether image should be deployed to Docker Hub
+          command: |
+            if [[ "$CIRCLE_PROJECT_USERNAME" != "nipreps" ]]; then
+              echo "Nothing to deploy for $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME."
+              circleci step halt
+            fi
+      - checkout:
+          path: /home/circleci/src/nibabies
+      - run:
+          name: Check whether build should be skipped
+          command: |
+            cd /home/circleci/src/nibabies
+            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+              echo "Only docs build"
+              circleci step halt
+            fi
+      - restore_cache:
+          keys:
+            - build-v4-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/docker
+            - /tmp/images
+      - docker/install-docker-credential-helper
+      - run:
+          name: Docker authentication
+          command: |
+            if [[ -n $DOCKER_PAT ]]; then
+              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+            fi
+      - run:
+          name: Setup a Docker registry
+          command: |
+            if [[ -f /tmp/images/registry.tar.gz ]]; then
+              echo "Loading saved registry image"
+              docker load < /tmp/images/registry.tar.gz
+            else
+              echo "Pulling registry image from DockerHub"
+              docker pull registry:2
+            fi
+            docker run -d -p 5000:5000 --restart=always --name=registry \
+                -v /tmp/docker:/var/lib/registry registry:2
+      - run:
+          name: Pull images from local registry
+          command: |
+            docker pull localhost:5000/nibabies
+            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run:
+          name: Deploy to Docker Hub
+          no_output_timeout: 40m
+          command: |
+            docker tag nipreps/nibabies nipreps/nibabies:${CIRCLE_BRANCH#docker/}
+            docker push nipreps/nibabies:${CIRCLE_BRANCH#docker/}
+
+  deploy_docker:
+    machine:
+      image: ubuntu-2004:202107-02
+    working_directory: /tmp/src/nibabies
+    steps:
+      - checkout:
+          path: /home/circleci/src/nibabies
+      - run:
+          name: Check whether build should be skipped
+          command: |
+            cd /home/circleci/src/nibabies
+            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+              echo "Only docs build"
+              circleci step halt
+            fi
+      - restore_cache:
+          keys:
+            - build-v4-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/docker
+            - /tmp/images
+      - docker/install-docker-credential-helper
+      - run:
+          name: Docker authentication
+          command: |
+            if [[ -n $DOCKER_PAT ]]; then
+              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+            fi
+      - run:
+          name: Set-up a Docker registry
+          command: |
+            if [[ -f /tmp/images/registry.tar.gz ]]; then
+              echo "Loading saved registry image"
+              docker load < /tmp/images/registry.tar.gz
+            else
+              echo "Pulling registry image from DockerHub"
+              docker pull registry:2
+            fi
+            docker run -d -p 5000:5000 --restart=always --name=registry \
+                -v /tmp/docker:/var/lib/registry registry:2
+      - run:
+          name: Pull images from local registry
+          command: |
+            docker pull localhost:5000/nibabies
+            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run:
+          name: Deploy to Docker Hub
+          no_output_timeout: 40m
+          command: |
+            if [[ -n "$DOCKER_PAT" ]]; then
+              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+              docker tag nipreps/nibabies nipreps/nibabies:unstable
+              docker push nipreps/nibabies:unstable
+              if [[ -n "$CIRCLE_TAG" ]]; then
+                docker push nipreps/nibabies:latest
+                docker tag nipreps/nibabies nipreps/nibabies:$CIRCLE_TAG
+                docker push nipreps/nibabies:$CIRCLE_TAG
+              fi
+            fi
+
+  test_deploy_pypi:
+    docker:
+      - image: circleci/python:3.9.6
+    working_directory: /tmp/src/nibabies
+    steps:
+      - checkout
+      - run:
+          name: Build nibabies
+          command: |
+            python -m pip install --user twine  # For use in checking distributions
+            THISVERSION=$( python get_version.py )
+            THISVERSION=${THISVERSION%.dirty*}
+            THISVERSION=${CIRCLE_TAG:-$THISVERSION}
+            virtualenv --python=python build
+            source build/bin/activate
+            pip install --upgrade "pip>=19.1" numpy
+            echo "${CIRCLE_TAG:-$THISVERSION}" > nibabies/VERSION
+            python setup.py sdist
+            python -m pip wheel --no-deps -w dist/ .
+      - store_artifacts:
+          path: /tmp/src/nibabies/dist
+      - run:
+          name: Check sdist distribution
+          command: |
+            THISVERSION=$( python get_version.py )
+            THISVERSION=${THISVERSION%.dirty*}
+            THISVERSION=${CIRCLE_TAG:-$THISVERSION}
+            python -m twine check dist/nibabies*.tar.gz
+            virtualenv --python=python sdist
+            source sdist/bin/activate
+            python -m pip install --upgrade "pip>=19.1" numpy
+            python -m pip install dist/nibabies*.tar.gz
+            which nibabies | grep sdist\\/bin
+            INSTALLED_VERSION=$(nibabies --version)
+            INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
+            INSTALLED_VERSION=${INSTALLED_VERSION#*"nibabies v"}
+            echo "VERSION: \"$THISVERSION\""
+            echo "INSTALLED: \"$INSTALLED_VERSION\""
+            test "$INSTALLED_VERSION" = "$THISVERSION"
+      - run:
+          name: Check wheel distribution
+          command: |
+            THISVERSION=$( python get_version.py )
+            THISVERSION=${THISVERSION%.dirty*}
+            THISVERSION=${CIRCLE_TAG:-$THISVERSION}
+            python -m twine check dist/nibabies*.whl
+            virtualenv --python=python wheel
+            source wheel/bin/activate
+            python -m pip install dist/nibabies*.whl
+            which nibabies | grep wheel\\/bin
+            INSTALLED_VERSION=$(nibabies --version)
+            INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
+            INSTALLED_VERSION=${INSTALLED_VERSION#*"nibabies v"}
+            echo "VERSION: \"$THISVERSION\""
+            echo "INSTALLED: \"$INSTALLED_VERSION\""
+            test "$INSTALLED_VERSION" = "$THISVERSION"
+      - run:
+          name: Build nibabies-docker
+          command: |
+            THISVERSION=$( python get_version.py )
+            THISVERSION=${THISVERSION%.dirty*}
+            cd wrapper
+            virtualenv --python=python build
+            source build/bin/activate
+            python -m pip install --upgrade "pip>=19.1"
+            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_docker.py
+            python setup.py sdist
+            python -m pip wheel --no-deps -w dist/ .
+      - store_artifacts:
+          path: /tmp/src/nibabies/wrapper/dist
+
+  deploy_pypi:
+    docker:
+      - image: circleci/python:3.9.6
+    working_directory: /tmp/src/nibabies
+    steps:
+      - checkout
+      - run:
+          name: Build nibabies
+          command: |
+            THISVERSION=$( python get_version.py )
+            virtualenv --python=python build
+            source build/bin/activate
+            python -m pip install --upgrade "pip>=19.1"
+            echo "${CIRCLE_TAG:-$THISVERSION}" > nibabies/VERSION
+            python setup.py sdist
+            python -m pip wheel --no-deps -w dist/ .
+      - run:
+          name: Build nibabies-docker
+          command: |
+            THISVERSION=$( python get_version.py )
+            cd wrapper
+            virtualenv --python=python build
+            source build/bin/activate
+            python -m pip install --upgrade "pip>=19.1"
+            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_docker.py
+            python setup.py sdist
+            python -m pip wheel --no-deps -w dist/ .
+      - run:
+          name: Upload packages to PyPI
+          command: |
+            python -m pip install --user twine
+            python -m twine upload dist/nibabies* wrapper/dist/nibabies*
+
+  deployable:
+    docker:
+      - image: busybox:latest
+    steps:
+      - run: echo Deploying!
+
+
+workflows:
+  version: 2
+  build_test_deploy:
+    jobs:
+
+      - build:
+          filters:
+            branches:
+              ignore:
+                - /docs?\/.*/
+            tags:
+              only: /.*/
+      - test_deploy_pypi:
+          filters:
+            branches:
+              only:
+                - /rel\/.*/
+                - /maint\/.*/
+            tags:
+              only: /.*/
+      - test_pytest:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore:
+                - /docs?\/.*/
+                - /docker\/.*/
+            tags:
+              only: /.*/
+      - deploy_docker_patches:
+          requires:
+            - build
+          filters:
+            branches:
+              only: /docker\/.*/
+      - deployable:
+          requires:
+            - test_deploy_pypi
+            - test_pytest
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
+      - deploy_docker:
+          requires:
+            - deployable
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
+      - deploy_pypi:
+          requires:
+            - deployable
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /.*/
