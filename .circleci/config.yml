@@ -68,7 +68,7 @@ jobs:
                 docker pull ubuntu:focal
                 docker tag ubuntu:focal localhost:5000/ubuntu
                 docker push localhost:5000/ubuntu
-                # docker pull nipreps/nibabies:latest
+                docker pull nipreps/nibabies:unstable || true
             fi
       - run:
           name: Build Docker image
