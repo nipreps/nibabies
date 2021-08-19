@@ -475,7 +475,13 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
     transforms = pe.Node(niu.Merge(2), run_without_submitting=True, name='transforms')
     lta_ras2ras = pe.MapNode(LTAConvert(out_lta=True), iterfield=['in_lta'],
                              name='lta_ras2ras', mem_gb=2)
-    select_transform = pe.Node(niu.Select(), run_without_submitting=True, name='select_transform')
+    # In cases where Merge(2) only has `in1` or `in2` defined
+    # output list will just contain a single element
+    select_transform = pe.Node(
+        niu.Select(index=0),
+        run_without_submitting=True,
+        name='select_transform'
+    )
 
     merge_ltas = pe.Node(niu.Merge(2), name='merge_ltas', run_without_submitting=True)
     concat_xfm = pe.Node(ConcatenateXFMs(inverse=True), name='concat_xfm')
@@ -502,9 +508,6 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
 
         # Short-circuit workflow building, use initial registration
         if use_bbr is False:
-            # TIL having Merge(2) with only `in2` input defined
-            # will cause the output list to contain a single element
-            select_transform.inputs.index = 0
             workflow.connect([
                 (mri_coreg, outputnode, [('out_report', 'out_report')]),
             ]),
@@ -525,7 +528,6 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
 
     # Short-circuit workflow building, use boundary-based registration
     if use_bbr is True:
-        select_transform.inputs.index = 0
         workflow.connect([
             (bbregister, outputnode, [('out_report', 'out_report')]),
         ])
