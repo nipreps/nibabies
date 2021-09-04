@@ -380,7 +380,10 @@ It is released under the [CC0]\
 
     # Susceptibility distortion correction
     fmap_estimators = None
-    if "fieldmap" not in config.workflow.ignore:
+    if any((config.workflow.use_syn_sdc, config.workflow.force_syn)):
+        config.loggers.workflow.critical("SyN processing is not yet implemented.")
+
+    if "fieldmaps" not in config.workflow.ignore:
         from sdcflows.utils.wrangler import find_estimators
 
         # SDC Step 1: Run basic heuristics to identify available data for fieldmap estimation
@@ -421,6 +424,7 @@ tasks and sessions), the following preprocessing was performed.
         return workflow
 
     func_preproc_wfs = []
+    has_fieldmap = bool(fmap_estimators)
     for idx, bold_files in enumerate(bold_groupings):
         bold_ref_wf = init_epi_reference_wf(
             auto_bold_nss=True,
@@ -431,7 +435,7 @@ tasks and sessions), the following preprocessing was performed.
         for idx, bold_file in enumerate(bold_files):
             func_preproc_wf = init_func_preproc_wf(
                 bold_file,
-                has_fieldmap=bool(fmap_estimators)
+                has_fieldmap=has_fieldmap,
             )
             # fmt: off
             workflow.connect([
@@ -465,7 +469,7 @@ tasks and sessions), the following preprocessing was performed.
             # fmt: on
             func_preproc_wfs.append(func_preproc_wf)
 
-    if not fmap_estimators:
+    if not has_fieldmap:
         config.loggers.workflow.warning(
             "Data for fieldmap estimation not present. Please note that these data "
             "will not be corrected for susceptibility distortions."
@@ -481,15 +485,14 @@ tasks and sessions), the following preprocessing was performed.
 
     fmap_wf = init_fmap_preproc_wf(
         sloppy=bool(config.execution.sloppy),
-        debug=config.execution.debug in ("all", "fieldmaps"),
+        debug="fieldmaps" in config.execution.debug,
         estimators=fmap_estimators,
         omp_nthreads=config.nipype.omp_nthreads,
         output_dir=nibabies_dir,
         subject=subject_id,
     )
     fmap_wf.__desc__ = f"""
-
-Fieldmap data preprocessing
+Preprocessing of B<sub>0</sub> inhomogeneity mappings
 
 : A total of {len(fmap_estimators)} fieldmaps were found available within the input
 BIDS structure for this particular subject.
@@ -504,6 +507,7 @@ BIDS structure for this particular subject.
                 ("outputnode.fmap_coeff", "inputnode.fmap_coeff"),
                 ("outputnode.fmap_mask", "inputnode.fmap_mask"),
                 ("outputnode.fmap_id", "inputnode.fmap_id"),
+                ("outputnode.method", "inputnode.sdc_method"),
             ]),
         ])
         # fmt: on

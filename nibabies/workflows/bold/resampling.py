@@ -502,7 +502,7 @@ the transforms to correct for head-motion""")
                            run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
 
     bold_transform = pe.Node(
-        MultiApplyTransforms(interpolation=interpolation, float=True, copy_dtype=True),
+        MultiApplyTransforms(interpolation=interpolation, copy_dtype=True),
         name='bold_transform', mem_gb=mem_gb * 3 * omp_nthreads, n_procs=omp_nthreads)
 
     merge = pe.Node(Merge(compress=use_compression), name='merge', mem_gb=mem_gb * 3)
