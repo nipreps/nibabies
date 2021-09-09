@@ -539,7 +539,7 @@ class workflow(_Config):
     instance keeping standard and nonstandard spaces."""
     use_aroma = None
     """Run ICA-:abbr:`AROMA (automatic removal of motion artifacts)`."""
-    use_bbr = None
+    use_bbr = False
     """Run boundary-based registration for BOLD-to-T1w registration."""
     use_syn_sdc = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation
@@ -687,19 +687,20 @@ def init_spaces(checkpoint=True):
     if workflow.age_months is not None:
         from .utils.misc import cohort_by_months
 
-        if "MNIInfant" not in spaces.get_spaces(nonstandard=False, dim=(3,)):
+        # cohort workaround
+        if any(
+            "MNIInfant" in space.split(":")[0]
+            for space in spaces.get_spaces(nonstandard=False, dim=(3,))
+        ):
             cohort = cohort_by_months("MNIInfant", workflow.age_months)
             spaces.add(Reference("MNIInfant", {"cohort": cohort}))
-    # # Add the default standard space if not already present (required by several sub-workflows)
-    # if "MNI152NLin2009cAsym" not in spaces.get_spaces(nonstandard=False, dim=(3,)):
-    #     spaces.add(Reference("MNI152NLin2009cAsym", {}))
 
     # Ensure user-defined spatial references for outputs are correctly parsed.
     # Certain options require normalization to a space not explicitly defined by users.
     # These spaces will not be included in the final outputs.
-    # if workflow.use_aroma:
-    #     # Make sure there's a normalization to FSL for AROMA to use.
-    #     spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
+    if workflow.use_aroma:
+        # Make sure there's a normalization to FSL for AROMA to use.
+        spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
 
     if workflow.cifti_output:
         # CIFTI grayordinates to corresponding FSL-MNI resolutions.
