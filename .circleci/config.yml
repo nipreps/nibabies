@@ -3,6 +3,7 @@ orbs:
   docker: circleci/docker@1.6.0
 
 jobs:
+
   build:
     environment:
       TZ: "/usr/share/zoneinfo/America/New_York"
@@ -128,6 +129,56 @@ jobs:
             - /tmp/docker
             - /tmp/images
 
+  get_data:
+    machine:
+      image: ubuntu-2004:202107-02
+    working_directory: /home/circleci/data
+    steps:
+      - restore_cache:
+          keys:
+            - data-v0-{{ .Branch }}-{{ .Revision }}
+            - data-v0--{{ .Revision }}
+            - data-v0-{{ .Branch }}-
+            - data-v0-master-
+            - data-v0-
+      - run:
+          name: Install datalad + git-annex
+          command: |
+            apt-get -y update && apt-get install -y --no-install-recommends datalad
+      - run:
+          name: Get bcp test data
+          command: |
+            mkdir -p /tmp/data
+            if [[ ! -d /tmp/data/bcp ]]; then
+              datalad clone https://gin.g-node.org/mathiasg/bcp-testdata bcp
+              cd bcp
+              datalad get -J4 sub-01
+            else
+              echo "Dataset bcp was cached"
+            fi
+      - save_cache:
+         key: data-v0-{{ .Branch }}-{{ .Revision }}
+         paths:
+            - /tmp/data
+      - run:
+          name: Store FreeSurfer license file
+          command: |
+            mkdir -p /tmp/fslicense
+            cd /tmp/fslicense
+            echo "cHJpbnRmICJrcnp5c3p0b2YuZ29yZ29sZXdza2lAZ21haWwuY29tXG41MTcyXG4gKkN2dW12RVYzelRmZ1xuRlM1Si8yYzFhZ2c0RVxuIiA+IGxpY2Vuc2UudHh0Cg==" | base64 -d | sh
+      - run:
+          name: Create Nipype config files
+          command: |
+            mkdir -p /tmp/bcp
+            printf "[execution]\nstop_on_first_crash = true\n" > /tmp/bcp/nipype.cfg
+            echo "poll_sleep_duration = 0.01" >> /tmp/bcp/nipype.cfg
+            echo "hash_method = content" >> /tmp/bcp/nipype.cfg
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - fslicense
+            - bcp/nipype.cfg
+
   test_pytest:
     machine:
       image: ubuntu-2004:202107-02
@@ -147,7 +198,6 @@ jobs:
               echo "Skipping pytest job"
               circleci step halt
             fi
-
       - attach_workspace:
           at: /tmp
       - restore_cache:
