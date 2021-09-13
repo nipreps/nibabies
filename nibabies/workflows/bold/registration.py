@@ -131,14 +131,17 @@ def init_bold_reg_wf(
         name='outputnode'
     )
 
-    # Default to no bbr for the moment
-    use_bbr = False
-    if freesurfer:
-        bbr_wf = init_bbreg_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
-                               bold2t1w_init=bold2t1w_init, omp_nthreads=omp_nthreads)
-    else:
-        bbr_wf = init_fsl_bbr_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
-                                 bold2t1w_init=bold2t1w_init, sloppy=sloppy)
+    # MG: Default to FSL FLIRT to avoid https://github.com/nipreps/nibabies/issues/97
+    # if freesurfer:
+    #     bbr_wf = init_bbreg_wf(use_bbr=use_bbr, bold2t1w_dof=bold2t1w_dof,
+    #                            bold2t1w_init=bold2t1w_init, omp_nthreads=omp_nthreads)
+    # else:
+    bbr_wf = init_fsl_bbr_wf(
+        use_bbr=use_bbr,
+        bold2t1w_dof=bold2t1w_dof,
+        bold2t1w_init=bold2t1w_init,
+        sloppy=sloppy,
+    )
 
     workflow.connect([
         (inputnode, bbr_wf, [
