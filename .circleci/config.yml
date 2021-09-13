@@ -270,6 +270,125 @@ jobs:
       - store_artifacts:
           path: /tmp/data/reports
 
+  test_bcp:
+    machine:
+      image: ubuntu-2004:202107-02
+    working_directory: /tmp/bcp
+    environment:
+      - FS_LICENSE: /tmp/fslicense/license.txt
+      - DATASET: bcp
+    steps:
+      - checkout:
+          path: /home/circleci/src/nibabies
+      - run:
+          name: Check whether build should be skipped
+          command: |
+            cd /home/circleci/src/nibabies
+            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+              echo "Only docs build"
+              circleci step halt
+            fi
+            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[skip[ _]?bcp\]' )" != "" ]]; then
+              echo "Skipping bcp build"
+              circleci step halt
+            fi
+            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[no[ _-]?fasttrack\]' )" != "" ]]; then
+              touch /tmp/.nofasttrack
+              echo "Anatomical fasttrack reusing sMRIPrep's derivatives will not be used."
+            fi
+      - attach_workspace:
+          at: /tmp
+      - restore_cache:
+          keys:
+            - build-v4-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/docker
+            - /tmp/images
+      - restore_cache:
+          keys:
+            - data-v0-{{ .Branch }}-{{ .Revision }}
+      - restore_cache:
+          keys:
+            - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
+            - bcp-anat-v0--{{ .Revision }}
+            - bcp-anat-v0-{{ .Branch }}-
+            - bcp-anat-v0-master-
+            - bcp-anat-v0-
+      - docker/install-docker-credential-helper
+      - run:
+          name: Docker authentication
+          command: |
+            if [[ -n $DOCKER_PAT ]]; then
+              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+            fi
+      - run:
+          name: Set-up a Docker registry
+          command: |
+            if [[ -f /tmp/images/registry.tar.gz ]]; then
+              echo "Loading saved registry image"
+              docker load < /tmp/images/registry.tar.gz
+            else
+              echo "Pulling registry image from DockerHub"
+              docker pull registry:2
+            fi
+            docker run -d -p 5000:5000 --restart=always --name=registry \
+                -v /tmp/docker:/var/lib/registry registry:2
+      - run:
+          name: Pull images from local registry
+          command: |
+            docker pull localhost:5000/nibabies
+            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run:
+          name: Setting up test
+          command: |
+            export PY3=$(pyenv versions | grep '3\.' |
+                         sed -e 's/.* 3\./3./' -e 's/ .*//')
+            pyenv local $PY3
+            mkdir -p /tmp/${DATASET}/derivatives
+            pip install --upgrade pip setuptools
+            pip install --upgrade /tmp/src/nibabies/wrapper/
+      - run:
+          name: Run nibabies on bcp
+          no_output_timeout: 2h
+          command: |
+            mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives
+            if [ -f /tmp/.nofasttrack ]; then
+                nibabies-wrapper docker -i nipreps/nibabies:latest \
+                    -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+                    --network none \
+                    --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+                    /tmp/data/${DATASET} /tmp/${DATASET}/derivatives participant \
+                    --fs-subjects-dir /tmp/${DATASET}/freesurfer \
+                    --skull-strip-template OASIS30ANTs:res-1 \
+                    --output-spaces MNIInfant:cohort-1 func \
+                    --sloppy --write-graph --mem_mb 4096 \
+                    --nthreads 2 -vv --age-months 2
+            fi
+      - store_artifacts:
+          path: /tmp/bcp/derivatives
+      - run:
+          name: Checking outputs of full nibabies run
+          command: |
+            mkdir -p /tmp/${DATASET}/test
+            CHECK_OUTPUTS_FILE="${DATASET}_fasttrack_outputs.txt"
+            if [ -f /tmp/.nofasttrack ]; then
+                CHECK_OUTPUTS_FILE="${DATASET}_outputs.txt"
+            fi
+            find /tmp/${DATASET}/derivatives \( -path */figures -o -path */log \) -prune -o -name "*" -print | sed s+/tmp/${DATASET}/derivatives/++ | sort > /tmp/${DATASET}/test/outputs.out
+            diff /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE} /tmp/${DATASET}/test/outputs.out
+            exit $?
+      - run:
+          name: Clean working directory
+          when: on_fail
+          command: |
+            sudo chown $(id -un):$(id -gn) -R /tmp/${DATASET}
+            find /tmp/${DATASET}/work \( -name "*.nii.gz" -or -name "*.nii" -or -name "*.gii" -or -name "*.h5" \) \
+                -exec sh -c 'rm -f {}; touch {}' \;
+            find /tmp/${DATASET}/work_partial \( -name "*.nii.gz" -or -name "*.nii" -or -name "*.gii" -or -name "*.h5" \) \
+                -exec sh -c 'rm -f {}; touch {}' \;
+      - store_artifacts:
+          path: /tmp/bcp/work
+
   deploy_docker_patches:
     machine:
       image: ubuntu-2004:202107-02
