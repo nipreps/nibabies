@@ -150,8 +150,8 @@ jobs:
           command: |
             mkdir -p /tmp/data
             if [[ ! -d /tmp/data/bcp ]]; then
-              datalad clone https://gin.g-node.org/mathiasg/bcp-testdata bcp
-              cd bcp
+              datalad clone https://gin.g-node.org/mathiasg/bcp-testdata /tmp/data/bcp
+              cd /tmp/data/bcp
               datalad get -J4 sub-01
               datalad get -J4 derivatives/infant-freesurfer
             else
