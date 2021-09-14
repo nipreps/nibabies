@@ -136,11 +136,11 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
-            - data-v0--{{ .Revision }}
-            - data-v0-{{ .Branch }}-
-            - data-v0-master-
-            - data-v0-
+            - data-v1-{{ .Branch }}-{{ .Revision }}
+            - data-v1--{{ .Revision }}
+            - data-v1-{{ .Branch }}-
+            - data-v1-master-
+            - data-v1-
       - run:
           name: Install datalad + git-annex
           command: |
@@ -153,11 +153,12 @@ jobs:
               datalad clone https://gin.g-node.org/mathiasg/bcp-testdata bcp
               cd bcp
               datalad get -J4 sub-01
+              datalad get -J4 derivatives/infant-freesurfer
             else
               echo "Dataset bcp was cached"
             fi
       - save_cache:
-         key: data-v0-{{ .Branch }}-{{ .Revision }}
+         key: data-v1-{{ .Branch }}-{{ .Revision }}
          paths:
             - /tmp/data
       - run:
@@ -208,7 +209,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v9-{{ .Branch }}-{{ .Revision }}
+            - data-v1-{{ .Branch }}-{{ .Revision }}
       - docker/install-docker-credential-helper
       - run:
           name: Docker authentication
@@ -306,7 +307,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
+            - data-v1-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
           keys:
             - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
@@ -352,17 +353,17 @@ jobs:
           no_output_timeout: 2h
           command: |
             mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives
-            if [ -f /tmp/.nofasttrack ]; then
-                nibabies-wrapper docker -i nipreps/nibabies:latest \
-                    -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
-                    --network none \
-                    --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
-                    /tmp/data/${DATASET} /tmp/${DATASET}/derivatives participant \
-                    --fs-subjects-dir /tmp/${DATASET}/freesurfer \
-                    --skull-strip-template UNCInfant:cohort-1 \
-                    --output-spaces MNIInfant:cohort-1 func \
-                    --sloppy --write-graph --mem_mb 8192 \
-                    --nthreads 2 -vv --age-months 2 --sloppy
+            nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
+                -i nipreps/nibabies:latest \
+                -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+                --network none \
+                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+                --skull-strip-template UNCInfant:cohort-1 \
+                --output-spaces MNIInfant:cohort-1 func \
+                --sloppy --write-graph --mem_mb 8192 \
+                --nthreads 2 -vv --age-months 2 --sloppy \
+                --output-layout bids
             fi
       - store_artifacts:
           path: /tmp/bcp/derivatives
