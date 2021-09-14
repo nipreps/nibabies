@@ -144,7 +144,7 @@ jobs:
       - run:
           name: Install datalad + git-annex
           command: |
-            apt-get -y update && apt-get install -y --no-install-recommends datalad
+            sudo apt-get -q -y update && sudo apt-get install -y --no-install-recommends datalad
       - run:
           name: Get bcp test data
           command: |
