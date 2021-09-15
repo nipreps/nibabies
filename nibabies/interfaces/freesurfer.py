@@ -62,6 +62,23 @@ class InfantReconAll(CommandLine):
     _cmd = 'infant_recon_all'
     input_spec = InfantReconAllInputSpec
     output_spec = InfantReconAllOutputSpec
+    _no_run = False
+
+    @property
+    def cmdline(self):
+        cmd = super().cmdline
+        # check if previously run
+        if isdefined(self.inputs.outdir):
+            logdir = Path(self.inputs.outdir) / 'log'
+            if logdir.exists():
+                try:
+                    log = sorted(list(logdir.glob("summary.*.log")))[0]
+                    self._no_run = "Successfully finished infant_recon_all" in log.read_text()
+                except IndexError:
+                    pass
+                if self._no_run:
+                    return "echo infant_recon_all: nothing to do"
+        return cmd
 
     def _run_interface(self, runtime):
         # make sure directory structure is intact
@@ -69,6 +86,7 @@ class InfantReconAll(CommandLine):
             self.inputs.subjects_dir = _set_subjects_dir()
         if not isdefined(self.inputs.outdir):
             subjdir = Path(self.inputs.subjects_dir) / self.inputs.subject_id
+            self.inputs.outdir = str(subjdir)
             try:
                 subjdir.mkdir(parents=True, exist_ok=True)
             except OSError:
@@ -87,16 +105,12 @@ class InfantReconAll(CommandLine):
             logging.getLogger('nipype.interface').warning(
                 f"For best results, run {self._cmd} with at least 20GB available RAM."
             )
-
         return super()._run_interface(runtime)
 
     def _list_outputs(self):
         outputs = self._outputs().get()
         outputs['subject_id'] = self.inputs.subject_id
-        if isdefined(self.inputs.outdir):
-            outputs["outdir"] = self.inputs.outdir
-        else:
-            outputs["outdir"] = str(Path(self.inputs.subjects_dir) / self.inputs.subject_id)
+        outputs["outdir"] = self.inputs.outdir
         return outputs
 
 
