@@ -1431,7 +1431,7 @@ class VolumeLabelImport(WBCommand):
     >>> label_import.inputs.label_list_file = data_dir / 'label_list.txt'
     >>> label_import.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -volume-label-import .../atlas.nii .../label_list.txt \
-    atlas_labels.nii.gz -unlabeled-value 0'
+    atlas_labels.nii.gz'
     """
 
     input_spec = VolumeLabelImportInputSpec
