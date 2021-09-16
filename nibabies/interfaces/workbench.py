@@ -1377,8 +1377,6 @@ class VolumeLabelImportInputSpec(CommandLineInputSpec):
         desc="set any voxels with values not mentioned in the label list to the ??? label",
     )
     unlabeled_values = traits.Int(
-        0,
-        usedefault=True,
         argstr="-unlabeled-value %d",
         desc="the value that will be interpreted as unlabeled",
     )
@@ -1433,7 +1431,7 @@ class VolumeLabelImport(WBCommand):
     >>> label_import.inputs.label_list_file = data_dir / 'label_list.txt'
     >>> label_import.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -volume-label-import .../atlas.nii .../label_list.txt \
-    atlas_labels.nii.gz -unlabeled-value 0'
+    atlas_labels.nii.gz'
     """
 
     input_spec = VolumeLabelImportInputSpec

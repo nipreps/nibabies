@@ -19,6 +19,7 @@ from nipype.interfaces import utility as niu
 
 from niworkflows.utils.connections import pop_file, listify
 from niworkflows.interfaces.header import ValidateImage
+from niworkflows.interfaces.utility import KeySelect
 from sdcflows.interfaces.brainmask import BrainExtraction
 
 from ...interfaces import DerivativesDataSink
@@ -765,22 +766,53 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         # CIFTI output
         if config.workflow.cifti_output:
+            from .alignment import init_subcortical_rois_wf, init_subcortical_mni_alignment_wf
             from .resampling import init_bold_grayords_wf
+
+            key = None
+            for space in spaces.get_spaces(nonstandard=False, dim=(3,)):
+                if "MNIInfant" in space:
+                    key = space.replace(":", "_")
+
+            assert key is not None, f"MNIInfant not found in SpatialReferences: {spaces}"
+
+            # BOLD/ROIs should be in MNIInfant space
+            cifti_select_std = pe.Node(
+                KeySelect(fields=['bold_std', 'bold_aseg_std'], key=key),
+                name='cifti_select_std',
+                run_without_submitting=True,
+            )
+
+            subcortical_rois_wf = init_subcortical_rois_wf()
+            subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf()
             bold_grayords_wf = init_bold_grayords_wf(
                 grayord_density=config.workflow.cifti_output,
                 mem_gb=mem_gb['resampled'],
-                repetition_time=metadata['RepetitionTime'])
+                repetition_time=metadata['RepetitionTime']
+            )
 
             workflow.connect([
-                (inputnode, bold_grayords_wf, [
-                    ('subjects_dir', 'inputnode.subjects_dir')]),
-                (bold_std_trans_wf, bold_grayords_wf, [
-                    ('outputnode.bold_std', 'inputnode.bold_std'),
-                    ('outputnode.spatial_reference', 'inputnode.spatial_reference')]),
+                (bold_std_trans_wf, cifti_select_std, [
+                    ("outputnode.bold_std", "bold_std"),
+                    ("outputnode.bold_aseg_std", "bold_aseg_std"),
+                    ("outputnode.spatial_reference", "keys")]),
+                (cifti_select_std, subcortical_rois_wf, [
+                    ("bold_aseg_std", "inputnode.MNIInfant_aseg")]),
+                (cifti_select_std, subcortical_mni_alignment_wf, [
+                    ("bold_std", "inputnode.MNIInfant_bold")]),
+                # (bold_t1_trans_wf, subcortical_rois_wf, [
+                #     ("outputnode.bold_aseg_t1", "inputnode.bold_aseg")]),
+                # (bold_bold_trans_wf, subcortical_mni_alignment_wf, [
+                #     ("outputnode.bold", "inputnode.bold_file")]),
+                (subcortical_rois_wf, subcortical_mni_alignment_wf, [
+                    ("outputnode.MNIInfant_rois", "inputnode.MNIInfant_rois"),
+                    ("outputnode.MNI152_rois", "inputnode.MNI152_rois")]),
+                (subcortical_mni_alignment_wf, bold_grayords_wf, [
+                    ("outputnode.subcortical_volume", "inputnode.subcortical_volume"),
+                    ("outputnode.subcortical_labels", "inputnode.subcortical_labels")]),
                 (bold_surf_wf, bold_grayords_wf, [
                     ('outputnode.surfaces', 'inputnode.surf_files'),
-                    ('outputnode.target', 'inputnode.surf_refs'),
-                ]),
+                    ('outputnode.target', 'inputnode.surf_refs')]),
                 (bold_grayords_wf, outputnode, [
                     ('outputnode.cifti_bold', 'bold_cifti'),
                     ('outputnode.cifti_variant', 'cifti_variant'),
@@ -867,7 +899,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     from niworkflows.interfaces.reportlets.registration import (
         SimpleBeforeAfterRPT as SimpleBeforeAfter,
     )
-    from niworkflows.interfaces.utility import KeySelect
     from sdcflows.workflows.apply.registration import init_coeff2epi_wf
     from sdcflows.workflows.apply.correction import init_unwarp_wf
 
