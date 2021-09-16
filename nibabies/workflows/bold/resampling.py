@@ -682,7 +682,7 @@ def _gen_metadata(grayord_density):
         "volume": "MNI152NLin6Asym",
         "surface_density": "32k" if grayord_density == "91k" else "59k",
     }
-    out_metadata = Path("dtseries_variant.json")
+    out_metadata = Path("dtseries_variant.json").absolute()
     out_metadata.write_text(json.dumps(out_json, indent=2))
     return str(out_metadata), space, grayord_density
 
