@@ -23,14 +23,14 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
 
     Inputs
     ------
-    bold_aseg : :obj:`str`
-        FreeSurfer's aseg in BOLD space
+    MNIInfant_aseg : :obj:`str`
+        FreeSurfer's aseg in MNIInfant space
 
     Outputs
     -------
-    bold_subcortical_rois : :obj:`str`
-        Subcortical ROIs in BOLD space
-    std_subcortical_rois : :obj:`str`
+    MNIInfant_rois : :obj:`str`
+        Subcortical ROIs in MNIInfant space
+    MNI152_rois : :obj:`str`
         Subcortical ROIs in `MNI152NLin6Asym` space
     """
     from templateflow.api import get as get_template
@@ -45,16 +45,16 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     # For now, just use the aseg
 
     workflow = Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=["bold_aseg"]), name='inputnode')
+    inputnode = pe.Node(niu.IdentityInterface(fields=["MNIInfant_aseg"]), name='inputnode')
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["bold_subcortical_rois", "std_subcortical_rois"]),
+        niu.IdentityInterface(fields=["MNIInfant_rois", "MNI152_rois"]),
         name='outputnode',
     )
     # Fetch the HCP volumetric template
     tpl_rois = get_template(
         'MNI152NLin6Asym', resolution=2, atlas="HCP", suffix="dseg", raise_empty=True
     )
-    outputnode.inputs.std_subcortical_rois = tpl_rois
+    outputnode.inputs.MNI152_rois = tpl_rois
 
     # This will only used for the wmparc in subject space
     # For now, define it and don't run it
@@ -77,9 +77,9 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     )
 
     workflow.connect([
-        (inputnode, refine_bold_rois, [("bold_aseg", "in_file")]),
+        (inputnode, refine_bold_rois, [("MNIInfant_aseg", "in_file")]),
         # (applywarp_tpl, refine_std_rois, [("out_file", "in_file")]),
-        (refine_bold_rois, outputnode, [("out_file", "bold_subcortical_rois")]),
+        (refine_bold_rois, outputnode, [("out_file", "MNIInfant_rois")]),
     ])
     return workflow
 
@@ -102,12 +102,12 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
 
     Inputs
     ------
-    bold_file : :obj:`str`
-        BOLD file
-    bold_roi : :obj:`str`
-        File containing ROIs in BOLD space
-    atlas_roi : :obj:`str`
-        File containing ROIs in atlas space
+    MNIInfant_bold : :obj:`str`
+        BOLD file in MNI Infant space
+    MNIInfant_rois : :obj:`str`
+        File containing ROIs in MNI Infant space
+    MNI152_rois : :obj:`str`
+        File containing ROIs in MNI152NLin6Asym space
 
     Outputs
     -------
@@ -132,12 +132,12 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     # reuse saved atlas to atlas transform
     atlas_xfm = resource_filename("nibabies", "data/MNIInfant_to_MNI1526NLinAsym.mat")
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["bold_file", "bold_roi", "atlas_roi"]),
+        niu.IdentityInterface(fields=["MNIInfant_bold", "MNIInfant_rois", "MNI152_rois"]),
         name="inputnode",
     )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=["subcortical_volume", "subcortical_labels"]),
-        name='outputnode'
+        name='outputnode',
     )
 
     applyxfm_atlas = pe.Node(fsl.ApplyXFM(in_matrix_file=atlas_xfm), name="applyxfm_atlas")
@@ -248,24 +248,24 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     # fmt: off
     workflow.connect([
         (inputnode, applyxfm_atlas, [
-            ("bold_file", "in_file"),
-            ("atlas_roi", "reference")]),
+            ("MNIInfant_bold", "in_file"),
+            ("MNI152_rois", "reference")]),
         (inputnode, vol_resample, [
-            ("bold_roi", "in_file"),
-            ("bold_roi", "flirt_source_volume")]),
+            ("MNIInfant_rois", "in_file"),
+            ("MNIInfant_rois", "flirt_source_volume")]),
         (applyxfm_atlas, vol_resample, [
             ("out_file", "volume_space"),
             ("out_file", "flirt_target_volume")]),
-        (inputnode, subj_rois, [("bold_roi", "in_file")]),
-        (inputnode, atlas_rois, [("atlas_roi", "in_file")]),
+        (inputnode, subj_rois, [("MNIInfant_rois", "in_file")]),
+        (inputnode, atlas_rois, [("MNI152_rois", "in_file")]),
         (subj_rois, split_rois, [("out_file", "in_file")]),
         (atlas_rois, split_atlas_rois, [("out_file", "in_file")]),
-        (inputnode, atlas_labels, [("atlas_roi", "in_file")]),
+        (inputnode, atlas_labels, [("MNI152_rois", "in_file")]),
         (atlas_labels, parse_labels, [("out_file", "label_file")]),
         # for loop across ROIs
         (split_rois, roi2atlas, [("out_files", "in_file")]),
         (split_atlas_rois, roi2atlas, [("out_files", "reference")]),
-        (inputnode, applyxfm_roi, [("bold_file", "in_file")]),
+        (inputnode, applyxfm_roi, [("MNIInfant_bold", "in_file")]),
         (split_atlas_rois, applyxfm_roi, [("out_files", "reference")]),
         (roi2atlas, applyxfm_roi, [("out_matrix_file", "in_matrix_file")]),
         (applyxfm_roi, bold_mask_roi, [("out_file", "in_file")]),
@@ -296,7 +296,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
             ("op_string", "op_string")]),
         (separate, merge_rois, [("volume_all_file", "in_files")]),
         (merge_rois, outputnode, [("out_file", "subcortical_volume")]),
-        (inputnode, outputnode, [("atlas_roi", "subcortical_labels")]),
+        (inputnode, outputnode, [("MNI152_rois", "subcortical_labels")]),
     ])
     # fmt: on
     return workflow
