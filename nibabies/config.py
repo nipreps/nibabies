@@ -505,6 +505,8 @@ class workflow(_Config):
     """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
     dummy_scans = None
     """Set a number of initial scans to be considered nonsteady states."""
+    fd_radius = 45
+    """Head radius in mm for framewise displacement calculation"""
     fmap_bspline = None
     """Regularize fieldmaps with a field of B-Spline basis."""
     fmap_demean = None
