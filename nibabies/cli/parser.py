@@ -594,6 +594,12 @@ discourage its usage."""
         "--segmentation-atlases-dir",
         help="Directory containing precalculated segmentations to use for JointLabelFusion."
     )
+    g_baby.add_argument(
+        "--fd-radius",
+        type=float,
+        default=45,
+        help="Head radius in mm for framewise displacement calculation",
+    )
     return parser
 
 

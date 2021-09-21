@@ -27,6 +27,8 @@ def init_bold_confs_wf(
     regressors_dvars_th,
     regressors_fd_th,
     freesurfer=False,
+    *,
+    fd_radius=45,
     name="bold_confs_wf",
 ):
     """
@@ -78,8 +80,6 @@ def init_bold_confs_wf(
         the FoV
     metadata : :obj:`dict`
         BIDS metadata for BOLD file
-    name : :obj:`str`
-        Name of workflow (default: ``bold_confs_wf``)
     regressors_all_comps : :obj:`bool`
         Indicates whether CompCor decompositions should return all
         components instead of the minimal number of components necessary
@@ -88,7 +88,10 @@ def init_bold_confs_wf(
         Criterion for flagging DVARS outliers
     regressors_fd_th : :obj:`float`
         Criterion for flagging framewise displacement outliers
-
+    fd_radius : :obj:`float`
+        Radius in mm to calculate angular FDs (default: 45)
+    name : :obj:`str`
+        Name of workflow (default: ``bold_confs_wf``)
     Inputs
     ------
     bold
@@ -200,7 +203,7 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
                     name="dvars", mem_gb=mem_gb)
 
     # Frame displacement
-    fdisp = pe.Node(nac.FramewiseDisplacement(parameter_source="SPM"),
+    fdisp = pe.Node(nac.FramewiseDisplacement(parameter_source="SPM", radius=fd_radius),
                     name="fdisp", mem_gb=mem_gb)
 
     # Generate aCompCor probseg maps
