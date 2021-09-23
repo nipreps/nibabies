@@ -1,5 +1,5 @@
 # Ubuntu 20.04 LTS
-FROM ubuntu:focal
+FROM ubuntu:focal-20210827
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
     LC_ALL="en_US.UTF-8"
@@ -38,7 +38,7 @@ RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
                     connectome-workbench=1.5.0-1~nd20.04+1 \
-                    git-annex-standalone=8.20210223-1~ndall+1 && \
+                    git-annex-standalone=8.20210903-1~ndall+1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Installing ANTs 2.3.4 (NeuroDocker build)
@@ -85,7 +85,19 @@ RUN apt-get update -qq \
     && echo "Downloading AFNI ..." \
     && mkdir -p /opt/afni-latest \
     && curl -fsSL --retry 5 https://afni.nimh.nih.gov/pub/dist/tgz/linux_openmp_64.tgz \
-    | tar -xz -C /opt/afni-latest --strip-components 1
+    | tar -xz -C /opt/afni-latest --strip-components 1 \
+    --exclude "linux_openmp_64/*.gz" \
+    --exclude "linux_openmp_64/funstuff" \
+    --exclude "linux_openmp_64/shiny" \
+    --exclude "linux_openmp_64/afnipy" \
+    --exclude "linux_openmp_64/lib/RetroTS" \
+    --exclude "linux_openmp_64/meica.libs" \
+    # Keep only what we use
+    && find /opt/afni-latest -type f -not \( \
+        -name "3dTshift" -or \
+        -name "3dUnifize" -or \
+        -name "3dAutomask" -or \
+        -name "3dvolreg" \) -delete
 ENV PATH="/opt/afni-latest:$PATH" \
     AFNI_IMSAVE_WARNINGS="NO" \
     AFNI_PLUGINPATH="/opt/afni-latest"
@@ -94,7 +106,10 @@ ENV PATH="/opt/afni-latest:$PATH" \
 RUN echo "Downloading Convert3D ..." \
     && mkdir -p /opt/convert3d-1.0.0 \
     && curl -fsSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/1.0.0/c3d-1.0.0-Linux-x86_64.tar.gz/download \
-    | tar -xz -C /opt/convert3d-1.0.0 --strip-components 1
+    | tar -xz -C /opt/convert3d-1.0.0 --strip-components 1 \
+    --exclude "c3d-1.0.0-Linux-x86_64/lib" \
+    --exclude "c3d-1.0.0-Linux-x86_64/share" \
+    --exclude "c3d-1.0.0-Linux-x86_64/bin/c3d_gui"
 ENV C3DPATH="/opt/convert3d-1.0.0" \
     PATH="/opt/convert3d-1.0.0/bin:$PATH"
 
@@ -125,8 +140,50 @@ RUN apt-get update -qq \
     && mkdir -p /opt/fsl-5.0.11 \
     && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-5.0.11-centos6_64.tar.gz \
     | tar -xz -C /opt/fsl-5.0.11 --strip-components 1 \
-    && echo "Installing FSL conda environment ..." \
-    && bash /opt/fsl-5.0.11/etc/fslconf/fslpython_install.sh -f /opt/fsl-5.0.11
+    --exclude "fsl/config" \
+    --exclude "fsl/data/atlases" \
+    --exclude "fsl/data/first" \
+    --exclude "fsl/data/mist" \
+    --exclude "fsl/data/possum" \
+    --exclude "fsl/data/standard/bianca" \
+    --exclude "fsl/data/standard/tissuepriors" \
+    --exclude "fsl/doc" \
+    --exclude "fsl/etc/default_flobs.flobs" \
+    --exclude "fsl/etc/fslconf" \
+    --exclude "fsl/etc/js" \
+    --exclude "fsl/etc/luts" \
+    --exclude "fsl/etc/matlab" \
+    --exclude "fsl/extras" \
+    --exclude "fsl/include" \
+    --exclude "fsl/python" \
+    --exclude "fsl/refdoc" \
+    --exclude "fsl/src" \
+    --exclude "fsl/tcl" \
+    --exclude "fsl/bin/FSLeyes" \
+    && find /opt/fsl-5.0.11/bin -type f -not \( \
+        -name "applywarp" -or \
+        -name "bet" -or \
+        -name "bet2" -or \
+        -name "convert_xfm" -or \
+        -name "fast" -or \
+        -name "flirt" -or \
+        -name "fsl_regfilt" -or \
+        -name "fslhd" -or \
+        -name "fslinfo" -or \
+        -name "fslmaths" -or \
+        -name "fslmerge" -or \
+        -name "fslroi" -or \
+        -name "fslsplit" -or \
+        -name "fslstats" -or \
+        -name "imtest" -or \
+        -name "mcflirt" -or \
+        -name "melodic" -or \
+        -name "prelude" -or \
+        -name "remove_ext" -or \
+        -name "susan" -or \
+        -name "topup" -or \
+        -name "zeropad" \) -delete \
+    && find /opt/fsl-5.0.11/data/standard -type f -not -name "MNI152_T1_2mm_brain.nii.gz" -delete
 ENV FSLDIR="/opt/fsl-5.0.11" \
     PATH="/opt/fsl-5.0.11/bin:$PATH" \
     FSLOUTPUTTYPE="NIFTI_GZ" \
@@ -232,6 +289,7 @@ RUN conda install -y python=3.8 \
                      mkl-service=2.3 \
                      numpy=1.20 \
                      scipy=1.6 \
+                     scikit-image=0.18 \
                      scikit-learn=0.24 \
                      matplotlib=3.3 \
                      pandas=1.2 \
@@ -271,7 +329,7 @@ ARG VCS_REF
 ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="nibabies" \
-      org.label-schema.description="nibabies - NeuroImaging tools for infants" \
+      org.label-schema.description="nibabies - NeuroImaging tools for babies" \
       org.label-schema.url="https://github.com/nipreps/nibabies" \
       org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.vcs-url="https://github.com/nipreps/nibabies" \
