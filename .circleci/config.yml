@@ -387,7 +387,7 @@ jobs:
             echo "INSTALLED: \"$INSTALLED_VERSION\""
             test "$INSTALLED_VERSION" = "$THISVERSION"
       - run:
-          name: Build nibabies-docker
+          name: Build nibabies-wrapper
           command: |
             THISVERSION=$( python get_version.py )
             THISVERSION=${THISVERSION%.dirty*}
@@ -395,7 +395,7 @@ jobs:
             virtualenv --python=python build
             source build/bin/activate
             python -m pip install --upgrade "pip>=19.1"
-            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_docker.py
+            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_wrapper.py
             python setup.py sdist
             python -m pip wheel --no-deps -w dist/ .
       - store_artifacts:
@@ -418,14 +418,14 @@ jobs:
             python setup.py sdist
             python -m pip wheel --no-deps -w dist/ .
       - run:
-          name: Build nibabies-docker
+          name: Build nibabies-wrapper
           command: |
             THISVERSION=$( python get_version.py )
             cd wrapper
             virtualenv --python=python build
             source build/bin/activate
             python -m pip install --upgrade "pip>=19.1"
-            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_docker.py
+            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_wrapper.py
             python setup.py sdist
             python -m pip wheel --no-deps -w dist/ .
       - run:
