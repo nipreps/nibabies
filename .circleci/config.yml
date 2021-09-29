@@ -365,7 +365,7 @@ jobs:
             which nibabies | grep sdist\\/bin
             INSTALLED_VERSION=$(nibabies --version)
             INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
-            INSTALLED_VERSION=${INSTALLED_VERSION#*"nibabies v"}
+            INSTALLED_VERSION=${INSTALLED_VERSION#*"NiBabies v"}
             echo "VERSION: \"$THISVERSION\""
             echo "INSTALLED: \"$INSTALLED_VERSION\""
             test "$INSTALLED_VERSION" = "$THISVERSION"
@@ -382,7 +382,7 @@ jobs:
             which nibabies | grep wheel\\/bin
             INSTALLED_VERSION=$(nibabies --version)
             INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
-            INSTALLED_VERSION=${INSTALLED_VERSION#*"nibabies v"}
+            INSTALLED_VERSION=${INSTALLED_VERSION#*"NiBabies v"}
             echo "VERSION: \"$THISVERSION\""
             echo "INSTALLED: \"$INSTALLED_VERSION\""
             test "$INSTALLED_VERSION" = "$THISVERSION"
