@@ -253,7 +253,7 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
 # remove build-stamp to play nice with nipype
 
 # Installing SVGO and bids-validator
-RUN npm install -g svgo@^2.3 bids-validator@1.5.7 \
+RUN npm install -g svgo@^2.3 bids-validator@^1.8.4 \
   && rm -rf ~/.npm ~/.empty /root/.npm
 
 # ICA AROMA
