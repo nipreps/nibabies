@@ -1,4 +1,23 @@
-## Changelog
+21.0.0 (TBD)
+============
+
+  21.0.0rc0 (September 29, 2021)
+  ------------------------------
+
+  * DOCKER: Reduce image size (#105)
+  * ENH: Subcortical alignment workflow (#72)
+  * ENH: Framewise displacement head radius flag (#104)
+  * ENH: Incorporate subcortical CIFTI alignment to functional processing (#102)
+  * ENH: Do not run infant_recon_all if already completed (#101)
+  * ENH: Modernize Dockerfile (#85)
+  * FIX: BOLD to template normalization (#99)
+  * FIX: SDC fieldwarp application (#98)
+  * FIX: Avoid running BBReg under certain conditions (#95)
+  * FIX: Standard output spaces (#92)
+  * FIX: Small Docker environment fixes (#86)
+  * FIX: Feed NiTransforms with LTAs of type RAS2RAS (#84)
+  * MAINT: Attempt to pull most recent dev version (#94)
+  * MAINT: Initial CircleCI workflow (#93)
 
 0.1.2 (June 30, 2021)
 ---------------------
