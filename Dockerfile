@@ -321,6 +321,9 @@ RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
     pip install --no-cache-dir -e "/src/nibabies[all]" && \
     rm ${FREESURFER_HOME}/build-stamp.txt
 
+# ABI tags can interfere when running on Singularity
+RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
+
 # Final settings
 RUN ldconfig
 WORKDIR /tmp
