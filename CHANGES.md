@@ -1,6 +1,12 @@
 21.0.0 (TBD)
 ============
 
+  21.0.0rc1 (October 1, 2021)
+  ---------------------------
+
+  * DOCKER: Strip ABI tag from libQt5Core.so.5 (#109)
+  * MAINT: Bump SDCFlows to latest bugfix version (d799fee)
+
   21.0.0rc0 (September 29, 2021)
   ------------------------------
 
