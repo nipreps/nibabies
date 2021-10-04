@@ -20,11 +20,11 @@ import os
 import re
 import subprocess
 
-__version__ = "99.99.99"
+__version__ = '99.99.99'
 __copyright__ = (
-    "Copyright 2021, The NiPreps Developers"
+    'Copyright 2021, The NiPreps Developers'
 )
-__bugreports__ = "https://github.com/nipreps/nibabies/issues"
+__bugreports__ = 'https://github.com/nipreps/nibabies/issues'
 
 MISSING = """
 Image '{}' is missing
