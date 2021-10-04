@@ -11,19 +11,22 @@ Anatomical | Functional
 
 ---
 
-### Requirements
+### Getting Started
 
-Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using the available [Docker](https://hub.docker.com/r/mgxd/nibabies/tags?page=1&ordering=last_updated) or [Singularity](https://cloud.sylabs.io/library/mathiasg/default/nibabies) containers.
+Before using *NiBabies*, you will need to have your MRI data formatted in [BIDS](https://bids.neuroimaging.io/).
+This helps the software locate the available data, and optimize the workflow accordingly.
 
-Images are all tagged with the release number, which must be specified in order to pull the images. For example, if you wanted to pull version `0.1.0`, you would use the following command.
+#### Installing NiBabies
+
+Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using the available [Docker](https://hub.docker.com/r/nipreps/nibabies/tags?page=1&ordering=last_updated) containers.
+
+Images are all tagged with the release number, which must be specified in order to pull the images. For example, if you wanted to pull version `21.0.0rc1`, you would use the following command.
 ```
 # Docker
-docker pull mgxd/nibabies:0.1.0
-# Singularity
-singularity pull library://mathiasg/default/nibabies:0.1.0
+docker pull nipreps/nibabies:21.0.0rc1
 ```
 
-If you insist on installing this tool locally, you can use the [Dockerfile](./Dockerfile) as a guide.
+However, if you would prefer to install this tool natively, you can refer the [Dockerfile](./Dockerfile) as a guide for all the dependencies.
 
 ---
 
@@ -315,6 +318,8 @@ NiBabies specific options:
   --segmentation-atlases-dir SEGMENTATION_ATLASES_DIR
                         Directory containing precalculated segmentations to
                         use for JointLabelFusion. (default: None)
+  --fd-radius FD_RADIUS
+                        Head radius in mm for framewise displacement calculation (default: 45)
 ```
 
 </details>
@@ -330,16 +335,19 @@ It will generate a Docker/Singularity command line for you, print it out for rep
 ##### Docker
 ```
 $ nibabies-wrapper docker /path/to/data /path/to/output participant --age-months 12
+
 RUNNING: docker run --rm -e DOCKER_VERSION_8395080871=20.10.6 -it -v /path/to/data:/data:ro \
--v /path/to/output:/out nipreps/nibabies:0.1.1 /data /out participant --age-months 12
+-v /path/to/output:/out nipreps/nibabies:21.0.0rc1 /data /out participant --age-months 12
 ```
 
 ##### Singularity
 ```
-$ nibabies-wrapper singularity /path/to/data /path/to/output participant --age-months 12 -i nibabies-0.1.1.sif
+$ nibabies-wrapper singularity /path/to/data /path/to/output participant --age-months 12 -i nibabies-21.0.0rc1.sif
+
 RUNNING: singularity run --cleanenv -B /path/to/data:/data:ro \
--B /path/to/output:/out nibabies-0.1.1.sif /data /out participant --age-months 12
+-B /path/to/output:/out nibabies-21.0.0rc1.sif /data /out participant --age-months 12
 ```
+Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.
 
 The ``nibabies-wrapper`` accepts all of the [available options for NiBabies](#extensive-usage), automatically translating local files and directories into mount points.
 
