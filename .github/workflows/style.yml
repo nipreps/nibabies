@@ -1,0 +1,25 @@
+name: Style check
+
+on:
+  push:
+    branches: [ '*' ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ master, 'maint/*' ]
+
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: jpetrucciani/black-check@master
+      with:
+        path: 'nibabies/'
+        black_flags: '--line-length 99 --exclude nibabies/_version.py'
