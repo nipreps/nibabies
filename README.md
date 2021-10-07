@@ -1,4 +1,4 @@
-## *NiBabies*: A robust preprocessing workflow tailored for neonate and infant MRI
+# *NiBabies*: A robust preprocessing workflow tailored for neonate and infant MRI
 
 ![nibabies](https://github.com/nipreps/nibabies/actions/workflows/pytest.yml/badge.svg)
 [![DOI](https://zenodo.org/badge/264223087.svg)](https://zenodo.org/badge/latestdoi/264223087)
@@ -11,12 +11,12 @@ Anatomical | Functional
 
 ---
 
-### Getting Started
+## Getting Started
 
 Before using *NiBabies*, you will need to have your MRI data formatted in [BIDS](https://bids.neuroimaging.io/).
 This helps the software locate the available data, and optimize the workflow accordingly.
 
-#### Installing NiBabies
+### Installing NiBabies
 
 Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using the available [Docker](https://hub.docker.com/r/nipreps/nibabies/tags?page=1&ordering=last_updated) containers.
 
@@ -30,7 +30,7 @@ However, if you would prefer to install this tool natively, you can refer the [D
 
 ---
 
-### Usage
+## Usage
 
 *NiBabies* follow the [BIDS App Specifications](http://bids-apps.neuroimaging.io/about/), meaning you only need to provide three positional arguments:
 
@@ -50,7 +50,7 @@ However, as infant brains can vastly differ depending on age, providing the foll
 > - A brainmasked T1w NIfTI that includes `T1w` in the filename.
 
 
-##### Extensive Usage
+### Extensive Usage
 <details>
 <summary>Click to view all options</summary>
 
@@ -326,13 +326,13 @@ NiBabies specific options:
 
 ---
 
-### Running with ``nibabies-wrapper``
+## Running with ``nibabies-wrapper``
 
 The ``nibabies-wrapper`` is a lightweight Python 2/3 wrapper for running *NiBabies* via Docker and Singularity.
 It will generate a Docker/Singularity command line for you, print it out for reporting purposes, and then execute it without further action needed, e.g.:
 
 
-##### Docker
+### Docker
 ```
 $ nibabies-wrapper docker /path/to/data /path/to/output participant --age-months 12
 
@@ -340,7 +340,7 @@ RUNNING: docker run --rm -e DOCKER_VERSION_8395080871=20.10.6 -it -v /path/to/da
 -v /path/to/output:/out nipreps/nibabies:21.0.0rc1 /data /out participant --age-months 12
 ```
 
-##### Singularity
+### Singularity
 ```
 $ nibabies-wrapper singularity /path/to/data /path/to/output participant --age-months 12 -i nibabies-21.0.0rc1.sif
 
@@ -353,6 +353,6 @@ The ``nibabies-wrapper`` accepts all of the [available options for NiBabies](#ex
 
 ---
 
-### Outputs
+## Outputs
 
 TODO - Refer to [fMRIPrep's outputs](https://fmriprep.org/en/20.2.1/outputs.html) for now.
