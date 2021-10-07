@@ -31,9 +31,9 @@ copyright = f'{start_year}-{datetime.now().year}, {author}'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",
-    "nipype.sphinxext.plot_workflow",
-    "sphinxcontrib.napoleon",
+    # "sphinx.ext.autodoc",
+    # "nipype.sphinxext.plot_workflow",
+    # "sphinxcontrib.napoleon",
     "myst_nb",
 ]
 
