@@ -1,6 +1,7 @@
 # *NiBabies*: A robust preprocessing workflow tailored for neonate and infant MRI
 
 ![nibabies](https://github.com/nipreps/nibabies/actions/workflows/pytest.yml/badge.svg)
+![coverage](https://codecov.io/gh/nipreps/nibabies/branch/master/graph/badge.svg)
 [![DOI](https://zenodo.org/badge/264223087.svg)](https://zenodo.org/badge/latestdoi/264223087)
 
 Anatomical | Functional
