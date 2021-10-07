@@ -87,9 +87,7 @@ def init_coregistration_wf(
     workflow = pe.Workflow(name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=["in_t1w", "in_t2w_preproc", "in_mask", "in_probmap"]
-        ),
+        niu.IdentityInterface(fields=["in_t1w", "in_t2w_preproc", "in_mask", "in_probmap"]),
         name="inputnode",
     )
     outputnode = pe.Node(
@@ -105,9 +103,7 @@ def init_coregistration_wf(
         name="outputnode",
     )
 
-    fixed_masks_arg = pe.Node(
-        niu.Merge(3), name="fixed_masks_arg", run_without_submitting=True
-    )
+    fixed_masks_arg = pe.Node(niu.Merge(3), name="fixed_masks_arg", run_without_submitting=True)
 
     # Dilate t2w mask for easier t1->t2 registration
     reg_mask = pe.Node(BinaryDilation(radius=8, iterations=3), name="reg_mask")
@@ -126,12 +122,8 @@ def init_coregistration_wf(
         coreg.inputs.output_inverse_warped_image = sloppy
         coreg.inputs.output_warped_image = sloppy
 
-    map_mask = pe.Node(
-        ApplyTransforms(interpolation="Gaussian"), name="map_mask", mem_gb=1
-    )
-    map_t2w = pe.Node(
-        ApplyTransforms(interpolation="BSpline"), name="map_t2w", mem_gb=1
-    )
+    map_mask = pe.Node(ApplyTransforms(interpolation="Gaussian"), name="map_mask", mem_gb=1)
+    map_t2w = pe.Node(ApplyTransforms(interpolation="BSpline"), name="map_t2w", mem_gb=1)
     thr_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_mask")
 
     final_n4 = pe.Node(

@@ -117,7 +117,11 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     from niworkflows.interfaces.reportlets.masks import ROIsPlot
     from smriprep.interfaces.templateflow import TemplateFlowSelect
     from smriprep.workflows.outputs import (
-        _fmt, _empty_report, _rpt_masks, _drop_cohort, _pick_cohort,
+        _fmt,
+        _empty_report,
+        _rpt_masks,
+        _drop_cohort,
+        _pick_cohort,
     )
     from ...utils.patches import set_tf_resolution
 
@@ -137,9 +141,7 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     ]
     inputnode = pe.Node(niu.IdentityInterface(fields=inputfields), name="inputnode")
 
-    seg_rpt = pe.Node(
-        ROIsPlot(colors=["b", "magenta"], levels=[1.5, 2.5]), name="seg_rpt"
-    )
+    seg_rpt = pe.Node(ROIsPlot(colors=["b", "magenta"], levels=[1.5, 2.5]), name="seg_rpt")
 
     t1w_conform_check = pe.Node(
         niu.Function(function=_empty_report),
@@ -148,17 +150,13 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     )
 
     ds_t1w_conform_report = pe.Node(
-        DerivativesDataSink(
-            base_directory=output_dir, desc="conform", datatype="figures"
-        ),
+        DerivativesDataSink(base_directory=output_dir, desc="conform", datatype="figures"),
         name="ds_t1w_conform_report",
         run_without_submitting=True,
     )
 
     ds_t1w_dseg_mask_report = pe.Node(
-        DerivativesDataSink(
-            base_directory=output_dir, suffix="dseg", datatype="figures"
-        ),
+        DerivativesDataSink(base_directory=output_dir, suffix="dseg", datatype="figures"),
         name="ds_t1w_dseg_mask_report",
         run_without_submitting=True,
     )
@@ -177,11 +175,9 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     # fmt: on
 
     # Generate reportlets showing spatial normalization
-    tf_select = pe.Node(
-        TemplateFlowSelect(), name="tf_select", run_without_submitting=True
-    )
+    tf_select = pe.Node(TemplateFlowSelect(), name="tf_select", run_without_submitting=True)
 
-    set_tf_res = pe.Node(niu.Function(function=set_tf_resolution), name='set_tf_res')
+    set_tf_res = pe.Node(niu.Function(function=set_tf_resolution), name="set_tf_res")
     set_tf_res.inputs.sloppy = sloppy
 
     norm_msk = pe.Node(
@@ -196,9 +192,7 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     norm_rpt.inputs.after_label = "Participant"  # after
 
     ds_std_t1w_report = pe.Node(
-        DerivativesDataSink(
-            base_directory=output_dir, suffix="T1w", datatype="figures"
-        ),
+        DerivativesDataSink(base_directory=output_dir, suffix="T1w", datatype="figures"),
         name="ds_std_t1w_report",
         run_without_submitting=True,
     )
@@ -230,9 +224,7 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
         recon_report.interface._always_run = True
 
         ds_recon_report = pe.Node(
-            DerivativesDataSink(
-                base_directory=output_dir, desc="reconall", datatype="figures"
-            ),
+            DerivativesDataSink(base_directory=output_dir, desc="reconall", datatype="figures"),
             name="ds_recon_report",
             run_without_submitting=True,
         )
@@ -362,9 +354,7 @@ def init_anat_derivatives_wf(
     ds_t1w_preproc.inputs.SkullStripped = False
 
     ds_t1w_mask = pe.Node(
-        DerivativesDataSink(
-            base_directory=output_dir, desc="brain", suffix="mask", compress=True
-        ),
+        DerivativesDataSink(base_directory=output_dir, desc="brain", suffix="mask", compress=True),
         name="ds_t1w_mask",
         run_without_submitting=True,
     )
@@ -401,9 +391,7 @@ def init_anat_derivatives_wf(
     # Transforms
     if spaces.get_spaces(nonstandard=False, dim=(3,)):
         ds_std2t1w_xfm = pe.MapNode(
-            DerivativesDataSink(
-                base_directory=output_dir, to="T1w", mode="image", suffix="xfm"
-            ),
+            DerivativesDataSink(base_directory=output_dir, to="T1w", mode="image", suffix="xfm"),
             iterfield=("in_file", "from"),
             name="ds_std2t1w_xfm",
             run_without_submitting=True,
@@ -464,9 +452,7 @@ def init_anat_derivatives_wf(
 
         from smriprep.interfaces.templateflow import TemplateFlowSelect
 
-        spacesource = pe.Node(
-            SpaceDataSource(), name="spacesource", run_without_submitting=True
-        )
+        spacesource = pe.Node(SpaceDataSource(), name="spacesource", run_without_submitting=True)
         spacesource.iterables = (
             "in_tuple",
             [(s.fullname, s.spec) for s in spaces.cached.get_standard(dim=(3,))],
@@ -483,14 +469,12 @@ def init_anat_derivatives_wf(
             name="select_xfm",
             run_without_submitting=True,
         )
-        select_tpl = pe.Node(
-            TemplateFlowSelect(), name="select_tpl", run_without_submitting=True
-        )
+        select_tpl = pe.Node(TemplateFlowSelect(), name="select_tpl", run_without_submitting=True)
 
         gen_ref = pe.Node(GenerateSamplingReference(), name="gen_ref", mem_gb=0.01)
 
         # Mask T1w preproc images
-        mask_t1w = pe.Node(ApplyMask(), name='mask_t1w')
+        mask_t1w = pe.Node(ApplyMask(), name="mask_t1w")
 
         # Resample T1w-space inputs
         anat2std_t1w = pe.Node(
@@ -503,16 +487,10 @@ def init_anat_derivatives_wf(
             name="anat2std_t1w",
         )
 
-        anat2std_mask = pe.Node(
-            ApplyTransforms(interpolation="MultiLabel"), name="anat2std_mask"
-        )
-        anat2std_dseg = pe.Node(
-            ApplyTransforms(interpolation="MultiLabel"), name="anat2std_dseg"
-        )
+        anat2std_mask = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name="anat2std_mask")
+        anat2std_dseg = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name="anat2std_dseg")
         anat2std_tpms = pe.MapNode(
-            ApplyTransforms(
-                dimension=3, default_value=0, float=True, interpolation="Gaussian"
-            ),
+            ApplyTransforms(dimension=3, default_value=0, float=True, interpolation="Gaussian"),
             iterfield=["input_image"],
             name="anat2std_tpms",
         )
@@ -538,17 +516,13 @@ def init_anat_derivatives_wf(
         ds_std_mask.inputs.Type = "Brain"
 
         ds_std_dseg = pe.Node(
-            DerivativesDataSink(
-                base_directory=output_dir, suffix="dseg", compress=True
-            ),
+            DerivativesDataSink(base_directory=output_dir, suffix="dseg", compress=True),
             name="ds_std_dseg",
             run_without_submitting=True,
         )
 
         ds_std_tpms = pe.Node(
-            DerivativesDataSink(
-                base_directory=output_dir, suffix="probseg", compress=True
-            ),
+            DerivativesDataSink(base_directory=output_dir, suffix="probseg", compress=True),
             name="ds_std_tpms",
             run_without_submitting=True,
         )
@@ -597,23 +571,25 @@ def init_anat_derivatives_wf(
         workflow.connect(
             # Connect apply transforms nodes
             [
-                (gen_ref, n, [('out_file', 'reference_image')])
+                (gen_ref, n, [("out_file", "reference_image")])
                 for n in (anat2std_t1w, anat2std_mask, anat2std_dseg, anat2std_tpms)
             ]
             + [
-                (select_xfm, n, [('anat2std_xfm', 'transforms')])
+                (select_xfm, n, [("anat2std_xfm", "transforms")])
                 for n in (anat2std_t1w, anat2std_mask, anat2std_dseg, anat2std_tpms)
             ]
             # Connect the source_file input of these datasinks
             + [
-                (inputnode, n, [('source_files', 'source_file')])
+                (inputnode, n, [("source_files", "source_file")])
                 for n in (ds_std_t1w, ds_std_mask, ds_std_dseg, ds_std_tpms)
             ]
             # Connect the space input of these datasinks
             + [
-                (spacesource, n, [
-                    ('space', 'space'), ('cohort', 'cohort'), ('resolution', 'resolution')
-                ])
+                (
+                    spacesource,
+                    n,
+                    [("space", "space"), ("cohort", "cohort"), ("resolution", "resolution")],
+                )
                 for n in (ds_std_t1w, ds_std_mask, ds_std_dseg, ds_std_tpms)
             ]
         )
@@ -625,12 +601,8 @@ def init_anat_derivatives_wf(
     from niworkflows.interfaces.surf import Path2BIDS
 
     # FS native space transforms
-    lta2itk_fwd = pe.Node(
-        ConcatenateXFMs(), name="lta2itk_fwd", run_without_submitting=True
-    )
-    lta2itk_inv = pe.Node(
-        ConcatenateXFMs(), name="lta2itk_inv", run_without_submitting=True
-    )
+    lta2itk_fwd = pe.Node(ConcatenateXFMs(), name="lta2itk_fwd", run_without_submitting=True)
+    lta2itk_inv = pe.Node(ConcatenateXFMs(), name="lta2itk_inv", run_without_submitting=True)
     ds_t1w_fsnative = pe.Node(
         DerivativesDataSink(
             base_directory=output_dir,
@@ -667,9 +639,7 @@ def init_anat_derivatives_wf(
     )
     # Parcellations
     ds_t1w_fsaseg = pe.Node(
-        DerivativesDataSink(
-            base_directory=output_dir, desc="aseg", suffix="dseg", compress=True
-        ),
+        DerivativesDataSink(base_directory=output_dir, desc="aseg", suffix="dseg", compress=True),
         name="ds_t1w_fsaseg",
         run_without_submitting=True,
     )
@@ -706,6 +676,7 @@ def init_anat_derivatives_wf(
 def _set_tpl_res(space, resolution):
     if space in ("UNCInfant", "Fischer344"):
         from nipype.interfaces.base import Undefined
+
         return Undefined
     try:
         return int(resolution)

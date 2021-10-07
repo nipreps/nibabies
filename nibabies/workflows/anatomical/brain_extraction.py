@@ -97,9 +97,7 @@ def init_infant_brain_extraction_wf(
 
     if not template_specs.get("cohort"):
         if age_months is None:
-            raise KeyError(
-                f"Age or cohort for {skull_strip_template} must be provided!"
-            )
+            raise KeyError(f"Age or cohort for {skull_strip_template} must be provided!")
         template_specs["cohort"] = cohort_by_months(skull_strip_template, age_months)
 
     tpl_target_path = get_template(
@@ -116,9 +114,7 @@ def init_infant_brain_extraction_wf(
 
     tpl_brainmask_path = get_template(
         skull_strip_template, label="brain", suffix="probseg", **template_specs
-    ) or get_template(
-        skull_strip_template, desc="brain", suffix="mask", **template_specs
-    )
+    ) or get_template(skull_strip_template, desc="brain", suffix="mask", **template_specs)
 
     tpl_regmask_path = get_template(
         skull_strip_template,
@@ -132,9 +128,7 @@ def init_infant_brain_extraction_wf(
 
     inputnode = pe.Node(niu.IdentityInterface(fields=["in_t2w"]), name="inputnode")
     outputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=["t2w_preproc", "t2w_brain", "out_mask", "out_probmap"]
-        ),
+        niu.IdentityInterface(fields=["t2w_preproc", "t2w_brain", "out_mask", "out_probmap"]),
         name="outputnode",
     )
 
@@ -164,9 +158,7 @@ def init_infant_brain_extraction_wf(
     ants_params = "testing" if sloppy else "precise"
     norm = pe.Node(
         Registration(
-            from_file=pkgr_fn(
-                "nibabies.data", f"antsBrainExtraction_{ants_params}.json"
-            )
+            from_file=pkgr_fn("nibabies.data", f"antsBrainExtraction_{ants_params}.json")
         ),
         name="norm",
         n_procs=omp_nthreads,

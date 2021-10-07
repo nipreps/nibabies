@@ -108,9 +108,7 @@ The following template{tpls} selected for spatial normalization:
             ants_ver=ANTsInfo.version() or "(version unknown)",
             targets="%s standard space%s"
             % (
-                defaultdict(
-                    "several".format, {1: "one", 2: "two", 3: "three", 4: "four"}
-                )[ntpls],
+                defaultdict("several".format, {1: "one", 2: "two", 3: "three", 4: "four"})[ntpls],
                 "s" * (ntpls != 1),
             ),
             targets_id=", ".join(templates),
@@ -164,9 +162,9 @@ The following template{tpls} selected for spatial normalization:
     split_desc = pe.Node(TemplateDesc(), run_without_submitting=True, name="split_desc")
 
     # Nibabies hacks
-    set_tf_res = pe.Node(niu.Function(function=set_tf_resolution), name='set_tf_res')
+    set_tf_res = pe.Node(niu.Function(function=set_tf_resolution), name="set_tf_res")
     set_tf_res.inputs.sloppy = sloppy
-    set_reg_res = pe.Node(niu.Function(function=set_reg_resolution), name='set_reg_res')
+    set_reg_res = pe.Node(niu.Function(function=set_reg_resolution), name="set_reg_res")
 
     tf_select = pe.Node(
         TemplateFlowSelect(),
@@ -205,9 +203,7 @@ The following template{tpls} selected for spatial normalization:
     std_dseg = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name="std_dseg")
 
     std_tpms = pe.MapNode(
-        ApplyTransforms(
-            dimension=3, default_value=0, float=True, interpolation="Gaussian"
-        ),
+        ApplyTransforms(dimension=3, default_value=0, float=True, interpolation="Gaussian"),
         iterfield=["input_image"],
         name="std_tpms",
     )

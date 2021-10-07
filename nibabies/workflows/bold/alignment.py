@@ -45,14 +45,14 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     # For now, just use the aseg
 
     workflow = Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=["MNIInfant_aseg"]), name='inputnode')
+    inputnode = pe.Node(niu.IdentityInterface(fields=["MNIInfant_aseg"]), name="inputnode")
     outputnode = pe.Node(
         niu.IdentityInterface(fields=["MNIInfant_rois", "MNI152_rois"]),
-        name='outputnode',
+        name="outputnode",
     )
     # Fetch the HCP volumetric template
     tpl_rois = get_template(
-        'MNI152NLin6Asym', resolution=2, atlas="HCP", suffix="dseg", raise_empty=True
+        "MNI152NLin6Asym", resolution=2, atlas="HCP", suffix="dseg", raise_empty=True
     )
     outputnode.inputs.MNI152_rois = tpl_rois
 
@@ -69,7 +69,7 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     # )
 
     subcortical_labels = resource_filename(
-        'nibabies', 'data/FreeSurferSubcorticalLabelTableLut.txt'
+        "nibabies", "data/FreeSurferSubcorticalLabelTableLut.txt"
     )
     refine_bold_rois = pe.Node(
         VolumeLabelImport(label_list_file=subcortical_labels, discard_others=True),
@@ -86,7 +86,7 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     return workflow
 
 
-def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_alignment_wf'):
+def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name="subcortical_mni_alignment_wf"):
     """
     Align individual subcortical structures into MNI space.
 
@@ -131,6 +131,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
         VolumeAllLabelsToROIs,
         VolumeLabelExportTable,
     )
+
     # reuse saved atlas to atlas transform
     atlas_xfm = resource_filename("nibabies", "data/MNIInfant_to_MNI1526NLinAsym.mat")
     inputnode = pe.Node(
@@ -139,13 +140,13 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=["subcortical_volume", "subcortical_labels"]),
-        name='outputnode',
+        name="outputnode",
     )
 
     applyxfm_atlas = pe.Node(fsl.ApplyXFM(in_matrix_file=atlas_xfm), name="applyxfm_atlas")
     vol_resample = pe.Node(
         VolumeAffineResample(method="ENCLOSING_VOXEL", flirt=True, affine=atlas_xfm),
-        name="vol_resample"
+        name="vol_resample",
     )
     subj_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name="subj_rois")
     split_rois = pe.Node(fsl.Split(dimension="t"), name="split_rois")
@@ -172,48 +173,48 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     applyxfm_roi = pe.MapNode(
         fsl.ApplyXFM(interp="spline"),
         iterfield=["reference", "in_matrix_file"],
-        name='applyxfm_roi',
+        name="applyxfm_roi",
         mem_gb=4,
     )
     bold_mask_roi = pe.MapNode(
         fsl.ApplyMask(),
         iterfield=["in_file", "mask_file"],
-        name='bold_mask_roi',
+        name="bold_mask_roi",
     )
     mul_roi = pe.MapNode(
         fsl.BinaryMaths(operation="mul"),
         iterfield=["in_file", "operand_value"],
-        name='mul_roi',
+        name="mul_roi",
     )
     mul_atlas_roi = pe.MapNode(
         fsl.BinaryMaths(operation="mul"),
         iterfield=["in_file", "operand_value"],
-        name='mul_atlas_roi',
+        name="mul_atlas_roi",
     )
     vol_label = pe.MapNode(
         VolumeLabelImport(drop_unused_labels=True),
         iterfield=["in_file"],
-        name='vol_label',
+        name="vol_label",
     )
     vol_atlas_label = pe.MapNode(
         VolumeLabelImport(drop_unused_labels=True),
         iterfield=["in_file"],
-        name='vol_atlas_label',
+        name="vol_atlas_label",
     )
     create_dtseries = pe.MapNode(
         CiftiCreateDenseTimeseries(),
         iterfield=["volume_data", "volume_structure_labels"],
-        name='create_dtseries',
+        name="create_dtseries",
     )
     create_label = pe.MapNode(
         CiftiCreateLabel(),
         iterfield=["volume_label", "structure_label_volume"],
-        name='create_label',
+        name="create_label",
     )
     dilate = pe.MapNode(
         CiftiDilate(direction="COLUMN", surface_distance=0, volume_distance=10),
         iterfield=["in_file"],
-        name="dilate"
+        name="dilate",
     )
     resample = pe.MapNode(
         CiftiResample(
@@ -224,26 +225,26 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
             volume_predilate=10,
         ),
         iterfield=["in_file", "template"],
-        name='resample',
+        name="resample",
     )
     smooth = pe.MapNode(
         CiftiSmooth(direction="COLUMN", fix_zeros_vol=True, sigma_surf=0, sigma_vol=vol_sigma),
         iterfield=["in_file"],
-        name="smooth"
+        name="smooth",
     )
     separate = pe.MapNode(
-        CiftiSeparate(direction="COLUMN", volume_all_file='volume_all.nii.gz'),
+        CiftiSeparate(direction="COLUMN", volume_all_file="volume_all.nii.gz"),
         iterfield=["in_file"],
-        name="separate"
+        name="separate",
     )
     fmt_agg_rois = pe.Node(
         niu.Function(
             function=format_agg_rois,
             output_names=["first_image", "op_files", "op_string"],
         ),
-        name='fmt_agg_rois',
+        name="fmt_agg_rois",
     )
-    agg_rois = pe.Node(fsl.MultiImageMaths(), name='agg_rois')
+    agg_rois = pe.Node(fsl.MultiImageMaths(), name="agg_rois")
     merge_rois = pe.Node(MergeROIs(), name="merge_rois")
 
     workflow = Workflow(name=name)
@@ -328,7 +329,7 @@ def parse_roi_labels(label_file):
         if idx % 2 == 0:
             structs.append(line.strip())
         else:
-            label_ids.append(int(line.split(' ', 1)[0]))
+            label_ids.append(int(line.split(" ", 1)[0]))
     return structs, label_ids
 
 
@@ -360,7 +361,25 @@ def drop_labels(in_file):
 
     # FreeSurfer LUT values
     expected_labels = {
-        8, 10, 11, 12, 13, 16, 17, 18, 26, 28, 47, 49, 50, 51, 52, 53, 54, 58, 60,
+        8,
+        10,
+        11,
+        12,
+        13,
+        16,
+        17,
+        18,
+        26,
+        28,
+        47,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        58,
+        60,
     }
     img = _reorient_image(nb.load(in_file), orientation="LAS")
     hdr = img.header

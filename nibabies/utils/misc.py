@@ -23,8 +23,8 @@ def fix_multi_source_name(in_files):
     p = Path(filename_to_list(in_files)[0])
     # subject_label = p.name.split("_", 1)[0].split("-")[1]
     try:
-        subj = re.search(r'(?<=^sub-)[a-zA-Z0-9]*', p.name).group()
-        suffix = re.search(r'(?<=_)\w+(?=\.)', p.name).group()
+        subj = re.search(r"(?<=^sub-)[a-zA-Z0-9]*", p.name).group()
+        suffix = re.search(r"(?<=_)\w+(?=\.)", p.name).group()
     except AttributeError:
         raise AttributeError("Could not extract BIDS information")
     return str(p.parent / f"sub-{subj}_{suffix}.nii.gz")
@@ -33,11 +33,12 @@ def fix_multi_source_name(in_files):
 def check_deps(workflow):
     """Make sure dependencies are present in this system."""
     from nipype.utils.filemanip import which
+
     return sorted(
         (node.interface.__class__.__name__, node.interface._cmd)
         for node in workflow._get_all_nodes()
-        if (hasattr(node.interface, '_cmd')
-            and which(node.interface._cmd.split()[0]) is None))
+        if (hasattr(node.interface, "_cmd") and which(node.interface._cmd.split()[0]) is None)
+    )
 
 
 def cohort_by_months(template, months):
@@ -45,7 +46,7 @@ def cohort_by_months(template, months):
     Produce a recommended cohort based on partipants age
     """
     cohort_key = {
-        'MNIInfant': (
+        "MNIInfant": (
             # upper bound of template | cohort
             2,  # 1
             5,  # 2
@@ -59,7 +60,7 @@ def cohort_by_months(template, months):
             44,  # 10
             60,  # 11
         ),
-        'UNCInfant': (
+        "UNCInfant": (
             8,  # 1
             12,  # 2
             24,  # 3
@@ -103,7 +104,8 @@ def combine_meepi_source(in_files):
     """
     import os
     from nipype.utils.filemanip import filename_to_list
+
     base, in_file = os.path.split(filename_to_list(in_files)[0])
-    entities = [ent for ent in in_file.split('_') if not ent.startswith('echo-')]
-    basename = '_'.join(entities)
+    entities = [ent for ent in in_file.split("_") if not ent.startswith("echo-")]
+    basename = "_".join(entities)
     return os.path.join(base, basename)

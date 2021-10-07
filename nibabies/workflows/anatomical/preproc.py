@@ -76,9 +76,7 @@ def init_anat_average_wf(
 
     inputnode = pe.Node(niu.IdentityInterface(fields=["in_files"]), name="inputnode")
     outputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=["out_file", "valid_list", "realign_xfms", "out_report"]
-        ),
+        niu.IdentityInterface(fields=["out_file", "valid_list", "realign_xfms", "out_report"]),
         name="outputnode",
     )
 
@@ -94,9 +92,7 @@ def init_anat_average_wf(
     split = pe.MapNode(SplitSeries(), iterfield="in_file", name="split")
 
     # 3. INU correction of all independent volumes
-    clip_preinu = pe.MapNode(
-        IntensityClip(p_min=50), iterfield="in_file", name="clip_preinu"
-    )
+    clip_preinu = pe.MapNode(IntensityClip(p_min=50), iterfield="in_file", name="clip_preinu")
     correct_inu = pe.MapNode(
         N4BiasFieldCorrection(
             dimension=3,
@@ -140,9 +136,7 @@ def init_anat_average_wf(
 
     if num_maps == 1:
         get1st = pe.Node(niu.Select(index=[0]), name="get1st")
-        outputnode.inputs.realign_xfms = [
-            pkgr("smriprep", "data/itkIdentityTransform.txt")
-        ]
+        outputnode.inputs.realign_xfms = [pkgr("smriprep", "data/itkIdentityTransform.txt")]
         # fmt:off
         wf.connect([
             (conform, get1st, [("out_file", "inlist")]),

@@ -16,7 +16,7 @@ from ... import config
 LOGGER = config.loggers.workflow
 
 
-def init_bold_stc_wf(metadata, name='bold_stc_wf'):
+def init_bold_stc_wf(metadata, name="bold_stc_wf"):
     """
     Create a workflow for :abbr:`STC (slice-timing correction)`.
 
@@ -61,21 +61,26 @@ def init_bold_stc_wf(metadata, name='bold_stc_wf'):
     workflow.__desc__ = """\
 BOLD runs were slice-time corrected using `3dTshift` from
 AFNI {afni_ver} [@afni, RRID:SCR_005927].
-""".format(afni_ver=''.join(['%02d' % v for v in afni.Info().version() or []]))
-    inputnode = pe.Node(niu.IdentityInterface(fields=['bold_file', 'skip_vols']), name='inputnode')
-    outputnode = pe.Node(niu.IdentityInterface(fields=['stc_file']), name='outputnode')
+""".format(
+        afni_ver="".join(["%02d" % v for v in afni.Info().version() or []])
+    )
+    inputnode = pe.Node(niu.IdentityInterface(fields=["bold_file", "skip_vols"]), name="inputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=["stc_file"]), name="outputnode")
 
-    LOGGER.log(25, 'Slice-timing correction will be included.')
+    LOGGER.log(25, "Slice-timing correction will be included.")
 
     # It would be good to fingerprint memory use of afni.TShift
     slice_timing_correction = pe.Node(
-        afni.TShift(outputtype='NIFTI_GZ',
-                    tr='{}s'.format(metadata["RepetitionTime"]),
-                    slice_timing=metadata['SliceTiming'],
-                    slice_encoding_direction=metadata.get('SliceEncodingDirection', 'k')),
-        name='slice_timing_correction')
+        afni.TShift(
+            outputtype="NIFTI_GZ",
+            tr="{}s".format(metadata["RepetitionTime"]),
+            slice_timing=metadata["SliceTiming"],
+            slice_encoding_direction=metadata.get("SliceEncodingDirection", "k"),
+        ),
+        name="slice_timing_correction",
+    )
 
-    copy_xform = pe.Node(CopyXForm(), name='copy_xform', mem_gb=0.1)
+    copy_xform = pe.Node(CopyXForm(), name="copy_xform", mem_gb=0.1)
 
     # fmt: off
     workflow.connect([

@@ -98,9 +98,7 @@ A total of {num_t1w} T1w and {num_t2w} T2w images were found within the input
 BIDS dataset."""
 
     inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=["t1w", "t2w", "subject_id", "subjects_dir"]
-        ),  # FLAIR / ROI?
+        niu.IdentityInterface(fields=["t1w", "t2w", "subject_id", "subjects_dir"]),  # FLAIR / ROI?
         name="inputnode",
     )
     outputnode = pe.Node(
@@ -146,11 +144,7 @@ The T1-weighted (T1w) image was corrected for intensity non-uniformity (INU)
     desc += """\
 with `N4BiasFieldCorrection` [@n4], distributed with ANTs {ants_ver} \
 [@ants, RRID:SCR_004757]"""
-    desc += (
-        ".\n"
-        if num_t1w > 1
-        else ", and used as T1w-reference throughout the workflow.\n"
-    )
+    desc += ".\n" if num_t1w > 1 else ", and used as T1w-reference throughout the workflow.\n"
 
     desc += """\
 The T1w-reference was then skull-stripped with a modified implementation of
@@ -167,9 +161,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     )
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(
-        freesurfer=freesurfer,
-        output_dir=output_dir,
-        sloppy=sloppy
+        freesurfer=freesurfer, output_dir=output_dir, sloppy=sloppy
     )
 
     anat_derivatives_wf = init_anat_derivatives_wf(

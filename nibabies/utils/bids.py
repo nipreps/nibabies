@@ -1,4 +1,3 @@
-
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Utilities to handle BIDS inputs."""
@@ -11,12 +10,17 @@ import sys
 def write_bidsignore(deriv_dir):
     # TODO: Port to niworkflows
     bids_ignore = (
-        "*.html", "logs/", "figures/",  # Reports
+        "*.html",
+        "logs/",
+        "figures/",  # Reports
         "*_xfm.*",  # Unspecified transform files
         "*.surf.gii",  # Unspecified structural outputs
         # Unspecified functional outputs
-        "*_boldref.nii.gz", "*_bold.func.gii",
-        "*_mixing.tsv", "*_AROMAnoiseICs.csv", "*_timeseries.tsv",
+        "*_boldref.nii.gz",
+        "*_bold.func.gii",
+        "*_mixing.tsv",
+        "*_AROMAnoiseICs.csv",
+        "*_timeseries.tsv",
     )
     ignore_file = Path(deriv_dir) / ".bidsignore"
 
@@ -33,44 +37,45 @@ def write_derivative_description(bids_dir, deriv_dir):
     bids_dir = Path(bids_dir)
     deriv_dir = Path(deriv_dir)
     desc = {
-        'Name': 'NiBabies: Neuroimaging preprocessing workflows for babies',
-        'BIDSVersion': '1.4.0',
-        'DatasetType': 'derivative',
-        'GeneratedBy': [{
-            'Name': __packagename__,
-            'Version': __version__,
-            'CodeURL': DOWNLOAD_URL,
-        }],
-        'HowToAcknowledge': 'TODO',
+        "Name": "NiBabies: Neuroimaging preprocessing workflows for babies",
+        "BIDSVersion": "1.4.0",
+        "DatasetType": "derivative",
+        "GeneratedBy": [
+            {
+                "Name": __packagename__,
+                "Version": __version__,
+                "CodeURL": DOWNLOAD_URL,
+            }
+        ],
+        "HowToAcknowledge": "TODO",
     }
 
     # Keys that can only be set by environment
-    if 'NIBABIES_DOCKER_TAG' in os.environ:
-        desc['GeneratedBy'][0]['Container'] = {
+    if "NIBABIES_DOCKER_TAG" in os.environ:
+        desc["GeneratedBy"][0]["Container"] = {
             "Type": "docker",
-            "Tag": f"nipreps/fmriprep:{os.environ['NIBABIES_DOCKER_TAG']}"
+            "Tag": f"nipreps/fmriprep:{os.environ['NIBABIES_DOCKER_TAG']}",
         }
-    if 'NIBABIES_SINGULARITY_URL' in os.environ:
-        desc['GeneratedBy'][0]['Container'] = {
+    if "NIBABIES_SINGULARITY_URL" in os.environ:
+        desc["GeneratedBy"][0]["Container"] = {
             "Type": "singularity",
-            "URI": os.getenv('NIBABIES_SINGULARITY_URL')
+            "URI": os.getenv("NIBABIES_SINGULARITY_URL"),
         }
 
     # Keys deriving from source dataset
     orig_desc = {}
-    fname = bids_dir / 'dataset_description.json'
+    fname = bids_dir / "dataset_description.json"
     if fname.exists():
         orig_desc = json.loads(fname.read_text())
 
-    if 'DatasetDOI' in orig_desc:
-        desc['SourceDatasets'] = [{
-            'URL': f'https://doi.org/{orig_desc["DatasetDOI"]}',
-            'DOI': orig_desc['DatasetDOI']
-        }]
-    if 'License' in orig_desc:
-        desc['License'] = orig_desc['License']
+    if "DatasetDOI" in orig_desc:
+        desc["SourceDatasets"] = [
+            {"URL": f'https://doi.org/{orig_desc["DatasetDOI"]}', "DOI": orig_desc["DatasetDOI"]}
+        ]
+    if "License" in orig_desc:
+        desc["License"] = orig_desc["License"]
 
-    Path.write_text(deriv_dir / 'dataset_description.json', json.dumps(desc, indent=4))
+    Path.write_text(deriv_dir / "dataset_description.json", json.dumps(desc, indent=4))
 
 
 def extract_entities(file_list):
@@ -92,9 +97,7 @@ def extract_entities(file_list):
 
     entities = defaultdict(list)
     for e, v in [
-        ev_pair
-        for f in listify(file_list)
-        for ev_pair in parse_file_entities(f).items()
+        ev_pair for f in listify(file_list) for ev_pair in parse_file_entities(f).items()
     ]:
         entities[e].append(v)
 
@@ -103,9 +106,8 @@ def extract_entities(file_list):
         if len(inlist) == 1:
             return inlist[0]
         return inlist
-    return {
-        k: _unique(v) for k, v in entities.items()
-    }
+
+    return {k: _unique(v) for k, v in entities.items()}
 
 
 def group_bolds_ref(*, layout, subject):
@@ -152,7 +154,14 @@ def group_bolds_ref(*, layout, subject):
     # list of lists containing filenames that apply per combination
     files = []
 
-    for ses, suffix in sorted(product(layout.get_sessions() or (None,), {'bold', })):
+    for ses, suffix in sorted(
+        product(
+            layout.get_sessions() or (None,),
+            {
+                "bold",
+            },
+        )
+    ):
         # bold files same session
         bolds = layout.get(suffix=suffix, session=ses, **base_entities)
 
@@ -193,6 +202,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
     # Ignore issues and warnings that should not influence NiBabies
     import tempfile
     import subprocess
+
     validator_config_dict = {
         "ignore": [
             "EVENTS_COLUMN_ONSET",
@@ -236,41 +246,46 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
             "MALFORMED_BVEC",
             "MALFORMED_BVAL",
             "MISSING_TSV_COLUMN_EEG_ELECTRODES",
-            "MISSING_SESSION"
+            "MISSING_SESSION",
         ],
         "error": ["NO_T1W"],
-        "ignoredFiles": ['/dataset_description.json', '/participants.tsv']
+        "ignoredFiles": ["/dataset_description.json", "/participants.tsv"],
     }
     # Limit validation only to data from requested participants
     if participant_label:
-        all_subs = set([s.name[4:] for s in bids_dir.glob('sub-*')])
-        selected_subs = set([s[4:] if s.startswith('sub-') else s
-                             for s in participant_label])
+        all_subs = set([s.name[4:] for s in bids_dir.glob("sub-*")])
+        selected_subs = set([s[4:] if s.startswith("sub-") else s for s in participant_label])
         bad_labels = selected_subs.difference(all_subs)
         if bad_labels:
-            error_msg = 'Data for requested participant(s) label(s) not found. Could ' \
-                        'not find data for participant(s): %s. Please verify the requested ' \
-                        'participant labels.'
-            if exec_env == 'docker':
-                error_msg += ' This error can be caused by the input data not being ' \
-                             'accessible inside the docker container. Please make sure all ' \
-                             'volumes are mounted properly (see https://docs.docker.com/' \
-                             'engine/reference/commandline/run/#mount-volume--v---read-only)'
-            if exec_env == 'singularity':
-                error_msg += ' This error can be caused by the input data not being ' \
-                             'accessible inside the singularity container. Please make sure ' \
-                             'all paths are mapped properly (see https://www.sylabs.io/' \
-                             'guides/3.0/user-guide/bind_paths_and_mounts.html)'
-            raise RuntimeError(error_msg % ','.join(bad_labels))
+            error_msg = (
+                "Data for requested participant(s) label(s) not found. Could "
+                "not find data for participant(s): %s. Please verify the requested "
+                "participant labels."
+            )
+            if exec_env == "docker":
+                error_msg += (
+                    " This error can be caused by the input data not being "
+                    "accessible inside the docker container. Please make sure all "
+                    "volumes are mounted properly (see https://docs.docker.com/"
+                    "engine/reference/commandline/run/#mount-volume--v---read-only)"
+                )
+            if exec_env == "singularity":
+                error_msg += (
+                    " This error can be caused by the input data not being "
+                    "accessible inside the singularity container. Please make sure "
+                    "all paths are mapped properly (see https://www.sylabs.io/"
+                    "guides/3.0/user-guide/bind_paths_and_mounts.html)"
+                )
+            raise RuntimeError(error_msg % ",".join(bad_labels))
 
         ignored_subs = all_subs.difference(selected_subs)
         if ignored_subs:
             for sub in ignored_subs:
                 validator_config_dict["ignoredFiles"].append("/sub-%s/**" % sub)
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.json') as temp:
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as temp:
         temp.write(json.dumps(validator_config_dict))
         temp.flush()
         try:
-            subprocess.check_call(['bids-validator', str(bids_dir), '-c', temp.name])
+            subprocess.check_call(["bids-validator", str(bids_dir), "-c", temp.name])
         except FileNotFoundError:
             print("bids-validator does not appear to be installed", file=sys.stderr)

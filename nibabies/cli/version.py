@@ -41,9 +41,7 @@ def check_latest():
 
     if latest is None or outdated is True:
         try:
-            response = requests.get(
-                url="https://pypi.org/pypi/nibabies/json", timeout=1.0
-            )
+            response = requests.get(url="https://pypi.org/pypi/nibabies/json", timeout=1.0)
         except Exception:
             response = None
 
@@ -57,9 +55,7 @@ def check_latest():
 
     if cachefile is not None and latest is not None:
         try:
-            cachefile.write_text(
-                "|".join(("%s" % latest, datetime.now().strftime(DATE_FMT)))
-            )
+            cachefile.write_text("|".join(("%s" % latest, datetime.now().strftime(DATE_FMT))))
         except Exception:
             pass
 
