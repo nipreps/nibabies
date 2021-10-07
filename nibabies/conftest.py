@@ -6,18 +6,18 @@ from pkg_resources import resource_filename
 import pytest
 
 FILES = (
-    'functional.nii',
-    'anatomical.nii',
-    'func.dlabel.nii',
-    'func.dtseries.nii',
-    'epi.nii',
-    'T1w.nii',
-    'func_to_struct.mat',
-    'atlas.nii',
-    'label_list.txt',
-    'sub-01_run-01_echo-1_bold.nii.gz',
-    'sub-01_run-01_echo-2_bold.nii.gz',
-    'sub-01_run-01_echo-3_bold.nii.gz',
+    "functional.nii",
+    "anatomical.nii",
+    "func.dlabel.nii",
+    "func.dtseries.nii",
+    "epi.nii",
+    "T1w.nii",
+    "func_to_struct.mat",
+    "atlas.nii",
+    "label_list.txt",
+    "sub-01_run-01_echo-1_bold.nii.gz",
+    "sub-01_run-01_echo-2_bold.nii.gz",
+    "sub-01_run-01_echo-3_bold.nii.gz",
 )
 
 
