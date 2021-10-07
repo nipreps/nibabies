@@ -3,8 +3,13 @@ import logging
 from pathlib import Path
 
 from nipype.interfaces.base import (
-    traits, File, Directory, CommandLine,
-    isdefined, CommandLineInputSpec, TraitedSpec
+    traits,
+    File,
+    Directory,
+    CommandLine,
+    isdefined,
+    CommandLineInputSpec,
+    TraitedSpec,
 )
 
 from ..utils.misc import check_total_memory
@@ -17,7 +22,10 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
         desc="path to subjects directory",
     )
     subject_id = traits.Str(
-        "recon_all", argstr="--subject %s", desc="subject name", required=True,
+        "recon_all",
+        argstr="--subject %s",
+        desc="subject name",
+        required=True,
     )
     t1_file = File(
         exists=True,
@@ -26,25 +34,25 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
     age = traits.Range(
         low=0,
         high=24,
-        argstr='--age %d',
+        argstr="--age %d",
         desc="Subject age in months",
     )
     outdir = Directory(
-        argstr='--outdir %s',
+        argstr="--outdir %s",
         desc="Output directory where the reconall results are written."
-             "The default location is <subjects_dir>/<subject_id>",
+        "The default location is <subjects_dir>/<subject_id>",
     )
     mask_file = traits.File(
-        argstr='--masked %s',
+        argstr="--masked %s",
         desc="Skull-stripped and INU-corrected T1 (skips skullstripping step)",
     )
     newborn = traits.Bool(
-        xor=['age'],
-        argstr='--newborn',
+        xor=["age"],
+        argstr="--newborn",
         help="Use newborns from set",
     )
     aseg_file = File(
-        argstr='--segfile %s',
+        argstr="--segfile %s",
         desc="Pre-computed segmentation file",
     )
 
@@ -59,7 +67,7 @@ class InfantReconAll(CommandLine):
     Runs the infant recon all pipeline
     """
 
-    _cmd = 'infant_recon_all'
+    _cmd = "infant_recon_all"
     input_spec = InfantReconAllInputSpec
     output_spec = InfantReconAllOutputSpec
     _no_run = False
@@ -69,7 +77,7 @@ class InfantReconAll(CommandLine):
         cmd = super().cmdline
         # check if previously run
         if isdefined(self.inputs.outdir):
-            logdir = Path(self.inputs.outdir) / 'log'
+            logdir = Path(self.inputs.outdir) / "log"
             if logdir.exists():
                 try:
                     log = sorted(list(logdir.glob("summary.*.log")))[0]
@@ -95,28 +103,28 @@ class InfantReconAll(CommandLine):
                     "either define the input or unset the environmental variable."
                 )
             # T1 image is expected to be in a specific location if no mask is present
-            if not (subjdir / 'mprage.nii.gz').exists() and not (subjdir / 'mprage.mgz').exists():
+            if not (subjdir / "mprage.nii.gz").exists() and not (subjdir / "mprage.mgz").exists():
                 if isdefined(self.inputs.t1_file):
-                    Path(self.inputs.t1_file).symlink_to(subjdir / 'mprage.nii.gz')
+                    Path(self.inputs.t1_file).symlink_to(subjdir / "mprage.nii.gz")
                 elif not isdefined(self.inputs.mask_file):
                     raise RuntimeError("Neither T1 or mask present!")
         # warn users that this might fail...
         if not check_total_memory(recommended_gb=20):
-            logging.getLogger('nipype.interface').warning(
+            logging.getLogger("nipype.interface").warning(
                 f"For best results, run {self._cmd} with at least 20GB available RAM."
             )
         return super()._run_interface(runtime)
 
     def _list_outputs(self):
         outputs = self._outputs().get()
-        outputs['subject_id'] = self.inputs.subject_id
+        outputs["subject_id"] = self.inputs.subject_id
         outputs["outdir"] = self.inputs.outdir
         return outputs
 
 
 def _set_subjects_dir():
-    subjdir = os.getenv('SUBJECTS_DIR')
+    subjdir = os.getenv("SUBJECTS_DIR")
     if not subjdir:
         subjdir = os.getcwd()
-        os.environ['SUBJECTS_DIR'] = subjdir
+        os.environ["SUBJECTS_DIR"] = subjdir
     return subjdir

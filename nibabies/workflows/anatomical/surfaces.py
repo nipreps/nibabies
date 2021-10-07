@@ -41,7 +41,7 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
         name="outputnode",
     )
 
-    gen_recon_outdir = pe.Node(niu.Function(function=_gen_recon_dir), name='gen_recon_outdir')
+    gen_recon_outdir = pe.Node(niu.Function(function=_gen_recon_dir), name="gen_recon_outdir")
 
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
@@ -51,22 +51,24 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
     # 8b40551f096294cc6603ce928317b8df70bce23e/infant/infant_recon_all#L744
     # TODO: calculate full anat -> fsnative transform?
     get_tal_lta = pe.Node(
-        niu.Function(function=_get_talairch_lta), name="get_tal_xfm",
+        niu.Function(function=_get_talairch_lta),
+        name="get_tal_xfm",
     )
     fsnative2anat_xfm = pe.Node(
-        LTAConvert(out_lta=True, invert=True), name="fsnative2anat_xfm",
+        LTAConvert(out_lta=True, invert=True),
+        name="fsnative2anat_xfm",
     )
 
     # convert generated surfaces to GIFTIs
     gifti_surface_wf = init_gifti_surface_wf()
 
-    get_aseg = pe.Node(niu.Function(function=_get_aseg), name='get_aseg')
+    get_aseg = pe.Node(niu.Function(function=_get_aseg), name="get_aseg")
     get_aparc = pe.Node(niu.Function(function=_get_aparc), name="get_aparc")
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     if use_aseg:
         # TODO: Add precomputed segmentation upon new babyFS rel
-        wf.connect(inputnode, 'anat_aseg', recon, 'aseg_file')
+        wf.connect(inputnode, "anat_aseg", recon, "aseg_file")
 
     # fmt: off
     wf.connect([

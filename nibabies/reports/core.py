@@ -26,6 +26,7 @@ class Report(_Report):
 # The following are the interface used directly by NiBabies
 #
 
+
 def run_reports(
     out_dir,
     subject_label,
@@ -72,9 +73,7 @@ def generate_reports(
 
         logger = logging.getLogger("cli")
         error_list = ", ".join(
-            "%s (%d)" % (subid, err)
-            for subid, err in zip(subject_list, report_errors)
-            if err
+            "%s (%d)" % (subid, err) for subid, err in zip(subject_list, report_errors) if err
         )
         logger.error(
             "Preprocessing did not finish successfully. Errors occurred while processing "

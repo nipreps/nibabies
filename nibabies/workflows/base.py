@@ -68,26 +68,18 @@ def init_nibabies_wf():
         single_subject_wf = init_single_subject_wf(subject_id)
 
         single_subject_wf.config["execution"]["crashdump_dir"] = str(
-            config.execution.nibabies_dir
-            / f"sub-{subject_id}"
-            / "log"
-            / config.execution.run_uuid
+            config.execution.nibabies_dir / f"sub-{subject_id}" / "log" / config.execution.run_uuid
         )
         for node in single_subject_wf._get_all_nodes():
             node.config = deepcopy(single_subject_wf.config)
         if freesurfer:
-            nibabies_wf.connect(
-                fsdir, "subjects_dir", single_subject_wf, "inputnode.subjects_dir"
-            )
+            nibabies_wf.connect(fsdir, "subjects_dir", single_subject_wf, "inputnode.subjects_dir")
         else:
             nibabies_wf.add_nodes([single_subject_wf])
 
         # Dump a copy of the config file into the log directory
         log_dir = (
-            config.execution.nibabies_dir
-            / f"sub-{subject_id}"
-            / "log"
-            / config.execution.run_uuid
+            config.execution.nibabies_dir / f"sub-{subject_id}" / "log" / config.execution.run_uuid
         )
         log_dir.mkdir(exist_ok=True, parents=True)
         config.to_filename(log_dir / "nibabies.toml")
@@ -228,9 +220,7 @@ It is released under the [CC0]\
 
     nibabies_dir = str(config.execution.nibabies_dir)
 
-    inputnode = pe.Node(
-        niu.IdentityInterface(fields=["subjects_dir"]), name="inputnode"
-    )
+    inputnode = pe.Node(niu.IdentityInterface(fields=["subjects_dir"]), name="inputnode")
 
     bidssrc = pe.Node(
         BIDSDataGrabber(
@@ -299,9 +289,7 @@ It is released under the [CC0]\
         output_dir=nibabies_dir,
         segmentation_atlases=config.execution.segmentation_atlases_dir,
         skull_strip_mode=config.workflow.skull_strip_t1w,
-        skull_strip_template=Reference.from_string(
-            config.workflow.skull_strip_template
-        )[0],
+        skull_strip_template=Reference.from_string(config.workflow.skull_strip_template)[0],
         sloppy=config.execution.sloppy,
         spaces=spaces,
     )
@@ -326,8 +314,6 @@ It is released under the [CC0]\
         (bidssrc, anat_preproc_wf, [
             ('t1w', 'inputnode.t1w'),
             ('t2w', 'inputnode.t2w'),
-            # ('roi', 'inputnode.roi'),
-            # ('flair', 'inputnode.flair'),
         ]),
         (summary, ds_report_summary, [
             ('out_report', 'in_file'),
@@ -398,7 +384,7 @@ It is released under the [CC0]\
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
     anat_preproc_wf.__postdesc__ = (
-        (anat_preproc_wf.__postdesc__ if hasattr(anat_preproc_wf, '__postdesc__') else "")
+        (anat_preproc_wf.__postdesc__ if hasattr(anat_preproc_wf, "__postdesc__") else "")
         + f"""
 
 Functional data preprocessing
@@ -415,10 +401,7 @@ tasks and sessions), the following preprocessing was performed.
     # 3) total readout time
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
-    _, bold_groupings = group_bolds_ref(
-        layout=config.execution.layout,
-        subject=subject_id
-    )
+    _, bold_groupings = group_bolds_ref(layout=config.execution.layout, subject=subject_id)
     if any(not x for x in bold_groupings):
         print("No BOLD files found for one or more reference groupings")
         return workflow
@@ -428,8 +411,8 @@ tasks and sessions), the following preprocessing was performed.
     for idx, bold_files in enumerate(bold_groupings):
         bold_ref_wf = init_epi_reference_wf(
             auto_bold_nss=True,
-            name=f'bold_reference_wf{idx}',
-            omp_nthreads=config.nipype.omp_nthreads
+            name=f"bold_reference_wf{idx}",
+            omp_nthreads=config.nipype.omp_nthreads,
         )
         bold_ref_wf.inputs.inputnode.in_files = bold_files
         for idx, bold_file in enumerate(bold_files):
@@ -519,9 +502,11 @@ BIDS structure for this particular subject.
 
     # Step 3: Manually connect PEPOLAR
     for estimator in fmap_estimators:
-        config.loggers.workflow.info(f"""\
+        config.loggers.workflow.info(
+            f"""\
 Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
-<{', '.join(s.path.name for s in estimator.sources)}>""")
+<{', '.join(s.path.name for s in estimator.sources)}>"""
+        )
         if estimator.method in (fm.EstimatorType.MAPPED, fm.EstimatorType.PHASEDIFF):
             continue
 

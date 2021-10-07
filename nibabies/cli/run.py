@@ -83,9 +83,7 @@ def main():
 
     config.loggers.workflow.log(
         15,
-        "\n".join(
-            ["nibabies config:"] + ["\t\t%s" % s for s in config.dumps().splitlines()]
-        ),
+        "\n".join(["nibabies config:"] + ["\t\t%s" % s for s in config.dumps().splitlines()]),
     )
     config.loggers.workflow.log(25, "nibabies started!")
     # errno = 1  # Default is error exit unless otherwise set
@@ -139,12 +137,8 @@ def main():
             from niworkflows.utils.misc import _copy_any
 
             dseg_tsv = str(api.get("fsaverage", suffix="dseg", extension=[".tsv"]))
-            _copy_any(
-                dseg_tsv, str(config.execution.nibabies_dir / "desc-aseg_dseg.tsv")
-            )
-            _copy_any(
-                dseg_tsv, str(config.execution.nibabies_dir / "desc-aparcaseg_dseg.tsv")
-            )
+            _copy_any(dseg_tsv, str(config.execution.nibabies_dir / "desc-aseg_dseg.tsv"))
+            _copy_any(dseg_tsv, str(config.execution.nibabies_dir / "desc-aparcaseg_dseg.tsv"))
         # errno = 0
     finally:
         from ..reports.core import generate_reports

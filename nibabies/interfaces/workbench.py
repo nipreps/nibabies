@@ -2,10 +2,11 @@ import os
 from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec, Str
 from nipype.interfaces.base.traits_extension import InputMultiObject, OutputMultiObject, isdefined
 from nipype.interfaces.workbench.base import WBCommand
+
 # patch
 from nipype.interfaces.workbench.cifti import (
     CiftiSmoothInputSpec as _CiftiSmoothInputSpec,
-    CiftiSmooth as _CiftiSmooth
+    CiftiSmooth as _CiftiSmooth,
 )
 
 VALID_STRUCTURES = (
@@ -130,9 +131,7 @@ class CiftiCreateDenseFromTemplateInputSpec(CommandLineInputSpec):
     volume = InputMultiObject(
         traits.Either(
             traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True)),
-            traits.Tuple(
-                traits.Enum(VALID_STRUCTURES), File(exists=True), traits.Bool()
-            ),
+            traits.Tuple(traits.Enum(VALID_STRUCTURES), File(exists=True), traits.Bool()),
         ),
         argstr="%s",
         position=12,
@@ -195,7 +194,7 @@ class CiftiCreateDenseFromTemplate(WBCommand):
 
 class CiftiCreateDenseTimeseriesInputSpec(CommandLineInputSpec):
     out_file = File(
-        value='out.dtseries.nii',
+        value="out.dtseries.nii",
         usedefault=True,
         argstr="%s",
         position=0,
@@ -1066,6 +1065,7 @@ class CiftiSeparate(WBCommand):
     -volume HIPPOCAMPUS_RIGHT hippoR.nii.gz -roi hippoR.roi.nii.gz'
 
     """
+
     input_spec = CiftiSeparateInputSpec
     output_spec = CiftiSeparateOutputSpec
     _cmd = "wb_command -cifti-separate"
@@ -1100,20 +1100,23 @@ class CiftiSeparate(WBCommand):
             outputs["volume_all_label_file"] = os.path.abspath(self.inputs.volume_all_label_file)
         if self.inputs.label:
             for label in self.inputs.label:
-                outputs["label_files"] = (outputs["label_files"] or []) + \
-                    self._gen_filename(label[2])
+                outputs["label_files"] = (outputs["label_files"] or []) + self._gen_filename(
+                    label[2]
+                )
             if self._label_roi_files:
                 outputs["label_roi_files"] = self._label_roi_files
         if self.inputs.metric:
             for metric in self.inputs.metric:
-                outputs["metric_files"] = (outputs["metric_files"] or []) + \
-                    self._gen_filename(metric[2])
+                outputs["metric_files"] = (outputs["metric_files"] or []) + self._gen_filename(
+                    metric[2]
+                )
             if self._metric_roi_files:
                 outputs["metric_roi_files"] = self._metric_roi_files
         if self.inputs.volume:
             for volume in self.inputs.volume:
-                outputs["volume_files"] = (outputs["volume_files"] or []) + \
-                    self._gen_filename(volume[2])
+                outputs["volume_files"] = (outputs["volume_files"] or []) + self._gen_filename(
+                    volume[2]
+                )
             if self._volume_roi_files:
                 outputs["volume_roi_files"] = self._volume_roi_files
         return outputs

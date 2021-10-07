@@ -72,9 +72,7 @@ import sys
 from multiprocessing import set_start_method
 
 # Disable NiPype etelemetry always
-_disable_et = bool(
-    os.getenv("NO_ET") is not None or os.getenv("NIPYPE_NO_ET") is not None
-)
+_disable_et = bool(os.getenv("NO_ET") is not None or os.getenv("NIPYPE_NO_ET") is not None)
 os.environ["NIPYPE_NO_ET"] = "1"
 os.environ["NO_ET"] = "1"
 
@@ -153,9 +151,7 @@ if not _fs_license and os.getenv("FREESURFER_HOME"):
     del _fs_home
 
 _templateflow_home = Path(
-    os.getenv(
-        "TEMPLATEFLOW_HOME", os.path.join(os.getenv("HOME"), ".cache", "templateflow")
-    )
+    os.getenv("TEMPLATEFLOW_HOME", os.path.join(os.getenv("HOME"), ".cache", "templateflow"))
 )
 
 try:
@@ -178,13 +174,8 @@ try:
             _proc_oc_kbytes = Path("/proc/sys/vm/overcommit_kbytes")
             if _proc_oc_kbytes.exists():
                 _oc_limit = _proc_oc_kbytes.read_text().strip()
-            if (
-                _oc_limit in ("0", "n/a")
-                and Path("/proc/sys/vm/overcommit_ratio").exists()
-            ):
-                _oc_limit = "{}%".format(
-                    Path("/proc/sys/vm/overcommit_ratio").read_text().strip()
-                )
+            if _oc_limit in ("0", "n/a") and Path("/proc/sys/vm/overcommit_ratio").exists():
+                _oc_limit = "{}%".format(Path("/proc/sys/vm/overcommit_ratio").read_text().strip())
 except Exception:
     pass
 
@@ -215,7 +206,7 @@ class _Config:
             elif hasattr(cls, k):
                 setattr(cls, k, v)
 
-        if init and hasattr(cls, 'init'):
+        if init and hasattr(cls, "init"):
             cls.init()
 
     @classmethod
@@ -343,9 +334,7 @@ class nipype(_Config):
         )
 
         if cls.omp_nthreads is None:
-            cls.omp_nthreads = min(
-                cls.nprocs - 1 if cls.nprocs > 1 else os.cpu_count(), 8
-            )
+            cls.omp_nthreads = min(cls.nprocs - 1 if cls.nprocs > 1 else os.cpu_count(), 8)
 
 
 class execution(_Config):
@@ -438,9 +427,7 @@ class execution(_Config):
             import re
             from bids.layout import BIDSLayout
 
-            _db_path = cls.bids_database_dir or (
-                cls.work_dir / cls.run_uuid / "bids_db"
-            )
+            _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / "bids_db")
             _db_path.mkdir(exist_ok=True, parents=True)
             cls._layout = BIDSLayout(
                 str(cls.bids_dir),
@@ -463,9 +450,7 @@ class execution(_Config):
             # unserialize pybids Query enum values
             for acq, filters in cls.bids_filters.items():
                 cls.bids_filters[acq] = {
-                    k: getattr(Query, v[7:-4])
-                    if not isinstance(v, Query) and "Query" in v
-                    else v
+                    k: getattr(Query, v[7:-4]) if not isinstance(v, Query) and "Query" in v else v
                     for k, v in filters.items()
                 }
 

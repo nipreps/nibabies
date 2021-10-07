@@ -40,7 +40,7 @@ def _build_parser():
     def _to_gb(value):
         scale = {"G": 1, "T": 10 ** 3, "M": 1e-3, "K": 1e-6, "B": 1e-9}
         digits = "".join([c for c in value if c.isdigit()])
-        units = value[len(digits):] or "M"
+        units = value[len(digits) :] or "M"
         return int(digits) * scale[units[0]]
 
     def _drop_sub(value):
@@ -48,10 +48,9 @@ def _build_parser():
 
     def _filter_pybids_none_any(dct):
         import bids
+
         return {
-            k: bids.layout.Query.NONE
-            if v is None
-            else (bids.layout.Query.ANY if v == "*" else v)
+            k: bids.layout.Query.NONE if v is None else (bids.layout.Query.ANY if v == "*" else v)
             for k, v in dct.items()
         }
 
@@ -63,9 +62,7 @@ def _build_parser():
 
     verstr = f"NiBabies v{config.environment.version}"
     currentv = Version(config.environment.version)
-    is_release = not any(
-        (currentv.is_devrelease, currentv.is_prerelease, currentv.is_postrelease)
-    )
+    is_release = not any((currentv.is_devrelease, currentv.is_prerelease, currentv.is_postrelease))
 
     parser = ArgumentParser(
         description="NiBabies: Preprocessing workflows for infants v{config.environment.version}",
@@ -161,7 +158,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         metavar="PATH",
         type=PathExists,
         help="Path to an existing PyBIDS database folder, for faster indexing "
-             "(especially useful for large datasets)."
+        "(especially useful for large datasets).",
     )
 
     g_perfm = parser.add_argument_group("Options to handle performance")
@@ -170,7 +167,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         "--nthreads",
         "--n_cpus",
         "--n-cpus",
-        dest='nprocs',
+        dest="nprocs",
         action="store",
         type=PositiveInt,
         help="maximum number of threads across all processes",
@@ -193,8 +190,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
     g_perfm.add_argument(
         "--low-mem",
         action="store_true",
-        help="attempt to reduce memory usage (will increase disk usage "
-        "in working directory)",
+        help="attempt to reduce memory usage (will increase disk usage " "in working directory)",
     )
     g_perfm.add_argument(
         "--use-plugin",
@@ -204,9 +200,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         type=IsFile,
         help="nipype plugin configuration file",
     )
-    g_perfm.add_argument(
-        "--anat-only", action="store_true", help="run anatomical workflows only"
-    )
+    g_perfm.add_argument("--anat-only", action="store_true", help="run anatomical workflows only")
     g_perfm.add_argument(
         "--boilerplate_only",
         action="store_true",
@@ -373,8 +367,7 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         action="store",
         default=1.5,
         type=float,
-        help="Threshold for flagging a frame as an outlier on the basis of standardised "
-        "DVARS",
+        help="Threshold for flagging a frame as an outlier on the basis of standardised " "DVARS",
     )
 
     #  ANTs options
@@ -486,7 +479,7 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         help="Organization of outputs. legacy (default) creates derivative "
         "datasets as subdirectories of outputs. bids places NiBabies derivatives "
         "directly in the output directory, and defaults to placing FreeSurfer "
-        "derivatives in <output-dir>/sourcedata/freesurfer."
+        "derivatives in <output-dir>/sourcedata/freesurfer.",
     )
     g_other.add_argument(
         "-w",
@@ -521,7 +514,8 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         action="store",
         metavar="FILE",
         help="Use pre-generated configuration file. Values in file will be overridden "
-             "by command-line arguments.")
+        "by command-line arguments.",
+    )
     g_other.add_argument(
         "--write-graph",
         action="store_true",
@@ -532,8 +526,7 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         "--stop-on-first-crash",
         action="store_true",
         default=False,
-        help="Force stopping on first crash, even if a work directory"
-        " was specified.",
+        help="Force stopping on first crash, even if a work directory" " was specified.",
     )
     g_other.add_argument(
         "--notrack",
@@ -592,7 +585,7 @@ discourage its usage."""
     )
     g_baby.add_argument(
         "--segmentation-atlases-dir",
-        help="Directory containing precalculated segmentations to use for JointLabelFusion."
+        help="Directory containing precalculated segmentations to use for JointLabelFusion.",
     )
     g_baby.add_argument(
         "--fd-radius",
@@ -687,9 +680,7 @@ applied."""
 
         build_log.info(f"Clearing previous NiBabies working directory: {work_dir}")
         if not clean_directory(work_dir):
-            build_log.warning(
-                f"Could not clear all contents of working directory: {work_dir}"
-            )
+            build_log.warning(f"Could not clear all contents of working directory: {work_dir}")
 
     # Ensure input and output folders are not the same
     if output_dir == bids_dir:
@@ -715,9 +706,7 @@ applied."""
             "Making sure the input data is BIDS compliant (warnings can be ignored in most "
             "cases)."
         )
-        validate_input_dir(
-            config.environment.exec_env, opts.bids_dir, opts.participant_label
-        )
+        validate_input_dir(config.environment.exec_env, opts.bids_dir, opts.participant_label)
 
     # Setup directories
     config.execution.log_dir = config.execution.nibabies_dir / "logs"

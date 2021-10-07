@@ -16,12 +16,7 @@ import nipype.interfaces.workbench as wb
 from ...config import DEFAULT_MEMORY_MIN_GB
 
 
-def init_bold_surf_wf(
-    mem_gb,
-    surface_spaces,
-    medial_surface_nan,
-    name='bold_surf_wf'
-):
+def init_bold_surf_wf(mem_gb, surface_spaces, medial_surface_nan, name="bold_surf_wf"):
     """
     Sample functional images to FreeSurfer surfaces.
 
@@ -77,49 +72,69 @@ def init_bold_surf_wf(
 The BOLD time-series were resampled onto the following surfaces
 (FreeSurfer reconstruction nomenclature):
 {out_spaces}.
-""".format(out_spaces=', '.join(['*%s*' % s for s in surface_spaces]))
+""".format(
+        out_spaces=", ".join(["*%s*" % s for s in surface_spaces])
+    )
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['source_file', 'subject_id', 'subjects_dir',
-                                      't1w2fsnative_xfm']),
-        name='inputnode')
-    itersource = pe.Node(niu.IdentityInterface(fields=['target']), name='itersource')
-    itersource.iterables = [('target', surface_spaces)]
+        niu.IdentityInterface(
+            fields=["source_file", "subject_id", "subjects_dir", "t1w2fsnative_xfm"]
+        ),
+        name="inputnode",
+    )
+    itersource = pe.Node(niu.IdentityInterface(fields=["target"]), name="itersource")
+    itersource.iterables = [("target", surface_spaces)]
 
-    get_fsnative = pe.Node(FreeSurferSource(), name='get_fsnative',
-                           run_without_submitting=True)
+    get_fsnative = pe.Node(FreeSurferSource(), name="get_fsnative", run_without_submitting=True)
 
     def select_target(subject_id, space):
         """Get the target subject ID, given a source subject ID and a target space."""
-        return subject_id if space == 'fsnative' else space
+        return subject_id if space == "fsnative" else space
 
-    targets = pe.Node(niu.Function(function=select_target), name='targets',
-                      run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
+    targets = pe.Node(
+        niu.Function(function=select_target),
+        name="targets",
+        run_without_submitting=True,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
 
     # Rename the source file to the output space to simplify naming later
-    rename_src = pe.Node(niu.Rename(format_string='%(subject)s', keep_ext=True),
-                         name='rename_src', run_without_submitting=True,
-                         mem_gb=DEFAULT_MEMORY_MIN_GB)
-    itk2lta = pe.Node(niu.Function(function=_itk2lta), name="itk2lta",
-                      run_without_submitting=True)
+    rename_src = pe.Node(
+        niu.Rename(format_string="%(subject)s", keep_ext=True),
+        name="rename_src",
+        run_without_submitting=True,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+    itk2lta = pe.Node(niu.Function(function=_itk2lta), name="itk2lta", run_without_submitting=True)
     sampler = pe.MapNode(
         fs.SampleToSurface(
             cortex_mask=True,
-            interp_method='trilinear',
-            out_type='gii',
+            interp_method="trilinear",
+            out_type="gii",
             override_reg_subj=True,
-            sampling_method='average',
+            sampling_method="average",
             sampling_range=(0, 1, 0.2),
-            sampling_units='frac',
+            sampling_units="frac",
         ),
-        iterfield=['hemi'], name='sampler', mem_gb=mem_gb * 3)
-    sampler.inputs.hemi = ['lh', 'rh']
-    update_metadata = pe.MapNode(GiftiSetAnatomicalStructure(), iterfield=['in_file'],
-                                 name='update_metadata', mem_gb=DEFAULT_MEMORY_MIN_GB)
+        iterfield=["hemi"],
+        name="sampler",
+        mem_gb=mem_gb * 3,
+    )
+    sampler.inputs.hemi = ["lh", "rh"]
+    update_metadata = pe.MapNode(
+        GiftiSetAnatomicalStructure(),
+        iterfield=["in_file"],
+        name="update_metadata",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
 
-    outputnode = pe.JoinNode(niu.IdentityInterface(fields=['surfaces', 'target']),
-                             joinsource='itersource', name='outputnode')
+    outputnode = pe.JoinNode(
+        niu.IdentityInterface(fields=["surfaces", "target"]),
+        joinsource="itersource",
+        name="outputnode",
+    )
 
+    # fmt: off
     workflow.connect([
         (inputnode, get_fsnative, [('subject_id', 'subject_id'),
                                    ('subjects_dir', 'subjects_dir')]),
@@ -138,21 +153,26 @@ The BOLD time-series were resampled onto the following surfaces
         (update_metadata, outputnode, [('out_file', 'surfaces')]),
         (itersource, outputnode, [('target', 'target')]),
     ])
+    # fmt: on
 
     if not medial_surface_nan:
-        workflow.connect(sampler, 'out_file', update_metadata, 'in_file')
+        workflow.connect(sampler, "out_file", update_metadata, "in_file")
         return workflow
 
     from niworkflows.interfaces.freesurfer import MedialNaNs
-    # Refine if medial vertices should be NaNs
-    medial_nans = pe.MapNode(MedialNaNs(), iterfield=['in_file'],
-                             name='medial_nans', mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+    # Refine if medial vertices should be NaNs
+    medial_nans = pe.MapNode(
+        MedialNaNs(), iterfield=["in_file"], name="medial_nans", mem_gb=DEFAULT_MEMORY_MIN_GB
+    )
+
+    # fmt: off
     workflow.connect([
         (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
         (sampler, medial_nans, [('out_file', 'in_file')]),
         (medial_nans, update_metadata, [('out_file', 'in_file')]),
     ])
+    # fmt: on
     return workflow
 
 
@@ -161,7 +181,7 @@ def init_bold_std_trans_wf(
     mem_gb,
     omp_nthreads,
     spaces,
-    name='bold_std_trans_wf',
+    name="bold_std_trans_wf",
     use_compression=True,
 ):
     """
@@ -280,72 +300,97 @@ def init_bold_std_trans_wf(
         workflow.__desc__ = """\
 The BOLD time-series were resampled into standard space,
 generating a *preprocessed BOLD run in {tpl} space*.
-""".format(tpl=output_references[0])
+""".format(
+            tpl=output_references[0]
+        )
     elif len(output_references) > 1:
         workflow.__desc__ = """\
 The BOLD time-series were resampled into several standard spaces,
 correspondingly generating the following *spatially-normalized,
 preprocessed BOLD runs*: {tpl}.
-""".format(tpl=', '.join(output_references))
+""".format(
+            tpl=", ".join(output_references)
+        )
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=[
-            'anat2std_xfm',
-            'bold_aparc',
-            'bold_aseg',
-            'bold_mask',
-            'bold_split',
-            'fieldwarp',
-            'hmc_xforms',
-            'itk_bold_to_t1',
-            'name_source',
-            'templates',
-        ]),
-        name='inputnode'
+        niu.IdentityInterface(
+            fields=[
+                "anat2std_xfm",
+                "bold_aparc",
+                "bold_aseg",
+                "bold_mask",
+                "bold_split",
+                "fieldwarp",
+                "hmc_xforms",
+                "itk_bold_to_t1",
+                "name_source",
+                "templates",
+            ]
+        ),
+        name="inputnode",
     )
 
-    iterablesource = pe.Node(
-        niu.IdentityInterface(fields=['std_target']), name='iterablesource'
-    )
+    iterablesource = pe.Node(niu.IdentityInterface(fields=["std_target"]), name="iterablesource")
     # Generate conversions for every template+spec at the input
-    iterablesource.iterables = [('std_target', std_vol_references)]
+    iterablesource.iterables = [("std_target", std_vol_references)]
 
-    split_target = pe.Node(niu.Function(
-        function=_split_spec, input_names=['in_target'],
-        output_names=['space', 'template', 'spec']),
-        run_without_submitting=True, name='split_target')
+    split_target = pe.Node(
+        niu.Function(
+            function=_split_spec,
+            input_names=["in_target"],
+            output_names=["space", "template", "spec"],
+        ),
+        run_without_submitting=True,
+        name="split_target",
+    )
 
-    select_std = pe.Node(KeySelect(fields=['anat2std_xfm']),
-                         name='select_std', run_without_submitting=True)
+    select_std = pe.Node(
+        KeySelect(fields=["anat2std_xfm"]), name="select_std", run_without_submitting=True
+    )
 
-    select_tpl = pe.Node(niu.Function(function=_select_template),
-                         name='select_tpl', run_without_submitting=True)
+    select_tpl = pe.Node(
+        niu.Function(function=_select_template), name="select_tpl", run_without_submitting=True
+    )
 
-    gen_ref = pe.Node(GenerateSamplingReference(), name='gen_ref',
-                      mem_gb=0.3)  # 256x256x256 * 64 / 8 ~ 150MB)
+    gen_ref = pe.Node(
+        GenerateSamplingReference(), name="gen_ref", mem_gb=0.3
+    )  # 256x256x256 * 64 / 8 ~ 150MB)
 
-    mask_std_tfm = pe.Node(ApplyTransforms(interpolation='MultiLabel'),
-                           name='mask_std_tfm', mem_gb=1)
+    mask_std_tfm = pe.Node(
+        ApplyTransforms(interpolation="MultiLabel"), name="mask_std_tfm", mem_gb=1
+    )
 
     # Write corrected file in the designated output dir
-    mask_merge_tfms = pe.Node(niu.Merge(2), name='mask_merge_tfms', run_without_submitting=True,
-                              mem_gb=DEFAULT_MEMORY_MIN_GB)
+    mask_merge_tfms = pe.Node(
+        niu.Merge(2),
+        name="mask_merge_tfms",
+        run_without_submitting=True,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
 
-    merge_xforms = pe.Node(niu.Merge(4), name='merge_xforms',
-                           run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
+    merge_xforms = pe.Node(
+        niu.Merge(4),
+        name="merge_xforms",
+        run_without_submitting=True,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
 
     bold_to_std_transform = pe.Node(
         MultiApplyTransforms(interpolation="LanczosWindowedSinc", float=True, copy_dtype=True),
-        name='bold_to_std_transform', mem_gb=mem_gb * 3 * omp_nthreads, n_procs=omp_nthreads)
+        name="bold_to_std_transform",
+        mem_gb=mem_gb * 3 * omp_nthreads,
+        n_procs=omp_nthreads,
+    )
 
-    merge = pe.Node(Merge(compress=use_compression), name='merge',
-                    mem_gb=mem_gb * 3)  # TODO: Lessen expensive restrictions
+    merge = pe.Node(
+        Merge(compress=use_compression), name="merge", mem_gb=mem_gb * 3
+    )  # TODO: Lessen expensive restrictions
 
     # Generate a reference on the target standard space
     # TODO: Replace with masking interface?
-    gen_final_ref = init_bold_reference_wf(
-        omp_nthreads=omp_nthreads, pre_mask=True)
+    gen_final_ref = init_bold_reference_wf(omp_nthreads=omp_nthreads, pre_mask=True)
 
+    # fmt: off
     workflow.connect([
         (iterablesource, split_target, [('std_target', 'in_target')]),
         (iterablesource, select_tpl, [('std_target', 'template')]),
@@ -372,17 +417,18 @@ preprocessed BOLD runs*: {tpl}.
         (bold_to_std_transform, merge, [('out_files', 'in_files')]),
         (merge, gen_final_ref, [('out_file', 'inputnode.bold_file')]),
     ])
+    # fmt: on
 
     output_names = [
-        'bold_mask_std',
-        'bold_std',
-        'bold_std_ref',
-        'spatial_reference',
-        'template',
-    ] + freesurfer * ['bold_aseg_std', 'bold_aparc_std']
+        "bold_mask_std",
+        "bold_std",
+        "bold_std_ref",
+        "spatial_reference",
+        "template",
+    ] + freesurfer * ["bold_aseg_std", "bold_aparc_std"]
 
-    poutputnode = pe.Node(niu.IdentityInterface(fields=output_names),
-                          name='poutputnode')
+    poutputnode = pe.Node(niu.IdentityInterface(fields=output_names), name="poutputnode")
+    # fmt: off
     workflow.connect([
         # Connecting outputnode
         (iterablesource, poutputnode, [
@@ -392,14 +438,18 @@ preprocessed BOLD runs*: {tpl}.
         (mask_std_tfm, poutputnode, [('output_image', 'bold_mask_std')]),
         (select_std, poutputnode, [('key', 'template')]),
     ])
+    # fmt: on
 
     if freesurfer:
         # Sample the parcellation files to functional space
-        aseg_std_tfm = pe.Node(ApplyTransforms(interpolation='MultiLabel'),
-                               name='aseg_std_tfm', mem_gb=1)
-        aparc_std_tfm = pe.Node(ApplyTransforms(interpolation='MultiLabel'),
-                                name='aparc_std_tfm', mem_gb=1)
+        aseg_std_tfm = pe.Node(
+            ApplyTransforms(interpolation="MultiLabel"), name="aseg_std_tfm", mem_gb=1
+        )
+        aparc_std_tfm = pe.Node(
+            ApplyTransforms(interpolation="MultiLabel"), name="aparc_std_tfm", mem_gb=1
+        )
 
+        # fmt: off
         workflow.connect([
             (inputnode, aseg_std_tfm, [('bold_aseg', 'input_image')]),
             (inputnode, aparc_std_tfm, [('bold_aparc', 'input_image')]),
@@ -410,21 +460,28 @@ preprocessed BOLD runs*: {tpl}.
             (aseg_std_tfm, poutputnode, [('output_image', 'bold_aseg_std')]),
             (aparc_std_tfm, poutputnode, [('output_image', 'bold_aparc_std')]),
         ])
+        # fmt: on
 
     # Connect parametric outputs to a Join outputnode
-    outputnode = pe.JoinNode(niu.IdentityInterface(fields=output_names),
-                             name='outputnode', joinsource='iterablesource')
+    outputnode = pe.JoinNode(
+        niu.IdentityInterface(fields=output_names), name="outputnode", joinsource="iterablesource"
+    )
+    # fmt: off
     workflow.connect([
         (poutputnode, outputnode, [(f, f) for f in output_names]),
     ])
+    # fmt: on
     return workflow
 
 
-def init_bold_preproc_trans_wf(mem_gb, omp_nthreads,
-                               name='bold_preproc_trans_wf',
-                               use_compression=True,
-                               use_fieldwarp=False,
-                               interpolation='LanczosWindowedSinc'):
+def init_bold_preproc_trans_wf(
+    mem_gb,
+    omp_nthreads,
+    name="bold_preproc_trans_wf",
+    use_compression=True,
+    use_fieldwarp=False,
+    interpolation="LanczosWindowedSinc",
+):
     """
     Resample in native (original) space.
 
@@ -484,29 +541,39 @@ were resampled onto their original, native space by applying
 {transforms}.
 These resampled BOLD time-series will be referred to as *preprocessed
 BOLD in original space*, or just *preprocessed BOLD*.
-""".format(transforms="""\
+""".format(
+        transforms="""\
 a single, composite transform to correct for head-motion and
-susceptibility distortions""" if use_fieldwarp else """\
-the transforms to correct for head-motion""")
-
-    inputnode = pe.Node(niu.IdentityInterface(fields=[
-        'name_source', 'bold_file', 'hmc_xforms', 'fieldwarp']),
-        name='inputnode'
+susceptibility distortions"""
+        if use_fieldwarp
+        else """\
+the transforms to correct for head-motion"""
     )
 
-    outputnode = pe.Node(
-        niu.IdentityInterface(fields=['bold']),
-        name='outputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=["name_source", "bold_file", "hmc_xforms", "fieldwarp"]),
+        name="inputnode",
+    )
 
-    merge_xforms = pe.Node(niu.Merge(2), name='merge_xforms',
-                           run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
+    outputnode = pe.Node(niu.IdentityInterface(fields=["bold"]), name="outputnode")
+
+    merge_xforms = pe.Node(
+        niu.Merge(2),
+        name="merge_xforms",
+        run_without_submitting=True,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
 
     bold_transform = pe.Node(
         MultiApplyTransforms(interpolation=interpolation, copy_dtype=True),
-        name='bold_transform', mem_gb=mem_gb * 3 * omp_nthreads, n_procs=omp_nthreads)
+        name="bold_transform",
+        mem_gb=mem_gb * 3 * omp_nthreads,
+        n_procs=omp_nthreads,
+    )
 
-    merge = pe.Node(Merge(compress=use_compression), name='merge', mem_gb=mem_gb * 3)
+    merge = pe.Node(Merge(compress=use_compression), name="merge", mem_gb=mem_gb * 3)
 
+    # fmt: off
     workflow.connect([
         (inputnode, merge_xforms, [('fieldwarp', 'in1'),
                                    ('hmc_xforms', 'in2')]),
@@ -517,16 +584,12 @@ the transforms to correct for head-motion""")
         (bold_transform, merge, [('out_files', 'in_files')]),
         (merge, outputnode, [('out_file', 'bold')]),
     ])
+    # fmt: on
 
     return workflow
 
 
-def init_bold_grayords_wf(
-    grayord_density,
-    mem_gb,
-    repetition_time,
-    name='bold_grayords_wf'
-):
+def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_grayords_wf"):
     """
     Sample Grayordinates files onto the fsLR atlas.
 
@@ -582,67 +645,93 @@ def init_bold_grayords_wf(
 *Grayordinates* files [@hcppipelines] containing {density} samples were also
 generated using the highest-resolution ``fsaverage`` as intermediate standardized
 surface space.
-""".format(density=grayord_density)
+""".format(
+        density=grayord_density
+    )
 
-    fslr_density = '32k' if grayord_density == '91k' else '59k'
+    fslr_density = "32k" if grayord_density == "91k" else "59k"
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=[
-        'subcortical_volume',
-        'subcortical_labels',
-        'surf_files',
-        'surf_refs',
-    ]), name='inputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                "subcortical_volume",
+                "subcortical_labels",
+                "surf_files",
+                "surf_refs",
+            ]
+        ),
+        name="inputnode",
+    )
 
-    outputnode = pe.Node(niu.IdentityInterface(fields=[
-        'cifti_bold',
-        'cifti_variant',
-        'cifti_metadata',
-        'cifti_density',
-    ]), name='outputnode')
+    outputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                "cifti_bold",
+                "cifti_variant",
+                "cifti_metadata",
+                "cifti_density",
+            ]
+        ),
+        name="outputnode",
+    )
 
-    select_fs_surf = pe.Node(KeySelect(
-        fields=['surf_files']), name='select_fs_surf',
-        run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
-    select_fs_surf.inputs.key = 'fsaverage'
+    select_fs_surf = pe.Node(
+        KeySelect(fields=["surf_files"]),
+        name="select_fs_surf",
+        run_without_submitting=True,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+    select_fs_surf.inputs.key = "fsaverage"
 
     # Setup Workbench command. LR ordering for hemi can be assumed, as it is imposed
     # by the iterfield of the MapNode in the surface sampling workflow above.
-    resample = pe.MapNode(wb.MetricResample(
-        method='ADAP_BARY_AREA', area_metrics=True), name='resample',
-        iterfield=['in_file', 'out_file',
-                   'new_sphere', 'new_area',
-                   'current_sphere', 'current_area'])
+    resample = pe.MapNode(
+        wb.MetricResample(method="ADAP_BARY_AREA", area_metrics=True),
+        name="resample",
+        iterfield=[
+            "in_file",
+            "out_file",
+            "new_sphere",
+            "new_area",
+            "current_sphere",
+            "current_area",
+        ],
+    )
     resample.inputs.current_sphere = [
-        str(tf.api.get(
-            'fsaverage', hemi=hemi, density='164k', desc='std', suffix='sphere'
-        )) for hemi in 'LR'
+        str(tf.api.get("fsaverage", hemi=hemi, density="164k", desc="std", suffix="sphere"))
+        for hemi in "LR"
     ]
     resample.inputs.current_area = [
-        str(tf.api.get(
-            'fsaverage', hemi=hemi, density='164k', desc='vaavg', suffix='midthickness'
-        )) for hemi in 'LR'
+        str(
+            tf.api.get("fsaverage", hemi=hemi, density="164k", desc="vaavg", suffix="midthickness")
+        )
+        for hemi in "LR"
     ]
     resample.inputs.new_sphere = [
-        str(tf.api.get(
-            'fsLR', space='fsaverage', hemi=hemi, density=fslr_density, suffix='sphere'
-        )) for hemi in 'LR'
+        str(
+            tf.api.get("fsLR", space="fsaverage", hemi=hemi, density=fslr_density, suffix="sphere")
+        )
+        for hemi in "LR"
     ]
     resample.inputs.new_area = [
-        str(tf.api.get(
-            'fsLR', hemi=hemi, density=fslr_density, desc='vaavg', suffix='midthickness'
-        )) for hemi in 'LR'
+        str(
+            tf.api.get(
+                "fsLR", hemi=hemi, density=fslr_density, desc="vaavg", suffix="midthickness"
+            )
+        )
+        for hemi in "LR"
     ]
     resample.inputs.out_file = [
-        'space-fsLR_hemi-%s_den-%s_bold.gii' % (h, grayord_density) for h in 'LR'
+        "space-fsLR_hemi-%s_den-%s_bold.gii" % (h, grayord_density) for h in "LR"
     ]
 
     split_surfaces = pe.Node(
         niu.Function(function=_split_surfaces, output_names=["left_surface", "right_surface"]),
-        name="split_surfaces"
+        name="split_surfaces",
     )
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
     gen_cifti.inputs.volume_structure_labels = str(
-        tf.api.get('MNI152NLin6Asym', resolution=2, atlas='HCP', suffix='dseg')
+        tf.api.get("MNI152NLin6Asym", resolution=2, atlas="HCP", suffix="dseg")
     )
     gen_cifti_metadata = pe.Node(
         niu.Function(function=_gen_metadata, output_names=["out_metadata", "variant", "density"]),
@@ -650,6 +739,7 @@ surface space.
     )
     gen_cifti_metadata.inputs.grayord_density = grayord_density
 
+    # fmt: off
     workflow.connect([
         (inputnode, gen_cifti, [
             ('subcortical_volume', 'volume_data'),
@@ -667,6 +757,7 @@ surface space.
             ('out_metadata', 'cifti_metadata'),
             ('density', 'cifti_density')]),
     ])
+    # fmt: on
     return workflow
 
 
@@ -701,33 +792,34 @@ def _split_surfaces(in_surfaces):
 
 def _split_spec(in_target):
     space, spec = in_target
-    template = space.split(':')[0]
+    template = space.split(":")[0]
     return space, template, spec
 
 
 def _select_template(template):
     from niworkflows.utils.misc import get_template_specs
+
     template, specs = template
-    template = template.split(':')[0]  # Drop any cohort modifier if present
+    template = template.split(":")[0]  # Drop any cohort modifier if present
     specs = specs.copy()
-    specs['suffix'] = specs.get('suffix', 'T1w')
+    specs["suffix"] = specs.get("suffix", "T1w")
 
     # Sanitize resolution
-    res = specs.pop('res', None) or specs.pop('resolution', None) or 'native'
+    res = specs.pop("res", None) or specs.pop("resolution", None) or "native"
     # workaround for templates without res- identifier
-    if template in ('UNCInfant',):
+    if template in ("UNCInfant",):
         res = None
 
-    if res != 'native':
-        specs['resolution'] = res
+    if res != "native":
+        specs["resolution"] = res
         return get_template_specs(template, template_spec=specs)[0]
 
     # Map nonstandard resolutions to existing resolutions
-    specs['resolution'] = 2
+    specs["resolution"] = 2
     try:
         out = get_template_specs(template, template_spec=specs)
     except RuntimeError:
-        specs['resolution'] = 1
+        specs["resolution"] = 1
         out = get_template_specs(template, template_spec=specs)
 
     return out[0]
@@ -746,19 +838,15 @@ def _aslist(in_value):
 
 
 def _is_native(in_value):
-    return (
-        in_value.get('resolution') == 'native'
-        or in_value.get('res') == 'native'
-    )
+    return in_value.get("resolution") == "native" or in_value.get("res") == "native"
 
 
 def _itk2lta(in_file, src_file, dst_file):
     import nitransforms as nt
     from pathlib import Path
+
     out_file = Path("out.lta").absolute()
     nt.linear.load(
-        in_file,
-        fmt="fs" if in_file.endswith(".lta") else "itk",
-        reference=src_file).to_filename(
-            out_file, moving=dst_file, fmt="fs")
+        in_file, fmt="fs" if in_file.endswith(".lta") else "itk", reference=src_file
+    ).to_filename(out_file, moving=dst_file, fmt="fs")
     return str(out_file)

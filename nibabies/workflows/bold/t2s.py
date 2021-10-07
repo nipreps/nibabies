@@ -18,8 +18,7 @@ LOGGER = config.loggers.workflow
 
 
 # pylint: disable=R0914
-def init_bold_t2s_wf(echo_times, mem_gb, omp_nthreads,
-                     name='bold_t2s_wf'):
+def init_bold_t2s_wf(echo_times, mem_gb, omp_nthreads, name="bold_t2s_wf"):
     """
     Combine multiple echos of :abbr:`ME-EPI (multi-echo echo-planar imaging)`.
 
@@ -70,17 +69,19 @@ echoes following the method described in [@posse_t2s].
 The optimally combined time series was carried forward as the *preprocessed BOLD*.
 """
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=['bold_file']), name='inputnode')
+    inputnode = pe.Node(niu.IdentityInterface(fields=["bold_file"]), name="inputnode")
 
-    outputnode = pe.Node(niu.IdentityInterface(fields=['bold']), name='outputnode')
+    outputnode = pe.Node(niu.IdentityInterface(fields=["bold"]), name="outputnode")
 
-    LOGGER.log(25, 'Generating T2* map and optimally combined ME-EPI time series.')
+    LOGGER.log(25, "Generating T2* map and optimally combined ME-EPI time series.")
 
-    t2smap_node = pe.Node(T2SMap(echo_times=list(echo_times)), name='t2smap_node')
+    t2smap_node = pe.Node(T2SMap(echo_times=list(echo_times)), name="t2smap_node")
 
+    # fmt: off
     workflow.connect([
         (inputnode, t2smap_node, [('bold_file', 'in_files')]),
         (t2smap_node, outputnode, [('optimal_comb', 'bold')]),
     ])
+    # fmt: on
 
     return workflow

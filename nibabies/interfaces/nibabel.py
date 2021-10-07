@@ -45,6 +45,7 @@ class MergeROIsOutputSpec(TraitedSpec):
 
 class MergeROIs(SimpleInterface):
     """Combine multiple region of interest files (3D or 4D) into a single file"""
+
     input_spec = MergeROIsInputSpec
     output_spec = MergeROIsOutputSpec
 

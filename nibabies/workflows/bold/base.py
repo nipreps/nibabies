@@ -350,6 +350,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         debug=config.execution.debug,
     )
 
+    # fmt: off
     workflow.connect([
         (outputnode, func_derivatives_wf, [
             ('bold_anat', 'inputnode.bold_t1'),
@@ -374,6 +375,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('tcompcor_mask', 'inputnode.tcompcor_mask'),
         ]),
     ])
+    # fmt: on
 
     # Extract BOLD validation from init_bold_reference_wf
     val_bold = pe.MapNode(
@@ -438,6 +440,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     bold_bold_trans_wf.inputs.inputnode.fieldwarp = 'identity'
 
     # SLICE-TIME CORRECTION (or bypass) #############################################
+    # fmt: off
     if run_stc is True:  # bool('TooShort') == True, so check True explicitly
         bold_stc_wf = init_bold_stc_wf(name='bold_stc_wf', metadata=metadata)
         workflow.connect([
@@ -459,6 +462,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     else:
         # for meepi, iterate over all meepi echos to boldbuffer
         boldbuffer.iterables = ('bold_file', bold_file)
+    # fmt: on
 
     # MULTI-ECHO EPI DATA #############################################
     if multiecho:  # instantiate relevant interfaces, imports
@@ -560,6 +564,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # fmt: on
 
     # for standard EPI data, pass along correct file
+    # fmt: off
     if not multiecho:
         # TODO: Add SDC
         workflow.connect([
@@ -600,6 +605,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         # Already applied in bold_bold_trans_wf, which inputs to bold_t2s_wf
         bold_t1_trans_wf.inputs.inputnode.hmc_xforms = 'identity'
+    # fmt: on
 
     # Map final BOLD mask into T1w space (if required)
     nonstd_spaces = set(spaces.get_nonstandard())
@@ -610,6 +616,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         boldmask_to_t1w = pe.Node(ApplyTransforms(interpolation='MultiLabel'),
                                   name='boldmask_to_t1w', mem_gb=0.1)
+        # fmt: off
         workflow.connect([
             (bold_reg_wf, boldmask_to_t1w, [
                 ('outputnode.itk_bold_to_t1', 'transforms')]),
@@ -618,6 +625,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (boldmask_to_t1w, outputnode, [
                 ('output_image', 'bold_mask_anat')]),
         ])
+        # fmt: on
 
     if nonstd_spaces.intersection(('func', 'run', 'bold', 'boldref', 'sbref')):
         workflow.connect([
@@ -638,6 +646,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         )
         bold_std_trans_wf.inputs.inputnode.fieldwarp = 'identity'
 
+        # fmt: off
         workflow.connect([
             (inputnode, bold_std_trans_wf, [
                 ('template', 'inputnode.templates'),
@@ -689,6 +698,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('outputnode.bold_mask_std', 'inputnode.bold_mask_std'),
             ]),
         ])
+        # fmt: on
 
         if config.workflow.use_aroma:  # ICA-AROMA workflow
             from .confounds import init_ica_aroma_wf
@@ -708,6 +718,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                                         run_without_submitting=True)
             mrg_conf_metadata2 = pe.Node(DictMerge(), name='merge_confound_metadata2',
                                          run_without_submitting=True)
+            # fmt: off
             workflow.disconnect([
                 (bold_confounds_wf, outputnode, [
                     ('outputnode.confounds_file', 'confounds'),
@@ -743,6 +754,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                     ('outputnode.bold_mask_std', 'inputnode.bold_mask_std'),
                     ('outputnode.spatial_reference', 'inputnode.spatial_reference')]),
             ])
+            # fmt: on
 
     # SURFACES ##################################################################################
     # Freesurfer
@@ -754,6 +766,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             surface_spaces=freesurfer_spaces,
             medial_surface_nan=config.workflow.medial_surface_nan,
             name='bold_surf_wf')
+
+        # fmt: on
         workflow.connect([
             (inputnode, bold_surf_wf, [
                 ('subjects_dir', 'inputnode.subjects_dir'),
@@ -764,6 +778,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (bold_surf_wf, func_derivatives_wf, [
                 ('outputnode.target', 'inputnode.surf_refs')]),
         ])
+        # fmt: off
 
         # CIFTI output
         if config.workflow.cifti_output:
@@ -792,6 +807,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 repetition_time=metadata['RepetitionTime']
             )
 
+            # fmt: off
             workflow.connect([
                 (bold_std_trans_wf, cifti_select_std, [
                     ("outputnode.bold_std", "bold_std"),
@@ -801,10 +817,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                     ("bold_aseg_std", "inputnode.MNIInfant_aseg")]),
                 (cifti_select_std, subcortical_mni_alignment_wf, [
                     ("bold_std", "inputnode.MNIInfant_bold")]),
-                # (bold_t1_trans_wf, subcortical_rois_wf, [
-                #     ("outputnode.bold_aseg_t1", "inputnode.bold_aseg")]),
-                # (bold_bold_trans_wf, subcortical_mni_alignment_wf, [
-                #     ("outputnode.bold", "inputnode.bold_file")]),
                 (subcortical_rois_wf, subcortical_mni_alignment_wf, [
                     ("outputnode.MNIInfant_rois", "inputnode.MNIInfant_rois"),
                     ("outputnode.MNI152_rois", "inputnode.MNI152_rois")]),
@@ -820,6 +832,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                     ('outputnode.cifti_metadata', 'cifti_metadata'),
                     ('outputnode.cifti_density', 'cifti_density')]),
             ])
+            # fmt: on
 
     if spaces.get_spaces(nonstandard=False, dim=(3,)):
         if not config.workflow.cifti_output:
@@ -831,12 +844,14 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 cifti_output=bool(config.workflow.cifti_output),
                 name='carpetplot_wf')
 
+            # fmt: off
             workflow.connect([
                 (bold_grayords_wf, carpetplot_wf, [
                     ('outputnode.cifti_bold', 'inputnode.cifti_bold')]),
                 (bold_confounds_wf, carpetplot_wf, [
                     ('outputnode.confounds_file', 'inputnode.confounds_file')]),
             ])
+            # fmt: on
 
     # REPORTING ############################################################
     ds_report_summary = pe.Node(
@@ -849,11 +864,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         name='ds_report_validation', run_without_submitting=True,
         mem_gb=config.DEFAULT_MEMORY_MIN_GB)
 
+    # fmt: off
     workflow.connect([
         (summary, ds_report_summary, [('out_report', 'in_file')]),
         (val_bold, ds_report_validation, [
             (("out_report", pop_file), 'in_file')]),
     ])
+    # fmt: on
 
     # Fill-in datasinks of reportlets seen so far
     for node in workflow.list_node_names():

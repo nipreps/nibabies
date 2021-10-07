@@ -39,41 +39,61 @@ def init_anat_seg_wf(
     )
 
     # Coerce segmentation labels to BIDS
-    lut_anat_dseg = pe.Node(
-        niu.Function(function=_apply_bids_lut), name="lut_anat_dseg"
-    )
+    lut_anat_dseg = pe.Node(niu.Function(function=_apply_bids_lut), name="lut_anat_dseg")
 
     if template_dir is None:
         # Use FSL FAST for segmentations
         anat_dseg = pe.Node(
             fsl.FAST(segments=True, no_bias=True, probability_maps=True),
-            name='anat_dseg',
-            mem_gb=3
+            name="anat_dseg",
+            mem_gb=3,
         )
         lut_anat_dseg.inputs.lut = (0, 3, 1, 2)  # Maps: 0 -> 0, 3 -> 1, 1 -> 2, 2 -> 3.
         fast2bids = pe.Node(
             niu.Function(function=_probseg_fast2bids),
             name="fast2bids",
-            run_without_submitting=True
+            run_without_submitting=True,
         )
 
-        wf.connect([
-            (inputnode, anat_dseg, [
-                ('anat_brain', 'in_files'),
-            ]),
-            (anat_dseg, lut_anat_dseg, [
-                ('partial_volume_map', 'in_dseg'),
-            ]),
-            (lut_anat_dseg, outputnode, [
-                ('out', 'anat_dseg'),
-            ]),
-            (anat_dseg, fast2bids, [
-                ('partial_volume_files', 'inlist'),
-            ]),
-            (fast2bids, outputnode, [
-                ('out', 'anat_tpms'),
-            ]),
-        ])
+        wf.connect(
+            [
+                (
+                    inputnode,
+                    anat_dseg,
+                    [
+                        ("anat_brain", "in_files"),
+                    ],
+                ),
+                (
+                    anat_dseg,
+                    lut_anat_dseg,
+                    [
+                        ("partial_volume_map", "in_dseg"),
+                    ],
+                ),
+                (
+                    lut_anat_dseg,
+                    outputnode,
+                    [
+                        ("out", "anat_dseg"),
+                    ],
+                ),
+                (
+                    anat_dseg,
+                    fast2bids,
+                    [
+                        ("partial_volume_files", "inlist"),
+                    ],
+                ),
+                (
+                    fast2bids,
+                    outputnode,
+                    [
+                        ("out", "anat_tpms"),
+                    ],
+                ),
+            ]
+        )
         return wf
 
     # Otherwise, register to templates and run ANTs JointFusion
@@ -85,9 +105,7 @@ def init_anat_seg_wf(
     # Register to each subject space
     norm = pe.MapNode(
         Registration(
-            from_file=pkgr_fn(
-                "niworkflows.data", f"antsBrainExtraction_{ants_params}.json"
-            )
+            from_file=pkgr_fn("niworkflows.data", f"antsBrainExtraction_{ants_params}.json")
         ),
         name="norm",
         iterfield=["moving_image"],
@@ -128,7 +146,7 @@ def init_anat_seg_wf(
 
     # split each tissue into individual masks
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
-    to_list = pe.Node(niu.Function(function=_to_list), name='to_list')
+    to_list = pe.Node(niu.Function(function=_to_list), name="to_list")
 
     # fmt: off
     wf.connect([
@@ -182,7 +200,7 @@ def _to_list(in_file):
     return [in_file]
 
 
-def _to_dtype(in_file, dtype='uint8'):
+def _to_dtype(in_file, dtype="uint8"):
     """
     Freesurfer's ``mri_convert`` complains about unsigned 32-bit integers.
     Since we may plan using the JLF segmentation within ``infant_recon_all``,
