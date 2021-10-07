@@ -138,6 +138,7 @@ def init_func_derivatives_wf(
                             **{'from': 'T1w'}),
         name='ds_t1w_tpl_inv_xfm', run_without_submitting=True)
 
+    # fmt: off
     workflow.connect([
         (inputnode, raw_sources, [('source_file', 'in_files')]),
         (inputnode, ds_confounds, [('source_file', 'source_file'),
@@ -148,6 +149,7 @@ def init_func_derivatives_wf(
         (inputnode, ds_ref_t1w_inv_xfm, [('source_file', 'source_file'),
                                          ('anat2bold_xfm', 'in_file')]),
     ])
+    # fmt: on
 
     if nonstd_spaces.intersection(('func', 'run', 'bold', 'boldref', 'sbref')):
         ds_bold_native = pe.Node(
@@ -167,6 +169,7 @@ def init_func_derivatives_wf(
             name='ds_bold_mask_native', run_without_submitting=True,
             mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+        # fmt: off
         workflow.connect([
             (inputnode, ds_bold_native, [('source_file', 'source_file'),
                                          ('bold_native', 'in_file')]),
@@ -176,6 +179,7 @@ def init_func_derivatives_wf(
                                               ('bold_mask_native', 'in_file')]),
             (raw_sources, ds_bold_mask_native, [('out', 'RawSources')]),
         ])
+        # fmt: on
 
     # Resample to T1w space
     if nonstd_spaces.intersection(('T1w', 'anat')):
@@ -195,6 +199,8 @@ def init_func_derivatives_wf(
                                 suffix='mask', compress=True, dismiss_entities=("echo",)),
             name='ds_bold_mask_t1', run_without_submitting=True,
             mem_gb=DEFAULT_MEMORY_MIN_GB)
+
+        # fmt: off
         workflow.connect([
             (inputnode, ds_bold_t1, [('source_file', 'source_file'),
                                      ('bold_t1', 'in_file')]),
@@ -204,6 +210,7 @@ def init_func_derivatives_wf(
                                           ('bold_mask_t1', 'in_file')]),
             (raw_sources, ds_bold_mask_t1, [('out', 'RawSources')]),
         ])
+        # fmt: on
         if freesurfer:
             ds_bold_aseg_t1 = pe.Node(DerivativesDataSink(
                 base_directory=output_dir, space='T1w', desc='aseg', suffix='dseg',
@@ -215,12 +222,15 @@ def init_func_derivatives_wf(
                 compress=True, dismiss_entities=("echo",)),
                 name='ds_bold_aparc_t1', run_without_submitting=True,
                 mem_gb=DEFAULT_MEMORY_MIN_GB)
+
+            # fmt: off
             workflow.connect([
                 (inputnode, ds_bold_aseg_t1, [('source_file', 'source_file'),
                                               ('bold_aseg_t1', 'in_file')]),
                 (inputnode, ds_bold_aparc_t1, [('source_file', 'source_file'),
                                                ('bold_aparc_t1', 'in_file')]),
             ])
+            # fmt: on
 
     if use_aroma:
         ds_aroma_noise_ics = pe.Node(DerivativesDataSink(
@@ -239,6 +249,7 @@ def init_func_derivatives_wf(
             name='ds_aroma_std', run_without_submitting=True,
             mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+        # fmt: off
         workflow.connect([
             (inputnode, ds_aroma_noise_ics, [('source_file', 'source_file'),
                                              ('aroma_noise_ics', 'in_file')]),
@@ -247,6 +258,7 @@ def init_func_derivatives_wf(
             (inputnode, ds_aroma_std, [('source_file', 'source_file'),
                                        ('nonaggr_denoised_file', 'in_file')]),
         ])
+        # fmt: on
 
     if getattr(spaces, '_cached') is None:
         return workflow
@@ -279,6 +291,7 @@ def init_func_derivatives_wf(
                                 compress=True, dismiss_entities=("echo",)),
             name='ds_bold_mask_std', run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+        # fmt: off
         workflow.connect([
             (inputnode, ds_bold_std, [('source_file', 'source_file')]),
             (inputnode, ds_bold_std_ref, [('source_file', 'source_file')]),
@@ -306,6 +319,7 @@ def init_func_derivatives_wf(
                                              ('density', 'density')]),
             (raw_sources, ds_bold_mask_std, [('out', 'RawSources')]),
         ])
+        # fmt: on
 
         if freesurfer:
             select_fs_std = pe.Node(KeySelect(
@@ -321,6 +335,8 @@ def init_func_derivatives_wf(
                 dismiss_entities=("echo",)),
                 name='ds_bold_aparc_std', run_without_submitting=True,
                 mem_gb=DEFAULT_MEMORY_MIN_GB)
+
+            # fmt: off
             workflow.connect([
                 (spacesource, select_fs_std, [('uid', 'key')]),
                 (inputnode, select_fs_std, [('bold_aseg_std', 'bold_aseg_std'),
@@ -340,6 +356,7 @@ def init_func_derivatives_wf(
                 (inputnode, ds_bold_aseg_std, [('source_file', 'source_file')]),
                 (inputnode, ds_bold_aparc_std, [('source_file', 'source_file')])
             ])
+            # fmt: on
 
     fs_outputs = spaces.cached.get_fs_spaces()
     if freesurfer and fs_outputs:
@@ -361,6 +378,7 @@ def init_func_derivatives_wf(
             iterfield=['in_file', 'hemi'], name='ds_bold_surfs',
             run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+        # fmt: off
         workflow.connect([
             (inputnode, select_fs_surf, [
                 ('surf_files', 'surfaces'),
@@ -371,6 +389,7 @@ def init_func_derivatives_wf(
                                              ('key', 'space')]),
             (name_surfs, ds_bold_surfs, [('hemi', 'hemi')]),
         ])
+        # fmt: on
 
     # CIFTI output
     if cifti_output:
@@ -379,6 +398,8 @@ def init_func_derivatives_wf(
             TaskName=metadata.get('TaskName'), **timing_parameters),
             name='ds_bold_cifti', run_without_submitting=True,
             mem_gb=DEFAULT_MEMORY_MIN_GB)
+
+        # fmt: off
         workflow.connect([
             (inputnode, ds_bold_cifti, [(('bold_cifti', _unlist), 'in_file'),
                                         ('source_file', 'source_file'),
@@ -386,6 +407,7 @@ def init_func_derivatives_wf(
                                         ('cifti_density', 'density'),
                                         (('cifti_metadata', _read_json), 'meta_dict')])
         ])
+        # fmt: on
 
     if debug and "compcor" in debug:
         ds_acompcor_masks = pe.Node(
@@ -397,12 +419,15 @@ def init_func_derivatives_wf(
             DerivativesDataSink(
                 base_directory=output_dir, desc="CompCorT", suffix="mask", compress=True),
             name="ds_tcompcor_mask", run_without_submitting=True)
+
+        # fmt: off
         workflow.connect([
             (inputnode, ds_acompcor_masks, [("acompcor_masks", "in_file"),
                                             ("source_file", "source_file")]),
             (inputnode, ds_tcompcor_mask, [("tcompcor_mask", "in_file"),
                                            ("source_file", "source_file")]),
         ])
+        # fmt: on
 
     return workflow
 
@@ -464,6 +489,7 @@ def init_bold_preproc_report_wf(mem_gb, reportlets_dir, name='bold_preproc_repor
         run_without_submitting=True
     )
 
+    # fmt: off
     workflow.connect([
         (inputnode, ds_report_bold, [('name_source', 'source_file')]),
         (inputnode, pre_tsnr, [('in_pre', 'in_file')]),
@@ -472,6 +498,7 @@ def init_bold_preproc_report_wf(mem_gb, reportlets_dir, name='bold_preproc_repor
         (pos_tsnr, bold_rpt, [('stddev_file', 'after')]),
         (bold_rpt, ds_report_bold, [('out_report', 'in_file')]),
     ])
+    # fmt: on
 
     return workflow
 

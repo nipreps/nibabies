@@ -326,8 +326,6 @@ It is released under the [CC0]\
         (bidssrc, anat_preproc_wf, [
             ('t1w', 'inputnode.t1w'),
             ('t2w', 'inputnode.t2w'),
-            # ('roi', 'inputnode.roi'),
-            # ('flair', 'inputnode.flair'),
         ]),
         (summary, ds_report_summary, [
             ('out_report', 'in_file'),

@@ -150,7 +150,7 @@ def init_coregistration_wf(
     )
     apply_mask = pe.Node(ApplyMask(), name="apply_mask")
 
-    # fmt:off
+    # fmt: off
     workflow.connect([
         (inputnode, map_mask, [("in_t1w", "reference_image")]),
         (inputnode, final_n4, [("in_t1w", "input_image")]),
@@ -183,5 +183,5 @@ def init_coregistration_wf(
         (apply_mask, outputnode, [("out_file", "t1w_brain")]),
         (coreg, outputnode, [("forward_transforms", "t1w2t2w_xfm")]),
     ])
-    # fmt:on
+    # fmt: on
     return workflow

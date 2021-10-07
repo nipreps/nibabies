@@ -62,7 +62,7 @@ def init_coreg_report_wf(*, output_dir, name="coreg_report_wf"):
         run_without_submitting=True,
     )
 
-    # fmt:off
+    # fmt: off
     workflow.connect([
         (inputnode, norm_rpt, [("t2w_preproc", "before"),
                                ("t1w_preproc", "after"),
@@ -70,7 +70,7 @@ def init_coreg_report_wf(*, output_dir, name="coreg_report_wf"):
         (inputnode, ds_t1w_t2w_report, [("source_file", "source_file")]),
         (norm_rpt, ds_t1w_t2w_report, [("out_report", "in_file")]),
     ])
-    # fmt:on
+    # fmt: on
 
     return workflow
 
@@ -163,7 +163,7 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
         run_without_submitting=True,
     )
 
-    # fmt:off
+    # fmt: off
     workflow.connect([
         (inputnode, t1w_conform_check, [('t1w_conform_report', 'in_file')]),
         (t1w_conform_check, ds_t1w_conform_report, [('out', 'in_file')]),
@@ -174,7 +174,7 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
                               ('t1w_dseg', 'in_rois')]),
         (seg_rpt, ds_t1w_dseg_mask_report, [('out_report', 'in_file')]),
     ])
-    # fmt:on
+    # fmt: on
 
     # Generate reportlets showing spatial normalization
     tf_select = pe.Node(
@@ -203,7 +203,7 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
         run_without_submitting=True,
     )
 
-    # fmt:off
+    # fmt: off
     workflow.connect([
         (inputnode, set_tf_res, [(('template', _drop_cohort), 'template')]),
         (set_tf_res, tf_select, [('out', 'resolution')]),
@@ -221,7 +221,7 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
             ('source_file', 'source_file')]),
         (norm_rpt, ds_std_t1w_report, [('out_report', 'in_file')]),
     ])
-    # fmt:on
+    # fmt: on
 
     if freesurfer:
         from smriprep.interfaces.reports import FSSurfaceReport
@@ -236,14 +236,14 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
             name="ds_recon_report",
             run_without_submitting=True,
         )
-        # fmt:off
+        # fmt: off
         workflow.connect([
             (inputnode, recon_report, [('subjects_dir', 'subjects_dir'),
                                        ('subject_id', 'subject_id')]),
             (recon_report, ds_recon_report, [('out_report', 'in_file')]),
             (inputnode, ds_recon_report, [('source_file', 'source_file')])
         ])
-        # fmt:on
+        # fmt: on
 
     return workflow
 
@@ -383,7 +383,7 @@ def init_anat_derivatives_wf(
     )
     ds_t1w_tpms.inputs.label = tpm_labels
 
-    # fmt:off
+    # fmt: off
     workflow.connect([
         (inputnode, raw_sources, [('source_files', 'in_files')]),
         (inputnode, ds_t1w_preproc, [('t1w_preproc', 'in_file'),
@@ -396,7 +396,7 @@ def init_anat_derivatives_wf(
                                   ('source_files', 'source_file')]),
         (raw_sources, ds_t1w_mask, [('out', 'RawSources')]),
     ])
-    # fmt:on
+    # fmt: on
 
     # Transforms
     if spaces.get_spaces(nonstandard=False, dim=(3,)):
@@ -418,7 +418,7 @@ def init_anat_derivatives_wf(
             run_without_submitting=True,
         )
 
-        # fmt:off
+        # fmt: off
         workflow.connect([
             (inputnode, ds_t1w2std_xfm, [
                 ('anat2std_xfm', 'in_file'),
@@ -429,7 +429,7 @@ def init_anat_derivatives_wf(
                 (('template', _combine_cohort), 'from'),
                 ('source_files', 'source_file')]),
         ])
-        # fmt:on
+        # fmt: on
 
     if num_t1w > 1:
         # Please note the dictionary unpacking to provide the from argument.
@@ -447,12 +447,12 @@ def init_anat_derivatives_wf(
             name="ds_t1w_ref_xfms",
             run_without_submitting=True,
         )
-        # fmt:off
+        # fmt: off
         workflow.connect([
             (inputnode, ds_t1w_ref_xfms, [('source_files', 'source_file'),
                                           ('t1w_ref_xfms', 'in_file')]),
         ])
-        # fmt:on
+        # fmt: on
 
     # Write derivatives in standard spaces specified by --output-spaces
     if getattr(spaces, "_cached") is not None and spaces.cached.references:
@@ -564,7 +564,8 @@ def init_anat_derivatives_wf(
         #           (intensity mean, per tissue). This order HAS to be matched also by the ``tpms``
         #           output in the data/io_spec.json file.
         ds_std_tpms.inputs.label = tpm_labels
-        # fmt:off
+
+        # fmt: off
         workflow.connect([
             (inputnode, mask_t1w, [('t1w_preproc', 'in_file'),
                                    ('t1w_mask', 'in_mask')]),
@@ -592,7 +593,7 @@ def init_anat_derivatives_wf(
             (anat2std_tpms, ds_std_tpms, [('output_image', 'in_file')]),
             (select_tpl, ds_std_mask, [(('brain_mask', _drop_path), 'RawSources')]),
         ])
-
+        # fmt: on
         workflow.connect(
             # Connect apply transforms nodes
             [
@@ -616,7 +617,6 @@ def init_anat_derivatives_wf(
                 for n in (ds_std_t1w, ds_std_mask, ds_std_dseg, ds_std_tpms)
             ]
         )
-        # fmt:on
 
     if not freesurfer:
         return workflow
@@ -681,7 +681,7 @@ def init_anat_derivatives_wf(
         run_without_submitting=True,
     )
 
-    # fmt:off
+    # fmt: off
     workflow.connect([
         (inputnode, lta2itk_fwd, [('t1w2fsnative_xfm', 'in_xfms')]),
         (inputnode, lta2itk_inv, [('fsnative2t1w_xfm', 'in_xfms')]),
@@ -699,7 +699,7 @@ def init_anat_derivatives_wf(
         (inputnode, ds_t1w_fsparc, [('t1w_fs_aparc', 'in_file'),
                                     ('source_files', 'source_file')]),
     ])
-    # fmt:on
+    # fmt: on
     return workflow
 
 

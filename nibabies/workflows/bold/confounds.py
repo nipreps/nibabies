@@ -340,6 +340,7 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
             if not col.startswith(("a_comp_cor_", "t_comp_cor_", "std_dvars"))
         ]
 
+    # fmt: off
     workflow.connect([
         # connect inputnode to each non-anatomical confound node
         (inputnode, dvars, [('bold', 'in_file'),
@@ -415,6 +416,7 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
                                   (('confounds_file', _select_cols), 'columns')]),
         (conf_corr_plot, ds_report_conf_corr, [('out_file', 'in_file')]),
     ])
+    # fmt: on
 
     return workflow
 
@@ -500,6 +502,7 @@ def init_carpetplot_wf(mem_gb, metadata, cifti_output, name="bold_carpet_wf"):
     if not cifti_output:
         warnings.warn("CIFTI outputs required for carpet plot generation")
 
+    # fmt: off
     workflow.connect([
         (inputnode, conf_plot, [
             ('confounds_file', 'confounds_file'),
@@ -507,6 +510,7 @@ def init_carpetplot_wf(mem_gb, metadata, cifti_output, name="bold_carpet_wf"):
         (conf_plot, ds_report_bold_conf, [('out_file', 'in_file')]),
         (conf_plot, outputnode, [('out_file', 'out_carpetplot')]),
     ])
+    # fmt: on
     return workflow
 
 
@@ -694,6 +698,7 @@ in the corresponding confounds file.
         return 0.75 * medianval
 
     # connect the nodes
+    # fmt: off
     workflow.connect([
         (inputnode, select_std, [('spatial_reference', 'keys'),
                                  ('bold_std', 'bold_std'),
@@ -746,7 +751,7 @@ in the corresponding confounds file.
         (add_non_steady_state, outputnode, [('bold_add', 'nonaggr_denoised_file')]),
         (ica_aroma, ds_report_ica_aroma, [('out_report', 'in_file')]),
     ])
-
+    # fmt: on
     return workflow
 
 

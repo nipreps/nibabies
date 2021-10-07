@@ -76,11 +76,13 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
         name="refine_bold_rois",
     )
 
+    # fmt: off
     workflow.connect([
         (inputnode, refine_bold_rois, [("MNIInfant_aseg", "in_file")]),
         # (applywarp_tpl, refine_std_rois, [("out_file", "in_file")]),
         (refine_bold_rois, outputnode, [("out_file", "MNIInfant_rois")]),
     ])
+    # fmt: on
     return workflow
 
 

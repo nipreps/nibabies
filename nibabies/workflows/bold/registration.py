@@ -143,6 +143,7 @@ def init_bold_reg_wf(
         sloppy=sloppy,
     )
 
+    # fmt: off
     workflow.connect([
         (inputnode, bbr_wf, [
             ('ref_bold_brain', 'inputnode.in_file'),
@@ -155,6 +156,7 @@ def init_bold_reg_wf(
                               ('outputnode.itk_t1_to_bold', 'itk_t1_to_bold'),
                               ('outputnode.fallback', 'fallback')]),
     ])
+    # fmt: on
 
     if write_report:
         ds_report_reg = pe.Node(
@@ -167,11 +169,13 @@ def init_bold_reg_wf(
                 return 'coreg' if freesurfer else 'flirtnobbr'
             return 'bbregister' if freesurfer else 'flirtbbr'
 
+        # fmt: off
         workflow.connect([
             (bbr_wf, ds_report_reg, [
                 ('outputnode.out_report', 'in_file'),
                 (('outputnode.fallback', _bold_reg_suffix, freesurfer), 'desc')]),
         ])
+        # fmt: on
 
     return workflow
 
@@ -286,6 +290,7 @@ def init_bold_t1_trans_wf(freesurfer, mem_gb, omp_nthreads, use_compression=True
     mask_t1w_tfm = pe.Node(ApplyTransforms(interpolation='MultiLabel'),
                            name='mask_t1w_tfm', mem_gb=0.1)
 
+    # fmt: off
     workflow.connect([
         (inputnode, gen_ref, [('ref_bold_brain', 'moving_image'),
                               ('t1w_brain', 'fixed_image'),
@@ -295,6 +300,7 @@ def init_bold_t1_trans_wf(freesurfer, mem_gb, omp_nthreads, use_compression=True
         (inputnode, mask_t1w_tfm, [('itk_bold_to_t1', 'transforms')]),
         (mask_t1w_tfm, outputnode, [('output_image', 'bold_mask_t1')]),
     ])
+    # fmt: on
 
     if freesurfer:
         # Resample aseg and aparc in T1w space (no transforms needed)
@@ -305,6 +311,7 @@ def init_bold_t1_trans_wf(freesurfer, mem_gb, omp_nthreads, use_compression=True
             ApplyTransforms(interpolation='MultiLabel', transforms='identity'),
             name='aparc_t1w_tfm', mem_gb=0.1)
 
+        # fmt: off
         workflow.connect([
             (inputnode, aseg_t1w_tfm, [('t1w_aseg', 'input_image')]),
             (inputnode, aparc_t1w_tfm, [('t1w_aparc', 'input_image')]),
@@ -313,6 +320,7 @@ def init_bold_t1_trans_wf(freesurfer, mem_gb, omp_nthreads, use_compression=True
             (aseg_t1w_tfm, outputnode, [('output_image', 'bold_aseg_t1')]),
             (aparc_t1w_tfm, outputnode, [('output_image', 'bold_aparc_t1')]),
         ])
+        # fmt: on
 
     bold_to_t1w_transform = pe.Node(
         MultiApplyTransforms(interpolation="LanczosWindowedSinc", float=True, copy_dtype=True),
@@ -328,6 +336,7 @@ def init_bold_t1_trans_wf(freesurfer, mem_gb, omp_nthreads, use_compression=True
     merge_xforms = pe.Node(niu.Merge(3), name='merge_xforms',
                            run_without_submitting=True, mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+    # fmt: off
     workflow.connect([
         (inputnode, merge, [('name_source', 'header_source')]),
         (inputnode, merge_xforms, [
@@ -343,6 +352,7 @@ def init_bold_t1_trans_wf(freesurfer, mem_gb, omp_nthreads, use_compression=True
         (merge, outputnode, [('out_file', 'bold_t1')]),
         (gen_final_ref, outputnode, [('outputnode.ref_image', 'bold_t1_ref')]),
     ])
+    # fmt: on
 
     return workflow
 
@@ -489,6 +499,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
     merge_ltas = pe.Node(niu.Merge(2), name='merge_ltas', run_without_submitting=True)
     concat_xfm = pe.Node(ConcatenateXFMs(inverse=True), name='concat_xfm')
 
+    # fmt: off
     workflow.connect([
         (inputnode, merge_ltas, [('fsnative2t1w_xfm', 'in2')]),
         # Wire up the co-registration alternatives
@@ -537,6 +548,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         outputnode.inputs.fallback = False
 
         return workflow
+    # fmt: on
 
     # Only reach this point if bold2t1w_init is "register" and use_bbr is None
     reports = pe.Node(niu.Merge(2), run_without_submitting=True, name='reports')
@@ -544,6 +556,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
     compare_transforms = pe.Node(niu.Function(function=compare_xforms), name='compare_transforms')
     select_report = pe.Node(niu.Select(), run_without_submitting=True, name='select_report')
 
+    # fmt: off
     workflow.connect([
         # Normalize LTA transforms to RAS2RAS (inputs are VOX2VOX) and compare
         (lta_ras2ras, compare_transforms, [('out_lta', 'lta_list')]),
@@ -557,6 +570,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         (compare_transforms, select_report, [('out', 'index')]),
         (select_report, outputnode, [('out', 'out_report')]),
     ])
+    # fmt: on
 
     return workflow
 
@@ -672,6 +686,7 @@ for distortions remaining in the BOLD reference.
     fsl2itk_inv = pe.Node(c3.C3dAffineTool(fsl2ras=True, itk_transform=True),
                           name='fsl2itk_inv', mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+    # fmt: off
     workflow.connect([
         (inputnode, flt_bbr_init, [('in_file', 'in_file'),
                                    ('t1w_brain', 'reference')]),
@@ -683,14 +698,17 @@ for distortions remaining in the BOLD reference.
         (fsl2itk_fwd, outputnode, [('itk_transform', 'itk_bold_to_t1')]),
         (fsl2itk_inv, outputnode, [('itk_transform', 'itk_t1_to_bold')]),
     ])
+    # fmt: on
 
     # Short-circuit workflow building, use rigid registration
     if use_bbr is False:
+        # fmt: off
         workflow.connect([
             (flt_bbr_init, invt_bbr, [('out_matrix_file', 'in_file')]),
             (flt_bbr_init, fsl2itk_fwd, [('out_matrix_file', 'transform_file')]),
             (flt_bbr_init, outputnode, [('out_report', 'out_report')]),
         ])
+        # fmt: on
         outputnode.inputs.fallback = True
 
         return workflow
@@ -707,35 +725,44 @@ for distortions remaining in the BOLD reference.
         LOGGER.warning("FSLDIR unset - using packaged BBR schedule")
         flt_bbr.inputs.schedule = pkgr.resource_filename('fmriprep', 'data/flirtsch/bbr.sch')
 
+    # fmt: off
     workflow.connect([
         (inputnode, wm_mask, [('t1w_dseg', 'in_seg')]),
         (inputnode, flt_bbr, [('in_file', 'in_file')]),
         (flt_bbr_init, flt_bbr, [('out_matrix_file', 'in_matrix_file')]),
     ])
+    # fmt: on
 
     if sloppy is True:
         downsample = pe.Node(niu.Function(
             function=_conditional_downsampling, output_names=["out_file", "out_mask"]),
             name='downsample')
+
+        # fmt: off
         workflow.connect([
             (inputnode, downsample, [("t1w_brain", "in_file")]),
             (wm_mask, downsample, [("out", "in_mask")]),
             (downsample, flt_bbr, [('out_file', 'reference'),
                                    ('out_mask', 'wm_seg')]),
         ])
+        # fmt: on
     else:
+        # fmt: off
         workflow.connect([
             (inputnode, flt_bbr, [('t1w_brain', 'reference')]),
             (wm_mask, flt_bbr, [('out', 'wm_seg')]),
         ])
+        # fmt: on
 
     # Short-circuit workflow building, use boundary-based registration
     if use_bbr is True:
+        # fmt: off
         workflow.connect([
             (flt_bbr, invt_bbr, [('out_matrix_file', 'in_file')]),
             (flt_bbr, fsl2itk_fwd, [('out_matrix_file', 'transform_file')]),
             (flt_bbr, outputnode, [('out_report', 'out_report')]),
         ])
+        # fmt: on
         outputnode.inputs.fallback = False
 
         return workflow
@@ -751,6 +778,7 @@ for distortions remaining in the BOLD reference.
     fsl_to_lta = pe.MapNode(LTAConvert(out_lta=True), iterfield=['in_fsl'],
                             name='fsl_to_lta')
 
+    # fmt: off
     workflow.connect([
         (flt_bbr, transforms, [('out_matrix_file', 'in1')]),
         (flt_bbr_init, transforms, [('out_matrix_file', 'in2')]),
@@ -771,6 +799,7 @@ for distortions remaining in the BOLD reference.
         (compare_transforms, select_report, [('out', 'index')]),
         (select_report, outputnode, [('out', 'out_report')]),
     ])
+    # fmt: on
 
     return workflow
 

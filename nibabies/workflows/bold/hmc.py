@@ -93,6 +93,7 @@ parameters) are estimated before any spatiotemporal filtering using
     def _pick_rel(rms_files):
         return rms_files[-1]
 
+    # fmt: off
     workflow.connect([
         (inputnode, mcflirt, [('raw_ref_image', 'ref_file'),
                               ('bold_file', 'in_file')]),
@@ -104,5 +105,6 @@ parameters) are estimated before any spatiotemporal filtering using
         (fsl2itk, outputnode, [('out_file', 'xforms')]),
         (normalize_motion, outputnode, [('out_file', 'movpar_file')]),
     ])
+    # fmt: on
 
     return workflow

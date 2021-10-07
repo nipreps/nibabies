@@ -120,6 +120,7 @@ The BOLD time-series were resampled onto the following surfaces
     outputnode = pe.JoinNode(niu.IdentityInterface(fields=['surfaces', 'target']),
                              joinsource='itersource', name='outputnode')
 
+    # fmt: off
     workflow.connect([
         (inputnode, get_fsnative, [('subject_id', 'subject_id'),
                                    ('subjects_dir', 'subjects_dir')]),
@@ -138,6 +139,7 @@ The BOLD time-series were resampled onto the following surfaces
         (update_metadata, outputnode, [('out_file', 'surfaces')]),
         (itersource, outputnode, [('target', 'target')]),
     ])
+    # fmt: on
 
     if not medial_surface_nan:
         workflow.connect(sampler, 'out_file', update_metadata, 'in_file')
@@ -148,11 +150,13 @@ The BOLD time-series were resampled onto the following surfaces
     medial_nans = pe.MapNode(MedialNaNs(), iterfield=['in_file'],
                              name='medial_nans', mem_gb=DEFAULT_MEMORY_MIN_GB)
 
+    # fmt: off
     workflow.connect([
         (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
         (sampler, medial_nans, [('out_file', 'in_file')]),
         (medial_nans, update_metadata, [('out_file', 'in_file')]),
     ])
+    # fmt: on
     return workflow
 
 
@@ -346,6 +350,7 @@ preprocessed BOLD runs*: {tpl}.
     gen_final_ref = init_bold_reference_wf(
         omp_nthreads=omp_nthreads, pre_mask=True)
 
+    # fmt: off
     workflow.connect([
         (iterablesource, split_target, [('std_target', 'in_target')]),
         (iterablesource, select_tpl, [('std_target', 'template')]),
@@ -372,6 +377,7 @@ preprocessed BOLD runs*: {tpl}.
         (bold_to_std_transform, merge, [('out_files', 'in_files')]),
         (merge, gen_final_ref, [('out_file', 'inputnode.bold_file')]),
     ])
+    # fmt: on
 
     output_names = [
         'bold_mask_std',
@@ -383,6 +389,7 @@ preprocessed BOLD runs*: {tpl}.
 
     poutputnode = pe.Node(niu.IdentityInterface(fields=output_names),
                           name='poutputnode')
+    # fmt: off
     workflow.connect([
         # Connecting outputnode
         (iterablesource, poutputnode, [
@@ -392,6 +399,7 @@ preprocessed BOLD runs*: {tpl}.
         (mask_std_tfm, poutputnode, [('output_image', 'bold_mask_std')]),
         (select_std, poutputnode, [('key', 'template')]),
     ])
+    # fmt: on
 
     if freesurfer:
         # Sample the parcellation files to functional space
@@ -400,6 +408,7 @@ preprocessed BOLD runs*: {tpl}.
         aparc_std_tfm = pe.Node(ApplyTransforms(interpolation='MultiLabel'),
                                 name='aparc_std_tfm', mem_gb=1)
 
+        # fmt: off
         workflow.connect([
             (inputnode, aseg_std_tfm, [('bold_aseg', 'input_image')]),
             (inputnode, aparc_std_tfm, [('bold_aparc', 'input_image')]),
@@ -410,13 +419,16 @@ preprocessed BOLD runs*: {tpl}.
             (aseg_std_tfm, poutputnode, [('output_image', 'bold_aseg_std')]),
             (aparc_std_tfm, poutputnode, [('output_image', 'bold_aparc_std')]),
         ])
+        # fmt: on
 
     # Connect parametric outputs to a Join outputnode
     outputnode = pe.JoinNode(niu.IdentityInterface(fields=output_names),
                              name='outputnode', joinsource='iterablesource')
+    # fmt: off
     workflow.connect([
         (poutputnode, outputnode, [(f, f) for f in output_names]),
     ])
+    # fmt: on
     return workflow
 
 
@@ -507,6 +519,7 @@ the transforms to correct for head-motion""")
 
     merge = pe.Node(Merge(compress=use_compression), name='merge', mem_gb=mem_gb * 3)
 
+    # fmt: off
     workflow.connect([
         (inputnode, merge_xforms, [('fieldwarp', 'in1'),
                                    ('hmc_xforms', 'in2')]),
@@ -517,6 +530,7 @@ the transforms to correct for head-motion""")
         (bold_transform, merge, [('out_files', 'in_files')]),
         (merge, outputnode, [('out_file', 'bold')]),
     ])
+    # fmt: on
 
     return workflow
 
@@ -650,6 +664,7 @@ surface space.
     )
     gen_cifti_metadata.inputs.grayord_density = grayord_density
 
+    # fmt: off
     workflow.connect([
         (inputnode, gen_cifti, [
             ('subcortical_volume', 'volume_data'),
@@ -667,6 +682,7 @@ surface space.
             ('out_metadata', 'cifti_metadata'),
             ('density', 'cifti_density')]),
     ])
+    # fmt: on
     return workflow
 
 

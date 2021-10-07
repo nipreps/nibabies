@@ -77,6 +77,7 @@ AFNI {afni_ver} [@afni, RRID:SCR_005927].
 
     copy_xform = pe.Node(CopyXForm(), name='copy_xform', mem_gb=0.1)
 
+    # fmt: off
     workflow.connect([
         (inputnode, slice_timing_correction, [('bold_file', 'in_file'),
                                               ('skip_vols', 'ignore')]),
@@ -84,5 +85,6 @@ AFNI {afni_ver} [@afni, RRID:SCR_005927].
         (inputnode, copy_xform, [('bold_file', 'hdr_file')]),
         (copy_xform, outputnode, [('out_file', 'stc_file')]),
     ])
+    # fmt: on
 
     return workflow
