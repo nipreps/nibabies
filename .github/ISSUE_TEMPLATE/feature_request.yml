@@ -21,3 +21,9 @@ body:
         - Yes!
         - Yes, but I would need guidance
         - No :(
+    validations:
+      required: true
+  - type: textarea
+    id: addinfo
+    attributes:
+      label: Add any additional information or context about the request here.
