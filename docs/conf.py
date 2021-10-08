@@ -34,6 +34,7 @@ extensions = [
     # "sphinx.ext.autodoc",
     # "nipype.sphinxext.plot_workflow",
     # "sphinxcontrib.napoleon",
+    "sphinxarg.ext",  # argparse extension
     "myst_nb",
 ]
 
@@ -66,7 +67,7 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-# -- Napoleon parameters ----------------------------------------------------
+# -- Napoleon parameters -----------------------------------------------------
 # Accept custom section names to be parsed for numpy-style docstrings
 # of parameters.
 # Requires pinning sphinxcontrib-napoleon to a specific commit while
@@ -76,3 +77,7 @@ napoleon_custom_sections = [
     ("Inputs", "Parameters"),
     ("Outputs", "Parameters"),
 ]
+
+# -- MyST parameters ---------------------------------------------------------
+
+myst_heading_anchors = 2
