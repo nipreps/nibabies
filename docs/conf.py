@@ -81,3 +81,6 @@ napoleon_custom_sections = [
 # -- MyST parameters ---------------------------------------------------------
 
 myst_heading_anchors = 2
+
+# to avoid Python highlighting in literal text
+highlight_language = "none"
