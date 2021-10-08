@@ -1,4 +1,6 @@
-# Execution and the BIDS format
+# Usage
+
+## The BIDS format
 
 The *NiBabies* workflow takes as principal input the path of the dataset
 that is to be processed.
