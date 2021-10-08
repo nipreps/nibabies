@@ -474,12 +474,12 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
     g_other.add_argument(
         "--output-layout",
         action="store",
-        default="legacy",
+        default="bids",
         choices=("bids", "legacy"),
-        help="Organization of outputs. legacy (default) creates derivative "
-        "datasets as subdirectories of outputs. bids places NiBabies derivatives "
+        help="Organization of outputs. bids (default) places NiBabies derivatives "
         "directly in the output directory, and defaults to placing FreeSurfer "
-        "derivatives in <output-dir>/sourcedata/freesurfer.",
+        "derivatives in <output-dir>/sourcedata/freesurfer. legacy creates derivative "
+        "datasets as subdirectories of outputs."
     )
     g_other.add_argument(
         "-w",
