@@ -6,7 +6,7 @@ The *NiBabies* workflow takes as principal input the path of the dataset
 that is to be processed.
 The input dataset is required to be in valid
 {abbr}`BIDS (The Brain Imaging Data Structure)` format,
-and it must include at least one T1-weighted and 
+and it must include at least one T1-weighted and
 one T2-weighted structural image and
 (unless disabled with a flag) a BOLD series.
 We highly recommend that you validate your dataset with the free, online
@@ -18,7 +18,7 @@ The common parts of the command follow the
 Example:
 
 ```Shell
-fmriprep data/bids_root/ out/ participant -w work/
+nibabies data/bids_root/ out/ participant -w work/
 ```
 
 Further information about BIDS and BIDS-Apps can be found at the
@@ -28,7 +28,6 @@ Further information about BIDS and BIDS-Apps can be found at the
 ```{argparse}
 :ref: nibabies.cli.parser._build_parser
 :prog: nibabies
-:nodefault:
 :nodefaultconst:
 ```
 
