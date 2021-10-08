@@ -1,3 +1,5 @@
 sphinx
 myst_nb
 sphinx-argparse
+# Relative to repository root
+./wrapper/
