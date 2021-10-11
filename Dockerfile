@@ -211,33 +211,14 @@ RUN apt update && \
             libsm-dev \
             libxrender-dev \
             libxmu-dev \
+            unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && echo "Downloading FreeSurfer + InfantFS" \
     && mkdir -p /opt/freesurfer \
-    && curl -fSL --retry 5 https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/infant/freesurfer-linux-centos7_x86_64-infant-dev-4a14499.tar.gz \
-    | tar -xz -C /opt/freesurfer --no-same-owner --strip-components 1 \
-    --exclude='freesurfer/average/mult-comp-cor' \
-    --exclude='freesurfer/diffusion' \
-    --exclude='freesurfer/docs' \
-    --exclude='freesurfer/fsfast' \
-    --exclude='freesurfer/lib/cuda' \
-    --exclude='freesurfer/lib/qt' \
-    --exclude='freesurfer/matlab' \
-    --exclude='freesurfer/mni/share/man' \
-    --exclude='freesurfer/subjects/fsaverage_sym' \
-    --exclude='freesurfer/subjects/fsaverage3' \
-    --exclude='freesurfer/subjects/fsaverage4' \
-    --exclude='freesurfer/subjects/fsaverage5' \
-    --exclude='freesurfer/subjects/fsaverage6' \
-    --exclude='freesurfer/subjects/cvs_avg35' \
-    --exclude='freesurfer/subjects/cvs_avg35_inMNI152' \
-    --exclude='freesurfer/subjects/bert' \
-    --exclude='freesurfer/subjects/lh.EC_average' \
-    --exclude='freesurfer/subjects/rh.EC_average' \
-    --exclude='freesurfer/subjects/sample-*.mgz' \
-    --exclude='freesurfer/subjects/V1_average' \
-    --exclude='freesurfer/trctrain'
+    && curl -fSLO --retry 5 https://github.com/nipreps-containers/freesurfer/releases/download/infant-min-4a14499/infant-freesurfer_dev-4a14499-min.zip \
+    && unzip infant-freesurfer_dev-4a14499-min.zip -d /opt \
+    && rm infant-freesurfer_dev-4a14499-min.zip
 ENV FREESURFER_HOME="/opt/freesurfer"
 ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     FUNCTIONALS_DIR="$FREESURFER_HOME/sessions" \
@@ -318,8 +299,7 @@ COPY . /src/nibabies
 # Force static versioning within container
 RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
     echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
-    pip install --no-cache-dir -e "/src/nibabies[all]" && \
-    rm ${FREESURFER_HOME}/build-stamp.txt
+    pip install --no-cache-dir -e "/src/nibabies[all]"
 
 # ABI tags can interfere when running on Singularity
 RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
