@@ -83,6 +83,3 @@ The command-line interface of the nibabies wrapper
 :nodefault:
 :nodefaultconst:
 ```
-
-
-
