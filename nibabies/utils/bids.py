@@ -192,8 +192,18 @@ def group_bolds_ref(*, layout, subject):
                 combinations.append(comb)
                 files.append([bold.path])
 
-        assert len(combinations) == len(files), "Nonequal number of combinations and file buckets"
-        assert len(bolds) == sum([len(x) for x in files]), "Final BOLD images count is off"
+        if (len(combinations) != len(files)) or (
+            len(bolds) != sum([len(x) for x in files])
+        ):
+            msg = f"""Error encountered when grouping BOLD runs.
+Combinations: {combinations}
+Sorted files: {files}
+BOLD files: {bolds}
+
+Please share this information with the nibabies developers at:
+https://github.com/nipreps/nibabies/issues/new/choose
+"""
+            raise RuntimeError(msg)
 
     return combinations, files
 
