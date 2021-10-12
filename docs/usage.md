@@ -85,7 +85,7 @@ nipreps/nibabies:21.0.0 /data /out participant --age-months 12
 ...
 ```
 
-:::{admonition}
+:::{admonition} Docker usage warning
 :class: warning
 
 When using Docker, the wrapper will default to using the same version of `nibabies` as the wrapper.
@@ -103,7 +103,7 @@ nibabies-21.0.0.sif /data /out participant --age-months 12
 ...
 ```
 
-:::{admonition}
+:::{admonition} Singularity usage warning
 :class: warning
 
 Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.

@@ -81,6 +81,9 @@ napoleon_custom_sections = [
 # -- MyST parameters ---------------------------------------------------------
 
 myst_heading_anchors = 2
+myst_enable_extensions = [
+    "colon_fence",
+]
 
 # to avoid Python highlighting in literal text
 highlight_language = "none"
