@@ -18,7 +18,7 @@ The common parts of the command follow the
 Example:
 
 ```Shell
-nibabies data/bids_root/ out/ participant -w work/ --participant-id 01 --age-months 12
+$ nibabies data/bids_root/ out/ participant -w work/ --participant-id 01 --age-months 12
 ```
 
 Further information about BIDS and BIDS-Apps can be found at the
@@ -52,22 +52,30 @@ However, as infant brains can vastly differ depending on age, providing the foll
 
 - **--age-months** - participant age in months
 
-> ⚠️
-> This is required if FreeSurfer is not disabled (`--fs-no-reconall`)
-> ⚠️
+:::{admonition} Warning
+:class: warning
+
+This is required if FreeSurfer is not disabled (`--fs-no-reconall`)
+:::
 
 - **--participant-id** - participant ID
 
-> ⚠️
-> This is recommended when using `--age-months` if ages vary across participants.
-> ⚠️
+:::{admonition} Tip
+:class: tip
+
+This is recommended when using `--age-months` if age varies across participants.
+:::
 
 - **--segmentation-atlases-dir** - directory containing pre-labeled segmentations to use for Joint Label Fusion.
 
-> ⚠️
-> The segmentation directory should consist of one or more template directories containing:
->> - A segmented and labelled NIfTI that includes `Segmentation` in the filename.
->> - A brainmasked T1w NIfTI that includes `T1w` in the filename.
+:::{admonition} Tip
+:class: tip
+
+The segmentation directory layout should consist of one or more template directories containing:
+* A segmented and labeled NIfTI that includes `Segmentation` in the filename.
+* A brainmasked T1w NIfTI that includes `T1w` in the filename.
+
+:::
 
 ## Using the nibabies wrapper
 
