@@ -30,7 +30,7 @@ Further information about BIDS and BIDS-Apps can be found at the
 
 To obtain a FreeSurfer license, simply register for free at https://surfer.nmr.mgh.harvard.edu/registration.html.
 
-FreeSurfer will search for a license key file first using the `$FS_LICENSE` environment variable and then in the default path to the license key file (`$FREESURFER_HOME`/license.txt). If `$FS_LICENSE` is set, the [`nibabies-wrapper`](#Using-the-nibabies-wrapper) will automatically handle setting the license within the container.
+FreeSurfer will search for a license key file first using the `$FS_LICENSE` environment variable and then in the default path to the license key file (`$FREESURFER_HOME`/license.txt). If `$FS_LICENSE` is set, the [`nibabies-wrapper`](#using-the-nibabies-wrapper) will automatically handle setting the license within the container.
 Otherwise, you will need to use the `--fs-license-file` flag to ensure the license is available.
 
 ## Command-Line Arguments
@@ -72,7 +72,7 @@ However, as infant brains can vastly differ depending on age, providing the foll
 ## Using the nibabies wrapper
 
 The wrapper will generate a Docker or Singularity command line for you, print it out for reporting purposes, and then execute it without further action needed.
-For installation instructions, please see [](./installation.md#Installing-the-nibabies-wrapper)
+For installation instructions, please see [](installation.md#installing-the-nibabies-wrapper)
 
 ### Sample Docker usage
 

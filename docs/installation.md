@@ -19,13 +19,13 @@ There are also a few keyword tags, `latest` and `unstable`, that serve as specia
 
 ### Working with Singularity
 
-The easiest way to create a Singularity image is to build from the [Docker](#Working-with-Docker) images hosted online.
+The easiest way to create a Singularity image is to build from the [Docker](#working-with-docker) images hosted online.
 For example, if you want to build version `21.0.0`, you would use the following command.
 ```
 $ singularity build nibabies-21.0.0.sif docker://nipreps/nibabies:21.0.0
 ```
 
-### Installing the nibabies-wrapper
+## Installing the nibabies-wrapper
 
 The `nibabies-wrapper` is a lightweight Python tool to facilitate running `nibabies` within a container service.
 To install or upgrade to the current release:
