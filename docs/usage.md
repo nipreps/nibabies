@@ -12,13 +12,13 @@ one T2-weighted structural image and
 We highly recommend that you validate your dataset with the free, online
 [BIDS Validator](http://bids-standard.github.io/bids-validator/).
 
-The exact command to run *NiBabies* depends on the [Installation] method.
+The exact command to run *NiBabies* depends on the [Installation](./installation.md) method.
 The common parts of the command follow the
 [BIDS-Apps](https://github.com/BIDS-Apps) definition.
 Example:
 
 ```Shell
-nibabies data/bids_root/ out/ participant -w work/
+nibabies data/bids_root/ out/ participant -w work/ --participant-id 01 --age-months 12
 ```
 
 Further information about BIDS and BIDS-Apps can be found at the
@@ -39,6 +39,35 @@ Otherwise, you will need to use the `--fs-license-file` flag to ensure the licen
 :prog: nibabies
 :nodefaultconst:
 ```
+
+## More information on command-line arguments
+
+At minimum, the follow *positional* arguments are required.
+
+- **bids_dir** - the root folder of a BIDS valid dataset.
+- **output_dir** - folder to store outputs and reports.
+- **level** - processing stage to be run, currently can only be `participant`.
+
+However, as infant brains can vastly differ depending on age, providing the following arguments is highly recommended:
+
+- **--age-months** - participant age in months
+
+> ⚠️
+> This is required if FreeSurfer is not disabled (`--fs-no-reconall`)
+> ⚠️
+
+- **--participant-id** - participant ID
+
+> ⚠️
+> This is recommended when using `--age-months` if ages vary across participants.
+> ⚠️
+
+- **--segmentation-atlases-dir** - directory containing pre-labeled segmentations to use for Joint Label Fusion.
+
+> ⚠️
+> The segmentation directory should consist of one or more template directories containing:
+>> - A segmented and labelled NIfTI that includes `Segmentation` in the filename.
+>> - A brainmasked T1w NIfTI that includes `T1w` in the filename.
 
 ## Using the nibabies wrapper
 
