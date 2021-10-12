@@ -55,8 +55,10 @@ nipreps/nibabies:21.0.0 /data /out participant --age-months 12
 ...
 ```
 
-|:warning:| When using Docker, the wrapper will default to using the same version of `nibabies` as the wrapper.
-This can be overriden by using the `-i` flag to specify a particular Docker image.
+> ⚠️
+> When using Docker, the wrapper will default to using the same version of `nibabies` as the wrapper.
+> This can be overriden by using the `-i` flag to specify a particular Docker image.
+> ⚠️
 
 ```
 # sample Singularity usage
@@ -68,7 +70,9 @@ nibabies-21.0.0.sif /data /out participant --age-months 12
 ...
 ```
 
-|:warning:| Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.
+> ⚠️
+> Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.
+> ⚠️
 
 The command-line interface of the nibabies wrapper
 ------------------------------------------------

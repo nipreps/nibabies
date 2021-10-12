@@ -36,7 +36,6 @@ extensions = [
     # "sphinxcontrib.napoleon",
     "sphinxarg.ext",  # argparse extension
     "myst_nb",  # stop segregating rst/md
-    "sphinxemoji.sphinxemoji",  # enable emojis
 ]
 
 autodoc_mock_imports = [

@@ -1,6 +1,5 @@
 sphinx
 myst_nb
 sphinx-argparse
-sphinxemoji
 # Relative to repository root
 ./wrapper/
