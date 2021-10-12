@@ -10,4 +10,5 @@
 
 installation
 usage
+outputs
 ```
