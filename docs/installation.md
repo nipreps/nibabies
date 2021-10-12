@@ -28,13 +28,13 @@ $ singularity build nibabies-21.0.0.sif docker://nipreps/nibabies:21.0.0
 ### Installing the nibabies-wrapper
 
 The `nibabies-wrapper` is a lightweight Python tool to facilitate running `nibabies` within a container service.
-To install the current release:
+To install or upgrade to the current release:
 ```
-$ pip install nibabies-wrapper
+$ pip install --update nibabies-wrapper
 ```
 
-You can find the [usage instructions here](./usage.md#Using-the-nibabies-wrapper)
+For further details, see [](usage.md#using-the-nibabies-wrapper).
 
 ## Bare-metal Installation
 
-If you would prefer to install this tool natively, you can refer the [Dockerfile](./Dockerfile) as a guide for all the dependencies.
+If you would prefer to install this tool natively, you can refer the [Dockerfile](https://github.com/nipreps/nibabies/blob/master/Dockerfile) as a guide for all the dependencies.
