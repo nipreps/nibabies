@@ -479,7 +479,7 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         help="Organization of outputs. bids (default) places NiBabies derivatives "
         "directly in the output directory, and defaults to placing FreeSurfer "
         "derivatives in <output-dir>/sourcedata/freesurfer. legacy creates derivative "
-        "datasets as subdirectories of outputs."
+        "datasets as subdirectories of outputs.",
     )
     g_other.add_argument(
         "-w",
