@@ -31,7 +31,37 @@ Further information about BIDS and BIDS-Apps can be found at the
 :nodefaultconst:
 ```
 
-The command-line interface of the docker wrapper
+## Using the nibabies wrapper
+
+The wrapper will generate a Docker or Singularity command line for you, print it out for reporting purposes, and then execute it without further action needed.
+You can find the [installation instructions here](./installation.md#Installing-the-nibabies-wrapper)
+
+```
+# sample Docker usage
+$ nibabies-wrapper docker /path/to/data /path/to/output participant --age-months 12 --fs-license-file /usr/freesurfer/license.txt
+
+RUNNING: docker run --rm -e DOCKER_VERSION_8395080871=20.10.6 -it -v /path/to/data:/data:ro \
+-v /path/to/output:/out -v /usr/freesurfer/license.txt:/opt/freesurfer/license.txt:ro \
+nipreps/nibabies:21.0.0 /data /out participant --age-months 12
+...
+```
+
+> :warning: When using Docker, the wrapper will default to using the same version of `nibabies` as the wrapper.
+This can be overriden by using the `-i` flag to specify a particular Docker image.
+
+```
+# sample Singularity usage
+$ nibabies-wrapper singularity /path/to/data /path/to/output participant --age-months 12 -i nibabies-21.0.0rc1.sif --fs-license-file /usr/freesurfer/license.txt
+
+RUNNING: singularity run --cleanenv -B /path/to/data:/data:ro \
+-B /path/to/output:/out -B /usr/freesurfer/license.txt:/opt/freesurfer/license.txt:ro \
+nibabies-21.0.0.sif /data /out participant --age-months 12
+...
+```
+
+> :warning: Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.
+
+The command-line interface of the nibabies wrapper
 ------------------------------------------------
 
 ```{argparse}
