@@ -613,8 +613,16 @@ def parse_args(args=None, namespace=None):
 
     # Initialize --output-spaces if not defined
     if config.execution.output_spaces is None:
-        # TODO: Set a default volumetric output space
-        pass
+        from niworkflows.utils.spaces import Reference, SpatialReferences
+        from ..utils.misc import cohort_by_months
+
+        if config.workflow.age_months is None:
+            parser.error("--age-months must be provided if --output-spaces is not set.")
+
+        cohort = cohort_by_months("MNIInfant", config.workflow.age_months)
+        config.execution.output_spaces = SpatialReferences(
+            [Reference("MNIInfant", {"res": "native", "cohort": cohort})]
+        )
 
     # Retrieve logging level
     build_log = config.loggers.cli
