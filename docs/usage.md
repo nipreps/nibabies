@@ -30,7 +30,7 @@ Further information about BIDS and BIDS-Apps can be found at the
 
 To obtain a FreeSurfer license, simply register for free at https://surfer.nmr.mgh.harvard.edu/registration.html.
 
-FreeSurfer will search for a license key file first using the $FS_LICENSE environment variable and then in the default path to the license key file ($FREESURFER_HOME/license.txt). If `$FS_LICENSE` is set, the [`nibabies-wrapper`](#Using-the-nibabies-wrapper) will automatically handle setting the license within the container.
+FreeSurfer will search for a license key file first using the `$FS_LICENSE` environment variable and then in the default path to the license key file (`$FREESURFER_HOME`/license.txt). If `$FS_LICENSE` is set, the [`nibabies-wrapper`](#Using-the-nibabies-wrapper) will automatically handle setting the license within the container.
 Otherwise, you will need to use the `--fs-license-file` flag to ensure the license is available.
 
 ## Command-Line Arguments
@@ -55,7 +55,7 @@ nipreps/nibabies:21.0.0 /data /out participant --age-months 12
 ...
 ```
 
-> :warning: When using Docker, the wrapper will default to using the same version of `nibabies` as the wrapper.
+|:warning:| When using Docker, the wrapper will default to using the same version of `nibabies` as the wrapper.
 This can be overriden by using the `-i` flag to specify a particular Docker image.
 
 ```
@@ -68,7 +68,7 @@ nibabies-21.0.0.sif /data /out participant --age-months 12
 ...
 ```
 
-> :warning: Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.
+|:warning:| Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.
 
 The command-line interface of the nibabies wrapper
 ------------------------------------------------
