@@ -192,9 +192,7 @@ def group_bolds_ref(*, layout, subject):
                 combinations.append(comb)
                 files.append([bold.path])
 
-        if (len(combinations) != len(files)) or (
-            len(bolds) != sum([len(x) for x in files])
-        ):
+        if (len(combinations) != len(files)) or (len(bolds) != sum([len(x) for x in files])):
             msg = f"""Error encountered when grouping BOLD runs.
 Combinations: {combinations}
 Sorted files: {files}
