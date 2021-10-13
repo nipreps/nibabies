@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 """
-The NiBabies wrapper for Docker/Singularity
-
-
-This is a Python wrapper to run NiBabies through a container service.
+This is a Python wrapper to facilitate running NiBabies through Docker or Singularity services.
 Docker or Singularity must be installed and running.
-This can be checked by running either ::
+To test installation, you can use one of the following:
 
-  docker info
-  singularity version
+```bash
+docker info
+singularity version
+```
 
 Please report any feedback to our GitHub repository
 (https://github.com/nipreps/nibabies) and do not
@@ -430,8 +429,7 @@ the spatial normalization."""
         "--fs-subjects-dir",
         metavar="PATH",
         type=os.path.abspath,
-        help="Path to existing FreeSurfer subjects directory to reuse. "
-        "(default: OUTPUT_DIR/freesurfer)",
+        help="Path to existing Infant FreeSurfer subjects directory to reuse. ",
     )
     g_wrap.add_argument(
         "--config-file",
@@ -444,7 +442,7 @@ the spatial normalization."""
         "--anat-derivatives",
         metavar="PATH",
         type=os.path.abspath,
-        help="Path to existing sMRIPrep/nibabies-anatomical derivatives to fasttrack "
+        help="Path to existing NiBabies anatomical derivatives to fasttrack "
         "the anatomical workflow.",
     )
     g_wrap.add_argument(

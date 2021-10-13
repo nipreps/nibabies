@@ -35,7 +35,7 @@ extensions = [
     # "nipype.sphinxext.plot_workflow",
     # "sphinxcontrib.napoleon",
     "sphinxarg.ext",  # argparse extension
-    "myst_nb",
+    "myst_nb",  # stop segregating rst/md
 ]
 
 autodoc_mock_imports = [
@@ -80,4 +80,10 @@ napoleon_custom_sections = [
 
 # -- MyST parameters ---------------------------------------------------------
 
-myst_heading_anchors = 2
+myst_heading_anchors = 3
+myst_enable_extensions = [
+    "colon_fence",
+]
+
+# to avoid Python highlighting in literal text
+highlight_language = "none"
