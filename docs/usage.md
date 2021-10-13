@@ -42,15 +42,15 @@ Otherwise, you will need to use the `--fs-license-file` flag to ensure the licen
 
 ## More information on command-line arguments
 
-At minimum, the follow *positional* arguments are required.
+At minimum, the following *positional* arguments are required.
 
-- **bids_dir** - the root folder of a BIDS valid dataset.
-- **output_dir** - folder to store outputs and reports.
-- **level** - processing stage to be run, currently can only be `participant`.
+- **`bids_dir`** - the root folder of a BIDS valid dataset.
+- **`output_dir`** - folder to store outputs and reports.
+- **`level`** - processing stage to be run, currently can only be `participant`.
 
 However, as infant brains can vastly differ depending on age, providing the following arguments is highly recommended:
 
-- **--age-months** - participant age in months
+- **`--age-months`** - participant age in months
 
 :::{admonition} Warning
 :class: warning
@@ -58,7 +58,7 @@ However, as infant brains can vastly differ depending on age, providing the foll
 This is required if FreeSurfer is not disabled (`--fs-no-reconall`)
 :::
 
-- **--participant-id** - participant ID
+- **`--participant-id`** - participant ID
 
 :::{admonition} Tip
 :class: tip
@@ -66,7 +66,7 @@ This is required if FreeSurfer is not disabled (`--fs-no-reconall`)
 This is recommended when using `--age-months` if age varies across participants.
 :::
 
-- **--segmentation-atlases-dir** - directory containing pre-labeled segmentations to use for Joint Label Fusion.
+- **`--segmentation-atlases-dir`** - directory containing pre-labeled segmentations to use for Joint Label Fusion.
 
 :::{admonition} Tip
 :class: tip
