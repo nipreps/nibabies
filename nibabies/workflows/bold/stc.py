@@ -63,7 +63,7 @@ def init_bold_stc_wf(metadata, name="bold_stc_wf"):
     frac = config.workflow.slice_time_ref
     tzero = np.round(first + frac * (last - first), 3)
 
-    afni_ver = ''.join('%02d' % v for v in afni.Info().version() or [])
+    afni_ver = "".join("%02d" % v for v in afni.Info().version() or [])
     workflow = Workflow(name=name)
     workflow.__desc__ = f"""\
 BOLD runs were slice-time corrected to {tzero:0.3g}s ({frac:g} of slice acquisition range
@@ -72,7 +72,7 @@ BOLD runs were slice-time corrected to {tzero:0.3g}s ({frac:g} of slice acquisit
     inputnode = pe.Node(niu.IdentityInterface(fields=["bold_file", "skip_vols"]), name="inputnode")
     outputnode = pe.Node(niu.IdentityInterface(fields=["stc_file"]), name="outputnode")
 
-    LOGGER.log(25, f'BOLD series will be slice-timing corrected to an offset of {tzero:.3g}s.')
+    LOGGER.log(25, f"BOLD series will be slice-timing corrected to an offset of {tzero:.3g}s.")
 
     # It would be good to fingerprint memory use of afni.TShift
     slice_timing_correction = pe.Node(

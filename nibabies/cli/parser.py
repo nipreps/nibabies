@@ -68,8 +68,9 @@ def _build_parser():
         try:
             value = float(value)
         except ValueError:
-            raise parser.error("Slice time reference must be number, 'start', or 'middle'. "
-                               f"Received {value}.")
+            raise parser.error(
+                "Slice time reference must be number, 'start', or 'middle'. " f"Received {value}."
+            )
         if not 0 <= value <= 1:
             raise parser.error(f"Slice time reference must be in range 0-1. Received {value}.")
         return value
@@ -325,9 +326,9 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         default=None,
         type=SliceTimeRef,
         help="The time of the reference slice to correct BOLD values to, as a fraction "
-             "acquisition time. 0 indicates the start, 0.5 the midpoint, and 1 the end "
-             "of acquisition. The alias `start` corresponds to 0, and `middle` to 0.5. "
-             "The default value is 0.5.",
+        "acquisition time. 0 indicates the start, 0.5 the midpoint, and 1 the end "
+        "of acquisition. The alias `start` corresponds to 0, and `middle` to 0.5. "
+        "The default value is 0.5.",
     )
     g_conf.add_argument(
         "--dummy-scans",
