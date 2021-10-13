@@ -153,10 +153,12 @@ def group_bolds_ref(*, layout, subject):
     combinations = []
     # list of lists containing filenames that apply per combination
     files = []
+    # list of all BOLDS encountered
+    all_bolds = []
 
     for ses, suffix in sorted(
         product(
-            layout.get_sessions() or (None,),
+            layout.get_sessions(subject=subject) or (None,),
             {
                 "bold",
             },
@@ -164,6 +166,9 @@ def group_bolds_ref(*, layout, subject):
     ):
         # bold files same session
         bolds = layout.get(suffix=suffix, session=ses, **base_entities)
+        # some sessions may not have BOLD scans
+        if bolds is None:
+            continue
 
         for bold in bolds:
             # session, pe, ro
@@ -192,7 +197,9 @@ def group_bolds_ref(*, layout, subject):
                 combinations.append(comb)
                 files.append([bold.path])
 
-        if (len(combinations) != len(files)) or (len(bolds) != sum([len(x) for x in files])):
+        all_bolds += bolds
+
+        if (len(combinations) != len(files)) or (len(all_bolds) != sum([len(x) for x in files])):
             msg = f"""Error encountered when grouping BOLD runs.
 Combinations: {combinations}
 Sorted files: {files}
