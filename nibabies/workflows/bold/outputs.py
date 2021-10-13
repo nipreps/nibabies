@@ -10,7 +10,7 @@ from ...interfaces import DerivativesDataSink
 
 
 def prepare_timing_parameters(metadata):
-    """ Convert initial timing metadata to post-realignment timing metadata
+    """Convert initial timing metadata to post-realignment timing metadata
     In particular, SliceTiming metadata is invalid once STC or any realignment is applied,
     as a matrix of voxels no longer corresponds to an acquisition slice.
     Therefore, if SliceTiming is present in the metadata dictionary, and a sparse
@@ -53,11 +53,17 @@ def prepare_timing_parameters(metadata):
     """
     timing_parameters = {
         key: metadata[key]
-        for key in ("RepetitionTime", "VolumeTiming", "DelayTime",
-                    "AcquisitionDuration", "SliceTiming")
-        if key in metadata}
+        for key in (
+            "RepetitionTime",
+            "VolumeTiming",
+            "DelayTime",
+            "AcquisitionDuration",
+            "SliceTiming",
+        )
+        if key in metadata
+    }
 
-    run_stc = "SliceTiming" in metadata and 'slicetiming' not in config.workflow.ignore
+    run_stc = "SliceTiming" in metadata and "slicetiming" not in config.workflow.ignore
     timing_parameters["SliceTimingCorrected"] = run_stc
 
     if "SliceTiming" in timing_parameters:
