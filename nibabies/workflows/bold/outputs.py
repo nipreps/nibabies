@@ -5,47 +5,60 @@ import numpy as np
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
-from ...config import DEFAULT_MEMORY_MIN_GB
+from ... import config
 from ...interfaces import DerivativesDataSink
 
 
 def prepare_timing_parameters(metadata):
-    """Convert initial timing metadata to post-realignment timing metadata
-
+    """ Convert initial timing metadata to post-realignment timing metadata
     In particular, SliceTiming metadata is invalid once STC or any realignment is applied,
     as a matrix of voxels no longer corresponds to an acquisition slice.
     Therefore, if SliceTiming is present in the metadata dictionary, and a sparse
     acquisition paradigm is detected, DelayTime or AcquisitionDuration must be derived to
     preserve the timing interpretation.
-
     Examples
     --------
-
+    .. testsetup::
+        >>> from unittest import mock
+    If SliceTiming metadata is absent, then the only change is to note that
+    STC has not been applied:
     >>> prepare_timing_parameters(dict(RepetitionTime=2))
-    {'RepetitionTime': 2}
+    {'RepetitionTime': 2, 'SliceTimingCorrected': False}
     >>> prepare_timing_parameters(dict(RepetitionTime=2, DelayTime=0.5))
-    {'RepetitionTime': 2, 'DelayTime': 0.5}
-    >>> prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
-    {'RepetitionTime': 2, 'DelayTime': 1.2}
+    {'RepetitionTime': 2, 'DelayTime': 0.5, 'SliceTimingCorrected': False}
     >>> prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
     ...                                AcquisitionDuration=1.0))
-    {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'AcquisitionDuration': 1.0}
-    >>> prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
-    {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'AcquisitionDuration': 1.0}
-
+    {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'AcquisitionDuration': 1.0,
+     'SliceTimingCorrected': False}
+    When SliceTiming is available and used, then ``SliceTimingCorrected`` is ``True``
+    and the ``StartTime`` indicates a series offset.
+    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
+    ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
+    {'RepetitionTime': 2, 'SliceTimingCorrected': True, 'DelayTime': 1.2, 'StartTime': 0.3}
+    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
+    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
+    {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': True,
+     'AcquisitionDuration': 1.0, 'StartTime': 0.4}
+    When SliceTiming is available and not used, then ``SliceTimingCorrected`` is ``False``
+    and TA is indicated with ``DelayTime`` or ``AcquisitionDuration``.
+    >>> with mock.patch("fmriprep.config.workflow.ignore", ["slicetiming"]):
+    ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
+    {'RepetitionTime': 2, 'SliceTimingCorrected': False, 'DelayTime': 1.2}
+    >>> with mock.patch("fmriprep.config.workflow.ignore", ["slicetiming"]):
+    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
+    {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': False,
+     'AcquisitionDuration': 1.0}
     """
     timing_parameters = {
         key: metadata[key]
-        for key in (
-            "RepetitionTime",
-            "VolumeTiming",
-            "DelayTime",
-            "AcquisitionDuration",
-            "SliceTiming",
-        )
-        if key in metadata
-    }
+        for key in ("RepetitionTime", "VolumeTiming", "DelayTime",
+                    "AcquisitionDuration", "SliceTiming")
+        if key in metadata}
+
+    run_stc = "SliceTiming" in metadata and 'slicetiming' not in config.workflow.ignore
+    timing_parameters["SliceTimingCorrected"] = run_stc
 
     if "SliceTiming" in timing_parameters:
         st = sorted(timing_parameters.pop("SliceTiming"))
@@ -58,6 +71,13 @@ def prepare_timing_parameters(metadata):
         # For variable TR paradigms, use AcquisitionDuration
         elif "VolumeTiming" in timing_parameters:
             timing_parameters["AcquisitionDuration"] = TA
+
+        if run_stc:
+            first, last = st[0], st[-1]
+            frac = config.workflow.slice_time_ref
+            tzero = np.round(first + frac * (last - first), 3)
+            timing_parameters["StartTime"] = tzero
+
     return timing_parameters
 
 
@@ -162,7 +182,7 @@ def init_func_derivatives_wf(
         ),
         name="ds_confounds",
         run_without_submitting=True,
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
+        mem_gb=config.DEFAULT_MEMORY_MIN_GB,
     )
     ds_ref_t1w_xfm = pe.Node(
         DerivativesDataSink(
@@ -216,7 +236,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_native",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_bold_native_ref = pe.Node(
             DerivativesDataSink(
@@ -227,7 +247,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_native_ref",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_bold_mask_native = pe.Node(
             DerivativesDataSink(
@@ -239,7 +259,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_mask_native",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
         # fmt: off
@@ -268,7 +288,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_t1",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_bold_t1_ref = pe.Node(
             DerivativesDataSink(
@@ -280,7 +300,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_t1_ref",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_bold_mask_t1 = pe.Node(
             DerivativesDataSink(
@@ -293,7 +313,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_mask_t1",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
         # fmt: off
@@ -319,7 +339,7 @@ def init_func_derivatives_wf(
                 ),
                 name="ds_bold_aseg_t1",
                 run_without_submitting=True,
-                mem_gb=DEFAULT_MEMORY_MIN_GB,
+                mem_gb=config.DEFAULT_MEMORY_MIN_GB,
             )
             ds_bold_aparc_t1 = pe.Node(
                 DerivativesDataSink(
@@ -332,7 +352,7 @@ def init_func_derivatives_wf(
                 ),
                 name="ds_bold_aparc_t1",
                 run_without_submitting=True,
-                mem_gb=DEFAULT_MEMORY_MIN_GB,
+                mem_gb=config.DEFAULT_MEMORY_MIN_GB,
             )
 
             # fmt: off
@@ -351,7 +371,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_aroma_noise_ics",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_melodic_mix = pe.Node(
             DerivativesDataSink(
@@ -362,7 +382,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_melodic_mix",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_aroma_std = pe.Node(
             DerivativesDataSink(
@@ -375,7 +395,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_aroma_std",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
         # fmt: off
@@ -406,7 +426,7 @@ def init_func_derivatives_wf(
             KeySelect(fields=["template", "bold_std", "bold_std_ref", "bold_mask_std"]),
             name="select_std",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
         ds_bold_std = pe.Node(
@@ -420,7 +440,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_std",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_bold_std_ref = pe.Node(
             DerivativesDataSink(
@@ -431,7 +451,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_std_ref",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_bold_mask_std = pe.Node(
             DerivativesDataSink(
@@ -443,7 +463,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_mask_std",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
         # fmt: off
@@ -481,7 +501,7 @@ def init_func_derivatives_wf(
                 KeySelect(fields=["bold_aseg_std", "bold_aparc_std", "template"]),
                 name="select_fs_std",
                 run_without_submitting=True,
-                mem_gb=DEFAULT_MEMORY_MIN_GB,
+                mem_gb=config.DEFAULT_MEMORY_MIN_GB,
             )
             ds_bold_aseg_std = pe.Node(
                 DerivativesDataSink(
@@ -493,7 +513,7 @@ def init_func_derivatives_wf(
                 ),
                 name="ds_bold_aseg_std",
                 run_without_submitting=True,
-                mem_gb=DEFAULT_MEMORY_MIN_GB,
+                mem_gb=config.DEFAULT_MEMORY_MIN_GB,
             )
             ds_bold_aparc_std = pe.Node(
                 DerivativesDataSink(
@@ -505,7 +525,7 @@ def init_func_derivatives_wf(
                 ),
                 name="ds_bold_aparc_std",
                 run_without_submitting=True,
-                mem_gb=DEFAULT_MEMORY_MIN_GB,
+                mem_gb=config.DEFAULT_MEMORY_MIN_GB,
             )
 
             # fmt: off
@@ -538,7 +558,7 @@ def init_func_derivatives_wf(
             KeySelect(fields=["surfaces", "surf_kwargs"]),
             name="select_fs_surf",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         select_fs_surf.iterables = [("key", fs_outputs)]
         select_fs_surf.inputs.surf_kwargs = [{"space": s} for s in fs_outputs]
@@ -560,7 +580,7 @@ def init_func_derivatives_wf(
             iterfield=["in_file", "hemi"],
             name="ds_bold_surfs",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
         # fmt: off
@@ -588,7 +608,7 @@ def init_func_derivatives_wf(
             ),
             name="ds_bold_cifti",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
         # fmt: off
@@ -690,7 +710,7 @@ def init_bold_preproc_report_wf(mem_gb, reportlets_dir, name="bold_preproc_repor
             dismiss_entities=("echo",),
         ),
         name="ds_report_bold",
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
+        mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         run_without_submitting=True,
     )
 

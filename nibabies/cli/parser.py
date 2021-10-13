@@ -60,6 +60,20 @@ def _build_parser():
         if value and Path(value).exists():
             return loads(Path(value).read_text(), object_hook=_filter_pybids_none_any)
 
+    def _slice_time_ref(value, parser):
+        if value == "start":
+            value = 0
+        elif value == "middle":
+            value = 0.5
+        try:
+            value = float(value)
+        except ValueError:
+            raise parser.error("Slice time reference must be number, 'start', or 'middle'. "
+                               f"Received {value}.")
+        if not 0 <= value <= 1:
+            raise parser.error(f"Slice time reference must be in range 0-1. Received {value}.")
+        return value
+
     verstr = f"NiBabies v{config.environment.version}"
     currentv = Version(config.environment.version)
     is_release = not any((currentv.is_devrelease, currentv.is_prerelease, currentv.is_postrelease))
@@ -71,6 +85,7 @@ def _build_parser():
     PathExists = partial(_path_exists, parser=parser)
     IsFile = partial(_is_file, parser=parser)
     PositiveInt = partial(_min_one, parser=parser)
+    SliceTimeRef = partial(_slice_time_ref, parser=parser)
 
     parser.description = f"""
 NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
@@ -302,6 +317,17 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         default=False,
         help="Replace medial wall values with NaNs on functional GIFTI files. Only "
         "performed for GIFTI files mapped to a freesurfer subject (fsaverage or fsnative).",
+    )
+    g_conf.add_argument(
+        "--slice-time-ref",
+        required=False,
+        action="store",
+        default=None,
+        type=SliceTimeRef,
+        help="The time of the reference slice to correct BOLD values to, as a fraction "
+             "acquisition time. 0 indicates the start, 0.5 the midpoint, and 1 the end "
+             "of acquisition. The alias `start` corresponds to 0, and `middle` to 0.5. "
+             "The default value is 0.5.",
     )
     g_conf.add_argument(
         "--dummy-scans",
