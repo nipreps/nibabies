@@ -10,44 +10,59 @@ from ...interfaces import DerivativesDataSink
 
 
 def prepare_timing_parameters(metadata):
-    """Convert initial timing metadata to post-realignment timing metadata
+    """
+    Convert initial timing metadata to post-realignment timing metadata
+
     In particular, SliceTiming metadata is invalid once STC or any realignment is applied,
     as a matrix of voxels no longer corresponds to an acquisition slice.
     Therefore, if SliceTiming is present in the metadata dictionary, and a sparse
     acquisition paradigm is detected, DelayTime or AcquisitionDuration must be derived to
     preserve the timing interpretation.
+
     Examples
     --------
+
     .. testsetup::
+
         >>> from unittest import mock
+
     If SliceTiming metadata is absent, then the only change is to note that
     STC has not been applied:
+
     >>> prepare_timing_parameters(dict(RepetitionTime=2))
     {'RepetitionTime': 2, 'SliceTimingCorrected': False}
     >>> prepare_timing_parameters(dict(RepetitionTime=2, DelayTime=0.5))
     {'RepetitionTime': 2, 'DelayTime': 0.5, 'SliceTimingCorrected': False}
     >>> prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                AcquisitionDuration=1.0))
+    ...                                AcquisitionDuration=1.0))  # doctest: +NORMALIZE_WHITESPACE
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'AcquisitionDuration': 1.0,
      'SliceTimingCorrected': False}
+
     When SliceTiming is available and used, then ``SliceTimingCorrected`` is ``True``
     and the ``StartTime`` indicates a series offset.
-    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
-    ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
+
+    >>> with mock.patch("nibabies.config.workflow.ignore", []):
+    ...     prepare_timing_parameters(dict(
+    ...         RepetitionTime=2,
+    ...         SliceTiming=[0.0, 0.2, 0.4, 0.6]))  # doctest: +NORMALIZE_WHITESPACE
     {'RepetitionTime': 2, 'SliceTimingCorrected': True, 'DelayTime': 1.2, 'StartTime': 0.3}
-    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
-    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
+    >>> with mock.patch("nibabies.config.workflow.ignore", []):
+    ...     prepare_timing_parameters(dict(
+    ...         VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...         SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  # doctest: +NORMALIZE_WHITESPACE
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': True,
      'AcquisitionDuration': 1.0, 'StartTime': 0.4}
+
     When SliceTiming is available and not used, then ``SliceTimingCorrected`` is ``False``
     and TA is indicated with ``DelayTime`` or ``AcquisitionDuration``.
-    >>> with mock.patch("fmriprep.config.workflow.ignore", ["slicetiming"]):
+
+    >>> with mock.patch("nibabies.config.workflow.ignore", ["slicetiming"]):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': False, 'DelayTime': 1.2}
-    >>> with mock.patch("fmriprep.config.workflow.ignore", ["slicetiming"]):
-    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
+    >>> with mock.patch("nibabies.config.workflow.ignore", ["slicetiming"]):
+    ...     prepare_timing_parameters(dict(
+    ...         VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...         SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  # doctest: +NORMALIZE_WHITESPACE
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': False,
      'AcquisitionDuration': 1.0}
     """
