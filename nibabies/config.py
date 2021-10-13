@@ -521,6 +521,11 @@ class workflow(_Config):
     skull_strip_t1w = "force"
     """Skip brain extraction of the T1w image (default is ``force``, meaning that
     *nibabies* will run brain extraction of the T1w)."""
+    slice_time_ref = 0.5
+    """The time of the reference slice to correct BOLD values to, as a fraction
+    acquisition time. 0 indicates the start, 0.5 the midpoint, and 1 the end
+    of acquisition. The alias `start` corresponds to 0, and `middle` to 0.5.
+    The default value is 0.5."""
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
