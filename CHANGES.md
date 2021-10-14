@@ -1,6 +1,20 @@
 21.0.0 (TBD)
 ============
 
+  21.0.0rc2 (October 14, 2021)
+  ----------------------------
+
+  * DOC: Set up external readthedocs documentation (#119) (#126) (#128)
+  * ENH: Port slice timing correction enhancements from fMRIPrep (#137)
+  * ENH: Change default `--output-layout` to bids (#130)
+  * FIX: Handle sessions when grouping BOLDs (#139)
+  * FIX: Ensure MNIInfant is added if no `--output-spaces` are used (#136)
+  * FIX: Ensure `nibabies-wrapper` patches are correctly bound (#113)
+  * MAINT: Significantly reduce Docker/Singularity image size (#133)
+  * MAINT: Rename default `infant_recon_all` output directory (#129)
+  * STY: `black` nibabies module (#118)
+
+
   21.0.0rc1 (October 1, 2021)
   ---------------------------
 
