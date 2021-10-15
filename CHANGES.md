@@ -1,43 +1,46 @@
-21.0.0 (TBD)
-============
+21.0.0 (October 15, 2021)
+-------------------------
+The first major release series of 2021.
 
-  21.0.0rc2 (October 14, 2021)
-  ----------------------------
+This release includes enhancements, such as:
+ - Fine-grain subcortical alignment during CIFTI generation
+ - Improved functional registration to template space
+ - Greatly minimized container environment
 
-  * DOC: Set up external readthedocs documentation (#119) (#126) (#128)
-  * ENH: Port slice timing correction enhancements from fMRIPrep (#137)
-  * ENH: Change default `--output-layout` to bids (#130)
-  * FIX: Handle sessions when grouping BOLDs (#139)
-  * FIX: Ensure MNIInfant is added if no `--output-spaces` are used (#136)
-  * FIX: Ensure `nibabies-wrapper` patches are correctly bound (#113)
-  * MAINT: Significantly reduce Docker/Singularity image size (#133)
-  * MAINT: Rename default `infant_recon_all` output directory (#129)
-  * STY: `black` nibabies module (#118)
+Additionally, a plethora of bug-fixes are included, and documentation has been improved.
+
+### Caution!
+As with all minor version increments, working directories from previous versions **should not be reused**.
+
+### Thank you for using *NiBabies*!
+If you encounter any issues with this release, please let us know by posting an issue on our GitHub page!
 
 
-  21.0.0rc1 (October 1, 2021)
-  ---------------------------
-
-  * DOCKER: Strip ABI tag from libQt5Core.so.5 (#109)
-  * MAINT: Bump SDCFlows to latest bugfix version (d799fee)
-
-  21.0.0rc0 (September 29, 2021)
-  ------------------------------
-
-  * DOCKER: Reduce image size (#105)
-  * ENH: Subcortical alignment workflow (#72)
-  * ENH: Framewise displacement head radius flag (#104)
-  * ENH: Incorporate subcortical CIFTI alignment to functional processing (#102)
-  * ENH: Do not run infant_recon_all if already completed (#101)
-  * ENH: Modernize Dockerfile (#85)
-  * FIX: BOLD to template normalization (#99)
-  * FIX: SDC fieldwarp application (#98)
-  * FIX: Avoid running BBReg under certain conditions (#95)
-  * FIX: Standard output spaces (#92)
-  * FIX: Small Docker environment fixes (#86)
-  * FIX: Feed NiTransforms with LTAs of type RAS2RAS (#84)
-  * MAINT: Attempt to pull most recent dev version (#94)
-  * MAINT: Initial CircleCI workflow (#93)
+## Full Changelog
+* DOC: Set up external readthedocs documentation (#119) (#126) (#128)
+* DOCKER: Reduce container image size (#105) (#133)
+* DOCKER: Strip ABI tag from libQt5Core.so.5 (#109)
+* DOCKER: Modernize Dockerfile (#85)
+* ENH: Port slice timing correction enhancements from fMRIPrep (#137)
+* ENH: Change default `--output-layout` to bids (#130)
+* ENH: Subcortical alignment workflow (#72)
+* ENH: Framewise displacement head radius flag (#104)
+* ENH: Incorporate subcortical CIFTI alignment to functional processing (#102)
+* ENH: Do not run infant_recon_all if already completed (#101)
+* FIX: Handle sessions when grouping BOLDs (#139)
+* FIX: Ensure MNIInfant is added if no `--output-spaces` are used (#136)
+* FIX: Ensure `nibabies-wrapper` patches are correctly bound (#113)
+* FIX: BOLD to template normalization (#99)
+* FIX: SDC fieldwarp application (#98)
+* FIX: Avoid running BBReg under certain conditions (#95)
+* FIX: Standard output spaces (#92)
+* FIX: Small Docker environment fixes (#86)
+* FIX: Feed NiTransforms with LTAs of type RAS2RAS (#84)
+* MAINT: Rename default `infant_recon_all` output directory (#129)
+* MAINT: Bump SDCFlows to latest bugfix version (d799fee)
+* MAINT: Attempt to pull most recent dev version (#94)
+* MAINT: Initial CircleCI workflow (#93)
+* STY: `black` nibabies module (#118)
 
 0.1.2 (June 30, 2021)
 ---------------------
