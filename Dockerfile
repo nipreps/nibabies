@@ -216,7 +216,7 @@ RUN apt update && \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && echo "Downloading FreeSurfer + InfantFS" \
     && mkdir -p /opt/freesurfer \
-    && curl -fSLO --retry 5 https://github.com/nipreps-containers/freesurfer/releases/download/infant-min-4a14499/infant-freesurfer_dev-4a14499-min.zip \
+    && curl -fSLO --retry 5 https://github.com/nipreps-containers/freesurfer/releases/download/infant-min-4a14499-fix/infant-freesurfer_dev-4a14499-min.zip \
     && unzip infant-freesurfer_dev-4a14499-min.zip -d /opt \
     && rm infant-freesurfer_dev-4a14499-min.zip
 ENV FREESURFER_HOME="/opt/freesurfer"
