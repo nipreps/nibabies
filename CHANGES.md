@@ -1,3 +1,13 @@
+21.0.1 (October 18, 2021)
+-------------------------
+A patch release in the 21.0.x series.
+
+This patch release is for all **Docker/Singularity** users: `infant_recon_all` did not have all the available templates, which would cause failures for certain ages.
+Upgrading to this release will ensure you have all the necessary templates.
+
+## Full Changelog
+* DOCKER: Add missing `infant_recon_all` templates (130dcf3)
+
 21.0.0 (October 15, 2021)
 -------------------------
 The first major release series of 2021.
