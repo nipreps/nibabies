@@ -299,7 +299,7 @@ COPY . /src/nibabies
 # Force static versioning within container
 RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
     echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
-    pip install --no-cache-dir -e "/src/nibabies[all]"
+    pip install --no-cache-dir "/src/nibabies[all]"
 
 # ABI tags can interfere when running on Singularity
 RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
