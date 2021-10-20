@@ -425,22 +425,30 @@ class execution(_Config):
 
         if cls._layout is None:
             import re
-            from bids.layout import BIDSLayout
+            from bids.layout import BIDSLayout, BIDSLayoutIndexer
 
             _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / "bids_db")
             _db_path.mkdir(exist_ok=True, parents=True)
-            cls._layout = BIDSLayout(
-                str(cls.bids_dir),
+
+            # Recommended after PyBIDS 12.1
+            _indexer = BIDSLayoutIndexer(
                 validate=False,
-                database_path=_db_path,
-                reset_database=cls.bids_database_dir is None,
                 ignore=(
                     "code",
                     "stimuli",
                     "sourcedata",
                     "models",
                     re.compile(r"^\."),
+                    re.compile(
+                        r"sub-[a-zA-Z0-9]+(/ses-[a-zA-Z0-9]+)?/(beh|dwi|eeg|ieeg|meg|perf)"
+                    ),
                 ),
+            )
+            cls._layout = BIDSLayout(
+                str(cls.bids_dir),
+                database_path=_db_path,
+                reset_database=cls.bids_database_dir is None,
+                indexer=_indexer,
             )
             cls.bids_database_dir = _db_path
         cls.layout = cls._layout
