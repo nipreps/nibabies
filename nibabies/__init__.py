@@ -7,8 +7,10 @@ del get_versions
 # Can be removed once minimum PyBIDS dependency hits 0.14
 try:
     import bids
+    from packaging.version import Version
 
-    bids.config.set_option("extension_initial_dot", True)
+    if Version(bids.__version__) < Version("0.14.0"):
+        bids.config.set_option("extension_initial_dot", True)
 except (ImportError, ValueError):
     pass
 else:
