@@ -1,5 +1,9 @@
 # Installation
 
+The latest release of *NiBabies* is {{ release }}.
+
+To view all available releases, refer to the [NiBabies PyPI page](https://pypi.org/project/nibabies/#history).
+
 ## Container Installation
 
 Given its extensive dependencies, the easiest way to get up and running with *NiBabies* is by using a container service, such as [Docker](https://www.docker.com/get-started) or [Singularity](https://sylabs.io/singularity/).
@@ -8,10 +12,12 @@ Given its extensive dependencies, the easiest way to get up and running with *Ni
 
 Images are hosted on our [Docker Hub](https://hub.docker.com/r/nipreps/nibabies).
 To pull an image, the specific version tag must be specified in order to pull the images.
-For example, if you want to pull version `21.0.0`, you would use the following command.
-```
-$ docker pull nipreps/nibabies:21.0.0
-```
+
+:::{admonition} Example Docker build
+:class: seealso
+
+$ {{ dockerbuild }}
+:::
 
 There are also a few keyword tags, `latest` and `unstable`, that serve as special pointers.
 `latest` points to the latest release (excluding any betas or release candidates).
@@ -20,10 +26,12 @@ There are also a few keyword tags, `latest` and `unstable`, that serve as specia
 ### Working with Singularity
 
 The easiest way to create a Singularity image is to build from the [Docker](#working-with-docker) images hosted online.
-For example, if you want to build version `21.0.0`, you would use the following command.
-```
-$ singularity build nibabies-21.0.0.sif docker://nipreps/nibabies:21.0.0
-```
+
+:::{admonition} Example Singularity build
+:class: seealso
+
+$ {{ singbuild }}
+:::
 
 ## Installing the nibabies-wrapper
 

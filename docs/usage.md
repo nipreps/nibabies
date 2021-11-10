@@ -103,7 +103,7 @@ This can be overridden by using the `-i` flag to specify a particular Docker ima
 ### Sample Singularity usage
 
 ```
-$ nibabies-wrapper singularity /path/to/data /path/to/output participant --age-months 12 -i nibabies-21.0.0rc1.sif --fs-license-file /usr/freesurfer/license.txt
+$ nibabies-wrapper singularity /path/to/data /path/to/output participant --age-months 12 -i nibabies-21.0.0.sif --fs-license-file /usr/freesurfer/license.txt
 
 RUNNING: singularity run --cleanenv -B /path/to/data:/data:ro \
 -B /path/to/output:/out -B /usr/freesurfer/license.txt:/opt/freesurfer/license.txt:ro \

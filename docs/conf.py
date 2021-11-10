@@ -14,12 +14,15 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 from datetime import datetime
+from packaging.version import Version
+import nibabies
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'NiBabies'
 start_year = 2020
+latest_release = '21.0.1'
 
 author = f'The {project} Developers'
 copyright = f'{start_year}-{datetime.now().year}, {author}'
@@ -83,7 +86,20 @@ napoleon_custom_sections = [
 myst_heading_anchors = 3
 myst_enable_extensions = [
     "colon_fence",
+    "substitution",
 ]
+
+nibabies_ver = Version(nibabies.__version__)
+release = latest_release if nibabies_ver.is_prerelease else nibabies_ver.public
+
+myst_substitutions = {
+    "release": release,
+    "version": str(nibabies_ver),
+    "dockerbuild": "docker pull nipreps/nibabies:{{ release }}",
+    "singbuild": (
+        "singularity build nibabies-{{ release }}.sif docker://nipreps/nibabies:{{ release }}"
+    ),
+}
 
 # to avoid Python highlighting in literal text
 highlight_language = "none"
