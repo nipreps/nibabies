@@ -239,6 +239,7 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
     sbref_msg = f"No single-band-reference found for {os.path.basename(ref_file)}."
     if sbref_files and "sbref" in config.workflow.ignore:
         sbref_msg = "Single-band reference file(s) found and ignored."
+        sbref_files = []
     elif sbref_files:
         sbref_msg = "Using single-band reference file(s) {}.".format(
             ",".join([os.path.basename(sbf) for sbf in sbref_files])
@@ -255,18 +256,24 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
             from sdcflows.fieldmaps import get_identifier
 
             # Fallback to IntendedFor
-            bold_rel = re.sub(
-                r"^sub-[a-zA-Z0-9]*/", "", str(Path(bold_file).relative_to(layout.root))
+            intended_rel = re.sub(
+                r"^sub-[a-zA-Z0-9]*/",
+                "",
+                str(Path(
+                    bold_file if not multiecho else bold_file[0]
+                ).relative_to(layout.root))
             )
-            estimator_key = get_identifier(bold_rel)
+            estimator_key = get_identifier(intended_rel)
 
         if not estimator_key:
             has_fieldmap = False
             config.loggers.workflow.critical(
-                f"None of the available B0 fieldmaps are associated to <{bold_rel}>"
+                f"None of the available B0 fieldmaps are associated to <{bold_file}>"
             )
         else:
-            config.loggers.workflow.info(f"Found usable B0 fieldmap <{estimator_key}>")
+            config.loggers.workflow.info(
+                f"Found usable B0-map (fieldmap) estimator(s) <{', '.join(estimator_key)}> "
+                f"to correct <{bold_file}> for susceptibility-derived distortions.")
 
     # Short circuits: (True and True and (False or 'TooShort')) == 'TooShort'
     run_stc = (
@@ -372,7 +379,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             registration_init=config.workflow.bold2t1w_init,
             pe_direction=metadata.get("PhaseEncodingDirection"),
             echo_idx=echo_idxs,
-            tr=metadata.get("RepetitionTime"),
+            tr=metadata["RepetitionTime"],
             orientation=ref_orientation,
         ),
         name="summary",
