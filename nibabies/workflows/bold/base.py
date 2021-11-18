@@ -1,5 +1,34 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
+#
+# STATEMENT OF CHANGES: This file is derived from sources licensed under the Apache-2.0 terms,
+# and this file has been changed.
+# The original file this work derives from is found at:
+# https://github.com/nipreps/fmriprep/blob/a4fd718/fmriprep/workflows/bold/base.py
+#
+# [November 2021] CHANGES:
+#   * Began tracking changes by copying over a4fd7a8 (21.0.0rc2) and noting differences
+#   *
+#
+# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# We support and encourage derived works from this project, please read
+# about our expectations at
+#
+#     https://www.nipreps.org/community/licensing/
+#
 """
 Orchestrating the BOLD-preprocessing workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -54,15 +83,15 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
             from fmriprep import config
             from fmriprep.workflows.bold.base import init_func_preproc_wf
             with mock_config():
-                bold_file = config.execution.bids_dir / 'sub-01' / 'func' \
-                    / 'sub-01_task-mixedgamblestask_run-01_bold.nii.gz'
+                bold_file = config.execution.bids_dir / "sub-01" / "func" \
+                    / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
                 wf = init_func_preproc_wf(str(bold_file))
 
     Parameters
     ----------
     bold_file
-        BOLD series NIfTI file
-    has_fieldmap
+        Path to NIfTI file (single echo) or list of paths to NIfTI files (multi-echo)
+    has_fieldmap : :obj:`bool`
         Signals the workflow to use inputnode fieldmap files
 
     Inputs
