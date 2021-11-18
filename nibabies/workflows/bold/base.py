@@ -1102,26 +1102,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     return workflow
 
 
-def _get_series_len(bold_fname):
-    from nipype.algorithms.confounds import is_outlier
-    import nibabel as nb
-    import numpy as np
-
-    img = nb.load(bold_fname)
-    if len(img.shape) < 4:
-        return 1
-
-    data = img.get_fdata(dtype="float32")
-    # Data can come with outliers showing very high numbers - preemptively prune
-    data = np.clip(
-        data,
-        a_min=0.0,
-        a_max=np.percentile(data, 99.8),
-    )
-    outliers = is_outlier(np.mean(data, axis=(0, 1, 2)))
-    return img.shape[3] - outliers
-
-
 def _create_mem_gb(bold_fname):
     bold_size_gb = os.path.getsize(bold_fname) / (1024 ** 3)
     bold_tlen = nb.load(bold_fname).shape[-1]
