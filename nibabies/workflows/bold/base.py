@@ -180,6 +180,14 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
     from niworkflows.interfaces.utility import KeySelect, DictMerge
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
+    if nb.load(
+        bold_file[0] if isinstance(bold_file, (list, tuple)) else bold_file
+    ).shape[3:] <= (5 - config.execution.sloppy,):
+        config.loggers.workflow.warning(
+            f"Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>."
+        )
+        return
+
     mem_gb = {"filesize": 1, "resampled": 1, "largemem": 1}
     bold_tlen = 10
 
@@ -275,11 +283,10 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
                 f"Found usable B0-map (fieldmap) estimator(s) <{', '.join(estimator_key)}> "
                 f"to correct <{bold_file}> for susceptibility-derived distortions.")
 
-    # Short circuits: (True and True and (False or 'TooShort')) == 'TooShort'
+    # Check whether STC must/can be run
     run_stc = (
         bool(metadata.get("SliceTiming"))
         and "slicetiming" not in config.workflow.ignore
-        and (_get_series_len(ref_file) > 4 or "TooShort")
     )
 
     # Build workflow
@@ -493,7 +500,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     bold_bold_trans_wf.inputs.inputnode.fieldwarp = "identity"
 
     # SLICE-TIME CORRECTION (or bypass) #############################################
-    if run_stc is True:  # bool('TooShort') == True, so check True explicitly
+    if run_stc:
         bold_stc_wf = init_bold_stc_wf(name="bold_stc_wf", metadata=metadata)
         # fmt:off
         workflow.connect([
