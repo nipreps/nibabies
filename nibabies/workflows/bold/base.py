@@ -48,7 +48,6 @@ from nipype.interfaces import utility as niu
 
 from niworkflows.utils.connections import pop_file, listify
 from niworkflows.interfaces.header import ValidateImage
-from niworkflows.interfaces.utility import KeySelect
 from sdcflows.interfaces.brainmask import BrainExtraction
 
 from ...interfaces import DerivativesDataSink
@@ -121,9 +120,9 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
         FreeSurfer SUBJECTS_DIR
     subject_id
         FreeSurfer subject ID
-    t1w2fsnative_xfm
+    anat2fsnative_xfm
         LTA-style affine matrix translating from T1w to FreeSurfer-conformed subject space
-    fsnative2t1w_xfm
+    fsnative2anat_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed subject space to T1w
     bold_ref
         BOLD reference file
@@ -177,7 +176,8 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.utility import DictMerge
+    from niworkflows.interfaces.nibabel import ApplyMask
+    from niworkflows.interfaces.utility import KeySelect, DictMerge
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
     mem_gb = {"filesize": 1, "resampled": 1, "largemem": 1}
@@ -356,6 +356,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         ),
         name="outputnode",
     )
+
+    # Generate a brain-masked conversion of the t1w
+    t1w_brain = pe.Node(ApplyMask(), name="t1w_brain")
 
     # BOLD buffer: an identity used as a pointer to either the original BOLD
     # or the STC'ed one for further use.
@@ -552,6 +555,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # MAIN WORKFLOW STRUCTURE #######################################################
     # fmt: off
     workflow.connect([
+        (inputnode, t1w_brain, [("t1w_preproc", "in_file"),
+                                ("t1w_mask", "in_mask")]),
         # BOLD buffer has slice-time corrected if it was run, original otherwise
         (boldbuffer, bold_split, [('bold_file', 'in_file')]),
         # HMC
@@ -568,15 +573,16 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             # Undefined if --fs-no-reconall, but this is safe
             ('subjects_dir', 'inputnode.subjects_dir'),
             ('subject_id', 'inputnode.subject_id'),
-            ('fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm')]),
-        (inputnode, bold_reg_wf, [
-            ('anat_brain', 'inputnode.t1w_brain')]),
+            ('fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
+        ]),
+        (t1w_brain, bold_reg_wf, [("out_file", "inputnode.t1w_brain")]),
         (inputnode, bold_t1_trans_wf, [
             ('bold_file', 'inputnode.name_source'),
             ('anat_mask', 'inputnode.t1w_mask'),
-            ('anat_brain', 'inputnode.t1w_brain'),
             ('anat_aseg', 'inputnode.t1w_aseg'),
-            ('anat_aparc', 'inputnode.t1w_aparc')]),
+            ("anat_aparc", "inputnode.t1w_aparc"),
+        ]),
+        (t1w_brain, bold_t1_trans_wf, [("out_file", "inputnode.t1w_brain")]),
         (bold_reg_wf, outputnode, [
             ('outputnode.itk_bold_to_t1', 'bold2anat_xfm'),
             ('outputnode.itk_t1_to_bold', 'anat2bold_xfm')]),
