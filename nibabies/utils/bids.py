@@ -306,14 +306,14 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
             print("bids-validator does not appear to be installed", file=sys.stderr)
 
 
-def generate_bids_skeleton(location, _bids_dict):
+def generate_bids_skeleton(location, bids_dict):
     """
     Converts a BIDS directory in dictionary form to a file structure.
     """
     from copy import deepcopy
 
     # ensure dictionary remains unaltered
-    bids_dict = _bids_dict.copy()
+    bids_dict = deepcopy(bids_dict)
 
     root = Path(location).absolute()
     root.mkdir(parents=True, exist_ok=True)
