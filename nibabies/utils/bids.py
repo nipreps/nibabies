@@ -321,10 +321,7 @@ def generate_bids_skeleton(location, _bids_dict):
     desc = bids_dict.pop("dataset_description", None)
     if desc is None:
         # default description
-        desc = {
-            "Name": "Default",
-            "BIDSVersion": "1.6.0"
-        }
+        desc = {"Name": "Default", "BIDSVersion": "1.6.0"}
     to_json(root / "dataset_description.json", desc)
 
     cached_subject_data = None
@@ -371,7 +368,7 @@ def generate_bids_skeleton(location, _bids_dict):
                     nii_file.touch()
 
                     if metadata is not None:
-                        nii_metadata = nii_file.parent / nii_file.name.replace('nii.gz', 'json')
+                        nii_metadata = nii_file.parent / nii_file.name.replace("nii.gz", "json")
                         to_json(nii_metadata, metadata)
 
 
