@@ -340,7 +340,7 @@ def generate_bids_skeleton(location, bids_dict):
         cached_subject_data = deepcopy(sessions)
         for session in sessions:
 
-            ses_name = session.get("session")
+            ses_name = session.pop("session", None)
             if ses_name is not None:
                 bids_session = ses_name if ses_name.startswith("ses-") else f"ses-{ses_name}"
                 bids_prefix = f"{bids_subject}_{bids_session}"
@@ -352,8 +352,6 @@ def generate_bids_skeleton(location, bids_dict):
 
             # create modalities
             for modality, files in session.items():
-                if modality == "session":
-                    continue
                 modality_path = curr_path / modality
                 modality_path.mkdir(exist_ok=True)
 
