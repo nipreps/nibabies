@@ -43,7 +43,7 @@ from .outputs import init_func_derivatives_wf
 
 def init_func_preproc_wf(bold_file, has_fieldmap=False):
     """
-    This workflow controls the functional preprocessing stages of *fMRIPrep*.
+    This workflow controls the functional preprocessing stages of *NiBabies*.
 
     Workflow Graph
         .. workflow::
