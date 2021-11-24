@@ -33,7 +33,6 @@ class InfantReconAllInputSpec(CommandLineInputSpec):
     )
     age = traits.Range(
         low=0,
-        high=24,
         argstr="--age %d",
         desc="Subject age in months",
     )
