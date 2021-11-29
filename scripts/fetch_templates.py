@@ -70,11 +70,22 @@ def fetch_fsLR():
     tf.get('fsLR', density='32k')
 
 
+def fetch_MNIInfant():
+    """
+    Expected templates:
+
+    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-1_T1w.nii.gz
+    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-2_T1w.nii.gz
+    """
+    tf.get('MNIInfant', cohort=1, suffix="T1w")
+
+
 def main():
     fetch_MNI6()
     fetch_UNCInfant()
     fetch_fsaverage()
     fetch_fsLR()
+    fetch_MNIInfant()
 
 
 if __name__ == "__main__":
