@@ -75,6 +75,7 @@ def init_infant_anat_wf(
         GIFTI surfaces (gray/white boundary, midthickness, pial, inflated)
     """
     from nipype.interfaces.ants.base import Info as ANTsInfo
+    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import init_infant_brain_extraction_wf
@@ -89,12 +90,11 @@ def init_infant_anat_wf(
     num_t1w = len(t1w) if t1w else 0
     num_t2w = len(t2w) if t2w else 0
 
-    wf = pe.Workflow(name=name)
-    desc = """Anatomical data preprocessing
+    wf = Workflow(name=name)
+    desc = f"""\n
+Anatomical data preprocessing
 
-: """
-    desc += f"""\
-A total of {num_t1w} T1w and {num_t2w} T2w images were found within the input
+: A total of {num_t1w} T1w and {num_t2w} T2w images were found within the input
 BIDS dataset."""
 
     inputnode = pe.Node(
@@ -130,6 +130,7 @@ BIDS dataset."""
     )
 
     if existing_derivatives:
+        # TODO: verify reuse anat
         raise NotImplementedError("Reusing derivatives is not yet supported.")
 
     desc += (
@@ -159,6 +160,8 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         ants_ver=ANTsInfo.version() or "(version unknown)",
         skullstrip_tpl=skull_strip_template.fullname,
     )
+    wf.__postdesc__ = ""
+
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(
         freesurfer=freesurfer, output_dir=output_dir, sloppy=sloppy
