@@ -38,7 +38,7 @@ RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
                     connectome-workbench=1.5.0-1~nd20.04+1 \
-                    git-annex-standalone=8.20210903-1~ndall+1 && \
+                    git-annex-standalone=8.20211123+git12-g02e3756bd-1~ndall+1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Installing ANTs 2.3.4 (NeuroDocker build)
