@@ -157,9 +157,8 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         metavar="FILE",
         help="a JSON file describing custom BIDS input filters using PyBIDS. "
         "For further details, please check out "
-        "https://fmriprep.readthedocs.io/en/%s/faq.html#"
-        "how-do-I-select-only-certain-files-to-be-input-to-fMRIPrep"
-        % (currentv.base_version if is_release else "latest"),
+        "https://fmriprep.readthedocs.io/en/latest/faq.html#"
+        "how-do-I-select-only-certain-files-to-be-input-to-fMRIPrep",
     )
     g_bids.add_argument(
         "--anat-derivatives",
@@ -276,8 +275,7 @@ Non-standard spaces imply specific orientations and sampling grids. \
 Important to note, the ``res-*`` modifier does not define the resolution used for \
 the spatial normalization. To generate no BOLD outputs, use this option without specifying \
 any spatial references. For further details, please check out \
-https://fmriprep.readthedocs.io/en/%s/spaces.html"""
-        % (currentv.base_version if is_release else "latest"),
+https://fmriprep.readthedocs.io/en/latest/spaces.html""",
     )
 
     g_conf.add_argument(
