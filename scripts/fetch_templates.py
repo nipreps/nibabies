@@ -70,14 +70,19 @@ def fetch_fsLR():
     tf.get('fsLR', density='32k')
 
 
-def fetch_MNIInfant():
+def fetch_MNIInfant(cohort=1):
     """
     Expected templates:
 
     tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-1_T1w.nii.gz
     tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-2_T1w.nii.gz
+    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-1_desc-brain_mask.nii.gz
+    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-2_desc-brain_mask.nii.gz
     """
-    tf.get('MNIInfant', cohort=1, suffix="T1w")
+    template = 'MNIInfant'
+
+    tf.get(template, cohort=cohort, suffix="T1w")
+    tf.get(template, cohort=cohort, suffix="mask")
 
 
 def main():
