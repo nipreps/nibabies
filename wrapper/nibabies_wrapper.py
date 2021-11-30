@@ -360,7 +360,7 @@ def get_parser():
     IsFile = partial(_is_file, parser=parser)
 
     # require users to specify container service
-    parser.add_argument("service", choices=("docker", "singularity"))
+    parser.add_argument("service", nargs="?", choices=("docker", "singularity"))
     # Standard NiBabies arguments
     parser.add_argument("bids_dir", nargs="?", type=os.path.abspath, default="")
     parser.add_argument("output_dir", nargs="?", type=os.path.abspath, default="")
@@ -525,9 +525,14 @@ def main():
     # Capture additional arguments to pass inside container
     opts, unknown_args = parser.parse_known_args()
 
+    if opts.version:
+        print("nibabies wrapper {!s}".format(__version__))
+        return
+
     # Set help if no directories set
-    if (opts.bids_dir, opts.output_dir, opts.version) == ("", "", False):
-        opts.help = True
+    if not all((opts.service, opts.bids_dir, opts.output_dir)):
+        parser.print_help()
+        return 1
 
     container = ContainerManager(opts.service, image=opts.image)
     check = container.check_install()
