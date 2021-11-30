@@ -1,3 +1,19 @@
+21.0.2 (November 29, 2021)
+--------------------------
+A patch release in the 21.0.x series.
+This release removes the 24 month age cap for infant recon all processing, as well as includes various small maintenance fixes.
+
+## Full Changelog
+* DOC: Use dynamic versioning for examples (#151)
+* ENH: Remove infant recon all age cap (#154)
+* FIX: Generate boilerplate (#157)
+* FIX: Avoid requiring service when checking wrapper version (#159)
+* MAINT: Fix dirty version on release (#144)
+* MAINT: Only alter pybids config in legacy versions (#152)
+* MAINT: Prefetch neonate MNIInfant templates (#159)
+* MAINT: Update git-annex version (#159)
+* RF: Initialize BIDSLayout with dedicated indexer (#146)
+
 21.0.1 (October 18, 2021)
 -------------------------
 A patch release in the 21.0.x series.
