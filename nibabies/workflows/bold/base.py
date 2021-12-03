@@ -81,8 +81,8 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
             :simple_form: yes
 
             from fmriprep.workflows.tests import mock_config
-            from fmriprep import config
-            from fmriprep.workflows.bold.base import init_func_preproc_wf
+            from nibabies import config
+            from nibabies.workflows.bold.base import init_func_preproc_wf
             with mock_config():
                 bold_file = config.execution.bids_dir / "sub-01" / "func" \
                     / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
@@ -160,16 +160,16 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
     --------
 
     * :py:func:`~niworkflows.func.util.init_bold_reference_wf`
-    * :py:func:`~fmriprep.workflows.bold.stc.init_bold_stc_wf`
-    * :py:func:`~fmriprep.workflows.bold.hmc.init_bold_hmc_wf`
-    * :py:func:`~fmriprep.workflows.bold.t2s.init_bold_t2s_wf`
-    * :py:func:`~fmriprep.workflows.bold.registration.init_bold_t1_trans_wf`
-    * :py:func:`~fmriprep.workflows.bold.registration.init_bold_reg_wf`
-    * :py:func:`~fmriprep.workflows.bold.confounds.init_bold_confs_wf`
-    * :py:func:`~fmriprep.workflows.bold.confounds.init_ica_aroma_wf`
-    * :py:func:`~fmriprep.workflows.bold.resampling.init_bold_std_trans_wf`
-    * :py:func:`~fmriprep.workflows.bold.resampling.init_bold_preproc_trans_wf`
-    * :py:func:`~fmriprep.workflows.bold.resampling.init_bold_surf_wf`
+    * :py:func:`~nibabies.workflows.bold.stc.init_bold_stc_wf`
+    * :py:func:`~nibabies.workflows.bold.hmc.init_bold_hmc_wf`
+    * :py:func:`~nibabies.workflows.bold.t2s.init_bold_t2s_wf`
+    * :py:func:`~nibabies.workflows.bold.registration.init_bold_t1_trans_wf`
+    * :py:func:`~nibabies.workflows.bold.registration.init_bold_reg_wf`
+    * :py:func:`~nibabies.workflows.bold.confounds.init_bold_confs_wf`
+    * :py:func:`~nibabies.workflows.bold.confounds.init_ica_aroma_wf`
+    * :py:func:`~nibabies.workflows.bold.resampling.init_bold_std_trans_wf`
+    * :py:func:`~nibabies.workflows.bold.resampling.init_bold_preproc_trans_wf`
+    * :py:func:`~nibabies.workflows.bold.resampling.init_bold_surf_wf`
     * :py:func:`~sdcflows.workflows.fmap.init_fmap_wf`
     * :py:func:`~sdcflows.workflows.pepolar.init_pepolar_unwarp_wf`
     * :py:func:`~sdcflows.workflows.phdiff.init_phdiff_wf`
