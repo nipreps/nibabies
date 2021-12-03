@@ -8,7 +8,9 @@
 #
 # [November 2021] CHANGES:
 #   * Began tracking changes by copying over a4fd7a8 (21.0.0rc2) and noting differences
-#   *
+#   * t1w is broadly replaced with anat
+#   * Nibabies-specific subcortical alignment
+#   * Carpet plots require CIFTI
 #
 # Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
 #
