@@ -203,9 +203,12 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
     entities = extract_entities(bold_file)
     layout = config.execution.layout
 
+    # Extract metadata
+    all_metadata = [layout.get_metadata(fname) for fname in listify(bold_file)]
+
     # Take first file as reference
     ref_file = pop_file(bold_file)
-    metadata = layout.get_metadata(ref_file)
+    metadata = all_metadata[0]
     # get original image orientation
     ref_orientation = get_img_orientation(ref_file)
 
@@ -378,7 +381,10 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     # BOLD buffer: an identity used as a pointer to either the original BOLD
     # or the STC'ed one for further use.
-    boldbuffer = pe.Node(niu.IdentityInterface(fields=["bold_file"]), name="boldbuffer")
+    boldbuffer = pe.Node(niu.IdentityInterface(fields=["bold_file", "name_source"]),
+                         name="boldbuffer")
+    if multiecho:
+        boldbuffer.synchronize = True
 
     summary = pe.Node(
         FunctionalSummary(
@@ -403,12 +409,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         bids_root=layout.root,
         cifti_output=config.workflow.cifti_output,
         freesurfer=freesurfer,
-        metadata=metadata,
+        all_metadata=all_metadata,
+        multiecho=multiecho,
         output_dir=nibabies_dir,
         spaces=spaces,
         use_aroma=config.workflow.use_aroma,
-        debug=config.execution.debug,
     )
+    func_derivatives_wf.inputs.inputnode.all_source_files = bold_file
 
     # fmt:off
     workflow.connect([
@@ -517,17 +524,29 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             # fmt:on
         else:  # for meepi, iterate through stc_wf for all workflows
             meepi_echos = boldbuffer.clone(name="meepi_echos")
-            meepi_echos.iterables = ("bold_file", bold_file)
-            workflow.connect([(meepi_echos, bold_stc_wf, [("bold_file", "inputnode.bold_file")])])
-    elif not multiecho:  # STC is too short or False
-        # bypass STC from original BOLD to the splitter through boldbuffer
+            meepi_echos.iterables = [
+                ("bold_file", bold_file),
+                ("name_source", bold_file),
+            ]
+            # fmt:off
+            workflow.connect([
+                (meepi_echos, bold_stc_wf, [("bold_file", "inputnode.bold_file")]),
+                (meepi_echos, boldbuffer, [("name_source", "name_source")]),
+            ])
+            # fmt:on
+
+    # bypass STC from original BOLD in both SE and ME cases
+    elif not multiecho:  # SE and skip-STC
         # fmt:off
         workflow.connect([
             (val_bold, boldbuffer, [(("out_file", pop_file), 'bold_file')])])
         # fmt:on
     else:
         # for meepi, iterate over all meepi echos to boldbuffer
-        boldbuffer.iterables = ("bold_file", bold_file)
+        boldbuffer.iterables = [
+            ("bold_file", bold_file),
+            ("name_source", bold_file),
+        ]
 
     # MULTI-ECHO EPI DATA #############################################
     if multiecho:  # instantiate relevant interfaces, imports

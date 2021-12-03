@@ -115,7 +115,8 @@ def init_func_derivatives_wf(
     bids_root,
     cifti_output,
     freesurfer,
-    metadata,
+    all_metadata,
+    multiecho,
     output_dir,
     spaces,
     use_aroma,
@@ -134,6 +135,8 @@ def init_func_derivatives_wf(
         Whether FreeSurfer anatomical processing was run.
     metadata : :obj:`dict`
         Metadata dictionary associated to the BOLD run.
+    multiecho : :obj:`bool`
+        Derivatives were generated from multi-echo time series.
     output_dir : :obj:`str`
         Where derivatives should be written out to.
     spaces : :py:class:`~niworkflows.utils.spaces.SpatialReferences`
@@ -155,10 +158,16 @@ def init_func_derivatives_wf(
     from niworkflows.interfaces.utility import KeySelect
     from smriprep.workflows.outputs import _bids_relative
 
+    metadata = all_metadata[0]
+
     timing_parameters = prepare_timing_parameters(metadata)
 
     nonstd_spaces = set(spaces.get_nonstandard())
     workflow = Workflow(name=name)
+
+    # BOLD series will generally be unmasked unless multiecho,
+    # as the optimal combination is undefined outside a bounded mask
+    masked = multiecho
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -242,7 +251,7 @@ def init_func_derivatives_wf(
 
     # fmt: off
     workflow.connect([
-        (inputnode, raw_sources, [('source_file', 'in_files')]),
+        (inputnode, raw_sources, [('all_source_files', 'in_files')]),
         (inputnode, ds_confounds, [('source_file', 'source_file'),
                                    ('confounds', 'in_file'),
                                    ('confounds_metadata', 'meta_dict')]),
