@@ -185,9 +185,9 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
     from niworkflows.interfaces.utility import KeySelect, DictMerge
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
-    if nb.load(
-        bold_file[0] if isinstance(bold_file, (list, tuple)) else bold_file
-    ).shape[3:] <= (5 - config.execution.sloppy,):
+    if nb.load(bold_file[0] if isinstance(bold_file, (list, tuple)) else bold_file).shape[3:] <= (
+        5 - config.execution.sloppy,
+    ):
         config.loggers.workflow.warning(
             f"Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>."
         )
@@ -275,9 +275,7 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
             intended_rel = re.sub(
                 r"^sub-[a-zA-Z0-9]*/",
                 "",
-                str(Path(
-                    bold_file if not multiecho else bold_file[0]
-                ).relative_to(layout.root))
+                str(Path(bold_file if not multiecho else bold_file[0]).relative_to(layout.root)),
             )
             estimator_key = get_identifier(intended_rel)
 
@@ -289,13 +287,11 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
         else:
             config.loggers.workflow.info(
                 f"Found usable B0-map (fieldmap) estimator(s) <{', '.join(estimator_key)}> "
-                f"to correct <{bold_file}> for susceptibility-derived distortions.")
+                f"to correct <{bold_file}> for susceptibility-derived distortions."
+            )
 
     # Check whether STC must/can be run
-    run_stc = (
-        bool(metadata.get("SliceTiming"))
-        and "slicetiming" not in config.workflow.ignore
-    )
+    run_stc = bool(metadata.get("SliceTiming")) and "slicetiming" not in config.workflow.ignore
 
     # Build workflow
     workflow = Workflow(name=wf_name)
@@ -387,8 +383,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     # BOLD buffer: an identity used as a pointer to either the original BOLD
     # or the STC'ed one for further use.
-    boldbuffer = pe.Node(niu.IdentityInterface(fields=["bold_file", "name_source"]),
-                         name="boldbuffer")
+    boldbuffer = pe.Node(
+        niu.IdentityInterface(fields=["bold_file", "name_source"]), name="boldbuffer"
+    )
     if multiecho:
         boldbuffer.synchronize = True
 
@@ -565,8 +562,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         )
 
     bold_final = pe.Node(
-        niu.IdentityInterface(fields=["bold", "boldref", "mask", "bold_echos"]),
-        name="bold_final"
+        niu.IdentityInterface(fields=["bold", "boldref", "mask", "bold_echos"]), name="bold_final"
     )
 
     # Mask input BOLD reference image

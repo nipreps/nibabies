@@ -53,7 +53,7 @@ class TShift(afni.TShift):
         return runtime
 
 
-def init_bold_stc_wf(metadata, name='bold_stc_wf'):
+def init_bold_stc_wf(metadata, name="bold_stc_wf"):
     """
     Create a workflow for :abbr:`STC (slice-timing correction)`.
 
@@ -99,34 +99,42 @@ def init_bold_stc_wf(metadata, name='bold_stc_wf'):
     frac = config.workflow.slice_time_ref
     tzero = np.round(first + frac * (last - first), 3)
 
-    afni_ver = ''.join('%02d' % v for v in afni.Info().version() or [])
+    afni_ver = "".join("%02d" % v for v in afni.Info().version() or [])
     workflow = Workflow(name=name)
     workflow.__desc__ = f"""\
 BOLD runs were slice-time corrected to {tzero:0.3g}s ({frac:g} of slice acquisition range
 {first:.3g}s-{last:.3g}s) using `3dTshift` from AFNI {afni_ver} [@afni, RRID:SCR_005927].
 """
-    inputnode = pe.Node(niu.IdentityInterface(fields=['bold_file', 'skip_vols']), name='inputnode')
-    outputnode = pe.Node(niu.IdentityInterface(fields=['stc_file']), name='outputnode')
+    inputnode = pe.Node(niu.IdentityInterface(fields=["bold_file", "skip_vols"]), name="inputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=["stc_file"]), name="outputnode")
 
-    LOGGER.log(25, f'BOLD series will be slice-timing corrected to an offset of {tzero:.3g}s.')
+    LOGGER.log(25, f"BOLD series will be slice-timing corrected to an offset of {tzero:.3g}s.")
 
     # It would be good to fingerprint memory use of afni.TShift
     slice_timing_correction = pe.Node(
-        TShift(outputtype='NIFTI_GZ',
-               tr=f"{metadata['RepetitionTime']}s",
-               slice_timing=metadata['SliceTiming'],
-               slice_encoding_direction=metadata.get('SliceEncodingDirection', 'k'),
-               tzero=tzero),
-        name='slice_timing_correction')
+        TShift(
+            outputtype="NIFTI_GZ",
+            tr=f"{metadata['RepetitionTime']}s",
+            slice_timing=metadata["SliceTiming"],
+            slice_encoding_direction=metadata.get("SliceEncodingDirection", "k"),
+            tzero=tzero,
+        ),
+        name="slice_timing_correction",
+    )
 
-    copy_xform = pe.Node(CopyXForm(), name='copy_xform', mem_gb=0.1)
+    copy_xform = pe.Node(CopyXForm(), name="copy_xform", mem_gb=0.1)
 
-    workflow.connect([
-        (inputnode, slice_timing_correction, [('bold_file', 'in_file'),
-                                              ('skip_vols', 'ignore')]),
-        (slice_timing_correction, copy_xform, [('out_file', 'in_file')]),
-        (inputnode, copy_xform, [('bold_file', 'hdr_file')]),
-        (copy_xform, outputnode, [('out_file', 'stc_file')]),
-    ])
+    workflow.connect(
+        [
+            (
+                inputnode,
+                slice_timing_correction,
+                [("bold_file", "in_file"), ("skip_vols", "ignore")],
+            ),
+            (slice_timing_correction, copy_xform, [("out_file", "in_file")]),
+            (inputnode, copy_xform, [("bold_file", "hdr_file")]),
+            (copy_xform, outputnode, [("out_file", "stc_file")]),
+        ]
+    )
 
     return workflow

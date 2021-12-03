@@ -30,7 +30,7 @@ from ...interfaces import DerivativesDataSink
 
 
 def prepare_timing_parameters(metadata):
-    """ Convert initial timing metadata to post-realignment timing metadata
+    """Convert initial timing metadata to post-realignment timing metadata
 
     In particular, SliceTiming metadata is invalid once STC or any realignment is applied,
     as a matrix of voxels no longer corresponds to an acquisition slice.
@@ -83,11 +83,17 @@ def prepare_timing_parameters(metadata):
     """
     timing_parameters = {
         key: metadata[key]
-        for key in ("RepetitionTime", "VolumeTiming", "DelayTime",
-                    "AcquisitionDuration", "SliceTiming")
-        if key in metadata}
+        for key in (
+            "RepetitionTime",
+            "VolumeTiming",
+            "DelayTime",
+            "AcquisitionDuration",
+            "SliceTiming",
+        )
+        if key in metadata
+    }
 
-    run_stc = "SliceTiming" in metadata and 'slicetiming' not in config.workflow.ignore
+    run_stc = "SliceTiming" in metadata and "slicetiming" not in config.workflow.ignore
     timing_parameters["SliceTimingCorrected"] = run_stc
 
     if "SliceTiming" in timing_parameters:
@@ -315,20 +321,31 @@ def init_func_derivatives_wf(
     if multiecho and config.execution.me_output_echos:
         ds_bold_echos_native = pe.MapNode(
             DerivativesDataSink(
-                base_directory=output_dir, desc='preproc', compress=True, SkullStripped=False,
-                TaskName=metadata.get('TaskName'), **timing_parameters),
-            iterfield=['source_file', 'in_file', 'meta_dict'],
-            name='ds_bold_echos_native', run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB)
+                base_directory=output_dir,
+                desc="preproc",
+                compress=True,
+                SkullStripped=False,
+                TaskName=metadata.get("TaskName"),
+                **timing_parameters,
+            ),
+            iterfield=["source_file", "in_file", "meta_dict"],
+            name="ds_bold_echos_native",
+            run_without_submitting=True,
+            mem_gb=DEFAULT_MEMORY_MIN_GB,
+        )
         ds_bold_echos_native.inputs.meta_dict = [
             {"EchoTime": md["EchoTime"]} for md in all_metadata
         ]
 
-        workflow.connect([
-            (inputnode, ds_bold_echos_native, [
-                ('all_source_files', 'source_file'),
-                ('bold_echos_native', 'in_file')]),
-        ])
+        workflow.connect(
+            [
+                (
+                    inputnode,
+                    ds_bold_echos_native,
+                    [("all_source_files", "source_file"), ("bold_echos_native", "in_file")],
+                ),
+            ]
+        )
 
     # Resample to T1w space
     if nonstd_spaces.intersection(("T1w", "anat")):
