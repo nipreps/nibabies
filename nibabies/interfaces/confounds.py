@@ -104,8 +104,7 @@ class GatherConfounds(SimpleInterface):
     >>> res.outputs.confounds_list
     ['Global signals', 'DVARS']
 
-    >>> pd.read_csv(res.outputs.confounds_file, sep='\s+', index_col=None,
-    ...             engine='python')  # doctest: +NORMALIZE_WHITESPACE
+    >>> pd.read_csv(res.outputs.confounds_file, sep='\s+', index_col=None, engine='python')
          a    b
     0  0.1  0.2
 
@@ -199,8 +198,7 @@ def _gather_confounds(
     >>> confound_list
     ['Global signals', 'DVARS']
 
-    >>> pd.read_csv(out_file, sep='\s+', index_col=None,
-    ...             engine='python')  # doctest: +NORMALIZE_WHITESPACE
+    >>> pd.read_csv(out_file, sep='\s+', index_col=None, engine='python')
        global_signal  std_dvars
     0            0.1        0.2
     >>> tmpdir.cleanup()

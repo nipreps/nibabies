@@ -164,13 +164,13 @@ class CiftiCreateDenseFromTemplate(WBCommand):
     >>> frmtpl.inputs.series = True
     >>> frmtpl.inputs.series_step = 0.8
     >>> frmtpl.inputs.series_start = 0
-    >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> frmtpl.cmdline
     'wb_command -cifti-create-dense-from-template .../func.dtseries.nii \
     template_func.dtseries.nii -series 0.8 0.0'
 
     >>> frmtpl.inputs.volume = [("OTHER", data_dir / 'functional.nii', True), \
         ("PUTAMEN_LEFT", data_dir / 'functional.nii')]
-    >>> frmtpl.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> frmtpl.cmdline
     'wb_command -cifti-create-dense-from-template .../func.dtseries.nii \
     template_func.dtseries.nii -series 0.8 0.0 \
     -volume OTHER .../functional.nii -from-cropped \
@@ -328,7 +328,7 @@ class CiftiCreateDenseTimeseries(WBCommand):
     >>> createdts = CiftiCreateDenseTimeseries()
     >>> createdts.inputs.volume_data = data_dir /'functional.nii'
     >>> createdts.inputs.volume_structure_labels = data_dir / 'atlas.nii'
-    >>> createdts.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> createdts.cmdline
     'wb_command -cifti-create-dense-timeseries out.dtseries.nii \
     -volume .../functional.nii .../atlas.nii'
     """
@@ -465,7 +465,7 @@ class CiftiCreateLabel(WBCommand):
     >>> lab = wb.CiftiCreateLabel()
     >>> lab.inputs.volume_label = data_dir / "functional.nii"
     >>> lab.inputs.structure_label_volume = data_dir / "functional.nii"
-    >>> lab.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> lab.cmdline
     'wb_command -cifti-create-label out.dlabel.nii -volume .../functional.nii .../functional.nii'
     """
 
@@ -944,7 +944,7 @@ class CiftiResample(WBCommand):
     >>> res.inputs.volume_method = "CUBIC"
     >>> res.inputs.out_file = "resampled.dtseries.nii"
     >>> res.inputs.volume_predilate = 10
-    >>> res.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> res.cmdline
     'wb_command -cifti-resample .../func.dtseries.nii COLUMN .../func.dlabel.nii COLUMN \
     ADAP_BARY_AREA CUBIC resampled.dtseries.nii -volume-predilate 10'
     """
@@ -1050,7 +1050,7 @@ class CiftiSeparate(WBCommand):
     >>> separate.inputs.in_file = data_dir / "func.dtseries.nii"
     >>> separate.inputs.direction = "COLUMN"
     >>> separate.inputs.volume_all_file = "volume_all.nii.gz"
-    >>> separate.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> separate.cmdline
     'wb_command -cifti-separate .../func.dtseries.nii COLUMN \
     -volume-all volume_all.nii.gz'
 
@@ -1058,7 +1058,7 @@ class CiftiSeparate(WBCommand):
     >>> separate.inputs.metric = [("CORTEX_LEFT", "cortexleft.func.gii")]
     >>> separate.inputs.volume = [("HIPPOCAMPUS_LEFT", "hippoL.nii.gz"), \
         ("HIPPOCAMPUS_RIGHT", "hippoR.nii.gz", "hippoR.roi.nii.gz")]
-    >>> separate.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> separate.cmdline
     'wb_command -cifti-separate .../func.dtseries.nii COLUMN \
     -volume-all volume_all.nii.gz -metric CORTEX_LEFT cortexleft.func.gii \
     -volume HIPPOCAMPUS_LEFT hippoL.nii.gz \
@@ -1216,7 +1216,7 @@ class VolumeAffineResample(WBCommand):
     >>> resample.inputs.volume_space = data_dir /'anatomical.nii'
     >>> resample.inputs.method = 'CUBIC'
     >>> resample.inputs.affine = data_dir / 'func_to_struct.mat'
-    >>> resample.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> resample.cmdline
     'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
     resampled_functional.nii.gz -affine .../func_to_struct.mat'
 
@@ -1225,7 +1225,7 @@ class VolumeAffineResample(WBCommand):
     for references.
 
     >>> resample.inputs.flirt = True
-    >>> resample.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> resample.cmdline
     'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
     resampled_functional.nii.gz -affine .../func_to_struct.mat \
     -flirt .../functional.nii .../anatomical.nii'
@@ -1235,7 +1235,7 @@ class VolumeAffineResample(WBCommand):
 
     >>> resample.inputs.flirt_source_volume = data_dir / 'epi.nii'
     >>> resample.inputs.flirt_target_volume = data_dir /'T1w.nii'
-    >>> resample.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> resample.cmdline
     'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
     resampled_functional.nii.gz -affine .../func_to_struct.mat \
     -flirt .../epi.nii .../T1w.nii'
@@ -1295,7 +1295,7 @@ class VolumeAllLabelsToROIs(WBCommand):
     >>> rois = VolumeAllLabelsToROIs()
     >>> rois.inputs.in_file = data_dir / 'atlas.nii'
     >>> rois.inputs.label_map = 1
-    >>> rois.cmdline  #doctest: +ELLIPSIS
+    >>> rois.cmdline
     'wb_command -volume-all-labels-to-rois .../atlas.nii 1 atlas_rois.nii.gz'
     """
 
@@ -1344,7 +1344,7 @@ class VolumeLabelExportTable(WBCommand):
     >>> label_export = VolumeLabelExportTable()
     >>> label_export.inputs.in_file = data_dir / 'atlas.nii'
     >>> label_export.inputs.label_map = 1
-    >>> label_export.cmdline  #doctest: +ELLIPSIS
+    >>> label_export.cmdline
     'wb_command -volume-label-export-table .../atlas.nii 1 atlas_labels.txt'
     """
 
@@ -1432,7 +1432,7 @@ class VolumeLabelImport(WBCommand):
     >>> label_import = VolumeLabelImport()
     >>> label_import.inputs.in_file = data_dir / 'atlas.nii'
     >>> label_import.inputs.label_list_file = data_dir / 'label_list.txt'
-    >>> label_import.cmdline  #doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> label_import.cmdline
     'wb_command -volume-label-import .../atlas.nii .../label_list.txt \
     atlas_labels.nii.gz'
     """
