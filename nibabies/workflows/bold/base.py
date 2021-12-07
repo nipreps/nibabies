@@ -582,8 +582,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # MAIN WORKFLOW STRUCTURE #######################################################
     # fmt:off
     workflow.connect([
-        (inputnode, t1w_brain, [("t1w_preproc", "in_file"),
-                                ("t1w_mask", "in_mask")]),
+        (inputnode, t1w_brain, [("anat_preproc", "in_file"),
+                                ("anat_mask", "in_mask")]),
         # BOLD buffer has slice-time corrected if it was run, original otherwise
         (boldbuffer, bold_split, [('bold_file', 'in_file')]),
         # HMC
@@ -592,9 +592,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (val_bold, bold_hmc_wf, [
             (("out_file", pop_file), 'inputnode.bold_file')]),
         # Native-space BOLD files
-        (inputnode, final_boldref_wf, [('n_dummy_scans', 'inputnode.dummy_scans')]),
         (final_boldref_wf, final_boldref_mask, [('outputnode.epi_ref_file', 'in_file')]),
-        (final_boldref_wf, bold_final, [('outputnode.ref_image', 'boldref')]),
+        (final_boldref_wf, bold_final, [('outputnode.epi_ref_file', 'boldref')]),
         (final_boldref_mask, bold_final, [('out_file', 'mask')]),
         (bold_final, outputnode, [
             ('bold', 'bold_native'),
@@ -1005,7 +1004,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         workflow.connect([
             (bold_bold_trans_wf, bold_final, [("outputnode.bold", "bold")]),
             (bold_bold_trans_wf, final_boldref_wf, [
-                ("outputnode.bold", "inputnode.bold_file"),
+                ("outputnode.bold", "inputnode.in_files"),
             ]),
         ] if not multiecho else [
             (inputnode, initial_boldref_mask, [('bold_ref', 'in_file')]),
@@ -1019,7 +1018,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ("outputnode.bold", "bold_files"),
             ]),
             (join_echos, final_boldref_wf, [
-                ("bold_files", "inputnode.bold_file"),
+                ("bold_files", "inputnode.in_files"),
             ]),
         ])
         # fmt:on
@@ -1090,7 +1089,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("bold_ref", "inputnode.target_ref")]),
         (initial_boldref_mask, coeff2epi_wf, [
             ("out_file", "inputnode.target_mask")]),  # skull-stripped brain
-        (inputnode, unwarp_wf, [("bold_ref", "inputnode.distorted")]),
         (coeff2epi_wf, unwarp_wf, [
             ("outputnode.fmap_coeff", "inputnode.fmap_coeff")]),
         (inputnode, sdc_report, [("bold_ref", "before")]),
@@ -1098,7 +1096,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("outputnode.xforms", "inputnode.hmc_xforms")]),
         (bold_split, unwarp_wf, [
             ("out_files", "inputnode.distorted")]),
-        (final_boldref_wf, sdc_report, [("outputnode.ref_image", "after")]),
+        (final_boldref_wf, sdc_report, [("outputnode.epi_ref_file", "after")]),
         (final_boldref_mask, sdc_report, [("out_file", "wm_seg")]),
         (inputnode, ds_report_sdc, [("bold_file", "source_file")]),
         (sdc_report, ds_report_sdc, [("out_report", "in_file")]),
@@ -1112,7 +1110,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (unwarp_wf, bold_final, [("outputnode.corrected", "bold")]),
             # remaining workflow connections
             (unwarp_wf, final_boldref_wf, [
-                ("outputnode.corrected", "inputnode.bold_file"),
+                ("outputnode.corrected", "inputnode.in_files"),
             ]),
             (unwarp_wf, bold_t1_trans_wf, [
                 # TEMPORARY: For the moment we can't use frame-wise fieldmaps
