@@ -610,6 +610,7 @@ discourage its usage."""
     )
     g_baby.add_argument(
         "--segmentation-atlases-dir",
+        type=PathExists,
         help="Directory containing precalculated segmentations to use for JointLabelFusion.",
     )
     g_baby.add_argument(
