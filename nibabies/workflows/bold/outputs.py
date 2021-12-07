@@ -178,12 +178,14 @@ def init_func_derivatives_wf(
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
+                "all_source_files",
                 "aroma_noise_ics",
                 "bold_aparc_std",
                 "bold_aparc_t1",
                 "bold_aseg_std",
                 "bold_aseg_t1",
                 "bold_cifti",
+                "bold_echos_native",
                 "bold_mask_std",
                 "bold_mask_t1",
                 "bold_std",
@@ -274,7 +276,7 @@ def init_func_derivatives_wf(
                 base_directory=output_dir,
                 desc="preproc",
                 compress=True,
-                SkullStripped=False,
+                SkullStripped=masked,
                 TaskName=metadata.get("TaskName"),
                 **timing_parameters,
             ),
@@ -331,7 +333,7 @@ def init_func_derivatives_wf(
             iterfield=["source_file", "in_file", "meta_dict"],
             name="ds_bold_echos_native",
             run_without_submitting=True,
-            mem_gb=DEFAULT_MEMORY_MIN_GB,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
         ds_bold_echos_native.inputs.meta_dict = [
             {"EchoTime": md["EchoTime"]} for md in all_metadata
@@ -355,7 +357,7 @@ def init_func_derivatives_wf(
                 space="T1w",
                 desc="preproc",
                 compress=True,
-                SkullStripped=False,
+                SkullStripped=masked,
                 TaskName=metadata.get("TaskName"),
                 **timing_parameters,
             ),
@@ -507,7 +509,7 @@ def init_func_derivatives_wf(
                 base_directory=output_dir,
                 desc="preproc",
                 compress=True,
-                SkullStripped=False,
+                SkullStripped=masked,
                 TaskName=metadata.get("TaskName"),
                 **timing_parameters,
             ),
