@@ -10,5 +10,6 @@
 
 installation
 usage
+faqs
 outputs
 ```
