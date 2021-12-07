@@ -381,13 +381,22 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # Generate a brain-masked conversion of the t1w
     t1w_brain = pe.Node(ApplyMask(), name="t1w_brain")
 
+    # Track echo index - this allows us to treat multi- and single-echo workflows
+    # almost identically
+    echo_index = pe.Node(niu.IdentityInterface(fields=["echoidx"]), name="echo_index")
+    if multiecho:
+        echo_index.iterables = [("echoidx", range(len(bold_file)))]
+    else:
+        echo_index.inputs.echoidx = 0
+
+    # BOLD source: track original BOLD file(s)
+    bold_source = pe.Node(
+        niu.Select(inlist=bold_file), run_without_submitting=True, name="bold_source"
+    )
+
     # BOLD buffer: an identity used as a pointer to either the original BOLD
     # or the STC'ed one for further use.
-    boldbuffer = pe.Node(
-        niu.IdentityInterface(fields=["bold_file", "name_source"]), name="boldbuffer"
-    )
-    if multiecho:
-        boldbuffer.synchronize = True
+    boldbuffer = pe.Node(niu.IdentityInterface(fields=["bold_file"]), name="boldbuffer")
 
     summary = pe.Node(
         FunctionalSummary(
@@ -457,6 +466,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     )
     val_bold.inputs.in_file = listify(bold_file)
 
+    # Select validated BOLD files (orientations checked or corrected)
+    validated_bold = pe.Node(niu.Select(), run_without_submitting=True, name="validated_bold")
+
     # Top-level BOLD splitter
     bold_split = pe.Node(FSLSplit(dimension="t"), name="bold_split", mem_gb=mem_gb["filesize"] * 3)
 
@@ -506,39 +518,14 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # fmt:off
         workflow.connect([
             (inputnode, bold_stc_wf, [('n_dummy_scans', 'inputnode.skip_vols')]),
+            (validated_bold, bold_stc_wf, [("out", 'inputnode.bold_file')]),
             (bold_stc_wf, boldbuffer, [('outputnode.stc_file', 'bold_file')]),
         ])
         # fmt:on
-        if not multiecho:
-            # fmt:off
-            workflow.connect([
-                (val_bold, bold_stc_wf, [(("out_file", pop_file), 'inputnode.bold_file')])])
-            # fmt:on
-        else:  # for meepi, iterate through stc_wf for all workflows
-            meepi_echos = boldbuffer.clone(name="meepi_echos")
-            meepi_echos.iterables = [
-                ("bold_file", bold_file),
-                ("name_source", bold_file),
-            ]
-            # fmt:off
-            workflow.connect([
-                (meepi_echos, bold_stc_wf, [("bold_file", "inputnode.bold_file")]),
-                (meepi_echos, boldbuffer, [("name_source", "name_source")]),
-            ])
-            # fmt:on
 
     # bypass STC from original BOLD in both SE and ME cases
-    elif not multiecho:  # SE and skip-STC
-        # fmt:off
-        workflow.connect([
-            (val_bold, boldbuffer, [(("out_file", pop_file), 'bold_file')])])
-        # fmt:on
-    else:  # ME and skip-STC
-        # for meepi, iterate over all meepi echos to boldbuffer
-        boldbuffer.iterables = [
-            ("bold_file", bold_file),
-            ("name_source", bold_file),
-        ]
+    else:
+        workflow.connect([(validated_bold, boldbuffer, [("out", "bold_file")])])
 
     # MULTI-ECHO EPI DATA #############################################
     if multiecho:  # instantiate relevant interfaces, imports
@@ -548,7 +535,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         join_echos = pe.JoinNode(
             niu.IdentityInterface(fields=["bold_files"]),
-            joinsource=("meepi_echos" if run_stc is True else "boldbuffer"),
+            joinsource="echo_index",
             joinfield=["bold_files"],
             name="join_echos",
         )
@@ -582,8 +569,11 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # MAIN WORKFLOW STRUCTURE #######################################################
     # fmt:off
     workflow.connect([
+        # Prepare masked T1w image
         (inputnode, t1w_brain, [("anat_preproc", "in_file"),
                                 ("anat_mask", "in_mask")]),
+        # Select validated bold files per-echo
+        (val_bold, validated_bold, [("out_file", "inlist")]),
         # BOLD buffer has slice-time corrected if it was run, original otherwise
         (boldbuffer, bold_split, [('bold_file', 'in_file')]),
         # HMC
@@ -656,6 +646,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (inputnode, summary, [('n_dummy_scans', 'algo_dummy_scans')]),
         (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
         (outputnode, summary, [('confounds', 'confounds_file')]),
+        # Select echo indices for original/validated BOLD files
+        (echo_index, bold_source, [("echoidx", "index")]),
+        (echo_index, validated_bold, [("echoidx", "index")]),
     ])
     # fmt:on
 
@@ -989,12 +982,10 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         )
         bold_bold_trans_wf.inputs.inputnode.fieldwarp = "identity"
 
-        if not multiecho:
-            bold_bold_trans_wf.inputs.inputnode.name_source = ref_file
-
         # fmt:off
         workflow.connect([
             # Connect bold_bold_trans_wf
+            (bold_source, bold_bold_trans_wf, [("out", "inputnode.name_source")]),
             (bold_split, bold_bold_trans_wf, [("out_files", "inputnode.bold_file")]),
             (bold_hmc_wf, bold_bold_trans_wf, [
                 ("outputnode.xforms", "inputnode.hmc_xforms"),
@@ -1010,9 +1001,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (inputnode, initial_boldref_mask, [('bold_ref', 'in_file')]),
             (initial_boldref_mask, bold_t2s_wf, [
                 ("out_file", "inputnode.bold_mask"),
-            ]),
-            (boldbuffer, bold_bold_trans_wf, [
-                ("name_source", "inputnode.name_source"),
             ]),
             (bold_bold_trans_wf, join_echos, [
                 ("outputnode.bold", "bold_files"),
@@ -1135,7 +1123,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "corrected_mask",
             ]
         ),
-        joinsource=("meepi_echos" if run_stc is True else "boldbuffer"),
+        joinsource="echo_index",
         joinfield=[
             "fieldmap",
             "fieldwarp",
