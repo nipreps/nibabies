@@ -458,16 +458,16 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # fmt:on
 
     # Extract BOLD validation from init_bold_reference_wf
-    val_bold = pe.MapNode(
+    validate_bolds = pe.MapNode(
         ValidateImage(),
-        name="val_bold",
+        name="validate_bolds",
         mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         iterfield=["in_file"],
     )
-    val_bold.inputs.in_file = listify(bold_file)
+    validate_bolds.inputs.in_file = listify(bold_file)
 
     # Select validated BOLD files (orientations checked or corrected)
-    validated_bold = pe.Node(niu.Select(), run_without_submitting=True, name="validated_bold")
+    select_bold = pe.Node(niu.Select(), run_without_submitting=True, name="select_bold")
 
     # Top-level BOLD splitter
     bold_split = pe.Node(FSLSplit(dimension="t"), name="bold_split", mem_gb=mem_gb["filesize"] * 3)
@@ -518,14 +518,14 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # fmt:off
         workflow.connect([
             (inputnode, bold_stc_wf, [('n_dummy_scans', 'inputnode.skip_vols')]),
-            (validated_bold, bold_stc_wf, [("out", 'inputnode.bold_file')]),
+            (select_bold, bold_stc_wf, [("out", 'inputnode.bold_file')]),
             (bold_stc_wf, boldbuffer, [('outputnode.stc_file', 'bold_file')]),
         ])
         # fmt:on
 
     # bypass STC from original BOLD in both SE and ME cases
     else:
-        workflow.connect([(validated_bold, boldbuffer, [("out", "bold_file")])])
+        workflow.connect([(select_bold, boldbuffer, [("out", "bold_file")])])
 
     # MULTI-ECHO EPI DATA #############################################
     if multiecho:  # instantiate relevant interfaces, imports
@@ -573,13 +573,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (inputnode, t1w_brain, [("anat_preproc", "in_file"),
                                 ("anat_mask", "in_mask")]),
         # Select validated bold files per-echo
-        (val_bold, validated_bold, [("out_file", "inlist")]),
+        (validate_bolds, select_bold, [("out_file", "inlist")]),
         # BOLD buffer has slice-time corrected if it was run, original otherwise
         (boldbuffer, bold_split, [('bold_file', 'in_file')]),
         # HMC
         (inputnode, bold_hmc_wf, [
             ('bold_ref', 'inputnode.raw_ref_image')]),
-        (val_bold, bold_hmc_wf, [
+        (validate_bolds, bold_hmc_wf, [
             (("out_file", pop_file), 'inputnode.bold_file')]),
         # Native-space BOLD files
         (final_boldref_wf, final_boldref_mask, [('outputnode.epi_ref_file', 'in_file')]),
@@ -648,7 +648,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (outputnode, summary, [('confounds', 'confounds_file')]),
         # Select echo indices for original/validated BOLD files
         (echo_index, bold_source, [("echoidx", "index")]),
-        (echo_index, validated_bold, [("echoidx", "index")]),
+        (echo_index, select_bold, [("echoidx", "index")]),
     ])
     # fmt:on
 
@@ -957,7 +957,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # fmt:off
     workflow.connect([
         (summary, ds_report_summary, [('out_report', 'in_file')]),
-        (val_bold, ds_report_validation, [
+        (validate_bolds, ds_report_validation, [
             (("out_report", pop_file), 'in_file')]),
     ])
     # fmt:on
