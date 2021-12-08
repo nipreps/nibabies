@@ -1,5 +1,25 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
+#
+# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# We support and encourage derived works from this project, please read
+# about our expectations at
+#
+#     https://www.nipreps.org/community/licensing/
+#
 """Writing out derivative files."""
 import numpy as np
 from nipype.pipeline import engine as pe
@@ -10,8 +30,7 @@ from ...interfaces import DerivativesDataSink
 
 
 def prepare_timing_parameters(metadata):
-    """
-    Convert initial timing metadata to post-realignment timing metadata
+    """Convert initial timing metadata to post-realignment timing metadata
 
     In particular, SliceTiming metadata is invalid once STC or any realignment is applied,
     as a matrix of voxels no longer corresponds to an acquisition slice.
@@ -34,7 +53,7 @@ def prepare_timing_parameters(metadata):
     >>> prepare_timing_parameters(dict(RepetitionTime=2, DelayTime=0.5))
     {'RepetitionTime': 2, 'DelayTime': 0.5, 'SliceTimingCorrected': False}
     >>> prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                AcquisitionDuration=1.0))  # doctest: +NORMALIZE_WHITESPACE
+    ...                                AcquisitionDuration=1.0))
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'AcquisitionDuration': 1.0,
      'SliceTimingCorrected': False}
 
@@ -42,14 +61,11 @@ def prepare_timing_parameters(metadata):
     and the ``StartTime`` indicates a series offset.
 
     >>> with mock.patch("nibabies.config.workflow.ignore", []):
-    ...     prepare_timing_parameters(dict(
-    ...         RepetitionTime=2,
-    ...         SliceTiming=[0.0, 0.2, 0.4, 0.6]))  # doctest: +NORMALIZE_WHITESPACE
+    ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': True, 'DelayTime': 1.2, 'StartTime': 0.3}
     >>> with mock.patch("nibabies.config.workflow.ignore", []):
-    ...     prepare_timing_parameters(dict(
-    ...         VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...         SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  # doctest: +NORMALIZE_WHITESPACE
+    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': True,
      'AcquisitionDuration': 1.0, 'StartTime': 0.4}
 
@@ -60,9 +76,8 @@ def prepare_timing_parameters(metadata):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': False, 'DelayTime': 1.2}
     >>> with mock.patch("nibabies.config.workflow.ignore", ["slicetiming"]):
-    ...     prepare_timing_parameters(dict(
-    ...         VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...         SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  # doctest: +NORMALIZE_WHITESPACE
+    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': False,
      'AcquisitionDuration': 1.0}
     """
@@ -106,11 +121,11 @@ def init_func_derivatives_wf(
     bids_root,
     cifti_output,
     freesurfer,
-    metadata,
+    all_metadata,
+    multiecho,
     output_dir,
     spaces,
     use_aroma,
-    debug,
     name="func_derivatives_wf",
 ):
     """
@@ -126,6 +141,8 @@ def init_func_derivatives_wf(
         Whether FreeSurfer anatomical processing was run.
     metadata : :obj:`dict`
         Metadata dictionary associated to the BOLD run.
+    multiecho : :obj:`bool`
+        Derivatives were generated from multi-echo time series.
     output_dir : :obj:`str`
         Where derivatives should be written out to.
     spaces : :py:class:`~niworkflows.utils.spaces.SpatialReferences`
@@ -147,20 +164,28 @@ def init_func_derivatives_wf(
     from niworkflows.interfaces.utility import KeySelect
     from smriprep.workflows.outputs import _bids_relative
 
+    metadata = all_metadata[0]
+
     timing_parameters = prepare_timing_parameters(metadata)
 
     nonstd_spaces = set(spaces.get_nonstandard())
     workflow = Workflow(name=name)
 
+    # BOLD series will generally be unmasked unless multiecho,
+    # as the optimal combination is undefined outside a bounded mask
+    masked = multiecho
+
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
+                "all_source_files",
                 "aroma_noise_ics",
                 "bold_aparc_std",
                 "bold_aparc_t1",
                 "bold_aseg_std",
                 "bold_aseg_t1",
                 "bold_cifti",
+                "bold_echos_native",
                 "bold_mask_std",
                 "bold_mask_t1",
                 "bold_std",
@@ -234,7 +259,7 @@ def init_func_derivatives_wf(
 
     # fmt: off
     workflow.connect([
-        (inputnode, raw_sources, [('source_file', 'in_files')]),
+        (inputnode, raw_sources, [('all_source_files', 'in_files')]),
         (inputnode, ds_confounds, [('source_file', 'source_file'),
                                    ('confounds', 'in_file'),
                                    ('confounds_metadata', 'meta_dict')]),
@@ -251,7 +276,7 @@ def init_func_derivatives_wf(
                 base_directory=output_dir,
                 desc="preproc",
                 compress=True,
-                SkullStripped=False,
+                SkullStripped=masked,
                 TaskName=metadata.get("TaskName"),
                 **timing_parameters,
             ),
@@ -295,6 +320,35 @@ def init_func_derivatives_wf(
         ])
         # fmt: on
 
+    if multiecho and config.execution.me_output_echos:
+        ds_bold_echos_native = pe.MapNode(
+            DerivativesDataSink(
+                base_directory=output_dir,
+                desc="preproc",
+                compress=True,
+                SkullStripped=False,
+                TaskName=metadata.get("TaskName"),
+                **timing_parameters,
+            ),
+            iterfield=["source_file", "in_file", "meta_dict"],
+            name="ds_bold_echos_native",
+            run_without_submitting=True,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
+        )
+        ds_bold_echos_native.inputs.meta_dict = [
+            {"EchoTime": md["EchoTime"]} for md in all_metadata
+        ]
+
+        workflow.connect(
+            [
+                (
+                    inputnode,
+                    ds_bold_echos_native,
+                    [("all_source_files", "source_file"), ("bold_echos_native", "in_file")],
+                ),
+            ]
+        )
+
     # Resample to T1w space
     if nonstd_spaces.intersection(("T1w", "anat")):
         ds_bold_t1 = pe.Node(
@@ -303,7 +357,7 @@ def init_func_derivatives_wf(
                 space="T1w",
                 desc="preproc",
                 compress=True,
-                SkullStripped=False,
+                SkullStripped=masked,
                 TaskName=metadata.get("TaskName"),
                 **timing_parameters,
             ),
@@ -455,7 +509,7 @@ def init_func_derivatives_wf(
                 base_directory=output_dir,
                 desc="preproc",
                 compress=True,
-                SkullStripped=False,
+                SkullStripped=masked,
                 TaskName=metadata.get("TaskName"),
                 **timing_parameters,
             ),
@@ -642,7 +696,7 @@ def init_func_derivatives_wf(
         ])
         # fmt: on
 
-    if debug and "compcor" in debug:
+    if "compcor" in config.execution.debug:
         ds_acompcor_masks = pe.Node(
             DerivativesDataSink(
                 base_directory=output_dir,
@@ -685,7 +739,7 @@ def init_bold_preproc_report_wf(mem_gb, reportlets_dir, name="bold_preproc_repor
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.bold.resampling import init_bold_preproc_report_wf
+            from nibabies.workflows.bold.resampling import init_bold_preproc_report_wf
             wf = init_bold_preproc_report_wf(mem_gb=1, reportlets_dir='.')
 
     Parameters
