@@ -1,4 +1,4 @@
-package: niworkflows
+package: nibabies
 sections:
 - name: Summary
   reportlets:
@@ -23,7 +23,7 @@ sections:
     static: false
     subtitle: Spatial normalization of the anatomical T1w reference
   - bids: {datatype: figures, desc: reconall, suffix: T1w}
-    caption: Surfaces (white and pial) reconstructed with FreeSurfer (<code>recon-all</code>)
+    caption: Surfaces (white and pial) reconstructed with FreeSurfer (<code>infant_recon_all</code>)
       overlaid on the participant's T1w template.
     subtitle: Surface reconstruction
 
