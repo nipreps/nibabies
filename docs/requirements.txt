@@ -4,4 +4,4 @@ sphinx-argparse
 # Relative to repository root
 ./wrapper/
 # avoid downloading new matplotlib
-matplotlib ~= 3.3.1
+scipy ~= 1.7.3
