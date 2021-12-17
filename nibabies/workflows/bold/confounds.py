@@ -713,9 +713,8 @@ def init_ica_aroma_wf(
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.segmentation import ICA_AROMARPT
-    from niworkflows.interfaces.utility import KeySelect
-    from niworkflows.interfaces.utils import TSV2JSON
+    from niworkflows.interfaces.reportlets.segmentation import ICA_AROMARPT
+    from niworkflows.interfaces.utility import KeySelect, TSV2JSON
 
     workflow = Workflow(name=name)
     workflow.__postdesc__ = """\
