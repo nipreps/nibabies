@@ -158,7 +158,7 @@ def group_bolds_ref(*, layout, subject):
 
     for ses, suffix in sorted(
         product(
-            layout.get_sessions(subject=subject) or (None,),
+            layout.get_sessions(subject=subject, scope="raw") or (None,),
             {
                 "bold",
             },

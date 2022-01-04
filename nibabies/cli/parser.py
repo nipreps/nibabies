@@ -758,7 +758,7 @@ applied."""
 
     # Force initialization of the BIDSLayout
     config.execution.init()
-    all_subjects = config.execution.layout.get_subjects()
+    all_subjects = config.execution.layout.get_subjects(scope="raw")
     if config.execution.participant_label is None:
         config.execution.participant_label = all_subjects
 
