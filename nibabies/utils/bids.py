@@ -386,3 +386,51 @@ def collect_derivatives(
 
     derivs_cache["template"] = std_spaces
     return derivs_cache
+
+
+def collect_precomputed_derivatives(layout, subject_id, session_id=None):
+    """
+    Query and collect precomputed derivatives.
+
+    This function is used to determine which workflow steps can be skipped,
+    based on the files found.
+    """
+
+    deriv_queries = {
+        'anat_mask': {
+            'datatype': 'anat',
+            'desc': 'brain',
+            'space': 'orig',
+            'suffix': 'mask',
+        },
+        'anat_aseg': {
+            'datatype': 'anat',
+            'desc': 'aseg',
+            'space': 'orig',
+            'suffix': 'dseg',
+        },
+        'bold_mask': {
+            'datatype': 'func',
+            'desc': 'brain',
+            'space': 'orig',
+            'suffix': 'mask',
+        },
+    }
+    derivatives = {}
+
+    for deriv, query in deriv_queries:
+        res = layout.get(
+            scope='derivatives',
+            subject=subject_id,
+            session=session_id,
+            extension=['nii', 'nii.gz'],
+            **query,
+        )
+        if not res:
+            continue
+        if len(res) > 1:
+            raise Exception(
+                f"When searching for <{deriv}>, found multiple results: {[f.path for f in res]}"
+            )
+        derivatives[deriv] = res[0]
+    return derivatives

@@ -356,6 +356,8 @@ class execution(_Config):
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
     debug = []
     """Debug mode(s)."""
+    derivatives = None
+    """One or more paths where pre-computed derivatives are found."""
     echo_idx = None
     """Select a particular echo for multi-echo EPI datasets."""
     fs_license_file = _fs_license
@@ -408,6 +410,7 @@ class execution(_Config):
         "anat_derivatives",
         "bids_dir",
         "bids_database_dir",
+        "derivatives",
         "fs_license_file",
         "fs_subjects_dir",
         "layout",
@@ -451,6 +454,7 @@ class execution(_Config):
                 database_path=_db_path,
                 reset_database=cls.bids_database_dir is None,
                 indexer=_indexer,
+                derivatives=cls.derivatives or False,
             )
             cls.bids_database_dir = _db_path
         cls.layout = cls._layout

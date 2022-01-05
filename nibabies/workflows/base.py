@@ -156,29 +156,12 @@ def init_single_subject_wf(subject_id):
             )
         )
 
-    if anat_derivatives:
-        from smriprep.utils.bids import collect_derivatives
-
-        std_spaces = spaces.get_spaces(nonstandard=False, dim=(3,))
-        anat_derivatives = collect_derivatives(
-            anat_derivatives.absolute(),
+    if config.execution.derivatives is not None:
+        from ..utils.bids import collect_precomputed_derivatives
+        derivatives = collect_precomputed_derivatives(
+            config.execution.layout,
             subject_id,
-            std_spaces,
-            config.workflow.run_reconall,
-        )
-        if anat_derivatives is None:
-            config.loggers.workflow.warning(
-                f"""\
-Attempted to access pre-existing anatomical derivatives at \
-<{config.execution.anat_derivatives}>, however not all expectations of NiBabies \
-were met (for participant <{subject_id}>, spaces <{', '.join(std_spaces)}>, \
-reconall <{config.workflow.run_reconall}>)."""
-            )
-
-    if not anat_derivatives and not subject_data[anat_modality]:
-        raise Exception(
-            f"No {anat_modality} images found for participant {subject_id}. "
-            "All workflows require T1w images."
+            session_id=None,  # TODO: Ensure session is visible at workflow level
         )
 
     workflow = Workflow(name=name)
@@ -222,11 +205,12 @@ It is released under the [CC0]\
 
     inputnode = pe.Node(niu.IdentityInterface(fields=["subjects_dir"]), name="inputnode")
 
+    # TODO: Revisit T1w/T2w restrictions for BIDSDataGrabber
     bidssrc = pe.Node(
         BIDSDataGrabber(
             subject_data=subject_data,
             anat_only=anat_only,
-            anat_derivatives=anat_derivatives,
+            anat_derivatives=False,
             subject_id=subject_id,
         ),
         name="bidssrc",
@@ -282,7 +266,7 @@ It is released under the [CC0]\
         t1w=subject_data["t1w"],
         t2w=subject_data["t2w"],
         bids_root=config.execution.bids_dir,
-        existing_derivatives=anat_derivatives,
+        existing_derivatives=derivatives,
         freesurfer=config.workflow.run_reconall,
         longitudinal=config.workflow.longitudinal,
         omp_nthreads=config.nipype.omp_nthreads,
@@ -419,6 +403,7 @@ tasks and sessions), the following preprocessing was performed.
             func_preproc_wf = init_func_preproc_wf(
                 bold_file,
                 has_fieldmap=has_fieldmap,
+                existing_derivatives=derivatives,
             )
             # fmt: off
             workflow.connect([

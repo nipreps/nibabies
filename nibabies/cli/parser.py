@@ -625,7 +625,13 @@ discourage its usage."""
         "--fd-radius",
         type=float,
         default=45,
-        help="Head radius in mm for framewise displacement calculation",
+        help="Head radius in mm for framewise displacement calculation.",
+    )
+    g_baby.add_argument(
+        "--derivatives",
+        type=PathExists,
+        nargs="+",
+        help="One or more directory containing pre-computed derivatives.",
     )
     return parser
 
