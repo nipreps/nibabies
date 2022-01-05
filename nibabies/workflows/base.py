@@ -158,6 +158,7 @@ def init_single_subject_wf(subject_id):
 
     if config.execution.derivatives is not None:
         from ..utils.bids import collect_precomputed_derivatives
+
         derivatives = collect_precomputed_derivatives(
             config.execution.layout,
             subject_id,
