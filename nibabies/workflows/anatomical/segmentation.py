@@ -127,10 +127,10 @@ def init_anat_segmentations_wf(
         )
 
         jf_label = pe.Node(
-            niu.Function(function=_to_dtype, output_names=["out_file"]),
-            name="jf_label"
+            niu.Function(function=_to_dtype, output_names=["out_file"]), name="jf_label"
         )
 
+        # fmt:off
         wf.connect([
             (inputnode, norm, [('anat_brain', 'fixed_image')]),
             (norm, apply_atlas, [('forward_transforms', 'transforms')]),
@@ -142,6 +142,7 @@ def init_anat_segmentations_wf(
             (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
             (jointfusion, jf_label, [('out_label_fusion', 'in_file')]),
         ])
+        # fmt:on
 
     elif precomp_aseg:
         from niworkflows.interfaces.header import ValidateImage
