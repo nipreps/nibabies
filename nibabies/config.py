@@ -410,7 +410,6 @@ class execution(_Config):
         "anat_derivatives",
         "bids_dir",
         "bids_database_dir",
-        "derivatives",
         "fs_license_file",
         "fs_subjects_dir",
         "layout",

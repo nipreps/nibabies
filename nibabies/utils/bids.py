@@ -336,7 +336,7 @@ def collect_precomputed_derivatives(layout, subject_id, session_id=None):
     }
     derivatives = {}
 
-    for deriv, query in deriv_queries:
+    for deriv, query in deriv_queries.items():
         res = layout.get(
             scope='derivatives',
             subject=subject_id,

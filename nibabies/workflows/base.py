@@ -143,7 +143,7 @@ def init_single_subject_wf(subject_id):
         subject_data["t2w"] = []
 
     anat_only = config.workflow.anat_only
-    anat_derivatives = config.execution.anat_derivatives
+    derivatives = config.execution.derivatives
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     spaces = config.workflow.spaces
     # Make sure we always go through these two checks
@@ -156,7 +156,7 @@ def init_single_subject_wf(subject_id):
             )
         )
 
-    if config.execution.derivatives is not None:
+    if derivatives is not None:
         from ..utils.bids import collect_precomputed_derivatives
 
         derivatives = collect_precomputed_derivatives(
@@ -308,37 +308,21 @@ It is released under the [CC0]\
         ]),
     ])
 
-    if not anat_derivatives:
-        workflow.connect([
-            (bidssrc, bids_info, [
-                (('t1w', fix_multi_source_name), 'in_file'),
-            ]),
-            (bidssrc, summary, [
-                ('t1w', 't1w'),
-                ('t2w', 't2w'),
-            ]),
-            (bidssrc, ds_report_summary, [
-                (('t1w', fix_multi_source_name), 'source_file'),
-            ]),
-            (bidssrc, ds_report_about, [
-                (('t1w', fix_multi_source_name), 'source_file'),
-            ]),
-        ])
-    else:
-        workflow.connect([
-            (bidssrc, bids_info, [
-                (('bold', fix_multi_source_name), 'in_file'),
-            ]),
-            (anat_preproc_wf, summary, [
-                ('outputnode.t1w_preproc', 't1w'),
-            ]),
-            (anat_preproc_wf, ds_report_summary, [
-                ('outputnode.t1w_preproc', 'source_file'),
-            ]),
-            (anat_preproc_wf, ds_report_about, [
-                ('outputnode.t1w_preproc', 'source_file'),
-            ]),
-        ])
+    workflow.connect([
+        (bidssrc, bids_info, [
+            (('t1w', fix_multi_source_name), 'in_file'),
+        ]),
+        (bidssrc, summary, [
+            ('t1w', 't1w'),
+            ('t2w', 't2w'),
+        ]),
+        (bidssrc, ds_report_summary, [
+            (('t1w', fix_multi_source_name), 'source_file'),
+        ]),
+        (bidssrc, ds_report_about, [
+            (('t1w', fix_multi_source_name), 'source_file'),
+        ]),
+    ])
     # fmt: on
 
     # Overwrite ``out_path_base`` of smriprep's DataSinks
