@@ -9,7 +9,7 @@ from nipype.interfaces import utility as niu
 
 def init_infant_brain_extraction_wf(
     age_months=None,
-    ants_affine_init=False,
+    ants_affine_init=True,
     bspline_fitting_distance=200,
     sloppy=False,
     skull_strip_template="UNCInfant",
@@ -265,6 +265,54 @@ def init_infant_brain_extraction_wf(
         ])
         # fmt:on
 
+    return workflow
+
+
+def init_precomputed_mask_wf(
+    bspline_fitting_distance=200, omp_nthreads=None, name="precomputed_mask_wf"
+):
+    from nipype.interfaces.ants import N4BiasFieldCorrection
+    from niworkflows.interfaces.header import ValidateImage
+    from niworkflows.interfaces.nibabel import ApplyMask, IntensityClip
+
+    workflow = pe.Workflow(name=name)
+    inputnode = pe.Node(niu.IdentityInterface(fields=["t1w", "t1w_mask"]), name="inputnode")
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=["t1w_preproc", "t1w_mask", "t1w_brain"]),
+        name="outputnode",
+    )
+
+    validate_mask = pe.Node(ValidateImage(), name="validate_mask")
+    final_n4 = pe.Node(
+        N4BiasFieldCorrection(
+            dimension=3,
+            bspline_fitting_distance=bspline_fitting_distance,
+            save_bias=True,
+            copy_header=True,
+            n_iterations=[50] * 5,
+            convergence_threshold=1e-7,
+            rescale_intensities=True,
+            shrink_factor=4,
+        ),
+        n_procs=omp_nthreads,
+        name="final_n4",
+    )
+    final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=99.5), name="final_clip")
+    apply_mask = pe.Node(ApplyMask(), name="apply_mask")
+
+    # fmt:off
+    workflow.connect([
+        (inputnode, validate_mask, [("t1w_mask", "in_file")]),
+        (inputnode, final_n4, [("t1w", "input_image")]),
+        (validate_mask, final_n4, [("out_file", "weight_image")]),
+        (validate_mask, apply_mask, [("out_file", "in_mask")]),
+        (final_n4, apply_mask, [("output_image", "in_file")]),
+        (final_n4, final_clip, [("output_image", "in_file")]),
+        (validate_mask, outputnode, [("out_file", "t1w_mask")]),
+        (final_clip, outputnode, [("out_file", "t1w_preproc")]),
+        (apply_mask, outputnode, [("out_file", "t1w_brain")]),
+    ])
+    # fmt:on
     return workflow
 
 
