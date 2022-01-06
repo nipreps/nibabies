@@ -277,6 +277,14 @@ the spatial normalization. To generate no BOLD outputs, use this option without 
 any spatial references. For further details, please check out \
 https://fmriprep.readthedocs.io/en/latest/spaces.html""",
     )
+    g_conf.add_argument(
+        "--me-output-echos",
+        action="store_true",
+        default=False,
+        help="""\
+Output individual echo time series with slice, motion and susceptibility correction. \
+Useful for further Tedana processing post-NiBabies.""",
+    )
 
     g_conf.add_argument(
         "--bold2t1w-init",
