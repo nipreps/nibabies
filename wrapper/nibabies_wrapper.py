@@ -466,6 +466,13 @@ the spatial normalization."""
         type=os.path.abspath,
         help="Directory containing prelabeled segmentations to use for JointLabelFusion."
     )
+    g_wrap.add_argument(
+        "--derivatives",
+        nargs="+",
+        metavar="PATH",
+        type=os.path.abspath,
+        help="One or more directory containing pre-computed derivatives"
+    )
 
     # Developer patch/shell options
     g_dev = parser.add_argument_group(
@@ -650,6 +657,13 @@ def main():
     if opts.segmentation_atlases_dir:
         container.add_mount(opts.segmentation_atlases_dir, "/opt/segmentations")
         unknown_args.extend(["--segmentation-atlases-dir", "/opt/segmentations"])
+    if opts.derivatives:
+        derivative_args = ["--derivatives"]
+        for derivative in opts.derivatives:
+            derivative_target = "/opt/derivatives/%s" % os.path.basename(derivative)
+            container.add_mount(derivative, derivative_target, read_only=False)
+            derivative_args.append(derivative_target)
+        unknown_args.extend(derivative_args)
 
     # Check that work_dir is not a child of bids_dir
     if opts.work_dir and opts.bids_dir:
