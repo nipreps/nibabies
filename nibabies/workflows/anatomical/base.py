@@ -83,7 +83,7 @@ def init_infant_anat_wf(
     from .outputs import init_anat_reports_wf, init_coreg_report_wf, init_anat_derivatives_wf
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
-    from .segmentation import init_anat_seg_wf
+    from .segmentation import init_anat_segmentations_wf
     from .surfaces import init_infant_surface_recon_wf
 
     # for now, T1w only
@@ -224,12 +224,12 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     t1w_preproc_wf = precomp_mask_wf if precomp_mask else coregistration_wf
 
     # Segmentation - initial implementation should be simple: JLF
-    anat_seg_wf = init_anat_seg_wf(
-        age_months=age_months,
+    anat_seg_wf = init_anat_segmentations_wf(
         anat_modality=anat_modality.capitalize(),
         template_dir=segmentation_atlases,
         sloppy=sloppy,
         omp_nthreads=omp_nthreads,
+        precomp_aseg=precomp_aseg,
     )
 
     # Spatial normalization (requires segmentation)
@@ -239,7 +239,7 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
 
-    # fmt: off
+    # fmt:off
     wf.connect([
         (inputnode, t1w_template_wf, [("t1w", "inputnode.in_files")]),
         (t1w_template_wf, outputnode, [
@@ -269,9 +269,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ("outputnode.t1w_preproc", "inputnode.moving_image"),
             ("outputnode.t1w_mask", "inputnode.moving_mask"),
         ]),
-        (t1w_preproc_wf, anat_seg_wf, [
-            ("outputnode.t1w_brain", "inputnode.anat_brain"),
-        ]),
         (t1w_preproc_wf, anat_derivatives_wf, [
             ("outputnode.t1w_mask", "inputnode.t1w_mask"),
             ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
@@ -282,6 +279,11 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
             ("outputnode.t1w_mask", "anat_mask"),
         ]),
     ])
+
+    if not precomp_aseg:
+        wf.connect([
+            (t1w_preproc_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
+        ])
 
     if precomp_mask:
         wf.connect([
