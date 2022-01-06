@@ -628,6 +628,7 @@ discourage its usage."""
         help="Head radius in mm for framewise displacement calculation.",
     )
     g_baby.add_argument(
+        "-d",
         "--derivatives",
         type=PathExists,
         nargs="+",
