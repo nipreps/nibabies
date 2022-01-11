@@ -81,7 +81,7 @@ bids_dir_session_less = {
     "02": "*",
     "03": {
         "anat": {"suffix": "T1w", "metadata": {"EchoTime": 1}},
-        "bold": [  # bold files
+        "func": [  # bold files
             {
                 "task": "diff",
                 "echo": 1,
