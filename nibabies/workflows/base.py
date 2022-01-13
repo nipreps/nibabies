@@ -164,6 +164,7 @@ def init_single_subject_wf(subject_id):
             subject_id,
             session_id=None,  # TODO: Ensure session is visible at workflow level
         )
+        config.loggers.workflow.info(f"Found precomputed derivatives: {derivatives}")
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """

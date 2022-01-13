@@ -327,26 +327,18 @@ def collect_precomputed_derivatives(layout, subject_id, session_id=None):
             'space': 'orig',
             'suffix': 'dseg',
         },
-        'bold_mask': {
-            'datatype': 'func',
-            'desc': 'brain',
-            'space': 'orig',
-            'suffix': 'mask',
-        },
     }
     derivatives = {}
-
     for deriv, query in deriv_queries.items():
         res = layout.get(
             scope='derivatives',
             subject=subject_id,
-            session=session_id,
             extension=['nii', 'nii.gz'],
             **query,
         )
         if not res:
             continue
-        if len(res) > 1:
+        if len(res) > 1:  # Some queries may want multiple results
             raise Exception(
                 f"When searching for <{deriv}>, found multiple results: {[f.path for f in res]}"
             )
