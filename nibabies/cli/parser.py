@@ -639,7 +639,7 @@ discourage its usage."""
         dest="derivatives_filters",
         type=_bids_filter,
         metavar="FILE",
-        help="A JSON file for customizing the derivatives queries."
+        help="A JSON file for customizing the derivatives queries.",
     )
     return parser
 
