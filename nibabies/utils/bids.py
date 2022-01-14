@@ -306,7 +306,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
             print("bids-validator does not appear to be installed", file=sys.stderr)
 
 
-def collect_precomputed_derivatives(layout, subject_id, session_id=None):
+def collect_precomputed_derivatives(layout, subject_id, derivatives_filters=None):
     """
     Query and collect precomputed derivatives.
 
@@ -328,6 +328,10 @@ def collect_precomputed_derivatives(layout, subject_id, session_id=None):
             'suffix': 'dseg',
         },
     }
+    if derivatives_filters is not None:
+        deriv_queries.update(derivatives_filters)
+    print(deriv_queries)
+
     derivatives = {}
     for deriv, query in deriv_queries.items():
         res = layout.get(

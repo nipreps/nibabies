@@ -634,6 +634,13 @@ discourage its usage."""
         nargs="+",
         help="One or more directory containing pre-computed derivatives.",
     )
+    g_baby.add_argument(
+        "--deriv-filter-file",
+        dest="derivatives_filters",
+        type=_bids_filter,
+        metavar="FILE",
+        help="A JSON file for customizing the derivatives queries."
+    )
     return parser
 
 

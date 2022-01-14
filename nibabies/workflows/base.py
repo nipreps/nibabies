@@ -143,7 +143,7 @@ def init_single_subject_wf(subject_id):
         subject_data["t2w"] = []
 
     anat_only = config.workflow.anat_only
-    derivatives = config.execution.derivatives
+    derivatives = config.execution.derivatives or {}
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     spaces = config.workflow.spaces
     # Make sure we always go through these two checks
@@ -156,13 +156,14 @@ def init_single_subject_wf(subject_id):
             )
         )
 
-    if derivatives is not None:
+    if derivatives:
         from ..utils.bids import collect_precomputed_derivatives
 
         derivatives = collect_precomputed_derivatives(
             config.execution.layout,
             subject_id,
-            session_id=None,  # TODO: Ensure session is visible at workflow level
+            derivatives_filters=config.execution.derivatives_filters,
+            # session_id=None,  # TODO: Ensure session is visible at workflow level
         )
         config.loggers.workflow.info(f"Found precomputed derivatives: {derivatives}")
 
