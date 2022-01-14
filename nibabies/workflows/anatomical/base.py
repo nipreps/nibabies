@@ -313,10 +313,6 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
                 ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
                 ("outputnode.t1w_mask", "inputnode.in_mask"),
             ]),
-            (t1w_preproc_wf, anat_derivatives_wf, [
-                ("outputnode.t1w_mask", "inputnode.t1w_mask"),
-                ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
-            ]),
         ])
 
     wf.connect([
