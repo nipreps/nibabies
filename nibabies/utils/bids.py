@@ -330,7 +330,6 @@ def collect_precomputed_derivatives(layout, subject_id, derivatives_filters=None
     }
     if derivatives_filters is not None:
         deriv_queries.update(derivatives_filters)
-    print(deriv_queries)
 
     derivatives = {}
     for deriv, query in deriv_queries.items():
