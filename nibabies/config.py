@@ -404,6 +404,8 @@ class execution(_Config):
     """Unique identifier of this particular run."""
     segmentation_atlases_dir = None
     """Directory with atlases to use for JLF segmentations"""
+    session_id = None
+    """List of session identifiers that are to be preprocessed."""
     participant_label = None
     """List of participant identifiers that are to be preprocessed."""
     task_id = None
