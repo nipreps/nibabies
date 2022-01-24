@@ -356,6 +356,10 @@ class execution(_Config):
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
     debug = []
     """Debug mode(s)."""
+    derivatives = None
+    """One or more paths where pre-computed derivatives are found."""
+    derivatives_filters = None
+    """A dictionary of BIDS selection filters"""
     echo_idx = None
     """Select a particular echo for multi-echo EPI datasets."""
     fs_license_file = _fs_license
@@ -451,18 +455,25 @@ class execution(_Config):
                 database_path=_db_path,
                 reset_database=cls.bids_database_dir is None,
                 indexer=_indexer,
+                derivatives=cls.derivatives or False,
             )
             cls.bids_database_dir = _db_path
         cls.layout = cls._layout
-        if cls.bids_filters:
+
+        def _unserialize_bids_queries(queries):
             from bids.layout import Query
 
-            # unserialize pybids Query enum values
-            for acq, filters in cls.bids_filters.items():
-                cls.bids_filters[acq] = {
+            for acq, filters in queries.items():
+                queries[acq] = {
                     k: getattr(Query, v[7:-4]) if not isinstance(v, Query) and "Query" in v else v
                     for k, v in filters.items()
                 }
+            return queries
+
+        if cls.bids_filters:
+            cls.bids_filters = _unserialize_bids_queries(cls.bids_filters)
+        if cls.derivatives_filters:
+            cls.derivatives_filters = _unserialize_bids_queries(cls.derivatives_filters)
 
         if "all" in cls.debug:
             cls.debug = list(DEBUG_MODES)

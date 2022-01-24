@@ -158,7 +158,7 @@ def group_bolds_ref(*, layout, subject):
 
     for ses, suffix in sorted(
         product(
-            layout.get_sessions(subject=subject) or (None,),
+            layout.get_sessions(subject=subject, scope="raw") or (None,),
             {
                 "bold",
             },
@@ -304,3 +304,46 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
             subprocess.check_call(["bids-validator", str(bids_dir), "-c", temp.name])
         except FileNotFoundError:
             print("bids-validator does not appear to be installed", file=sys.stderr)
+
+
+def collect_precomputed_derivatives(layout, subject_id, derivatives_filters=None):
+    """
+    Query and collect precomputed derivatives.
+
+    This function is used to determine which workflow steps can be skipped,
+    based on the files found.
+    """
+
+    deriv_queries = {
+        'anat_mask': {
+            'datatype': 'anat',
+            'desc': 'brain',
+            'space': 'orig',
+            'suffix': 'mask',
+        },
+        'anat_aseg': {
+            'datatype': 'anat',
+            'desc': 'aseg',
+            'space': 'orig',
+            'suffix': 'dseg',
+        },
+    }
+    if derivatives_filters is not None:
+        deriv_queries.update(derivatives_filters)
+
+    derivatives = {}
+    for deriv, query in deriv_queries.items():
+        res = layout.get(
+            scope='derivatives',
+            subject=subject_id,
+            extension=['.nii', '.nii.gz'],
+            **query,
+        )
+        if not res:
+            continue
+        if len(res) > 1:  # Some queries may want multiple results
+            raise Exception(
+                f"When searching for <{deriv}>, found multiple results: {[f.path for f in res]}"
+            )
+        derivatives[deriv] = res[0]
+    return derivatives

@@ -143,7 +143,7 @@ def init_single_subject_wf(subject_id):
         subject_data["t2w"] = []
 
     anat_only = config.workflow.anat_only
-    anat_derivatives = config.execution.anat_derivatives
+    derivatives = config.execution.derivatives or {}
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     spaces = config.workflow.spaces
     # Make sure we always go through these two checks
@@ -156,30 +156,16 @@ def init_single_subject_wf(subject_id):
             )
         )
 
-    if anat_derivatives:
-        from smriprep.utils.bids import collect_derivatives
+    if derivatives:
+        from ..utils.bids import collect_precomputed_derivatives
 
-        std_spaces = spaces.get_spaces(nonstandard=False, dim=(3,))
-        anat_derivatives = collect_derivatives(
-            anat_derivatives.absolute(),
+        derivatives = collect_precomputed_derivatives(
+            config.execution.layout,
             subject_id,
-            std_spaces,
-            config.workflow.run_reconall,
+            derivatives_filters=config.execution.derivatives_filters,
+            # session_id=None,  # TODO: Ensure session is visible at workflow level
         )
-        if anat_derivatives is None:
-            config.loggers.workflow.warning(
-                f"""\
-Attempted to access pre-existing anatomical derivatives at \
-<{config.execution.anat_derivatives}>, however not all expectations of NiBabies \
-were met (for participant <{subject_id}>, spaces <{', '.join(std_spaces)}>, \
-reconall <{config.workflow.run_reconall}>)."""
-            )
-
-    if not anat_derivatives and not subject_data[anat_modality]:
-        raise Exception(
-            f"No {anat_modality} images found for participant {subject_id}. "
-            "All workflows require T1w images."
-        )
+        config.loggers.workflow.info(f"Found precomputed derivatives: {derivatives}")
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """
@@ -222,11 +208,12 @@ It is released under the [CC0]\
 
     inputnode = pe.Node(niu.IdentityInterface(fields=["subjects_dir"]), name="inputnode")
 
+    # TODO: Revisit T1w/T2w restrictions for BIDSDataGrabber
     bidssrc = pe.Node(
         BIDSDataGrabber(
             subject_data=subject_data,
             anat_only=anat_only,
-            anat_derivatives=anat_derivatives,
+            anat_derivatives=False,
             subject_id=subject_id,
         ),
         name="bidssrc",
@@ -282,7 +269,7 @@ It is released under the [CC0]\
         t1w=subject_data["t1w"],
         t2w=subject_data["t2w"],
         bids_root=config.execution.bids_dir,
-        existing_derivatives=anat_derivatives,
+        existing_derivatives=derivatives,
         freesurfer=config.workflow.run_reconall,
         longitudinal=config.workflow.longitudinal,
         omp_nthreads=config.nipype.omp_nthreads,
@@ -323,37 +310,21 @@ It is released under the [CC0]\
         ]),
     ])
 
-    if not anat_derivatives:
-        workflow.connect([
-            (bidssrc, bids_info, [
-                (('t1w', fix_multi_source_name), 'in_file'),
-            ]),
-            (bidssrc, summary, [
-                ('t1w', 't1w'),
-                ('t2w', 't2w'),
-            ]),
-            (bidssrc, ds_report_summary, [
-                (('t1w', fix_multi_source_name), 'source_file'),
-            ]),
-            (bidssrc, ds_report_about, [
-                (('t1w', fix_multi_source_name), 'source_file'),
-            ]),
-        ])
-    else:
-        workflow.connect([
-            (bidssrc, bids_info, [
-                (('bold', fix_multi_source_name), 'in_file'),
-            ]),
-            (anat_preproc_wf, summary, [
-                ('outputnode.t1w_preproc', 't1w'),
-            ]),
-            (anat_preproc_wf, ds_report_summary, [
-                ('outputnode.t1w_preproc', 'source_file'),
-            ]),
-            (anat_preproc_wf, ds_report_about, [
-                ('outputnode.t1w_preproc', 'source_file'),
-            ]),
-        ])
+    workflow.connect([
+        (bidssrc, bids_info, [
+            (('t1w', fix_multi_source_name), 'in_file'),
+        ]),
+        (bidssrc, summary, [
+            ('t1w', 't1w'),
+            ('t2w', 't2w'),
+        ]),
+        (bidssrc, ds_report_summary, [
+            (('t1w', fix_multi_source_name), 'source_file'),
+        ]),
+        (bidssrc, ds_report_about, [
+            (('t1w', fix_multi_source_name), 'source_file'),
+        ]),
+    ])
     # fmt: on
 
     # Overwrite ``out_path_base`` of smriprep's DataSinks
@@ -419,6 +390,7 @@ tasks and sessions), the following preprocessing was performed.
             func_preproc_wf = init_func_preproc_wf(
                 bold_file,
                 has_fieldmap=has_fieldmap,
+                existing_derivatives=derivatives,
             )
             # fmt: off
             workflow.connect([

@@ -625,7 +625,21 @@ discourage its usage."""
         "--fd-radius",
         type=float,
         default=45,
-        help="Head radius in mm for framewise displacement calculation",
+        help="Head radius in mm for framewise displacement calculation.",
+    )
+    g_baby.add_argument(
+        "-d",
+        "--derivatives",
+        type=PathExists,
+        nargs="+",
+        help="One or more directory containing pre-computed derivatives.",
+    )
+    g_baby.add_argument(
+        "--deriv-filter-file",
+        dest="derivatives_filters",
+        type=_bids_filter,
+        metavar="FILE",
+        help="A JSON file for customizing the derivatives queries.",
     )
     return parser
 
@@ -758,7 +772,7 @@ applied."""
 
     # Force initialization of the BIDSLayout
     config.execution.init()
-    all_subjects = config.execution.layout.get_subjects()
+    all_subjects = config.execution.layout.get_subjects(scope="raw")
     if config.execution.participant_label is None:
         config.execution.participant_label = all_subjects
 

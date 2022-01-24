@@ -74,7 +74,7 @@ from .resampling import (
 from .outputs import init_func_derivatives_wf
 
 
-def init_func_preproc_wf(bold_file, has_fieldmap=False):
+def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=None):
     """
     This workflow controls the functional preprocessing stages of *NiBabies*.
 
@@ -233,7 +233,7 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
         entities.pop("echo", None)
         # reorder echoes from shortest to largest
         tes, bold_file = zip(
-            *sorted([(layout.get_metadata(bf)["EchoTime"], bf) for bf in bold_file])
+            *sorted([(layout.get_metadata(bf, scope="raw")["EchoTime"], bf) for bf in bold_file])
         )
         ref_file = bold_file[0]  # Reset reference to be the shortest TE
 
@@ -250,7 +250,7 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
     # Find associated sbref, if possible
     entities["suffix"] = "sbref"
     entities["extension"] = [".nii", ".nii.gz"]  # Overwrite extensions
-    sbref_files = layout.get(return_type="file", **entities)
+    sbref_files = layout.get(scope="raw", return_type="file", **entities)
 
     sbref_msg = f"No single-band-reference found for {os.path.basename(ref_file)}."
     if sbref_files and "sbref" in config.workflow.ignore:

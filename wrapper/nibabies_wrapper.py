@@ -268,6 +268,9 @@ def merge_help(wrapper_help, target_help):
     expected_overlap = {
         "anat-derivatives",
         "bids-database-dir",
+        "bids-filter-file",
+        "derivatives",
+        "deriv-filter-file",
         "fs-license-file",
         "fs-subjects-dir",
         "config-file",
@@ -466,6 +469,25 @@ the spatial normalization."""
         type=os.path.abspath,
         help="Directory containing prelabeled segmentations to use for JointLabelFusion."
     )
+    g_wrap.add_argument(
+        "--derivatives",
+        nargs="+",
+        metavar="PATH",
+        type=os.path.abspath,
+        help="One or more directory containing pre-computed derivatives"
+    )
+    g_wrap.add_argument(
+        "--bids-filter-file",
+        metavar="PATH",
+        type=os.path.abspath,
+        help="Filter file",
+    )
+    g_wrap.add_argument(
+        "--deriv-filter-file",
+        metavar="PATH",
+        type=os.path.abspath,
+        help="Filter file",
+    )
 
     # Developer patch/shell options
     g_dev = parser.add_argument_group(
@@ -650,6 +672,19 @@ def main():
     if opts.segmentation_atlases_dir:
         container.add_mount(opts.segmentation_atlases_dir, "/opt/segmentations")
         unknown_args.extend(["--segmentation-atlases-dir", "/opt/segmentations"])
+    if opts.bids_filter_file:
+        container.add_mount(opts.bids_filter_file, "/opt/bids_filters.json")
+        unknown_args.extend(["--bids-filter-file", "/opt/bids_filters.json"])
+    if opts.deriv_filter_file:
+        container.add_mount(opts.deriv_filter_file, "/opt/derivative_filters.json")
+        unknown_args.extend(["--deriv-filter-file", "/opt/derivative_filters.json"])
+    if opts.derivatives:
+        derivative_args = ["--derivatives"]
+        for derivative in opts.derivatives:
+            derivative_target = "/opt/derivatives/%s" % os.path.basename(derivative)
+            container.add_mount(derivative, derivative_target, read_only=False)
+            derivative_args.append(derivative_target)
+        unknown_args.extend(derivative_args)
 
     # Check that work_dir is not a child of bids_dir
     if opts.work_dir and opts.bids_dir:
