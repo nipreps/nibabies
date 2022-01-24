@@ -336,7 +336,7 @@ def collect_precomputed_derivatives(layout, subject_id, derivatives_filters=None
         res = layout.get(
             scope='derivatives',
             subject=subject_id,
-            extension=['nii', 'nii.gz'],
+            extension=['.nii', '.nii.gz'],
             **query,
         )
         if not res:
