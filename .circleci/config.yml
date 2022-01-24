@@ -192,8 +192,8 @@ jobs:
             pip install --upgrade "pip<21" "setuptools<45"
             pip install --upgrade wrapper/
             which nibabies-wrapper
-            nibabies-wrapper docker -i nipreps/nibabies:latest --help
-            nibabies-wrapper docker -i nipreps/nibabies:latest --version
+            nibabies-wrapper --help
+            nibabies-wrapper --version
       - run:
           name: Test nibabies-wrapper (Python 3)
           command: |
@@ -205,8 +205,8 @@ jobs:
             pip install --upgrade pip setuptools
             pip install --upgrade wrapper/
             which nibabies-wrapper
-            nibabies-wrapper docker -i nipreps/nibabies:latest --help
-            nibabies-wrapper docker -i nipreps/nibabies:latest --version
+            nibabies-wrapper --help
+            nibabies-wrapper --version
       - store_artifacts:
           path: /tmp/data/reports
 
