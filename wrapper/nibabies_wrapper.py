@@ -20,7 +20,7 @@ import re
 import subprocess
 
 __version__ = '99.99.99'
-__copyright__ = 'Copyright 2021, The NiPreps Developers'
+__copyright__ = 'Copyright 2022, The NiPreps Developers'
 __bugreports__ = 'https://github.com/nipreps/nibabies/issues'
 
 MISSING = """
