@@ -20,9 +20,7 @@ import re
 import subprocess
 
 __version__ = '99.99.99'
-__copyright__ = (
-    'Copyright 2021, The NiPreps Developers'
-)
+__copyright__ = 'Copyright 2022, The NiPreps Developers'
 __bugreports__ = 'https://github.com/nipreps/nibabies/issues'
 
 MISSING = """
@@ -120,9 +118,7 @@ class ContainerManager(object):
         dst : absolute container path
         read_only : disable writing to bound path
         """
-        self.mounts.append(
-            "{0}:{1}{2}".format(src, dst, ":ro" if read_only else "")
-        )
+        self.mounts.append("{0}:{1}{2}".format(src, dst, ":ro" if read_only else ""))
 
     def check_install(self):
         """Verify that the service is installed and the user has permission to
@@ -153,9 +149,7 @@ class ContainerManager(object):
     def check_image(self, image):
         """Check whether image is present on local system"""
         if self.service == "docker":
-            ret = subprocess.run(
-                ["docker", "images", "-q", image], stdout=subprocess.PIPE
-            )
+            ret = subprocess.run(["docker", "images", "-q", image], stdout=subprocess.PIPE)
             return bool(ret.stdout)
         elif self.service == "singularity":
             # check if the image file exists
@@ -349,9 +343,7 @@ def get_parser():
         """Ensure a given path exists and it is a file."""
         path = os.path.abspath(path)
         if not os.path.isfile(path):
-            raise parser.error(
-                "Path should point to a file (or symlink of file): <%s>." % path
-            )
+            raise parser.error("Path should point to a file (or symlink of file): <%s>." % path)
         return path
 
     parser = argparse.ArgumentParser(
@@ -467,14 +459,14 @@ the spatial normalization."""
         "--segmentation-atlases-dir",
         metavar="PATH",
         type=os.path.abspath,
-        help="Directory containing prelabeled segmentations to use for JointLabelFusion."
+        help="Directory containing prelabeled segmentations to use for JointLabelFusion.",
     )
     g_wrap.add_argument(
         "--derivatives",
         nargs="+",
         metavar="PATH",
         type=os.path.abspath,
-        help="One or more directory containing pre-computed derivatives"
+        help="One or more directory containing pre-computed derivatives",
     )
     g_wrap.add_argument(
         "--bids-filter-file",
@@ -533,9 +525,7 @@ the spatial normalization."""
         help="Run container with a different network driver "
         '("none" to simulate no internet connection)',
     )
-    g_dev.add_argument(
-        "--no-tty", action="store_true", help="Run docker without TTY flag -it"
-    )
+    g_dev.add_argument("--no-tty", action="store_true", help="Run docker without TTY flag -it")
 
     return parser
 
@@ -552,44 +542,35 @@ def main():
         return
 
     # Set help if no directories set
-    if not all((opts.service, opts.bids_dir, opts.output_dir)):
+    if opts.help or not all((opts.service, opts.bids_dir, opts.output_dir)):
         parser.print_help()
-        return 1
+        return
 
     container = ContainerManager(opts.service, image=opts.image)
     check = container.check_install()
     if check < 1:
-        if opts.version:
-            print("nibabies wrapper {!s}".format(__version__))
-        if opts.help:
-            parser.print_help()
         if check == -1:
             print(
-                "nibabies: Could not find %s command... Is it installed?"
-                % opts.service
+                "nibabies: Could not find %s command... Is it installed?" % opts.service,
+                file=sys.stderr,
             )
         else:
             print(
-                "nibabies: Make sure you have permission to run '%s'" % opts.service
+                "nibabies: Make sure you have permission to run '%s'" % opts.service,
+                file=sys.stderr,
             )
         return 1
 
-    # For --help or --version, ask before downloading an image
     if not container.check_image(opts.image):
         resp = "Y"
-        if opts.version:
-            print("nibabies wrapper {!s}".format(__version__))
-        if opts.help:
-            parser.print_help()
-        if opts.version == "singularity":
-            print("Singularity images must already exist locally.")
+        if opts.service == "singularity":
+            print("Singularity image must already exist locally.", file=sys.stderr)
             return 1
-        if opts.version or opts.help:
-            try:
-                resp = input(MISSING.format(opts.image))
-            except KeyboardInterrupt:
-                print()
-                return 1
+        try:
+            resp = input(MISSING.format(opts.image))
+        except KeyboardInterrupt:
+            print()
+            return 1
         if resp not in ("y", "Y", ""):
             return 0
         print("Downloading. This may take a while...")
@@ -602,10 +583,7 @@ def main():
             "Do you have permission to run docker?"
         )
         return 1
-    if (
-        not (opts.help or opts.version or "--reports-only" in unknown_args)
-        and mem_total < 8000
-    ):
+    if "--reports-only" not in unknown_args and mem_total < 8000:
         print(
             "Warning: <8GB of RAM is available within your environment.\n"
             "Some parts of nibabies may fail to complete."
@@ -624,11 +602,7 @@ def main():
 
     if opts.service == "docker":
         if not opts.no_tty:
-            if opts.help:
-                # TTY can corrupt stdout
-                container.add_cmd("-i")
-            else:
-                container.add_cmd("-it")
+            container.add_cmd("-it")
         if opts.user:
             container.add_cmd(("-u", opts.user))
         if opts.network:
@@ -718,9 +692,7 @@ def main():
             if space.split(":")[0] not in (TF_TEMPLATES + NONSTANDARD_REFERENCES):
                 tpl = os.path.basename(space)
                 if not tpl.startswith("tpl-"):
-                    raise RuntimeError(
-                        "Custom template %s requires a `tpl-` prefix" % tpl
-                    )
+                    raise RuntimeError("Custom template %s requires a `tpl-` prefix" % tpl)
                 target = "/home/fmriprep/.cache/templateflow/" + tpl
                 container.add_mount(os.path.abspath(space), target)
                 spaces.append(tpl[4:])
@@ -742,16 +714,16 @@ def main():
 
     # Override help and version to describe underlying program
     # Respects '-i' flag, so will retrieve information from any image
-    if opts.help:
-        container.add_cmd("-h")
-        targethelp = subprocess.check_output(container.command).decode()
-        print(merge_help(parser.format_help(), targethelp))
-        return 0
-    elif opts.version:
-        # Get version to be run and exit
-        container.add_cmd("--version")
-        ret = subprocess.run(container.command)
-        return ret.returncode
+    # if opts.help:
+    #     container.add_cmd("-h")
+    #     targethelp = subprocess.check_output(container.command).decode()
+    #     print(merge_help(parser.format_help(), targethelp))
+    #     return 0
+    # elif opts.version:
+    #     # Get version to be run and exit
+    #     container.add_cmd("--version")
+    #     ret = subprocess.run(container.command)
+    #     return ret.returncode
 
     if not opts.shell:
         container.add_cmd(main_args)
