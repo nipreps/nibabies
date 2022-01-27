@@ -552,19 +552,17 @@ def main():
         if check == -1:
             print(
                 "nibabies: Could not find %s command... Is it installed?" % opts.service,
-                file=sys.stderr,
             )
         else:
             print(
                 "nibabies: Make sure you have permission to run '%s'" % opts.service,
-                file=sys.stderr,
             )
         return 1
 
     if not container.check_image(opts.image):
         resp = "Y"
         if opts.service == "singularity":
-            print("Singularity image must already exist locally.", file=sys.stderr)
+            print("Singularity image must already exist locally.")
             return 1
         try:
             resp = input(MISSING.format(opts.image))
