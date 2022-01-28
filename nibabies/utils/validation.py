@@ -1,4 +1,3 @@
-from cmath import exp
 import sys
 import nibabel as nb
 import numpy as np
