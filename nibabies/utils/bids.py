@@ -337,6 +337,7 @@ def collect_precomputed_derivatives(layout, subject_id, derivatives_filters=None
             scope='derivatives',
             subject=subject_id,
             extension=['.nii', '.nii.gz'],
+            return_type="filename",
             **query,
         )
         if not res:

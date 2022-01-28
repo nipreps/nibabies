@@ -272,7 +272,7 @@ def init_precomputed_mask_wf(
     bspline_fitting_distance=200, omp_nthreads=None, name="precomputed_mask_wf"
 ):
     from nipype.interfaces.ants import N4BiasFieldCorrection
-    from niworkflows.interfaces.header import ValidateImage
+    from niworkflows.interfaces.header import CopyXForm, ValidateImage
     from niworkflows.interfaces.nibabel import ApplyMask, IntensityClip
 
     workflow = pe.Workflow(name=name)
@@ -283,6 +283,7 @@ def init_precomputed_mask_wf(
     )
 
     validate_mask = pe.Node(ValidateImage(), name="validate_mask")
+    fix_hdr = pe.Node(CopyXForm(), mem_gb=0.1, name="fix_hdr")
     final_n4 = pe.Node(
         N4BiasFieldCorrection(
             dimension=3,
@@ -303,12 +304,14 @@ def init_precomputed_mask_wf(
     # fmt:off
     workflow.connect([
         (inputnode, validate_mask, [("t1w_mask", "in_file")]),
+        (validate_mask, fix_hdr, [("out_file", "in_file")]),
+        (inputnode, fix_hdr, [("t1w", "hdr_file")]),
         (inputnode, final_n4, [("t1w", "input_image")]),
-        (validate_mask, final_n4, [("out_file", "weight_image")]),
-        (validate_mask, apply_mask, [("out_file", "in_mask")]),
+        (fix_hdr, final_n4, [("out_file", "weight_image")]),
+        (fix_hdr, apply_mask, [("out_file", "in_mask")]),
         (final_n4, apply_mask, [("output_image", "in_file")]),
         (final_n4, final_clip, [("output_image", "in_file")]),
-        (validate_mask, outputnode, [("out_file", "t1w_mask")]),
+        (fix_hdr, outputnode, [("out_file", "t1w_mask")]),
         (final_clip, outputnode, [("out_file", "t1w_preproc")]),
         (apply_mask, outputnode, [("out_file", "t1w_brain")]),
     ])

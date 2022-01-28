@@ -93,6 +93,16 @@ def init_infant_anat_wf(
     precomp_mask = existing_derivatives.get("anat_mask")
     precomp_aseg = existing_derivatives.get("anat_aseg")
 
+    # verify derivatives are relatively similar to T1w
+    if precomp_mask or precomp_aseg:
+        from ...utils.validation import validate_t1w_derivatives
+
+        validated_derivatives = validate_t1w_derivatives(  # compare derivatives to the first T1w
+            t1w[0], anat_mask=precomp_mask, anat_aseg=precomp_aseg
+        )
+        precomp_mask = validated_derivatives.get("anat_mask")
+        precomp_aseg = validated_derivatives.get("anat_aseg")
+
     wf = Workflow(name=name)
     desc = f"""\n
 Anatomical data preprocessing
