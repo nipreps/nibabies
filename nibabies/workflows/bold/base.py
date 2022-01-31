@@ -1171,7 +1171,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
 
 def _create_mem_gb(bold_fname):
-    bold_size_gb = os.path.getsize(bold_fname) / (1024 ** 3)
+    bold_size_gb = os.path.getsize(bold_fname) / (1024**3)
     bold_tlen = nb.load(bold_fname).shape[-1]
     mem_gb = {
         "filesize": bold_size_gb,
