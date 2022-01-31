@@ -363,10 +363,12 @@ the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}
     if not freesurfer:
         return wf
 
+    # if running with precomputed aseg, or JLF, pass the aseg along to FreeSurfer
+    use_aseg = bool(precomp_aseg) or bool(segmentation_atlases)
     # FreeSurfer surfaces
     surface_recon_wf = init_infant_surface_recon_wf(
         age_months=age_months,
-        use_aseg=bool(segmentation_atlases),
+        use_aseg=use_aseg,
     )
 
     # fmt:off
