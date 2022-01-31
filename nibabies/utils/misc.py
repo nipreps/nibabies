@@ -88,7 +88,7 @@ def check_total_memory(recommended_gb):
     except ImportError:
         return
 
-    tot = int(psutil.virtual_memory().total / 1024 ** 3)
+    tot = int(psutil.virtual_memory().total / 1024**3)
     return tot >= recommended_gb
 
 
