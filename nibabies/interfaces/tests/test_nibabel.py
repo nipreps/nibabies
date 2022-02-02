@@ -1,10 +1,12 @@
+import json
+from pathlib import Path
 import uuid
 
 import nibabel as nb
 import numpy as np
 import pytest
 
-from ..nibabel import MergeROIs
+from ..nibabel import MergeROIs, MapLabels
 
 
 @pytest.fixture
@@ -23,6 +25,11 @@ def create_roi(tmp_path):
 
     for f in files:
         f.unlink()
+
+
+def create_image(data, filename):
+    nb.Nifti1Image(data, affine=np.eye(4)).to_filename(str(filename))
+    return filename
 
 
 # create a slightly off affine
@@ -71,3 +78,37 @@ def test_merge_rois(tmpdir, create_roi, affine, data, roi_index, error, err_mess
     with pytest.raises(AssertionError) as err:
         merge.run()
     assert err_message in str(err.value)
+
+
+DEFAULT_MAPPING = {5: 1, 6: 1, 7: 2}
+DEFAULT_INPUT = np.arange(8).reshape(2, 2, 2)
+DEFAULT_OUTPUT = np.asarray([0, 1, 2, 3, 4, 1, 1, 2]).reshape(2, 2, 2)
+
+
+@pytest.mark.parametrize(
+    "data,mapping,tojson,expected",
+    [
+        (DEFAULT_INPUT, DEFAULT_MAPPING, False, DEFAULT_OUTPUT),
+        (DEFAULT_INPUT, DEFAULT_MAPPING, True, DEFAULT_OUTPUT),
+    ],
+)
+def test_map_labels(tmpdir, data, mapping, tojson, expected):
+    tmpdir.chdir()
+    in_file = create_image(data, Path("test.nii.gz"))
+    maplbl = MapLabels(in_file=in_file)
+    if tojson:
+        map_file = Path('mapping.json')
+        map_file.write_text(json.dumps(mapping))
+        maplbl.inputs.mappings_file = map_file
+    else:
+        maplbl.inputs.mappings = mapping
+    out_file = maplbl.run().outputs.out_file
+
+    orig = nb.load(in_file).get_fdata()
+    labels = nb.load(out_file).get_fdata()
+    assert orig.shape == labels.shape
+    assert np.all(labels == expected)
+
+    Path(in_file).unlink()
+    if tojson:
+        Path(map_file).unlink()
