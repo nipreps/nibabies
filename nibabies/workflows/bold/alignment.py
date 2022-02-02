@@ -68,6 +68,11 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     #     name="applywarp_std"
     # )
 
+    generalize_rois = pe.Node(
+        niu.Function(function=generalize_labels),
+        name='generalize_rois',
+    )
+
     subcortical_labels = resource_filename(
         "nibabies", "data/FreeSurferSubcorticalLabelTableLut.txt"
     )
@@ -78,7 +83,8 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
 
     # fmt: off
     workflow.connect([
-        (inputnode, refine_bold_rois, [("MNIInfant_aseg", "in_file")]),
+        (inputnode, generalize_rois, [("MNIInfant_aseg", "in_file")]),
+        (generalize_rois, refine_bold_rois, [("out", "in_file")]),
         # (applywarp_tpl, refine_std_rois, [("out_file", "in_file")]),
         (refine_bold_rois, outputnode, [("out_file", "MNIInfant_rois")]),
     ])
@@ -352,45 +358,44 @@ def format_agg_rois(rois):
     return rois[0], rois[1:], ("-add %s " * (len(rois) - 1)).strip()
 
 
-def drop_labels(in_file):
-    """Drop non-subcortical labels"""
-    from pathlib import Path
+def generalize_labels(in_file, out_file='aseg.nii.gz'):
+    """
+    Ensure FreeSurfer LUT sub-structures are accounted for, prior to being discarded.
+
+    Parameters
+    ----------
+    in_file : str
+        Input aseg file
+    out_file : str
+        Generalized output aseg file
+
+    Returns
+    -------
+    out_file : str
+        Generalized output aseg file
+    """
+    import os
     import nibabel as nb
     import numpy as np
-    from niworkflows.interfaces.cifti import _reorient_image
 
-    # FreeSurfer LUT values
-    expected_labels = {
-        8,
-        10,
-        11,
-        12,
-        13,
-        16,
-        17,
-        18,
-        26,
-        28,
-        47,
-        49,
-        50,
-        51,
-        52,
-        53,
-        54,
-        58,
-        60,
+    # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+    # v 1.105
+    label_subsitutions = {
+        16: (173, 174, 175),  # brain stem sub-structures
+        17: (550, 551, 552, 553, 554, 555, 556, 557, 558),  # HighRes Hippocampus (L)
+        53: (500, 501, 502, 503, 504, 505, 506, 507, 508),  # HighRes Hippocampus (R)
     }
-    img = _reorient_image(nb.load(in_file), orientation="LAS")
-    hdr = img.header
-    data = np.asanyarray(img.dataobj).astype("int16")
-    hdr.set_data_dtype("int16")
-    labels = np.unique(data)
 
-    for label in labels:
-        if label not in expected_labels:
-            data[data == label] = 0
+    img = nb.load(in_file)
+    data = np.asarray(img.dataobj)
+    labels = set(np.unique(data))
 
-    out_file = str(Path("ROIs.nii.gz").absolute())
-    img.__class__(data, img.affine, header=hdr).to_filename(out_file)
+    for target, subs in label_subsitutions.items():
+        if set(subs) - labels:
+            continue
+        data[np.isin(data, subs)] = target
+
+    nimg = img.__class__(data, img.affine, header=img.header)
+    out_file = os.path.abspath(out_file)
+    nimg.to_filename(out_file)
     return out_file
