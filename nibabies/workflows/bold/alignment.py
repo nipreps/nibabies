@@ -34,6 +34,7 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
         Subcortical ROIs in `MNI152NLin6Asym` space
     """
     from templateflow.api import get as get_template
+    from ...interfaces.nibabel import MapLabels
 
     # TODO: Implement BOLD refinement once InfantFS outputs subj/mri/wmparc.mgz
     # The code is found at
@@ -68,9 +69,11 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     #     name="applywarp_std"
     # )
 
-    generalize_rois = pe.Node(
-        niu.Function(function=generalize_labels),
-        name='generalize_rois',
+    map_labels = pe.Node(
+        MapLabels(
+            mappings_file=resource_filename("nibabies", "data/FreeSurferLabelRemappings.json")
+        ),
+        name='map_labels',
     )
 
     subcortical_labels = resource_filename(
@@ -83,8 +86,8 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
 
     # fmt: off
     workflow.connect([
-        (inputnode, generalize_rois, [("MNIInfant_aseg", "in_file")]),
-        (generalize_rois, refine_bold_rois, [("out", "in_file")]),
+        (inputnode, map_labels, [("MNIInfant_aseg", "in_file")]),
+        (map_labels, refine_bold_rois, [("out_file", "in_file")]),
         # (applywarp_tpl, refine_std_rois, [("out_file", "in_file")]),
         (refine_bold_rois, outputnode, [("out_file", "MNIInfant_rois")]),
     ])
@@ -356,46 +359,3 @@ def format_agg_rois(rois):
 
     """
     return rois[0], rois[1:], ("-add %s " * (len(rois) - 1)).strip()
-
-
-def generalize_labels(in_file, out_file='aseg.nii.gz'):
-    """
-    Ensure FreeSurfer LUT sub-structures are accounted for, prior to being discarded.
-
-    Parameters
-    ----------
-    in_file : str
-        Input aseg file
-    out_file : str
-        Generalized output aseg file
-
-    Returns
-    -------
-    out_file : str
-        Generalized output aseg file
-    """
-    import os
-    import nibabel as nb
-    import numpy as np
-
-    # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
-    # v 1.105
-    label_subsitutions = {
-        16: (173, 174, 175),  # brain stem sub-structures
-        17: (550, 551, 552, 553, 554, 555, 556, 557, 558),  # HighRes Hippocampus (L)
-        53: (500, 501, 502, 503, 504, 505, 506, 507, 508),  # HighRes Hippocampus (R)
-    }
-
-    img = nb.load(in_file)
-    data = np.asarray(img.dataobj)
-    labels = set(np.unique(data))
-
-    for target, subs in label_subsitutions.items():
-        if set(subs) - labels:
-            continue
-        data[np.isin(data, subs)] = target
-
-    nimg = img.__class__(data, img.affine, header=img.header)
-    out_file = os.path.abspath(out_file)
-    nimg.to_filename(out_file)
-    return out_file
