@@ -151,16 +151,18 @@ def _remap_labels(in_file, mapping, newpath=None):
     import nibabel as nb
     import numpy as np
 
+    dtype = np.int16
     img = nb.load(in_file)
-    data = np.asarray(img.dataobj)
+    data = np.asarray(img.dataobj, dtype=dtype)
     vec = data.ravel()
 
     def _relabel(label):
         return mapping.get(label, label)
 
     labels = np.unique(vec)  # include all labels present
-    subs = np.array(list(map(_relabel, labels)))  # copy values and substitute mappings
-    subbed = np.zeros(labels.max() + 1, dtype=data.dtype)
+    # copy values and substitute mappings
+    subs = np.asarray(list(map(_relabel, labels)), dtype=dtype)
+    subbed = np.zeros(labels.max() + 1, dtype=dtype)
     subbed[labels] = subs
     out = subbed[vec].reshape(data.shape)
 
