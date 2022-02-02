@@ -54,6 +54,37 @@ class MergeROIs(SimpleInterface):
         return runtime
 
 
+class _MapLabelsInputSpec(BaseInterfaceInputSpec):
+    in_file = File(exists=True, desc="Segmented NIfTI")
+    mappings = traits.Dict(
+        xor=["mappings_file"],
+        desc="Dictionary of label / replacement label pairs",
+    )
+    mappings_file = File(
+        exists=True, xor=["mappings"], help="JSON composed of label / replacement label pairs."
+    )
+
+
+class _MapLabelsOutputSpec(TraitedSpec):
+    out_file = File(exists=True, desc="Labeled file")
+
+
+class MapLabels(SimpleInterface):
+    """Remap discrete labels"""
+
+    input_spec = _MapLabelsInputSpec
+    output_spec = _MapLabelsOutputSpec
+
+    def _run_interface(self, runtime):
+        mapping = self.inputs.mappings or _load_int_json(self.inputs.mappings_file)
+        self._results["out_file"] = _remap_labels(
+            self.inputs.in_file,
+            mapping,
+            newpath=runtime.cwd,
+        )
+        return runtime
+
+
 def _dilate(in_file, radius=3, iterations=1, newpath=None):
     """Dilate (binary) input mask."""
     from pathlib import Path
@@ -113,3 +144,39 @@ def _merge_rois(in_files, newpath=None):
     out_file = str((Path(newpath) / "combined.nii.gz").absolute())
     img.__class__(data, affine, header).to_filename(out_file)
     return out_file
+
+
+def _remap_labels(in_file, mapping, newpath=None):
+    from pathlib import Path
+    import nibabel as nb
+    import numpy as np
+
+    img = nb.load(in_file)
+    data = np.asarray(img.dataobj)
+    vec = data.ravel()
+
+    def _relabel(label):
+        return mapping.get(label, label)
+
+    labels = np.unique(vec)  # include all labels present
+    subs = np.array(list(map(_relabel, labels)))  # copy values and substitute mappings
+    subbed = np.zeros(labels.max() + 1, dtype=data.dtype)
+    subbed[labels] = subs
+    out = subbed[vec].reshape(data.shape)
+
+    if newpath is None:
+        newpath = Path()
+    out_file = str((Path(newpath) / "relabeled.nii.gz").absolute())
+    img.__class__(out, img.affine, header=img.header).to_filename(out_file)
+    return out_file
+
+
+def _load_int_json(json_file):
+    import json
+
+    def _keys_as_ints(d):
+        return {int(k): v for k, v in d.items()}
+
+    with open(json_file) as fp:
+        data = json.load(fp, object_hook=_keys_as_ints)
+    return data
