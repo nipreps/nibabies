@@ -34,7 +34,7 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
         Subcortical ROIs in `MNI152NLin6Asym` space
     """
     from templateflow.api import get as get_template
-    from ...interfaces.nibabel import MapLabels
+    from niworkflows.interfaces.nibabel import MapLabels
 
     # TODO: Implement BOLD refinement once InfantFS outputs subj/mri/wmparc.mgz
     # The code is found at
@@ -128,7 +128,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name="subcortical_mni_al
         Volume file containing all labels
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from ...interfaces.nibabel import MergeROIs
+    from niworkflows.interfaces.nibabel import MergeROIs
     from ...interfaces.workbench import (
         CiftiCreateDenseTimeseries,
         CiftiCreateLabel,

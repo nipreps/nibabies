@@ -81,8 +81,7 @@ def init_coregistration_wf(
         FixHeaderRegistration as Registration,
         FixHeaderApplyTransforms as ApplyTransforms,
     )
-    from niworkflows.interfaces.nibabel import ApplyMask, Binarize
-    from ...interfaces.nibabel import BinaryDilation
+    from niworkflows.interfaces.nibabel import ApplyMask, Binarize, BinaryDilation
 
     workflow = pe.Workflow(name)
 

@@ -80,14 +80,13 @@ def init_infant_brain_extraction_wf(
     from nipype.interfaces.ants import N4BiasFieldCorrection, ImageMath
 
     # niworkflows
-    from niworkflows.interfaces.nibabel import ApplyMask, Binarize, IntensityClip
+    from niworkflows.interfaces.nibabel import ApplyMask, Binarize, IntensityClip, BinaryDilation
     from niworkflows.interfaces.fixes import (
         FixHeaderRegistration as Registration,
         FixHeaderApplyTransforms as ApplyTransforms,
     )
     from templateflow.api import get as get_template
 
-    from ...interfaces.nibabel import BinaryDilation
     from ...utils.misc import cohort_by_months
 
     # handle template specifics
