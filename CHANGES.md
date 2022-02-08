@@ -1,3 +1,29 @@
+22.0.0 (TBD)
+------------
+A new `NiBabies` minor series!
+New to this release:
+- [Ability to pass in anatomical derivatives](https://nibabies.readthedocs.io/en/latest/faqs.html#leveraging-precomputed-results) (brain mask / aseg)
+- [Multiecho] Option to output individual corrected echo time series
+- CIFTI generation improvements
+
+  22.0.0rc0 (February 08, 2022)
+  -----------------------------
+  * DOC: Add FAQs page (#164)
+  * ENH: Add `--me-output-echos` CLI flag (#174)
+  * ENH: Precomputed derivatives (#173)
+  * ENH: Validate files passed with `--derivatives` (#182)
+  * FIX: Check if segmentation directory exists (#165)
+  * FIX: Update report spec to reflect `infant_recon_all` (#167)
+  * FIX: ICA Aroma imports (#170)
+  * FIX: Relabel sub-structures before discarding (#186)
+  * FIX: Use precomputed aseg within `infant_recon_all` (#184)
+  * FIX: Remove excess arguments on wrapper tests (#181)
+  * MAINT: Add pre-commit checks (#178)
+  * MAINT: Add RTD config (#173)
+  * MAINT: Freeze `black` version (#185)
+  * RF: Wrapper usage logic (#183)
+  * STY/TEST: Set global style and doctest options (#162)
+
 21.0.2 (November 29, 2021)
 --------------------------
 A patch release in the 21.0.x series.
