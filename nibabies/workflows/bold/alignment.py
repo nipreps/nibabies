@@ -34,6 +34,7 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
         Subcortical ROIs in `MNI152NLin6Asym` space
     """
     from templateflow.api import get as get_template
+    from niworkflows.interfaces.nibabel import MapLabels
 
     # TODO: Implement BOLD refinement once InfantFS outputs subj/mri/wmparc.mgz
     # The code is found at
@@ -68,6 +69,13 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     #     name="applywarp_std"
     # )
 
+    map_labels = pe.Node(
+        MapLabels(
+            mappings_file=resource_filename("nibabies", "data/FreeSurferLabelRemappings.json")
+        ),
+        name='map_labels',
+    )
+
     subcortical_labels = resource_filename(
         "nibabies", "data/FreeSurferSubcorticalLabelTableLut.txt"
     )
@@ -78,7 +86,8 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
 
     # fmt: off
     workflow.connect([
-        (inputnode, refine_bold_rois, [("MNIInfant_aseg", "in_file")]),
+        (inputnode, map_labels, [("MNIInfant_aseg", "in_file")]),
+        (map_labels, refine_bold_rois, [("out_file", "in_file")]),
         # (applywarp_tpl, refine_std_rois, [("out_file", "in_file")]),
         (refine_bold_rois, outputnode, [("out_file", "MNIInfant_rois")]),
     ])
@@ -119,7 +128,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name="subcortical_mni_al
         Volume file containing all labels
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from ...interfaces.nibabel import MergeROIs
+    from niworkflows.interfaces.nibabel import MergeROIs
     from ...interfaces.workbench import (
         CiftiCreateDenseTimeseries,
         CiftiCreateLabel,
@@ -350,47 +359,3 @@ def format_agg_rois(rois):
 
     """
     return rois[0], rois[1:], ("-add %s " * (len(rois) - 1)).strip()
-
-
-def drop_labels(in_file):
-    """Drop non-subcortical labels"""
-    from pathlib import Path
-    import nibabel as nb
-    import numpy as np
-    from niworkflows.interfaces.cifti import _reorient_image
-
-    # FreeSurfer LUT values
-    expected_labels = {
-        8,
-        10,
-        11,
-        12,
-        13,
-        16,
-        17,
-        18,
-        26,
-        28,
-        47,
-        49,
-        50,
-        51,
-        52,
-        53,
-        54,
-        58,
-        60,
-    }
-    img = _reorient_image(nb.load(in_file), orientation="LAS")
-    hdr = img.header
-    data = np.asanyarray(img.dataobj).astype("int16")
-    hdr.set_data_dtype("int16")
-    labels = np.unique(data)
-
-    for label in labels:
-        if label not in expected_labels:
-            data[data == label] = 0
-
-    out_file = str(Path("ROIs.nii.gz").absolute())
-    img.__class__(data, img.affine, header=hdr).to_filename(out_file)
-    return out_file
