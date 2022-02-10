@@ -6,6 +6,10 @@ New to this release:
 - [Multiecho] Option to output individual corrected echo time series
 - CIFTI generation improvements
 
+  22.0.0rc1 (February 10, 2022)
+  -----------------------------
+  * MNT: Add missing toml dependency
+
   22.0.0rc0 (February 08, 2022)
   -----------------------------
   * DOC: Add FAQs page (#164)
