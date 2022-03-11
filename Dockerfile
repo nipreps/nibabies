@@ -283,6 +283,10 @@ RUN conda install -y python=3.8 \
     conda clean -y --all && sync && \
     rm -rf ~/.conda ~/.cache/pip/*; sync
 
+# Precaching fonts, set 'Agg' as default backend for matplotlib
+RUN ${CONDA_PYTHON} -c "from matplotlib import font_manager" && \
+    sed -i 's/\(backend *: \).*$/\1Agg/g' $( ${CONDA_PYTHON} -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
+
 # Precaching atlases
 COPY setup.cfg nibabies-setup.cfg
 COPY scripts/fetch_templates.py fetch_templates.py
