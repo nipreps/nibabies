@@ -6,6 +6,11 @@ New to this release:
 - [Multiecho] Option to output individual corrected echo time series
 - CIFTI generation improvements
 
+  22.0.0rc2 (March 11, 2022)
+  --------------------------
+  * MAINT: Update versioneer, allow static versioning (#190)
+  * MAINT: Ensure version is written to version file (#189)
+
   22.0.0rc1 (February 10, 2022)
   -----------------------------
   * MNT: Add missing toml dependency
