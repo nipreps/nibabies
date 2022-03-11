@@ -297,6 +297,7 @@ RUN pip install --no-cache-dir "$( grep templateflow nibabies-setup.cfg | xargs 
 
 COPY . /src/nibabies
 # Force static versioning within container
+ARG VERSION
 RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
     echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
     pip install --no-cache-dir "/src/nibabies[all]"
@@ -309,7 +310,6 @@ RUN ldconfig
 WORKDIR /tmp
 ARG BUILD_DATE
 ARG VCS_REF
-ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="nibabies" \
       org.label-schema.description="nibabies - NeuroImaging tools for babies" \
