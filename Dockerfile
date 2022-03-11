@@ -261,7 +261,8 @@ ENV PATH="/usr/local/miniconda/bin:$PATH" \
     PYTHONNOUSERSITE=1 \
     MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1 \
-    IS_DOCKER_8395080871=1
+    IS_DOCKER_8395080871=1 \
+    CONDA_PYTHON="/usr/local/miniconda/bin/python"
 
 # Installing precomputed python packages
 RUN conda install -y python=3.8 \
@@ -283,23 +284,24 @@ RUN conda install -y python=3.8 \
     rm -rf ~/.conda ~/.cache/pip/*; sync
 
 # Precaching fonts, set 'Agg' as default backend for matplotlib
-RUN python -c "from matplotlib import font_manager" && \
-    sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
+RUN ${CONDA_PYTHON} -c "from matplotlib import font_manager" && \
+    sed -i 's/\(backend *: \).*$/\1Agg/g' $( ${CONDA_PYTHON} -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
 
 # Precaching atlases
 COPY setup.cfg nibabies-setup.cfg
 COPY scripts/fetch_templates.py fetch_templates.py
-RUN pip install --no-cache-dir "$( grep templateflow nibabies-setup.cfg | xargs )" && \
-    python fetch_templates.py && \
+RUN ${CONDA_PYTHON} -m pip install --no-cache-dir "$( grep templateflow nibabies-setup.cfg | xargs )" && \
+    ${CONDA_PYTHON} fetch_templates.py && \
     rm nibabies-setup.cfg fetch_templates.py && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
 COPY . /src/nibabies
 # Force static versioning within container
+ARG VERSION
 RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
     echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
-    pip install --no-cache-dir "/src/nibabies[all]"
+    ${CONDA_PYTHON} -m pip install --no-cache-dir "/src/nibabies[all]"
 
 # ABI tags can interfere when running on Singularity
 RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
@@ -309,7 +311,6 @@ RUN ldconfig
 WORKDIR /tmp
 ARG BUILD_DATE
 ARG VCS_REF
-ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="nibabies" \
       org.label-schema.description="nibabies - NeuroImaging tools for babies" \

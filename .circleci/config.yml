@@ -98,6 +98,16 @@ jobs:
               && e=0 && break || sleep 15
             done && [ "$e" -eq "0" ]
       - run:
+          name: Verify Docker image version
+          command: |
+            if [[ -n $CIRCLE_TAG ]]; then
+              DOCKER_VERSION=$( docker run --rm -i nipreps/nibabies:latest --version | sed s/NiBabies\ v//g)
+              if [[ $DOCKER_VERSION != $CIRCLE_TAG ]]; then
+                echo "Docker image version ($DOCKER_VERSION) does not match CircleCI tag ($CIRCLE_TAG)"
+                exit 1
+              fi
+            fi
+      - run:
           name: Docker push to local registry
           no_output_timeout: 40m
           command: |
