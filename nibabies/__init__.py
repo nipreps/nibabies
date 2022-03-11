@@ -1,7 +1,6 @@
-from ._version import get_versions
+from . import _version
 
-__version__ = get_versions()["version"]
-del get_versions
+__version__ = _version.get_versions()['version']
 
 # Silence PyBIDS warning for extension entity behavior
 # Can be removed once minimum PyBIDS dependency hits 0.14
