@@ -1697,11 +1697,11 @@ def get_versions(verbose=False):
     Returns dict with two keys: 'version' and 'full'.
     """
 
-    static_version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+    static_version_file = os.path.join(os.path.dirname(__file__), "nibabies", "VERSION")
     if os.path.isfile(static_version_file):
         with open(static_version_file) as fp:
             ver = fp.readlines()[0].strip()
-            return {"version": ver, 'full': ver}
+        return {"version": ver, 'full': ver}
 
     if "versioneer" in sys.modules:
         # see the discussion in cmdclass.py:get_cmdclass()

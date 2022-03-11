@@ -644,6 +644,12 @@ def get_versions():
     except NotThisMethod:
         pass
 
+    static_version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+    if os.path.isfile(static_version_file):
+        with open(static_version_file) as fp:
+            ver = fp.readlines()[0].strip()
+        return {"version": ver, 'full': ver}
+
     try:
         root = os.path.realpath(__file__)
         # versionfile_source is the relative path from the top of the source
