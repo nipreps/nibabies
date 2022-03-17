@@ -150,10 +150,9 @@ jobs:
           command: |
             mkdir -p /tmp/data
             if [[ ! -d /tmp/data/bcp ]]; then
-              datalad clone https://gin.g-node.org/mathiasg/bcp-testdata /tmp/data/bcp
+              datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp
               cd /tmp/data/bcp
-              datalad get -J4 sub-01
-              datalad get -J4 derivatives/infant-freesurfer
+              datalad get -r -J4 sub-01
             else
               echo "Dataset bcp was cached"
             fi
@@ -349,7 +348,7 @@ jobs:
             pip install --upgrade pip setuptools
             pip install --upgrade /tmp/src/nibabies/wrapper/
       - run:
-          name: Run nibabies on bcp
+          name: Run nibabies anatomical with precomputed derivatives
           no_output_timeout: 2h
           command: |
             mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives
@@ -363,7 +362,8 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem_mb 8192 \
                 --nthreads 2 -vv --age-months 2 --sloppy \
-                --output-layout bids
+                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --output-layout bids --anat-only
             fi
       - store_artifacts:
           path: /tmp/bcp/derivatives
