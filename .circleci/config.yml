@@ -136,11 +136,11 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - data-v1-{{ .Branch }}-{{ .Revision }}
-            - data-v1--{{ .Revision }}
-            - data-v1-{{ .Branch }}-
-            - data-v1-master-
-            - data-v1-
+            - data-v0-{{ .Branch }}-{{ .Revision }}
+            - data-v0--{{ .Revision }}
+            - data-v0-{{ .Branch }}-
+            - data-v0-master-
+            - data-v0-
       - run:
           name: Install datalad + git-annex
           command: |
@@ -156,12 +156,12 @@ jobs:
             if [[ ! -d /tmp/data/bcp ]]; then
               datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp
               cd /tmp/data/bcp
-              datalad get -r -J4 sub-01
+              datalad get -r -J4 .
             else
               echo "Dataset bcp was cached"
             fi
       - save_cache:
-         key: data-v1-{{ .Branch }}-{{ .Revision }}
+         key: data-v0-{{ .Branch }}-{{ .Revision }}
          paths:
             - /tmp/data
       - run:
@@ -212,7 +212,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v1-{{ .Branch }}-{{ .Revision }}
+            - data-v0-{{ .Branch }}-{{ .Revision }}
       - docker/install-docker-credential-helper
       - run:
           name: Docker authentication
@@ -310,7 +310,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v1-{{ .Branch }}-{{ .Revision }}
+            - data-v0-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
           keys:
             - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
