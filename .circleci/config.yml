@@ -130,8 +130,8 @@ jobs:
             - /tmp/images
 
   get_data:
-    machine:
-      image: ubuntu-2004:202107-02
+    docker:
+      - image: continuumio/miniconda3:4.10.3-alpine
     working_directory: /home/circleci/data
     steps:
       - restore_cache:
@@ -144,11 +144,11 @@ jobs:
       - run:
           name: Install datalad + git-annex
           command: |
-            sudo apt-get -q -y update && sudo apt-get install -y --no-install-recommends datalad
+            apk update && apk add ca-certificates
+            conda install -y -c anaconda -c conda-forge git-annex datalad
             # set config because datalad says so
             git config --global user.name "Nipreps CI"
             git config --global user.email "nipreps@gmail.com"
-            sudo apt-get install ca-certificates
       - run:
           name: Get bcp test data
           command: |
