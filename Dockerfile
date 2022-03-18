@@ -48,7 +48,7 @@ WORKDIR $ANTSPATH
 RUN curl -sSL "https://dl.dropbox.com/s/gwf51ykkk5bifyj/ants-Linux-centos6_x86_64-v2.3.4.tar.gz" \
     | tar -xzC $ANTSPATH --strip-components 1
 
-# AFNI latest (neurodocker build)
+# # AFNI latest (neurodocker build)
 RUN apt-get update -qq \
     && apt-get install -y -q --no-install-recommends \
            ed \
@@ -65,9 +65,6 @@ RUN apt-get update -qq \
            xvfb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -sSL --retry 5 -o /tmp/multiarch.deb http://archive.ubuntu.com/ubuntu/pool/main/g/glibc/multiarch-support_2.27-3ubuntu1.2_amd64.deb \
-    && dpkg -i /tmp/multiarch.deb \
-    && rm /tmp/multiarch.deb \
     && curl -sSL --retry 5 -o /tmp/libxp6.deb http://mirrors.kernel.org/debian/pool/main/libx/libxp/libxp6_1.0.2-2_amd64.deb \
     && dpkg -i /tmp/libxp6.deb \
     && rm /tmp/libxp6.deb \
@@ -102,6 +99,19 @@ ENV PATH="/opt/afni-latest:$PATH" \
     AFNI_IMSAVE_WARNINGS="NO" \
     AFNI_PLUGINPATH="/opt/afni-latest"
 
+# Install AFNI latest (neurodocker build)
+ENV AFNI_DIR="/opt/afni"
+RUN echo "Downloading AFNI ..." \
+    && mkdir -p ${AFNI_DIR} \
+    && curl -fsSL --retry 5 https://afni.nimh.nih.gov/pub/dist/tgz/linux_openmp_64.tgz \
+       | tar -xz -C ${AFNI_DIR} --strip-components 1 \
+    # Keep only what we use
+    && find ${AFNI_DIR} -type f -not \( \
+        -name "3dTshift" -or \
+        -name "3dUnifize" -or \
+        -name "3dAutomask" -or \
+        -name "3dvolreg" \) -delete
+
 # Convert3D (neurodocker build)
 RUN echo "Downloading Convert3D ..." \
     && mkdir -p /opt/convert3d-1.0.0 \
@@ -113,7 +123,7 @@ RUN echo "Downloading Convert3D ..." \
 ENV C3DPATH="/opt/convert3d-1.0.0" \
     PATH="/opt/convert3d-1.0.0/bin:$PATH"
 
-# FSL 5.0.11 (neurodocker build)
+# FSL 6.0.5.1
 RUN apt-get update -qq \
     && apt-get install -y -q --no-install-recommends \
            bc \
@@ -137,9 +147,9 @@ RUN apt-get update -qq \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && echo "Downloading FSL ..." \
-    && mkdir -p /opt/fsl-5.0.11 \
-    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-5.0.11-centos6_64.tar.gz \
-    | tar -xz -C /opt/fsl-5.0.11 --strip-components 1 \
+    && mkdir -p /opt/fsl \
+    && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.5.1-centos7_64.tar.gz \
+    | tar -xz -C /opt/fsl --strip-components 1 \
     --exclude "fsl/config" \
     --exclude "fsl/data/atlases" \
     --exclude "fsl/data/first" \
@@ -160,7 +170,7 @@ RUN apt-get update -qq \
     --exclude "fsl/src" \
     --exclude "fsl/tcl" \
     --exclude "fsl/bin/FSLeyes" \
-    && find /opt/fsl-5.0.11/bin -type f -not \( \
+    && find /opt/fsl/bin -type f -not \( \
         -name "applywarp" -or \
         -name "bet" -or \
         -name "bet2" -or \
@@ -183,19 +193,16 @@ RUN apt-get update -qq \
         -name "susan" -or \
         -name "topup" -or \
         -name "zeropad" \) -delete \
-    && find /opt/fsl-5.0.11/data/standard -type f -not -name "MNI152_T1_2mm_brain.nii.gz" -delete
-ENV FSLDIR="/opt/fsl-5.0.11" \
-    PATH="/opt/fsl-5.0.11/bin:$PATH" \
+    && find /opt/fsl/data/standard -type f -not -name "MNI152_T1_2mm_brain.nii.gz" -delete
+ENV FSLDIR="/opt/fsl" \
+    PATH="/opt/fsl/bin:$PATH" \
     FSLOUTPUTTYPE="NIFTI_GZ" \
     FSLMULTIFILEQUIT="TRUE" \
-    FSLTCLSH="/opt/fsl-5.0.11/bin/fsltclsh" \
-    FSLWISH="/opt/fsl-5.0.11/bin/fslwish" \
     FSLLOCKDIR="" \
     FSLMACHINELIST="" \
     FSLREMOTECALL="" \
     FSLGECUDAQ="cuda.q" \
-    POSSUMDIR="/opt/fsl-5.0.11" \
-    LD_LIBRARY_PATH="/opt/fsl-5.0.11:$LD_LIBRARY_PATH"
+    LD_LIBRARY_PATH="/opt/fsl/lib:$LD_LIBRARY_PATH"
 
 # Install FreeSurfer
 RUN apt update && \
@@ -234,7 +241,7 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
 # remove build-stamp to play nice with nipype
 
 # Installing SVGO and bids-validator
-RUN npm install -g svgo@^2.3 bids-validator@^1.8.4 \
+RUN npm install -g svgo@^2.3 bids-validator@1.9.0 \
   && rm -rf ~/.npm ~/.empty /root/.npm
 
 # ICA AROMA
@@ -250,42 +257,21 @@ RUN useradd -m -s /bin/bash -G users nibabies
 WORKDIR /home/nibabies
 ENV HOME="/home/nibabies"
 
+COPY --from=nipreps/miniconda@sha256:ebbff214e6c9dc50ccc6fdbe679df1ffcbceaa45b47a75d6e34e8a064ef178da /opt/conda /opt/conda
+
 # Installing and setting up miniconda
 RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh && \
     bash Miniconda3-py38_4.9.2-Linux-x86_64.sh -b -p /usr/local/miniconda && \
     rm Miniconda3-py38_4.9.2-Linux-x86_64.sh
 
 # Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
-ENV PATH="/usr/local/miniconda/bin:$PATH" \
-    CPATH="/usr/local/miniconda/include:$CPATH" \
+ENV PATH="/opt/conda/bin:$PATH" \
+    CPATH="/opt/conda/include:$CPATH" \
     PYTHONNOUSERSITE=1 \
     MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1 \
     IS_DOCKER_8395080871=1 \
-    CONDA_PYTHON="/usr/local/miniconda/bin/python"
-
-# Installing precomputed python packages
-RUN conda install -y python=3.8 \
-                     pip=21.0 \
-                     mkl=2021.2 \
-                     mkl-service=2.3 \
-                     numpy=1.20 \
-                     scipy=1.6 \
-                     scikit-image=0.18 \
-                     scikit-learn=0.24 \
-                     matplotlib=3.3 \
-                     pandas=1.2 \
-                     libxslt=1.1 \
-                     traits=6.2 \
-                     zstd=1.4; sync && \
-    chmod -R a+rX /usr/local/miniconda; sync && \
-    chmod +x /usr/local/miniconda/bin/*; sync && \
-    conda clean -y --all && sync && \
-    rm -rf ~/.conda ~/.cache/pip/*; sync
-
-# Precaching fonts, set 'Agg' as default backend for matplotlib
-RUN ${CONDA_PYTHON} -c "from matplotlib import font_manager" && \
-    sed -i 's/\(backend *: \).*$/\1Agg/g' $( ${CONDA_PYTHON} -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
+    CONDA_PYTHON="/opt/conda/bin/python"
 
 # Precaching atlases
 COPY setup.cfg nibabies-setup.cfg
@@ -303,7 +289,7 @@ RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
     echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
     ${CONDA_PYTHON} -m pip install --no-cache-dir "/src/nibabies[all]"
 
-# ABI tags can interfere when running on Singularity
+# ABI tags can interfere when running on Singularity/Apptainer
 RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
 
 # Final settings
@@ -320,4 +306,4 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.version=$VERSION \
       org.label-schema.schema-version="1.0"
 
-ENTRYPOINT ["/usr/local/miniconda/bin/nibabies"]
+ENTRYPOINT ["/opt/conda/bin/nibabies"]
