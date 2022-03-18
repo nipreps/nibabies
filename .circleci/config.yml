@@ -360,12 +360,12 @@ jobs:
                 -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
                 --network none \
                 --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
-                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+                --fs-subjects-dir /tmp/data/${DATASET}-derivatives/infant-freesurfer \
                 --skull-strip-template UNCInfant:cohort-1 \
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem_mb 8192 \
                 --nthreads 2 -vv --age-months 2 --sloppy \
-                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --derivatives /tmp/data/${DATASET}-derivatives/precomputed \
                 --output-layout bids --anat-only
             fi
       - store_artifacts:
