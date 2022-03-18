@@ -144,7 +144,7 @@ jobs:
       - run:
           name: Install datalad + git-annex
           command: |
-            apk update && apk add ca-certificates
+            apk update && apk add ca-certificates && export DEBIAN_FRONTEND="noninteractive"
             conda install -y -c anaconda -c conda-forge git-annex datalad
             # set config because datalad says so
             git config --global user.name "Nipreps CI"
@@ -154,9 +154,8 @@ jobs:
           command: |
             mkdir -p /tmp/data
             if [[ ! -d /tmp/data/bcp ]]; then
-              datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp
-              cd /tmp/data/bcp
-              datalad get -r -J4 .
+              datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get sub-01
+              datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp-derivatives && cd /tmp/data/bcp-derivatives && datalad get .
             else
               echo "Dataset bcp was cached"
             fi
