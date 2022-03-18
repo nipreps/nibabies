@@ -148,6 +148,7 @@ jobs:
             # set config because datalad says so
             git config --global user.name "Nipreps CI"
             git config --global user.email "nipreps@gmail.com"
+            sudo apt-get install ca-certificates
       - run:
           name: Get bcp test data
           command: |
