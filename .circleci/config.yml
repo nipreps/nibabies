@@ -372,7 +372,6 @@ jobs:
                 --nthreads 2 -vv --age-months 2 --sloppy \
                 --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
                 --output-layout bids --anat-only
-            fi
       - store_artifacts:
           path: /tmp/bcp/derivatives
       - run:
