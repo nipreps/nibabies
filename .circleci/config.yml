@@ -136,11 +136,11 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
-            - data-v0--{{ .Revision }}
-            - data-v0-{{ .Branch }}-
-            - data-v0-master-
-            - data-v0-
+            - data-v1-{{ .Branch }}-{{ .Revision }}
+            - data-v1--{{ .Revision }}
+            - data-v1-{{ .Branch }}-
+            - data-v1-master-
+            - data-v1-
       - run:
           name: Install datalad + git-annex
           command: |
@@ -154,13 +154,15 @@ jobs:
           command: |
             mkdir -p /tmp/data
             if [[ ! -d /tmp/data/bcp ]]; then
-              datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get sub-01
-              datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp-derivatives && cd /tmp/data/bcp-derivatives && datalad get .
+              # avoid datalad symlinks to avoid binding problems
+              datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get -J2 sub-01
+              datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp/derivatives && cd /tmp/data/bcp/derivatives && datalad get . -J2
+              cd /tmp/data/bcp && datalad unlock -r . && chmod -R a+w .
             else
               echo "Dataset bcp was cached"
             fi
       - save_cache:
-         key: data-v0-{{ .Branch }}-{{ .Revision }}
+         key: data-v1-{{ .Branch }}-{{ .Revision }}
          paths:
             - /tmp/data
       - run:
@@ -211,7 +213,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
+            - data-v1-{{ .Branch }}-{{ .Revision }}
       - docker/install-docker-credential-helper
       - run:
           name: Docker authentication
@@ -309,7 +311,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
+            - data-v1-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
           keys:
             - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
@@ -354,18 +356,18 @@ jobs:
           name: Run nibabies anatomical with precomputed derivatives
           no_output_timeout: 2h
           command: |
-            mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives
+            mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives/nibabies
             nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
                 -i nipreps/nibabies:latest \
                 -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
                 --network none \
                 --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
-                --fs-subjects-dir /tmp/data/${DATASET}-derivatives/infant-freesurfer \
+                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
                 --skull-strip-template UNCInfant:cohort-1 \
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem_mb 8192 \
                 --nthreads 2 -vv --age-months 2 --sloppy \
-                --derivatives /tmp/data/${DATASET}-derivatives/precomputed \
+                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
                 --output-layout bids --anat-only
             fi
       - store_artifacts:
