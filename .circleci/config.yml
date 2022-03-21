@@ -136,33 +136,36 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - data-v1-{{ .Branch }}-{{ .Revision }}
-            - data-v1--{{ .Revision }}
-            - data-v1-{{ .Branch }}-
-            - data-v1-master-
-            - data-v1-
+            - data-v3-{{ .Branch }}-{{ .Revision }}
+            - data-v3--{{ .Revision }}
+            - data-v3-{{ .Branch }}-
+            - data-v3-master-
+            - data-v3-
       - run:
           name: Install datalad + git-annex
           command: |
-            apk update && apk add ca-certificates && export DEBIAN_FRONTEND="noninteractive"
-            conda install -y -c anaconda -c conda-forge git-annex datalad
-            # set config because datalad says so
-            git config --global user.name "Nipreps CI"
-            git config --global user.email "nipreps@gmail.com"
+            if [[ ! -d /tmp/data/bcp ]]; then
+              apk update && apk add ca-certificates && export DEBIAN_FRONTEND="noninteractive"
+              conda install -y -c anaconda -c conda-forge git-annex datalad
+              # set config because datalad says so
+              git config --global user.name "Nipreps CI"
+              git config --global user.email "nipreps@gmail.com"
+            fi
       - run:
           name: Get bcp test data
           command: |
-            mkdir -p /tmp/data
             if [[ ! -d /tmp/data/bcp ]]; then
-              # avoid datalad symlinks to avoid binding problems
-              datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get -J2 sub-01
-              datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp/derivatives && cd /tmp/data/bcp/derivatives && datalad get . -J2
-              cd /tmp/data/bcp && datalad unlock -r . && chmod -R a+w .
+              echo "Downloading data"
+              mkdir -p /tmp/data
+                # avoid datalad symlinks to avoid binding problems
+                datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get -J2 sub-01
+                datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp/derivatives && cd /tmp/data/bcp/derivatives && datalad get . -J2
+                cd /tmp/data/bcp && datalad unlock -r . && chmod -R a+w .
             else
-              echo "Dataset bcp was cached"
+              echo "Reusing cached data"
             fi
       - save_cache:
-         key: data-v1-{{ .Branch }}-{{ .Revision }}
+         key: data-v3-{{ .Branch }}-{{ .Revision }}
          paths:
             - /tmp/data
       - run:
@@ -213,7 +216,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v1-{{ .Branch }}-{{ .Revision }}
+            - data-v3-{{ .Branch }}-{{ .Revision }}
       - docker/install-docker-credential-helper
       - run:
           name: Docker authentication
@@ -311,7 +314,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v1-{{ .Branch }}-{{ .Revision }}
+            - data-v3-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
           keys:
             - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
