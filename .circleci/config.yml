@@ -378,11 +378,9 @@ jobs:
           name: Checking outputs of full nibabies run
           command: |
             mkdir -p /tmp/${DATASET}/test
-            CHECK_OUTPUTS_FILE="${DATASET}_fasttrack_outputs.txt"
-            if [ -f /tmp/.nofasttrack ]; then
-                CHECK_OUTPUTS_FILE="${DATASET}_outputs.txt"
-            fi
-            find /tmp/${DATASET}/derivatives \( -path */figures -o -path */log \) -prune -o -name "*" -print | sed s+/tmp/${DATASET}/derivatives/++ | sort > /tmp/${DATASET}/test/outputs.out
+            CHECK_OUTPUTS_FILE="${DATASET}_anat_outputs.txt"
+            find /tmp/${DATASET}/derivatives/nibabies \( -path */figures -o -path */log \) -prune -o -name "*" -print | sed s+/tmp/${DATASET}/derivatives/nibabies++ | sort > /tmp/${DATASET}/test/outputs.out
+            cat /tmp/${DATASET}/test/outputs.out
             diff /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE} /tmp/${DATASET}/test/outputs.out
             exit $?
       - run:
