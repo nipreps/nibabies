@@ -145,7 +145,7 @@ jobs:
           name: Install datalad + git-annex
           command: |
             if [[ ! -d /tmp/data/bcp ]]; then
-              apk update && apk add ca-certificates && export DEBIAN_FRONTEND="noninteractive"
+              apk update && apk add --no-cache ca-certificates coreutils
               conda install -y -c anaconda -c conda-forge git-annex datalad
               # set config because datalad says so
               git config --global user.name "Nipreps CI"
