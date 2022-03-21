@@ -372,8 +372,6 @@ jobs:
                 --nthreads 2 -vv --age-months 2 --sloppy \
                 --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
                 --output-layout bids --anat-only
-      - store_artifacts:
-          path: /tmp/bcp/derivatives
       - run:
           name: Checking outputs of anatomical nibabies run
           command: |
@@ -410,17 +408,8 @@ jobs:
             diff /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE} /tmp/${DATASET}/test/outputs.out
             rm -rf /tmp/${DATASET}/test
             exit $?
-      - run:
-          name: Clean working directory
-          when: on_fail
-          command: |
-            sudo chown $(id -un):$(id -gn) -R /tmp/${DATASET}
-            find /tmp/${DATASET}/work \( -name "*.nii.gz" -or -name "*.nii" -or -name "*.gii" -or -name "*.h5" \) \
-                -exec sh -c 'rm -f {}; touch {}' \;
-            find /tmp/${DATASET}/work_partial \( -name "*.nii.gz" -or -name "*.nii" -or -name "*.gii" -or -name "*.h5" \) \
-                -exec sh -c 'rm -f {}; touch {}' \;
       - store_artifacts:
-          path: /tmp/bcp/work
+          path: /tmp/bcp/derivatives
 
   deploy_docker_patches:
     machine:
