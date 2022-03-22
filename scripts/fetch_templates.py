@@ -75,14 +75,17 @@ def fetch_MNIInfant(cohort=1):
     Expected templates:
 
     tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-1_T1w.nii.gz
-    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-2_T1w.nii.gz
+    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-1_T2w.nii.gz
     tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-1_desc-brain_mask.nii.gz
+    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-2_T1w.nii.gz
+    tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-2_T1w.nii.gz
     tpl-MNIInfant/cohort-1/tpl-MNIInfant_cohort-1_res-2_desc-brain_mask.nii.gz
     """
     template = 'MNIInfant'
 
-    tf.get(template, cohort=cohort, suffix="T1w")
-    tf.get(template, cohort=cohort, suffix="mask")
+    tf.get(template, cohort=cohort, suffix='T1w')
+    tf.get(template, cohort=cohort, suffix='T2w')
+    tf.get(template, cohort=cohort, desc='brain', suffix='mask')
 
 
 def main():

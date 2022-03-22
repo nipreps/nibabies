@@ -3,6 +3,7 @@ orbs:
   docker: circleci/docker@1.6.0
 
 jobs:
+
   build:
     environment:
       TZ: "/usr/share/zoneinfo/America/New_York"
@@ -128,6 +129,64 @@ jobs:
             - /tmp/docker
             - /tmp/images
 
+  get_data:
+    docker:
+      - image: continuumio/miniconda3:4.10.3-alpine
+    working_directory: /home/circleci/data
+    steps:
+      - restore_cache:
+          keys:
+            - data-v3-{{ .Branch }}-{{ .Revision }}
+            - data-v3--{{ .Revision }}
+            - data-v3-{{ .Branch }}-
+            - data-v3-master-
+            - data-v3-
+      - run:
+          name: Install datalad + git-annex
+          command: |
+            if [[ ! -d /tmp/data/bcp ]]; then
+              apk update && apk add --no-cache ca-certificates coreutils
+              conda install -y -c anaconda -c conda-forge git-annex datalad
+              # set config because datalad says so
+              git config --global user.name "Nipreps CI"
+              git config --global user.email "nipreps@gmail.com"
+            fi
+      - run:
+          name: Get bcp test data
+          command: |
+            if [[ ! -d /tmp/data/bcp ]]; then
+              echo "Downloading data"
+              mkdir -p /tmp/data
+                # avoid datalad symlinks to avoid binding problems
+                datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get -J2 sub-01
+                datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp/derivatives && cd /tmp/data/bcp/derivatives && datalad get . -J2
+                cd /tmp/data/bcp && datalad unlock -r . && chmod -R a+w .
+            else
+              echo "Reusing cached data"
+            fi
+      - save_cache:
+         key: data-v3-{{ .Branch }}-{{ .Revision }}
+         paths:
+            - /tmp/data
+      - run:
+          name: Store FreeSurfer license file
+          command: |
+            mkdir -p /tmp/fslicense
+            cd /tmp/fslicense
+            echo "cHJpbnRmICJrcnp5c3p0b2YuZ29yZ29sZXdza2lAZ21haWwuY29tXG41MTcyXG4gKkN2dW12RVYzelRmZ1xuRlM1Si8yYzFhZ2c0RVxuIiA+IGxpY2Vuc2UudHh0Cg==" | base64 -d | sh
+      - run:
+          name: Create Nipype config files
+          command: |
+            mkdir -p /tmp/bcp
+            printf "[execution]\nstop_on_first_crash = true\n" > /tmp/bcp/nipype.cfg
+            echo "poll_sleep_duration = 0.01" >> /tmp/bcp/nipype.cfg
+            echo "hash_method = content" >> /tmp/bcp/nipype.cfg
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - fslicense
+            - bcp/nipype.cfg
+
   test_pytest:
     machine:
       image: ubuntu-2004:202107-02
@@ -147,7 +206,6 @@ jobs:
               echo "Skipping pytest job"
               circleci step halt
             fi
-
       - attach_workspace:
           at: /tmp
       - restore_cache:
@@ -158,7 +216,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v9-{{ .Branch }}-{{ .Revision }}
+            - data-v3-{{ .Branch }}-{{ .Revision }}
       - docker/install-docker-credential-helper
       - run:
           name: Docker authentication
@@ -219,6 +277,139 @@ jobs:
             nibabies-wrapper --version
       - store_artifacts:
           path: /tmp/data/reports
+
+  test_bcp:
+    machine:
+      image: ubuntu-2004:202107-02
+    working_directory: /tmp/bcp
+    environment:
+      - FS_LICENSE: /tmp/fslicense/license.txt
+      - DATASET: bcp
+    steps:
+      - checkout:
+          path: /home/circleci/src/nibabies
+      - run:
+          name: Check whether build should be skipped
+          command: |
+            cd /home/circleci/src/nibabies
+            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+              echo "Only docs build"
+              circleci step halt
+            fi
+            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[skip[ _]?bcp\]' )" != "" ]]; then
+              echo "Skipping bcp build"
+              circleci step halt
+            fi
+            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[no[ _-]?fasttrack\]' )" != "" ]]; then
+              touch /tmp/.nofasttrack
+              echo "Anatomical fasttrack reusing sMRIPrep's derivatives will not be used."
+            fi
+      - attach_workspace:
+          at: /tmp
+      - restore_cache:
+          keys:
+            - build-v4-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/docker
+            - /tmp/images
+      - restore_cache:
+          keys:
+            - data-v3-{{ .Branch }}-{{ .Revision }}
+      - restore_cache:
+          keys:
+            - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
+            - bcp-anat-v0--{{ .Revision }}
+            - bcp-anat-v0-{{ .Branch }}-
+            - bcp-anat-v0-master-
+            - bcp-anat-v0-
+      - docker/install-docker-credential-helper
+      - run:
+          name: Docker authentication
+          command: |
+            if [[ -n $DOCKER_PAT ]]; then
+              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+            fi
+      - run:
+          name: Set-up a Docker registry
+          command: |
+            if [[ -f /tmp/images/registry.tar.gz ]]; then
+              echo "Loading saved registry image"
+              docker load < /tmp/images/registry.tar.gz
+            else
+              echo "Pulling registry image from DockerHub"
+              docker pull registry:2
+            fi
+            docker run -d -p 5000:5000 --restart=always --name=registry \
+                -v /tmp/docker:/var/lib/registry registry:2
+      - run:
+          name: Pull images from local registry
+          command: |
+            docker pull localhost:5000/nibabies
+            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run:
+          name: Setting up test
+          command: |
+            export PY3=$(pyenv versions | grep '3\.' |
+                         sed -e 's/.* 3\./3./' -e 's/ .*//')
+            pyenv local $PY3
+            mkdir -p /tmp/${DATASET}/derivatives
+            pip install --upgrade pip setuptools
+            pip install --upgrade /tmp/src/nibabies/wrapper/
+      - run:
+          name: Run nibabies anatomical with precomputed derivatives
+          no_output_timeout: 2h
+          command: |
+            mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives/nibabies
+            nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
+                -i nipreps/nibabies:latest \
+                -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+                --network none \
+                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+                --skull-strip-template UNCInfant:cohort-1 \
+                --output-spaces MNIInfant:cohort-1 func \
+                --sloppy --write-graph --mem_mb 8192 \
+                --nthreads 2 -vv --age-months 2 --sloppy \
+                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --output-layout bids --anat-only
+      - run:
+          name: Checking outputs of anatomical nibabies run
+          command: |
+            mkdir -p /tmp/${DATASET}/test
+            CHECK_OUTPUTS_FILE="${DATASET}_anat_outputs.txt"
+            cd /tmp/${DATASET}/derivatives/nibabies && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
+            diff /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE} /tmp/${DATASET}/test/outputs.out
+            rm -rf /tmp/${DATASET}/test
+            exit $?
+      - run:
+          name: Rerun nibabies with BOLD data
+          no_output_timeout: 2h
+          command: |
+            mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives/nibabies
+            nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
+                -i nipreps/nibabies:latest \
+                -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+                --network none \
+                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+                --skull-strip-template UNCInfant:cohort-1 \
+                --output-spaces MNIInfant:cohort-1 func \
+                --sloppy --write-graph --mem_mb 8192 \
+                --nthreads 2 -vv --age-months 2 --sloppy \
+                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --output-layout bids
+      - run:
+          name: Checking outputs of full nibabies run
+          command: |
+            mkdir -p /tmp/${DATASET}/test
+            CHECK_OUTPUTS_FILE="${DATASET}_full_outputs.txt"
+            cd /tmp/${DATASET}/derivatives/nibabies && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
+            cat /tmp/${DATASET}/test/outputs.out
+            diff /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE} /tmp/${DATASET}/test/outputs.out
+            rm -rf /tmp/${DATASET}/test
+            exit $?
+      - store_artifacts:
+          path: /tmp/bcp/derivatives
 
   deploy_docker_patches:
     machine:
@@ -463,6 +654,17 @@ workflows:
                 - /docs?\/.*/
             tags:
               only: /.*/
+
+      - get_data:
+          filters:
+            branches:
+              ignore:
+                - /docs?\/.*/
+                - /tests?\/.*/
+                - /docker\/.*/
+            tags:
+              only: /.*/
+
       - test_deploy_pypi:
           filters:
             branches:
@@ -471,6 +673,7 @@ workflows:
                 - /maint\/.*/
             tags:
               only: /.*/
+
       - test_pytest:
           requires:
             - build
@@ -481,21 +684,38 @@ workflows:
                 - /docker\/.*/
             tags:
               only: /.*/
+
+      - test_bcp:
+          requires:
+            - get_data
+            - build
+          filters:
+            branches:
+              ignore:
+                - /docs?\/.*/
+                - /tests?\/.*/
+                - /docker\/.*/
+            tags:
+              only: /.*/
+
       - deploy_docker_patches:
           requires:
             - build
           filters:
             branches:
               only: /docker\/.*/
+
       - deployable:
           requires:
             - test_deploy_pypi
             - test_pytest
+            - test_bcp
           filters:
             branches:
               only: master
             tags:
               only: /.*/
+
       - deploy_docker:
           requires:
             - deployable
@@ -504,6 +724,7 @@ workflows:
               only: master
             tags:
               only: /.*/
+
       - deploy_pypi:
           requires:
             - deployable
