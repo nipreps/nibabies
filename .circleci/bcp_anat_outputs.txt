@@ -4,6 +4,7 @@ desc-aparcaseg_dseg.tsv
 desc-aseg_dseg.tsv
 logs
 logs/CITATION.bib
+logs/CITATION.html
 logs/CITATION.md
 logs/CITATION.tex
 sub-01
