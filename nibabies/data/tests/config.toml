@@ -1,0 +1,80 @@
+[environment]
+cpu_count = 8
+exec_docker_version = "20.10.12"
+exec_env = "nibabies-docker"
+free_mem = 0.4
+overcommit_policy = "heuristic"
+overcommit_limit = "50%"
+nipype_version = "1.6.1"
+templateflow_version = "0.7.2"
+version = "21.1.0"
+
+[execution]
+bids_dir = "/data"
+bids_database_dir = "/tmp/bids_db"
+bids_description_hash = "c47e9ebb943ca662556808b2aeac3f6c8bb2a242696c32850c64ec47aba80d9e"
+boilerplate_only = false
+sloppy = true
+debug = []
+derivatives = [ "/opt/derivatives/precomputed",]
+fs_license_file = "/opt/freesurfer/license.txt"
+fs_subjects_dir = "/opt/subjects"
+layout = "BIDS Layout: .../data | Subjects: 1 | Sessions: 1 | Runs: 1"
+log_dir = "/tmp/logs"
+log_level = 20
+low_mem = false
+md_only_boilerplate = false
+nibabies_dir = "/out"
+notrack = false
+output_dir = "/out"
+me_output_echos = false
+output_layout = "bids"
+output_spaces = "MNIInfant:cohort-1:res-native"
+reports_only = false
+run_uuid = "20220323-202555_01a7d80d-7ff4-4b13-a99c-ec399045e9ff"
+segmentation_atlases_dir = "/opt/segmentations"
+participant_label = [ "01",]
+templateflow_home = "/home/nibabies/.cache/templateflow"
+work_dir = "/scratch"
+write_graph = false
+
+[workflow]
+anat_only = false
+aroma_err_on_warn = false
+aroma_melodic_dim = -200
+bold2t1w_dof = 6
+bold2t1w_init = "register"
+cifti_output = false
+fd_radius = 45
+fmap_bspline = false
+force_syn = false
+hires = true
+ignore = [ "slicetiming",]
+longitudinal = false
+medial_surface_nan = false
+regressors_all_comps = false
+regressors_dvars_th = 1.5
+regressors_fd_th = 0.5
+run_reconall = true
+skull_strip_fixed_seed = false
+skull_strip_template = "UNCInfant:cohort-1"
+skull_strip_t1w = "force"
+slice_time_ref = 0.5
+spaces = "MNIInfant:cohort-1:res-native MNIInfant:cohort-1"
+use_aroma = false
+use_bbr = false
+use_syn_sdc = false
+
+[nipype]
+crashfile_format = "txt"
+get_linked_libs = false
+memory_gb = 8
+nprocs = 4
+omp_nthreads = 2
+plugin = "MultiProc"
+resource_monitor = false
+stop_on_first_crash = false
+
+[nipype.plugin_args]
+maxtasksperchild = 1
+raise_insufficient = false
