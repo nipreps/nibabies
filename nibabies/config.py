@@ -202,7 +202,10 @@ class _Config:
             if k in ignore or v is None:
                 continue
             if k in cls._paths:
-                setattr(cls, k, Path(v).absolute())
+                if isinstance(v, (list, tuple)):  # Multiple paths
+                    setattr(cls, k, [Path(p).absolute() for p in v])
+                else:
+                    setattr(cls, k, Path(v).absolute())
             elif hasattr(cls, k):
                 setattr(cls, k, v)
 
@@ -221,7 +224,10 @@ class _Config:
             if callable(getattr(cls, k)):
                 continue
             if k in cls._paths:
-                v = str(v)
+                if isinstance(v, (list, tuple)):  # Multiple paths
+                    v = [str(p) for p in v]
+                else:
+                    v = str(v)
             if isinstance(v, SpatialReferences):
                 v = " ".join([str(s) for s in v.references]) or None
             if isinstance(v, Reference):
@@ -412,6 +418,7 @@ class execution(_Config):
         "anat_derivatives",
         "bids_dir",
         "bids_database_dir",
+        "derivatives",
         "fs_license_file",
         "fs_subjects_dir",
         "layout",
