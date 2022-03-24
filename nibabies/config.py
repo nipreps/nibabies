@@ -726,7 +726,7 @@ def init_spaces(checkpoint=True):
         from .utils.misc import cohort_by_months
 
         cohort = cohort_by_months("MNIInfant", workflow.age_months)
-        spaces.add(Reference, {"cohort": cohort})
+        spaces.add(Reference("MNIInfant", {"cohort": cohort}))
 
     # Ensure user-defined spatial references for outputs are correctly parsed.
     # Certain options require normalization to a space not explicitly defined by users.
