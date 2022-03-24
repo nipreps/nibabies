@@ -697,16 +697,17 @@ def init_spaces(checkpoint=True):
     if checkpoint and not spaces.is_cached():
         spaces.checkpoint()
 
-    if workflow.age_months is not None:
+    # NiBabies' default volumetric space is MNIInfant
+    # However, if age is not provided, do not add a default template as we cannot
+    # make an assumption about cohort.
+    if (
+        not any(s.space == 'MNIInfant' for s in spaces.references)
+        and workflow.age_months is not None
+    ):
         from .utils.misc import cohort_by_months
 
-        # cohort workaround
-        if any(
-            "MNIInfant" in space.split(":")[0]
-            for space in spaces.get_spaces(nonstandard=False, dim=(3,))
-        ):
-            cohort = cohort_by_months("MNIInfant", workflow.age_months)
-            spaces.add(Reference("MNIInfant", {"cohort": cohort}))
+        cohort = cohort_by_months("MNIInfant", workflow.age_months)
+        spaces.add(Reference, {"cohort": cohort})
 
     # Ensure user-defined spatial references for outputs are correctly parsed.
     # Certain options require normalization to a space not explicitly defined by users.
