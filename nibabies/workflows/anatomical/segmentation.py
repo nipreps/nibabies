@@ -52,10 +52,19 @@ def init_anat_segmentations_wf(
         name="outputnode",
     )
 
+    wf.__desc__ = """Brain tissue segmentation of cerebrospinal fluid (CSF),
+white-matter (WM) and gray-matter (GM) was performed on """
+
     # Coerce segmentation labels to BIDS
     lut_anat_dseg = pe.Node(niu.Function(function=_apply_bids_lut), name="lut_anat_dseg")
 
     if not any((precomp_aseg, template_dir)):
+        from nipype.interfaces.fsl.base import Info as FSLInfo
+
+        wf.__desc__ += (
+            f"the brain-extracted T1w using FSL FAST {FSLInfo.version() or '(version unknown)'}."
+        )
+
         # Use FSL FAST for segmentations
         anat_dseg = pe.Node(
             fsl.FAST(segments=True, no_bias=True, probability_maps=True),
@@ -81,7 +90,13 @@ def init_anat_segmentations_wf(
         return wf
 
     # Joint Label Fusion
-    if template_dir:
+    elif template_dir:
+        from nipype.interfaces.ants.base import Info as ANTsInfo
+
+        wf.__desc__ += (
+            "the brain-extracted T1w using ANTs JointFusion, distributed with ANTs "
+            f"{ANTsInfo.version() or '(version unknown)'}."
+        )
         tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)
 
         # register to templates
@@ -145,6 +160,7 @@ def init_anat_segmentations_wf(
         # fmt:on
 
     elif precomp_aseg:
+        wf.__desc__ += "a pre-computed segmentation."
         from niworkflows.interfaces.header import ValidateImage
 
         inputnode.inputs.anat_aseg = precomp_aseg
