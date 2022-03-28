@@ -11,7 +11,9 @@ from ...interfaces.freesurfer import InfantReconAll
 
 
 def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
-    wf = pe.Workflow(name=name)
+    from niworkflows.engine.workflows import LiterateWorkflow
+
+    wf = LiterateWorkflow(name=name)
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
@@ -40,6 +42,12 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
         ),
         name="outputnode",
     )
+
+    wf.__desc__ = f"""\
+Brain surfaces were reconstructed using `infant_recon_all` [FreeSurfer
+{fs.Info().looseversion() or "<ver>"}, RRID:SCR_001847, @infantfs],
+leveraging the masked, preprocessed T1w and anatomical segmentation.
+"""
 
     gen_recon_outdir = pe.Node(niu.Function(function=_gen_recon_dir), name="gen_recon_outdir")
 

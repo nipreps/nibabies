@@ -165,12 +165,6 @@ as target template.
 """
     )
 
-    desc += """\
-Brain tissue segmentation of cerebrospinal fluid (CSF),
-white-matter (WM) and gray-matter (GM) was performed on
-the brain-extracted T1w using ANTs JointFusion, distributed with ANTs {ants_ver}.
-"""
-
     wf.__desc__ = desc.format(
         ants_ver=ANTsInfo.version() or "(version unknown)",
         skullstrip_tpl=skull_strip_template.fullname,
