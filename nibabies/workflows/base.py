@@ -9,18 +9,19 @@ NiBabies base processing workflows
 
 """
 
-from nibabies.utils.bids import group_bolds_ref
 import sys
 import os
 from copy import deepcopy
 
+from packaging.version import Version
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
+from .bold import init_func_preproc_wf
 from .. import config
 from ..interfaces import DerivativesDataSink
 from ..interfaces.reports import SubjectSummary, AboutSummary
-from .bold import init_func_preproc_wf
+from ..utils.bids import group_bolds_ref
 
 
 def init_nibabies_wf():
@@ -47,7 +48,8 @@ def init_nibabies_wf():
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.bids import BIDSFreeSurferDir
 
-    nibabies_wf = Workflow(name="nibabies_wf")
+    ver = Version(config.environment.version)
+    nibabies_wf = Workflow(name=f"nibabies_{ver.major}_{ver.minor}_wf")
     nibabies_wf.base_dir = config.execution.work_dir
 
     freesurfer = config.workflow.run_reconall
