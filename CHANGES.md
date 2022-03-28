@@ -1,37 +1,45 @@
-22.0.0 (TBD)
-------------
+22.0.0 (March 28, 2022)
+-----------------------
 A new `NiBabies` minor series!
-New to this release:
-- [Ability to pass in anatomical derivatives](https://nibabies.readthedocs.io/en/latest/faqs.html#leveraging-precomputed-results) (brain mask / aseg)
-- [Multiecho] Option to output individual corrected echo time series
-- CIFTI generation improvements
 
-  22.0.0rc2 (March 11, 2022)
-  --------------------------
-  * MAINT: Update versioneer, allow static versioning (#190)
-  * MAINT: Ensure version is written to version file (#189)
+This release includes a number of new features, as well as various bug fixes. Some of the biggest changes include:
+- [Ability to pass in anatomical derivatives](https://nibabies.readthedocs.io/en/latest/faqs.html#leveraging-precomputed-results).
+Users can now leverage a precomputed brain mask and/or discrete anatomical segmentations.
+- A new flag `--me-output-echoes` to output individual corrected echo time series.
+This is useful when doing additional multi-echo processing.
 
-  22.0.0rc1 (February 10, 2022)
-  -----------------------------
-  * MNT: Add missing toml dependency
+Thank you for using *NiBabies*!
+If you encounter any issues with this release, please let us know
+by posting an issue on our GitHub page!
 
-  22.0.0rc0 (February 08, 2022)
-  -----------------------------
-  * DOC: Add FAQs page (#164)
-  * ENH: Add `--me-output-echos` CLI flag (#174)
-  * ENH: Precomputed derivatives (#173)
-  * ENH: Validate files passed with `--derivatives` (#182)
-  * FIX: Check if segmentation directory exists (#165)
-  * FIX: Update report spec to reflect `infant_recon_all` (#167)
-  * FIX: ICA Aroma imports (#170)
-  * FIX: Relabel sub-structures before discarding (#186)
-  * FIX: Use precomputed aseg within `infant_recon_all` (#184)
-  * FIX: Remove excess arguments on wrapper tests (#181)
-  * MAINT: Add pre-commit checks (#178)
-  * MAINT: Add RTD config (#173)
-  * MAINT: Freeze `black` version (#185)
-  * RF: Wrapper usage logic (#183)
-  * STY/TEST: Set global style and doctest options (#162)
+A full list of changes can be found below.
+
+## Full Changelog
+* CI: Add workflow smoke tests (#100)
+* DOC: Add FAQs page (#164)
+* DOCKER: Upgrade to FSL6, use niprep miniconda base layer (#191)
+* ENH: Add major/minor version prefix to base workflow name (#202)
+* ENH: Add `--me-output-echos` CLI flag (#174)
+* ENH: Precomputed derivatives (#173)
+* ENH: Validate files passed with `--derivatives` (#182)
+* FIX: Clean up generated boilerplate (#200)
+* FIX: Various Configuration module touch-ups (#197)
+* FIX: Clean up default output space handling (#196)
+* FIX: Pandoc citeproc API incompatibility (#195)
+* FIX: Check if segmentation directory exists (#165)
+* FIX: Update report spec to reflect `infant_recon_all` (#167)
+* FIX: ICA Aroma imports (#170)
+* FIX: Relabel sub-structures before discarding (#186)
+* FIX: Use precomputed aseg within `infant_recon_all` (#184)
+* FIX: Remove excess arguments on wrapper tests (#181)
+* MAINT: Update versioneer, allow static versioning (#190)
+* MAINT: Ensure version is written to version file (#189)
+* MAINT: Add missing toml dependency
+* MAINT: Add pre-commit checks (#178)
+* MAINT: Add RTD config (#173)
+* MAINT: Freeze `black` version (#185)
+* RF: Wrapper usage logic (#183)
+* STY/TEST: Set global style and doctest options (#162)
 
 21.0.2 (November 29, 2021)
 --------------------------
