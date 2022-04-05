@@ -633,7 +633,12 @@ jobs:
           name: Upload packages to PyPI
           command: |
             python -m pip install --user twine
-            python -m twine upload dist/nibabies* wrapper/dist/nibabies*
+            # upload nibabies
+            export TWINE_PASSWORD=$PYPI_NIBABIES_TOKEN
+            python -m twine upload dist/nibabies*
+            # upload wrapper
+            export TWINE_PASSWORD=$PYPI_WRAPPER_TOKEN
+            python -m twine upload wrapper/dist/nibabies*
 
   deployable:
     docker:
