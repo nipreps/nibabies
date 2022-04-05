@@ -487,12 +487,12 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
         suffices = set(s.suffix for s in estimator.sources)
 
         if estimator.method == fm.EstimatorType.PEPOLAR and sorted(suffices) == ["epi"]:
-            getattr(fmap_wf.inputs, f"in_{estimator.bids_id}").in_data = [
-                str(s.path) for s in estimator.sources
-            ]
-            getattr(fmap_wf.inputs, f"in_{estimator.bids_id}").metadata = [
-                s.metadata for s in estimator.sources
-            ]
+            fmap_wf_inputs = getattr(fmap_wf.inputs, f"in_{estimator.bids_id}")
+            fmap_wf_inputs.in_data = [str(s.path) for s in estimator.sources]
+            fmap_wf_inputs.metadata = [s.metadata for s in estimator.sources]
+
+            flatten = fmap_wf.get_node(f"wf_{estimator.bids_id}.flatten")
+            flatten.inputs.max_trs = config.workflow.topup_max_vols
             continue
 
         if estimator.method == fm.EstimatorType.PEPOLAR:
