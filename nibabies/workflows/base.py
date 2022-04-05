@@ -484,21 +484,20 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
         if estimator.method in (fm.EstimatorType.MAPPED, fm.EstimatorType.PHASEDIFF):
             continue
 
-        suffices = set(s.suffix for s in estimator.sources)
-
-        if estimator.method == fm.EstimatorType.PEPOLAR and sorted(suffices) == ["epi"]:
-            getattr(fmap_wf.inputs, f"in_{estimator.bids_id}").in_data = [
-                str(s.path) for s in estimator.sources
-            ]
-            getattr(fmap_wf.inputs, f"in_{estimator.bids_id}").metadata = [
-                s.metadata for s in estimator.sources
-            ]
-            continue
+        suffices = [s.suffix for s in estimator.sources]
 
         if estimator.method == fm.EstimatorType.PEPOLAR:
-            raise NotImplementedError(
-                "Sophisticated PEPOLAR schemes (e.g., using DWI+EPI) are unsupported."
-            )
+            if set(suffices) == {"epi"} or sorted(suffices) == ["bold", "epi"]:
+                fmap_wf_inputs = getattr(fmap_wf.inputs, f"in_{estimator.bids_id}")
+                fmap_wf_inputs.in_data = [str(s.path) for s in estimator.sources]
+                fmap_wf_inputs.metadata = [s.metadata for s in estimator.sources]
+
+                flatten = fmap_wf.get_node(f"wf_{estimator.bids_id}.flatten")
+                flatten.inputs.max_trs = config.workflow.topup_max_vols
+            else:
+                raise NotImplementedError(
+                    "Sophisticated PEPOLAR schemes (e.g., using DWI+EPI) are unsupported."
+                )
 
     return workflow
 
