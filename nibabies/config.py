@@ -86,12 +86,13 @@ finally:
     # Defer all custom import for after initializing the forkserver and
     # ignoring the most annoying warnings
     import random
-    from uuid import uuid4
-    from time import strftime
-
     from pathlib import Path
+    from time import strftime
+    from uuid import uuid4
+
     from nipype import __version__ as _nipype_ver
     from templateflow import __version__ as _tf_ver
+
     from . import __version__
 
 if not hasattr(sys, "_is_pytest_session"):
@@ -126,7 +127,9 @@ DEFAULT_MEMORY_MIN_GB = 0.01
 if not _disable_et:
     # Just get so analytics track one hit
     from contextlib import suppress
-    from requests import get as _get_url, ConnectionError, ReadTimeout
+
+    from requests import ConnectionError, ReadTimeout
+    from requests import get as _get_url
 
     with suppress((ConnectionError, ReadTimeout)):
         _get_url("https://rig.mit.edu/et/projects/nipy/nipype", timeout=0.05)
@@ -215,7 +218,7 @@ class _Config:
     @classmethod
     def get(cls):
         """Return defined settings."""
-        from niworkflows.utils.spaces import SpatialReferences, Reference
+        from niworkflows.utils.spaces import Reference, SpatialReferences
 
         out = {}
         for k, v in cls.__dict__.items():
@@ -438,6 +441,7 @@ class execution(_Config):
 
         if cls._layout is None:
             import re
+
             from bids.layout import BIDSLayout, BIDSLayoutIndexer
 
             _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / "bids_db")

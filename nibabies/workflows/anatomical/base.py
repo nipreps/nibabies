@@ -1,6 +1,6 @@
 """Base anatomical preprocessing."""
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 
 from ... import config
 
@@ -78,9 +78,16 @@ def init_infant_anat_wf(
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     from ...utils.misc import fix_multi_source_name
-    from .brain_extraction import init_infant_brain_extraction_wf, init_precomputed_mask_wf
+    from .brain_extraction import (
+        init_infant_brain_extraction_wf,
+        init_precomputed_mask_wf,
+    )
     from .norm import init_anat_norm_wf
-    from .outputs import init_anat_reports_wf, init_coreg_report_wf, init_anat_derivatives_wf
+    from .outputs import (
+        init_anat_derivatives_wf,
+        init_anat_reports_wf,
+        init_coreg_report_wf,
+    )
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_segmentations_wf

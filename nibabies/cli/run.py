@@ -6,13 +6,14 @@ from .. import config
 
 def main():
     """Entry point."""
+    import gc
+    import sys
+    from multiprocessing import Manager, Process
     from os import EX_SOFTWARE
     from pathlib import Path
-    import sys
-    import gc
-    from multiprocessing import Process, Manager
+
+    from ..utils.bids import write_bidsignore, write_derivative_description
     from .parser import parse_args
-    from ..utils.bids import write_derivative_description, write_bidsignore
 
     parse_args()
 
@@ -133,16 +134,17 @@ def main():
             )
 
         if config.workflow.run_reconall:
-            from templateflow import api
             from niworkflows.utils.misc import _copy_any
+            from templateflow import api
 
             dseg_tsv = str(api.get("fsaverage", suffix="dseg", extension=[".tsv"]))
             _copy_any(dseg_tsv, str(config.execution.nibabies_dir / "desc-aseg_dseg.tsv"))
             _copy_any(dseg_tsv, str(config.execution.nibabies_dir / "desc-aparcaseg_dseg.tsv"))
         # errno = 0
     finally:
-        from ..reports.core import generate_reports
         from pkg_resources import resource_filename as pkgrf
+
+        from ..reports.core import generate_reports
 
         # Generate reports phase
         generate_reports(

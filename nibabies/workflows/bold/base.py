@@ -42,19 +42,17 @@ Orchestrating the BOLD-preprocessing workflow
 .. autofunction:: init_func_derivatives_wf
 
 """
-from ... import config
-
 import os
 
 import nibabel as nb
+from nipype.interfaces import utility as niu
 from nipype.interfaces.fsl import Split as FSLSplit
 from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu
-
-from niworkflows.utils.connections import pop_file, listify
 from niworkflows.interfaces.header import ValidateImage
+from niworkflows.utils.connections import listify, pop_file
 from sdcflows.interfaces.brainmask import BrainExtraction
 
+from ... import config
 from ...interfaces import DerivativesDataSink
 from ...interfaces.reports import FunctionalSummary
 from ...utils.bids import extract_entities
@@ -63,15 +61,15 @@ from ...utils.misc import combine_meepi_source
 # BOLD workflows
 from .confounds import init_bold_confs_wf, init_carpetplot_wf
 from .hmc import init_bold_hmc_wf
+from .outputs import init_func_derivatives_wf
+from .registration import init_bold_reg_wf, init_bold_t1_trans_wf
+from .resampling import (
+    init_bold_preproc_trans_wf,
+    init_bold_std_trans_wf,
+    init_bold_surf_wf,
+)
 from .stc import init_bold_stc_wf
 from .t2s import init_bold_t2s_wf
-from .registration import init_bold_t1_trans_wf, init_bold_reg_wf
-from .resampling import (
-    init_bold_surf_wf,
-    init_bold_std_trans_wf,
-    init_bold_preproc_trans_wf,
-)
-from .outputs import init_func_derivatives_wf
 
 
 def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=None):
@@ -182,7 +180,7 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.nibabel import ApplyMask
-    from niworkflows.interfaces.utility import KeySelect, DictMerge
+    from niworkflows.interfaces.utility import DictMerge, KeySelect
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
     if nb.load(bold_file[0] if isinstance(bold_file, (list, tuple)) else bold_file).shape[3:] <= (
@@ -267,8 +265,9 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
         estimator_key = listify(metadata.get("B0FieldSource"))
 
         if not estimator_key:
-            from pathlib import Path
             import re
+            from pathlib import Path
+
             from sdcflows.fieldmaps import get_identifier
 
             # Fallback to IntendedFor
@@ -687,7 +686,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # Map final BOLD mask into T1w space (if required)
     nonstd_spaces = set(spaces.get_nonstandard())
     if nonstd_spaces.intersection(("T1w", "anat")):
-        from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+        from niworkflows.interfaces.fixes import (
+            FixHeaderApplyTransforms as ApplyTransforms,
+        )
 
         boldmask_to_t1w = pe.Node(
             ApplyTransforms(interpolation="MultiLabel"), name="boldmask_to_t1w", mem_gb=0.1
@@ -867,7 +868,10 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         # CIFTI output
         if config.workflow.cifti_output:
-            from .alignment import init_subcortical_rois_wf, init_subcortical_mni_alignment_wf
+            from .alignment import (
+                init_subcortical_mni_alignment_wf,
+                init_subcortical_rois_wf,
+            )
             from .resampling import init_bold_grayords_wf
 
             key = None
@@ -1016,8 +1020,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         SimpleBeforeAfterRPT as SimpleBeforeAfter,
     )
     from niworkflows.interfaces.utility import KeySelect
-    from sdcflows.workflows.apply.registration import init_coeff2epi_wf
     from sdcflows.workflows.apply.correction import init_unwarp_wf
+    from sdcflows.workflows.apply.registration import init_coeff2epi_wf
 
     coeff2epi_wf = init_coeff2epi_wf(
         debug="fieldmaps" in config.execution.debug,

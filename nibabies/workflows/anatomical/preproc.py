@@ -1,6 +1,6 @@
 """Prepare anatomical images for processing."""
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 
 
 def init_anat_average_wf(
@@ -57,20 +57,17 @@ def init_anat_average_wf(
         Path to a reportlet summarizing what happened in this workflow.
 
     """
-    from pkg_resources import resource_filename as pkgr
     from nipype.interfaces.ants import N4BiasFieldCorrection
     from nipype.interfaces.image import Reorient
-
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+    from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
+    from niworkflows.interfaces.freesurfer import StructuralReference
     from niworkflows.interfaces.header import ValidateImage
+    from niworkflows.interfaces.images import Conform, TemplateDimensions
     from niworkflows.interfaces.nibabel import IntensityClip, SplitSeries
-    from niworkflows.interfaces.freesurfer import (
-        StructuralReference,
-        PatchedLTAConvert as LTAConvert,
-    )
-    from niworkflows.interfaces.images import TemplateDimensions, Conform
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
     from niworkflows.utils.misc import add_suffix
+    from pkg_resources import resource_filename as pkgr
 
     wf = Workflow(name=name)
 

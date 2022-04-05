@@ -1,15 +1,15 @@
-import os
 import logging
+import os
 from pathlib import Path
 
 from nipype.interfaces.base import (
-    traits,
-    File,
-    Directory,
     CommandLine,
-    isdefined,
     CommandLineInputSpec,
+    Directory,
+    File,
     TraitedSpec,
+    isdefined,
+    traits,
 )
 
 from ..utils.misc import check_total_memory

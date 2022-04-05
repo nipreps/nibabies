@@ -9,9 +9,10 @@ Resampling workflows
 .. autofunction:: init_bold_preproc_trans_wf
 
 """
-from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, freesurfer as fs
 import nipype.interfaces.workbench as wb
+from nipype.interfaces import freesurfer as fs
+from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 
@@ -285,9 +286,9 @@ def init_bold_std_trans_wf(
     from niworkflows.func.util import init_bold_reference_wf
     from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
     from niworkflows.interfaces.itk import MultiApplyTransforms
-    from niworkflows.interfaces.utility import KeySelect
     from niworkflows.interfaces.nibabel import GenerateSamplingReference
     from niworkflows.interfaces.nilearn import Merge
+    from niworkflows.interfaces.utility import KeySelect
     from niworkflows.utils.spaces import format_reference
 
     workflow = Workflow(name=name)
@@ -638,6 +639,7 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
     import templateflow as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.utility import KeySelect
+
     from ...interfaces.workbench import CiftiCreateDenseTimeseries
 
     workflow = Workflow(name=name)
@@ -762,8 +764,8 @@ surface space.
 
 
 def _gen_metadata(grayord_density):
-    from pathlib import Path
     import json
+    from pathlib import Path
 
     space = "HCP grayordinates"
     out_json = {
@@ -842,8 +844,9 @@ def _is_native(in_value):
 
 
 def _itk2lta(in_file, src_file, dst_file):
-    import nitransforms as nt
     from pathlib import Path
+
+    import nitransforms as nt
 
     out_file = Path("out.lta").absolute()
     nt.linear.load(

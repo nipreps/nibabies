@@ -1,15 +1,18 @@
-from pkg_resources import resource_filename as pkgr_fn
 import sys
 
-from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, fsl
+from nipype.interfaces import fsl
+from nipype.interfaces import utility as niu
 from nipype.interfaces.ants.segmentation import JointFusion
-from niworkflows.interfaces.fixes import (
-    FixHeaderRegistration as Registration,
-    FixHeaderApplyTransforms as ApplyTransforms,
-)
+from nipype.pipeline import engine as pe
+from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
+from pkg_resources import resource_filename as pkgr_fn
 from smriprep.utils.misc import apply_lut as _apply_bids_lut
-from smriprep.workflows.anatomical import _aseg_to_three, _split_segments, _probseg_fast2bids
+from smriprep.workflows.anatomical import (
+    _aseg_to_three,
+    _probseg_fast2bids,
+    _split_segments,
+)
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 
@@ -215,9 +218,10 @@ def _to_dtype(in_file, dtype="uint8"):
     Since we may plan using the JLF segmentation within ``infant_recon_all``,
     better to make this change now.
     """
+    from pathlib import Path
+
     import nibabel as nb
     import numpy as np
-    from pathlib import Path
 
     img = nb.load(in_file)
     out_file = Path(f"labels{''.join(Path(in_file).suffixes)}").absolute()

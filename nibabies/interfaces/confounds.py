@@ -12,21 +12,22 @@ Handling confounds.
 import os
 import re
 import shutil
+
 import numpy as np
 import pandas as pd
 from nipype import logging
-from nipype.utils.filemanip import fname_presuffix
 from nipype.interfaces.base import (
-    traits,
-    TraitedSpec,
     BaseInterfaceInputSpec,
-    File,
     Directory,
-    isdefined,
-    SimpleInterface,
+    File,
     InputMultiObject,
     OutputMultiObject,
+    SimpleInterface,
+    TraitedSpec,
+    isdefined,
+    traits,
 )
+from nipype.utils.filemanip import fname_presuffix
 
 LOGGER = logging.getLogger("nipype.interface")
 

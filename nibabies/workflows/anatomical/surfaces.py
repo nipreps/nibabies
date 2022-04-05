@@ -1,10 +1,9 @@
 # Use infant_recon_all to generate subcortical segmentations and cortical parcellations
 
+from nipype.interfaces import freesurfer as fs
+from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, freesurfer as fs
-from niworkflows.interfaces.freesurfer import (
-    PatchedLTAConvert as LTAConvert,
-)
+from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
 from smriprep.workflows.surfaces import init_gifti_surface_wf
 
 from ...interfaces.freesurfer import InfantReconAll

@@ -8,8 +8,9 @@ Head-Motion Estimation and Correction (HMC) of BOLD images
 
 """
 
+from nipype.interfaces import fsl
+from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, fsl
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 

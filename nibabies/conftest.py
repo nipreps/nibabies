@@ -1,9 +1,9 @@
 """py.test configuration"""
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from pkg_resources import resource_filename
 
 import pytest
+from pkg_resources import resource_filename
 
 FILES = (
     "functional.nii",

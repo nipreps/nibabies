@@ -23,12 +23,12 @@
 """Check the configuration module and file."""
 import os
 from pathlib import Path
-from pkg_resources import resource_filename as pkgrf
 from unittest.mock import patch
 
 import pytest
-from toml import loads
 from niworkflows.utils.spaces import format_reference
+from pkg_resources import resource_filename as pkgrf
+from toml import loads
 
 from .. import config
 

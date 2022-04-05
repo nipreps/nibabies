@@ -27,14 +27,14 @@ Slice-Timing Correction (STC) of BOLD images
 .. autofunction:: init_bold_stc_wf
 
 """
-import numpy as np
 import nibabel as nb
-from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, afni
+import numpy as np
+from nipype.interfaces import afni
+from nipype.interfaces import utility as niu
 from nipype.interfaces.base import isdefined
+from nipype.pipeline import engine as pe
 
 from ... import config
-
 
 LOGGER = config.loggers.workflow
 

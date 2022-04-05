@@ -1,16 +1,15 @@
 """Patched version of smriprep's spatial normalization workflow."""
 from collections import defaultdict
-from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu
 
 from nipype.interfaces import ants
+from nipype.interfaces import utility as niu
 from nipype.interfaces.ants.base import Info as ANTsInfo
-
-from templateflow.api import get_metadata
+from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-from niworkflows.interfaces.norm import SpatialNormalization
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
-from smriprep.interfaces.templateflow import TemplateFlowSelect, TemplateDesc
+from niworkflows.interfaces.norm import SpatialNormalization
+from smriprep.interfaces.templateflow import TemplateDesc, TemplateFlowSelect
+from templateflow.api import get_metadata
 
 
 def init_anat_norm_wf(
