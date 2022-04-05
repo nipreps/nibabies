@@ -1,12 +1,17 @@
 import os
-from nipype.interfaces.base import CommandLineInputSpec, File, traits, TraitedSpec, Str
-from nipype.interfaces.base.traits_extension import InputMultiObject, OutputMultiObject, isdefined
+
+from nipype.interfaces.base import CommandLineInputSpec, File, Str, TraitedSpec, traits
+from nipype.interfaces.base.traits_extension import (
+    InputMultiObject,
+    OutputMultiObject,
+    isdefined,
+)
 from nipype.interfaces.workbench.base import WBCommand
 
 # patch
+from nipype.interfaces.workbench.cifti import CiftiSmooth as _CiftiSmooth
 from nipype.interfaces.workbench.cifti import (
     CiftiSmoothInputSpec as _CiftiSmoothInputSpec,
-    CiftiSmooth as _CiftiSmooth,
 )
 
 VALID_STRUCTURES = (

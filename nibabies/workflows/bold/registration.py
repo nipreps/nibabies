@@ -12,14 +12,13 @@ Registration workflows
 """
 import logging
 import os
+
 import pkg_resources as pkgr
-
+from nipype.interfaces import c3, fsl
+from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, fsl, c3
-
 
 from ...config import DEFAULT_MEMORY_MIN_GB
-
 
 LOGGER = logging.getLogger("nipype.workflow")
 
@@ -114,8 +113,9 @@ def init_bold_reg_wf(
       * :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`
 
     """
-    from ...interfaces import DerivativesDataSink
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+
+    from ...interfaces import DerivativesDataSink
 
     workflow = Workflow(name=name)
     inputnode = pe.Node(
@@ -461,11 +461,9 @@ def init_bbreg_wf(use_bbr, bold2t1w_dof, bold2t1w_init, omp_nthreads, name="bbre
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     # See https://github.com/nipreps/fmriprep/issues/768
-    from niworkflows.interfaces.freesurfer import (
-        PatchedBBRegisterRPT as BBRegisterRPT,
-        PatchedMRICoregRPT as MRICoregRPT,
-        PatchedLTAConvert as LTAConvert,
-    )
+    from niworkflows.interfaces.freesurfer import PatchedBBRegisterRPT as BBRegisterRPT
+    from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
+    from niworkflows.interfaces.freesurfer import PatchedMRICoregRPT as MRICoregRPT
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
 
     workflow = Workflow(name=name)
@@ -691,9 +689,9 @@ def init_fsl_bbr_wf(use_bbr, bold2t1w_dof, bold2t1w_init, sloppy=False, name="fs
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.utils.images import dseg_label as _dseg_label
     from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
     from niworkflows.interfaces.reportlets.registration import FLIRTRPT
+    from niworkflows.utils.images import dseg_label as _dseg_label
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
@@ -905,8 +903,8 @@ def compare_xforms(lta_list, norm_threshold=15):
           second transform relative to the first (default: `15`)
 
     """
-    from niworkflows.interfaces.surf import load_transform
     from nipype.algorithms.rapidart import _calc_norm_affine
+    from niworkflows.interfaces.surf import load_transform
 
     bbr_affine = load_transform(lta_list[0])
     fallback_affine = load_transform(lta_list[1])
@@ -919,9 +917,10 @@ def compare_xforms(lta_list, norm_threshold=15):
 def _conditional_downsampling(in_file, in_mask, zoom_th=4.0):
     """Downsamples the input dataset for sloppy mode."""
     from pathlib import Path
-    import numpy as np
+
     import nibabel as nb
     import nitransforms as nt
+    import numpy as np
     from scipy.ndimage.filters import gaussian_filter
 
     img = nb.load(in_file)

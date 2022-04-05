@@ -7,12 +7,11 @@ Generate T2* map from multi-echo BOLD images
 .. autofunction:: init_bold_t2s_wf
 
 """
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 
-from ...interfaces.multiecho import T2SMap
 from ... import config
-
+from ...interfaces.multiecho import T2SMap
 
 LOGGER = config.loggers.workflow
 

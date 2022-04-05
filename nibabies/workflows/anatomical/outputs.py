@@ -1,12 +1,11 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Writing outputs."""
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
 from ...interfaces import DerivativesDataSink
-
 
 BIDS_TISSUE_ORDER = ("GM", "WM", "CSF")
 
@@ -111,18 +110,19 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     template
         Template space and specifications
     """
+    from niworkflows.interfaces.reportlets.masks import ROIsPlot
     from niworkflows.interfaces.reportlets.registration import (
         SimpleBeforeAfterRPT as SimpleBeforeAfter,
     )
-    from niworkflows.interfaces.reportlets.masks import ROIsPlot
     from smriprep.interfaces.templateflow import TemplateFlowSelect
     from smriprep.workflows.outputs import (
-        _fmt,
-        _empty_report,
-        _rpt_masks,
         _drop_cohort,
+        _empty_report,
+        _fmt,
         _pick_cohort,
+        _rpt_masks,
     )
+
     from ...utils.patches import set_tf_resolution
 
     workflow = Workflow(name=name)
@@ -314,9 +314,9 @@ def init_anat_derivatives_wf(
     from smriprep.workflows.outputs import (
         _bids_relative,
         _combine_cohort,
+        _drop_path,
         _fmt_cohort,
         _is_native,
-        _drop_path,
     )
 
     workflow = Workflow(name=name)
@@ -444,12 +444,11 @@ def init_anat_derivatives_wf(
 
     # Write derivatives in standard spaces specified by --output-spaces
     if getattr(spaces, "_cached") is not None and spaces.cached.references:
-        from niworkflows.interfaces.space import SpaceDataSource
-        from niworkflows.interfaces.nibabel import GenerateSamplingReference
         from niworkflows.interfaces.fixes import (
             FixHeaderApplyTransforms as ApplyTransforms,
         )
-
+        from niworkflows.interfaces.nibabel import GenerateSamplingReference
+        from niworkflows.interfaces.space import SpaceDataSource
         from smriprep.interfaces.templateflow import TemplateFlowSelect
 
         spacesource = pe.Node(SpaceDataSource(), name="spacesource", run_without_submitting=True)

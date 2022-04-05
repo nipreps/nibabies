@@ -1,10 +1,9 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Baby brain extraction from T2w images."""
-from pkg_resources import resource_filename as pkgr_fn
-
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
+from pkg_resources import resource_filename as pkgr_fn
 
 
 def init_infant_brain_extraction_wf(
@@ -77,13 +76,16 @@ def init_infant_brain_extraction_wf(
         The same as above, before binarization.
 
     """
-    from nipype.interfaces.ants import N4BiasFieldCorrection, ImageMath
+    from nipype.interfaces.ants import ImageMath, N4BiasFieldCorrection
+    from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+    from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
 
     # niworkflows
-    from niworkflows.interfaces.nibabel import ApplyMask, Binarize, IntensityClip, BinaryDilation
-    from niworkflows.interfaces.fixes import (
-        FixHeaderRegistration as Registration,
-        FixHeaderApplyTransforms as ApplyTransforms,
+    from niworkflows.interfaces.nibabel import (
+        ApplyMask,
+        Binarize,
+        BinaryDilation,
+        IntensityClip,
     )
     from templateflow.api import get as get_template
 
@@ -326,8 +328,9 @@ def _pop(in_files):
 
 def _norm_lap(in_file):
     from pathlib import Path
-    import numpy as np
+
     import nibabel as nb
+    import numpy as np
     from nipype.utils.filemanip import fname_presuffix
 
     img = nb.load(in_file)

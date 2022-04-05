@@ -3,3 +3,7 @@ line-length = 99
 target-version = ['py39']
 skip-string-normalization = true
 extend-exclude = '_version.py|versioneer.py'
+
+[tool.isort]
+profile = 'black'
+extend_skip = '_version.py'

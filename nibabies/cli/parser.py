@@ -2,20 +2,20 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Parser."""
 import sys
+
 from .. import config
 
 
 def _build_parser():
     """Build parser object."""
+    from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
     from functools import partial
     from pathlib import Path
-    from argparse import (
-        ArgumentParser,
-        ArgumentDefaultsHelpFormatter,
-    )
+
+    from niworkflows.utils.spaces import OutputReferencesAction, Reference
     from packaging.version import Version
+
     from .version import check_latest, is_flagged
-    from niworkflows.utils.spaces import Reference, OutputReferencesAction
 
     def _path_exists(path, parser):
         """Ensure a given path exists."""
@@ -668,6 +668,7 @@ def parse_args(args=None, namespace=None):
     # Initialize --output-spaces if not defined
     if config.execution.output_spaces is None:
         from niworkflows.utils.spaces import Reference, SpatialReferences
+
         from ..utils.misc import cohort_by_months
 
         if config.workflow.age_months is None:

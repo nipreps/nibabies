@@ -22,8 +22,8 @@
 #
 """Writing out derivative files."""
 import numpy as np
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 
 from ... import config
 from ...interfaces import DerivativesDataSink
@@ -765,6 +765,7 @@ def init_bold_preproc_report_wf(mem_gb, reportlets_dir, name="bold_preproc_repor
     from nipype.algorithms.confounds import TSNR
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces import SimpleBeforeAfter
+
     from ...interfaces import DerivativesDataSink
 
     workflow = Workflow(name=name)
@@ -810,14 +811,14 @@ def _unlist(in_file):
 
 
 def _get_surface(in_file):
-    from pathlib import Path
     from json import loads
+    from pathlib import Path
 
     return loads(Path(in_file).read_text())["surface"]
 
 
 def _read_json(in_file):
-    from pathlib import Path
     from json import loads
+    from pathlib import Path
 
     return loads(Path(in_file).read_text())

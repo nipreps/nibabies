@@ -2,25 +2,24 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Interfaces to generate reportlets."""
 
-import os
-import time
-import re
 import logging
-
+import os
+import re
+import time
 from collections import Counter
+
 from nipype.interfaces.base import (
-    traits,
-    TraitedSpec,
     BaseInterfaceInputSpec,
-    File,
     Directory,
+    File,
     InputMultiObject,
-    Str,
-    isdefined,
     SimpleInterface,
+    Str,
+    TraitedSpec,
+    isdefined,
+    traits,
 )
 from smriprep.interfaces.freesurfer import ReconAll
-
 
 LOGGER = logging.getLogger("nipype.interface")
 

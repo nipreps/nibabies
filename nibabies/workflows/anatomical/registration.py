@@ -1,9 +1,9 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Within-baby registration of a T1w into a T2w image."""
-from pkg_resources import resource_filename as pkgr_fn
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
+from pkg_resources import resource_filename as pkgr_fn
 
 
 def init_coregistration_wf(
@@ -77,10 +77,8 @@ def init_coregistration_wf(
 
     """
     from nipype.interfaces.ants import N4BiasFieldCorrection
-    from niworkflows.interfaces.fixes import (
-        FixHeaderRegistration as Registration,
-        FixHeaderApplyTransforms as ApplyTransforms,
-    )
+    from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+    from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
     from niworkflows.interfaces.nibabel import ApplyMask, Binarize, BinaryDilation
 
     workflow = pe.Workflow(name)

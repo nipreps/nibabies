@@ -12,8 +12,9 @@ def truncation(
 ):
     """Truncate and clip the input image intensities."""
     from pathlib import Path
-    import numpy as np
+
     import nibabel as nb
+    import numpy as np
     from nipype.utils.filemanip import fname_presuffix
 
     try:
@@ -50,10 +51,11 @@ def truncation(
 def gaussian_filter(in_file, sigma=None, out_file=None):
     """Filter input image by convolving with a Gaussian kernel."""
     from pathlib import Path
-    import numpy as np
+
     import nibabel as nb
-    from scipy.ndimage import gaussian_filter
+    import numpy as np
     from nipype.utils.filemanip import fname_presuffix
+    from scipy.ndimage import gaussian_filter
 
     if out_file is None:
         out_file = fname_presuffix(Path(in_file).name, suffix="_gauss")

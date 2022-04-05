@@ -1,10 +1,10 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Utilities to handle BIDS inputs."""
-import os
 import json
-from pathlib import Path
+import os
 import sys
+from pathlib import Path
 
 
 def write_bidsignore(deriv_dir):
@@ -28,11 +28,7 @@ def write_bidsignore(deriv_dir):
 
 
 def write_derivative_description(bids_dir, deriv_dir):
-    from ..__about__ import (
-        __version__,
-        __packagename__,
-        DOWNLOAD_URL,
-    )
+    from ..__about__ import DOWNLOAD_URL, __packagename__, __version__
 
     bids_dir = Path(bids_dir)
     deriv_dir = Path(deriv_dir)
@@ -92,6 +88,7 @@ def extract_entities(file_list):
     {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
     """
     from collections import defaultdict
+
     from bids.layout import parse_file_entities
     from niworkflows.utils.connections import listify
 
@@ -215,8 +212,8 @@ https://github.com/nipreps/nibabies/issues/new/choose
 
 def validate_input_dir(exec_env, bids_dir, participant_label):
     # Ignore issues and warnings that should not influence NiBabies
-    import tempfile
     import subprocess
+    import tempfile
 
     validator_config_dict = {
         "ignore": [

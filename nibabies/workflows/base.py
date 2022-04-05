@@ -9,19 +9,19 @@ NiBabies base processing workflows
 
 """
 
-import sys
 import os
+import sys
 from copy import deepcopy
 
-from packaging.version import Version
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
+from packaging.version import Version
 
-from .bold import init_func_preproc_wf
 from .. import config
 from ..interfaces import DerivativesDataSink
-from ..interfaces.reports import SubjectSummary, AboutSummary
+from ..interfaces.reports import AboutSummary, SubjectSummary
 from ..utils.bids import group_bolds_ref
+from .bold import init_func_preproc_wf
 
 
 def init_nibabies_wf():
@@ -122,13 +122,13 @@ def init_single_subject_wf(subject_id):
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.bids import BIDSInfo, BIDSDataGrabber
+    from niworkflows.interfaces.bids import BIDSDataGrabber, BIDSInfo
     from niworkflows.interfaces.nilearn import NILEARN_VERSION
     from niworkflows.utils.bids import collect_data
     from niworkflows.utils.spaces import Reference
 
-    from .anatomical import init_infant_anat_wf
     from ..utils.misc import fix_multi_source_name
+    from .anatomical import init_infant_anat_wf
 
     name = "single_subject_%s_wf" % subject_id
     subject_data = collect_data(
@@ -437,8 +437,8 @@ tasks and sessions), the following preprocessing was performed.
         f"Fieldmap estimators found: {[e.method for e in fmap_estimators]}"
     )
 
-    from sdcflows.workflows.base import init_fmap_preproc_wf
     from sdcflows import fieldmaps as fm
+    from sdcflows.workflows.base import init_fmap_preproc_wf
 
     fmap_wf = init_fmap_preproc_wf(
         sloppy=bool(config.execution.sloppy),

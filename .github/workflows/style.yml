@@ -25,8 +25,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install .[style]
+        pip install $(grep -e "black" -e "isort" setup.cfg | sed "s/ //g" | tr "\n" " ")
     - name: black code formatting check
       run: |
         black --check nibabies/

@@ -13,6 +13,7 @@ def fix_multi_source_name(in_files):
     """
     import re
     from pathlib import Path
+
     from nipype.utils.filemanip import filename_to_list
 
     if not isinstance(in_files, (tuple, list)):
@@ -103,6 +104,7 @@ def combine_meepi_source(in_files):
     'sub-01_run-01_bold.nii.gz'
     """
     import os
+
     from nipype.utils.filemanip import filename_to_list
 
     base, in_file = os.path.split(filename_to_list(in_files)[0])

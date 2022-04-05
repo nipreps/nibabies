@@ -8,16 +8,17 @@ Calculate BOLD confounds
 .. autofunction:: init_ica_aroma_wf
 
 """
-from os import getenv
 import warnings
+from os import getenv
 
 from nipype.algorithms import confounds as nac
-from nipype.interfaces import utility as niu, fsl
+from nipype.interfaces import fsl
+from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 from ...interfaces import DerivativesDataSink
-from ...interfaces.confounds import GatherConfounds, ICAConfounds, FMRISummary
+from ...interfaces.confounds import FMRISummary, GatherConfounds, ICAConfounds
 
 
 def init_bold_confs_wf(
@@ -129,13 +130,15 @@ def init_bold_confs_wf(
     from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
     from niworkflows.interfaces.images import SignalExtraction
     from niworkflows.interfaces.nibabel import ApplyMask, Binarize
-    from niworkflows.interfaces.patches import (
-        RobustACompCor as ACompCor,
-        RobustTCompCor as TCompCor,
+    from niworkflows.interfaces.patches import RobustACompCor as ACompCor
+    from niworkflows.interfaces.patches import RobustTCompCor as TCompCor
+    from niworkflows.interfaces.plotting import (
+        CompCorVariancePlot,
+        ConfoundsCorrelationPlot,
     )
-    from niworkflows.interfaces.plotting import CompCorVariancePlot, ConfoundsCorrelationPlot
     from niworkflows.interfaces.reportlets.masks import ROIsPlot
-    from niworkflows.interfaces.utility import AddTSVHeader, TSV2JSON, DictMerge
+    from niworkflows.interfaces.utility import TSV2JSON, AddTSVHeader, DictMerge
+
     from ...interfaces.confounds import aCompCorMasks
 
     gm_desc = (
@@ -714,7 +717,7 @@ def init_ica_aroma_wf(
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.reportlets.segmentation import ICA_AROMARPT
-    from niworkflows.interfaces.utility import KeySelect, TSV2JSON
+    from niworkflows.interfaces.utility import TSV2JSON, KeySelect
 
     workflow = Workflow(name=name)
     workflow.__postdesc__ = """\
