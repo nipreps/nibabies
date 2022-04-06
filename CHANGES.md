@@ -1,3 +1,18 @@
+22.0.1 (April 6, 2022)
+----------------------
+A bug-fix release in the 22.0.x series.
+
+This release includes a fix for when using `UNCInfant` as an output space,
+as well as a few improvements to susceptibility distortion correction (SDC).
+These include a new flag (`--topup-max-vols`) for controlling the number of
+volumes used by TOPUP, and support for SDC in the case where single phase-encoding
+fieldmap is used to correct opposite phase-encoding BOLD/EPI runs.
+
+## Full Changelog
+* CI: Migrate to token auth when uploading to pypi (#203)
+* ENH: Improve fieldmap support (#205)
+* STY: Bump style dependencies, run isort on repo (#206)
+
 22.0.0 (March 28, 2022)
 -----------------------
 A new `NiBabies` minor series!
