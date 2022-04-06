@@ -134,8 +134,8 @@ def init_single_subject_wf(subject_id):
     subject_data = collect_data(
         config.execution.layout,
         subject_id,
-        config.execution.task_id,
-        config.execution.echo_idx,
+        task=config.execution.task_id,
+        echo=config.execution.echo_idx,
         bids_filters=config.execution.bids_filters,
     )[0]
 
