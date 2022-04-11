@@ -1,3 +1,44 @@
+_machine_defaults: &machine_defaults
+  environment:
+    TZ: "/usr/share/zoneinfo/America/New_York"
+    SCRATCH: "/scratch"
+  machine:
+    image: ubuntu-2004:current
+    docker_layer_caching: true
+  working_directory: /tmp/src/nibabies
+
+_python_defaults: &python_defaults
+  docker:
+    - image: circleci/python:3.9.6
+  working_directory: /tmp/src/nibabies
+
+
+_docker_auth: &docker_auth
+  name: Docker authentication
+  command: |
+    if [[ -n $DOCKER_PAT ]]; then
+      echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+    fi
+
+_setup_docker_registry: &setup_docker_registry
+  name: Set up Docker registry
+  command: |
+    if [[ -f /tmp/images/registry.tar.gz ]]; then
+      echo "Loading saved registry image"
+      docker load < /tmp/images/registry.tar.gz
+    else
+      echo "Pulling registry image from DockerHub"
+      docker pull registry:2
+    fi
+    docker run -d -p 5000:5000 --restart=always --name=registry \
+        -v /tmp/docker:/var/lib/registry registry:2
+
+_pull_from_registry: &pull_from_registry
+  name: Pull and tag image from local registry
+  command: |
+    docker pull localhost:5000/nibabies
+    docker tag localhost:5000/nibabies nipreps/nibabies:latest
+
 version: 2.1
 orbs:
   docker: circleci/docker@1.6.0
@@ -5,12 +46,7 @@ orbs:
 jobs:
 
   build:
-    environment:
-      TZ: "/usr/share/zoneinfo/America/New_York"
-      SCRATCH: "/scratch"
-    machine:
-      image: ubuntu-2004:202107-02
-    working_directory: /tmp/src/nibabies
+    <<: *machine_defaults
     steps:
       - checkout
       - run:
@@ -31,26 +67,15 @@ jobs:
             - /tmp/docker
             - /tmp/images
       - docker/install-docker-credential-helper
+      - run: *docker_auth
+      - run: *setup_docker_registry
       - run:
-          name: Docker authentication
+          name: Save Docker registry
           command: |
-            if [[ -n $DOCKER_PAT ]]; then
-              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
-            fi
-      - run:
-          name: Set up Docker registry
-          command: |
-            if [[ -f /tmp/images/registry.tar.gz ]]; then
-              echo "Loading saved registry image"
-              docker load < /tmp/images/registry.tar.gz
-            else
-              echo "Pulling registry image from DockerHub"
-              docker pull registry:2
+            if [[ ! -f /tmp/images/registry.tar.gz ]]; then
               mkdir -p /tmp/images
               docker save registry:2 | gzip > /tmp/images/registry.tar.gz
             fi
-            docker run -d -p 5000:5000 --restart=always --name=registry \
-                -v /tmp/docker:/var/lib/registry registry:2
       - run:
           name: Pull images
           command: |
@@ -188,9 +213,7 @@ jobs:
             - bcp/nipype.cfg
 
   test_pytest:
-    machine:
-      image: ubuntu-2004:202107-02
-    working_directory: /tmp/src/nibabies
+    <<: *machine_defaults
     steps:
       - checkout:
           path: /home/circleci/src/nibabies
@@ -218,29 +241,9 @@ jobs:
           keys:
             - data-v3-{{ .Branch }}-{{ .Revision }}
       - docker/install-docker-credential-helper
-      - run:
-          name: Docker authentication
-          command: |
-            if [[ -n $DOCKER_PAT ]]; then
-              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
-            fi
-      - run:
-          name: Set-up a Docker registry
-          command: |
-            if [[ -f /tmp/images/registry.tar.gz ]]; then
-              echo "Loading saved registry image"
-              docker load < /tmp/images/registry.tar.gz
-            else
-              echo "Pulling registry image from DockerHub"
-              docker pull registry:2
-            fi
-            docker run -d -p 5000:5000 --restart=always --name=registry \
-                -v /tmp/docker:/var/lib/registry registry:2
-      - run:
-          name: Pull images from local registry
-          command: |
-            docker pull localhost:5000/nibabies
-            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run: *docker_auth
+      - run: *setup_docker_registry
+      - run: *pull_from_registry
       - run:
           name: Run nibabies tests
           no_output_timeout: 2h
@@ -279,12 +282,10 @@ jobs:
           path: /tmp/data/reports
 
   test_bcp:
-    machine:
-      image: ubuntu-2004:202107-02
-    working_directory: /tmp/bcp
     environment:
       - FS_LICENSE: /tmp/fslicense/license.txt
       - DATASET: bcp
+    <<: *machine_defaults
     steps:
       - checkout:
           path: /home/circleci/src/nibabies
@@ -323,29 +324,9 @@ jobs:
             - bcp-anat-v0-master-
             - bcp-anat-v0-
       - docker/install-docker-credential-helper
-      - run:
-          name: Docker authentication
-          command: |
-            if [[ -n $DOCKER_PAT ]]; then
-              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
-            fi
-      - run:
-          name: Set-up a Docker registry
-          command: |
-            if [[ -f /tmp/images/registry.tar.gz ]]; then
-              echo "Loading saved registry image"
-              docker load < /tmp/images/registry.tar.gz
-            else
-              echo "Pulling registry image from DockerHub"
-              docker pull registry:2
-            fi
-            docker run -d -p 5000:5000 --restart=always --name=registry \
-                -v /tmp/docker:/var/lib/registry registry:2
-      - run:
-          name: Pull images from local registry
-          command: |
-            docker pull localhost:5000/nibabies
-            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run: *docker_auth
+      - run: *setup_docker_registry
+      - run: *pull_from_registry
       - run:
           name: Setting up test
           command: |
@@ -412,11 +393,8 @@ jobs:
           path: /tmp/bcp/derivatives
 
   deploy_docker_patches:
-    machine:
-      image: ubuntu-2004:202107-02
-    working_directory: /tmp/src/nibabies
+    <<: *machine_defaults
     steps:
-
       - run:
           name: Check whether image should be deployed to Docker Hub
           command: |
@@ -441,29 +419,9 @@ jobs:
             - /tmp/docker
             - /tmp/images
       - docker/install-docker-credential-helper
-      - run:
-          name: Docker authentication
-          command: |
-            if [[ -n $DOCKER_PAT ]]; then
-              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
-            fi
-      - run:
-          name: Setup a Docker registry
-          command: |
-            if [[ -f /tmp/images/registry.tar.gz ]]; then
-              echo "Loading saved registry image"
-              docker load < /tmp/images/registry.tar.gz
-            else
-              echo "Pulling registry image from DockerHub"
-              docker pull registry:2
-            fi
-            docker run -d -p 5000:5000 --restart=always --name=registry \
-                -v /tmp/docker:/var/lib/registry registry:2
-      - run:
-          name: Pull images from local registry
-          command: |
-            docker pull localhost:5000/nibabies
-            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run: *docker_auth
+      - run: *setup_docker_registry
+      - run: *pull_from_registry
       - run:
           name: Deploy to Docker Hub
           no_output_timeout: 40m
@@ -472,9 +430,7 @@ jobs:
             docker push nipreps/nibabies:${CIRCLE_BRANCH#docker/}
 
   deploy_docker:
-    machine:
-      image: ubuntu-2004:202107-02
-    working_directory: /tmp/src/nibabies
+    <<: *machine_defaults
     steps:
       - checkout:
           path: /home/circleci/src/nibabies
@@ -493,29 +449,9 @@ jobs:
             - /tmp/docker
             - /tmp/images
       - docker/install-docker-credential-helper
-      - run:
-          name: Docker authentication
-          command: |
-            if [[ -n $DOCKER_PAT ]]; then
-              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
-            fi
-      - run:
-          name: Set-up a Docker registry
-          command: |
-            if [[ -f /tmp/images/registry.tar.gz ]]; then
-              echo "Loading saved registry image"
-              docker load < /tmp/images/registry.tar.gz
-            else
-              echo "Pulling registry image from DockerHub"
-              docker pull registry:2
-            fi
-            docker run -d -p 5000:5000 --restart=always --name=registry \
-                -v /tmp/docker:/var/lib/registry registry:2
-      - run:
-          name: Pull images from local registry
-          command: |
-            docker pull localhost:5000/nibabies
-            docker tag localhost:5000/nibabies nipreps/nibabies:latest
+      - run: *docker_auth
+      - run: *setup_docker_registry
+      - run: *pull_from_registry
       - run:
           name: Deploy to Docker Hub
           no_output_timeout: 40m
@@ -532,9 +468,7 @@ jobs:
             fi
 
   test_deploy_pypi:
-    docker:
-      - image: circleci/python:3.9.6
-    working_directory: /tmp/src/nibabies
+    <<: *python_defaults
     steps:
       - checkout
       - run:
@@ -603,9 +537,7 @@ jobs:
           path: /tmp/src/nibabies/wrapper/dist
 
   deploy_pypi:
-    docker:
-      - image: circleci/python:3.9.6
-    working_directory: /tmp/src/nibabies
+    <<: *python_defaults
     steps:
       - checkout
       - run:
