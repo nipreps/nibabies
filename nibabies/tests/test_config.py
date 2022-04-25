@@ -102,8 +102,8 @@ def test_config_spaces():
         if s.standard and s.dim == 3
     ] == []
 
-    # but adding age will populate output spaces with a default
     config.execution.output_spaces = None
+    config.workflow.cifti_output = True
     config.workflow.use_aroma = False
     config.workflow.age_months = 1
     config.init_spaces()
@@ -114,7 +114,7 @@ def test_config_spaces():
         format_reference((s.fullname, s.spec))
         for s in spaces.references
         if s.standard and s.dim == 3
-    ] == ['MNIInfant_cohort-1']
+    ] == ['MNIInfant_cohort-1', 'MNI152NLin6Asym:res-2']
     _reset_config()
 
 
