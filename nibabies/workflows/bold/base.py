@@ -1223,8 +1223,10 @@ def get_MNIInfant_key(spaces):
     key = None
     for space in spaces.references:
         # str formats as <reference.name>:<reference.spec>
-        if "MNIInfant" in str(space):
+        if "MNIInfant" in str(space) and "res-native" not in str(space):
             key = str(space).replace(":", "_")
+            break
 
-    assert key is not None, f"MNIInfant not found in SpatialReferences: {spaces}"
+    if key is None:
+        raise KeyError(f"MNIInfant not found in SpatialReferences: {spaces}")
     return key
