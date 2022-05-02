@@ -372,7 +372,7 @@ jobs:
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
                 --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
-                --output-layout bids --cifti-output
+                --output-layout bids
       - run:
           name: Checking outputs of full nibabies run
           command: |
