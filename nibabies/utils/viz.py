@@ -1,7 +1,7 @@
-### A big refactor of fMRIPlot was incorporated into niworkflows
-### in the middle of the 1.5.x series.
-### This is a backport of fMRIPlot and it's dependencies, which should be removed
-### In the next minor release.
+# A big refactor of fMRIPlot was incorporated into niworkflows
+# in the middle of the 1.5.x series.
+# This is a backport of fMRIPlot and it's dependencies, which should be removed
+# In the next minor release.
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
