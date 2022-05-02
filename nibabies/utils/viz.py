@@ -1118,14 +1118,6 @@ def cifti_surfaces_plot(
 def _get_tr(img):
     """
     Attempt to extract repetition time from NIfTI/CIFTI header
-    Examples
-    --------
-    >>> _get_tr(nb.load(Path(test_data) /
-    ...    'sub-ds205s03_task-functionallocalizer_run-01_bold_volreg.nii.gz'))
-    2.2
-    >>> _get_tr(nb.load(Path(test_data) /
-    ...    'sub-01_task-mixedgamblestask_run-02_space-fsLR_den-91k_bold.dtseries.nii'))
-    2.0
     """
 
     try:

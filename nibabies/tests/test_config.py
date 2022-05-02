@@ -103,18 +103,22 @@ def test_config_spaces():
     ] == []
 
     config.execution.output_spaces = None
-    config.workflow.cifti_output = True
+    config.workflow.cifti_output = "91k"
     config.workflow.use_aroma = False
     config.workflow.age_months = 1
     config.init_spaces()
     spaces = config.workflow.spaces
 
-    assert [str(s) for s in spaces.get_standard(full_spec=True)] == []
+    assert [str(s) for s in spaces.get_standard(full_spec=True)] == [
+        'fsaverage:den-164k',
+        'MNI152NLin6Asym:res-2',
+    ]
+
     assert [
         format_reference((s.fullname, s.spec))
         for s in spaces.references
         if s.standard and s.dim == 3
-    ] == ['MNIInfant_cohort-1', 'MNI152NLin6Asym:res-2']
+    ] == ['MNI152NLin6Asym_res-2', 'MNIInfant_cohort-1']
     _reset_config()
 
 

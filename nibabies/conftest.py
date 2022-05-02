@@ -34,3 +34,4 @@ def data_dir():
 def set_namespace(doctest_namespace, data_dir):
     doctest_namespace["data_dir"] = data_dir
     doctest_namespace["test_data"] = Path(resource_filename("nibabies", "tests/data"))
+    doctest_namespace["Path"] = Path
