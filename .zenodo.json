@@ -1,0 +1,58 @@
+{
+  "title": "NiBabies: a robust preprocessing pipeline for infant functional MRI",
+  "description": "<p>NiBabies is a robust and easy-to-use pipeline for preprocessing of diverse infant and neonate fMRI data. The transparent workflow dispenses of manual intervention, thereby ensuring the reproducibility of the results.</p>",
+  "contributors": [],
+  "creators": [
+    {
+      "affiliation": "Department of Psychology, Stanford University",
+      "name": "Goncalves, Mathias",
+      "orcid": "0000-0002-7252-7771"
+    },
+    {
+      "affiliation": "Department of Psychology, Stanford University",
+      "name": "Markiewicz, Christopher J.",
+      "orcid": "0000-0002-6533-164X"
+    },
+    {
+      "affiliation": "Lausanne University Hospital and University of Lausanne, Lausanne, Switzerland",
+      "name": "Esteban, Oscar",
+      "orcid": "0000-0001-8435-6191"
+    },
+    {
+      "affiliation": "University of Minnesota",
+      "name": "Feczko, Eric"
+    },
+    {
+      "affiliation": "Department of Psychology, Stanford University",
+      "name": "Poldrack, Russell A.",
+      "orcid": "0000-0001-6755-0259"
+    },
+    {
+      "affiliation": "University of Minnesota",
+      "name": "Fair, Damien A."
+    }
+  ],
+  "keywords": [
+    "neuroimaging",
+    "workflow",
+    "pipeline",
+    "preprocessing",
+    "fMRI",
+    "BIDS",
+    "infant"
+  ],
+  "license": "Apache-2.0",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/nipreps/nibabies",
+      "relation": "documents",
+      "scheme": "url"
+    },
+    {
+      "identifier": "10.5281/zenodo.6418986",
+      "relation": "isPartOf",
+      "scheme": "doi"
+    }
+  ],
+  "upload_type": "software"
+}
