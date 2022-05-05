@@ -302,7 +302,7 @@ def _carpet(
         for i in np.unique(seg):
             roi_mask = seg == i
             roi = data[roi_mask]
-            if sort_rows.lower() == "linkage":
+            if isinstance(sort_rows, str) and sort_rows.lower() == "linkage":
                 linkage_matrix = linkage(
                     roi, method="average", metric="euclidean", optimal_ordering=True
                 )
