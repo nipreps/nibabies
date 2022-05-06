@@ -640,6 +640,7 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.utility import KeySelect
 
+    from ...interfaces.gifti import MaskGifti
     from ...interfaces.workbench import CiftiCreateDenseTimeseries
 
     workflow = Workflow(name=name)
@@ -727,10 +728,22 @@ surface space.
         "space-fsLR_hemi-%s_den-%s_bold.gii" % (h, grayord_density) for h in "LR"
     ]
 
+    medial_masks = [
+        str(f)
+        for f in tf.api.get("fsLR", density=fslr_density, desc="nomedialwall", suffix="dparc")
+    ]
+    mask_gifti = pe.MapNode(
+        MaskGifti(),
+        iterfield=["in_file", "mask_file"],
+        name="mask_gifti",
+    )
+    mask_gifti.inputs.mask_file = medial_masks
+
     split_surfaces = pe.Node(
         niu.Function(function=_split_surfaces, output_names=["left_surface", "right_surface"]),
         name="split_surfaces",
     )
+
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
     gen_cifti.inputs.volume_structure_labels = str(
         tf.api.get("MNI152NLin6Asym", resolution=2, atlas="HCP", suffix="dseg")
@@ -749,7 +762,8 @@ surface space.
         (inputnode, select_fs_surf, [('surf_files', 'surf_files'),
                                      ('surf_refs', 'keys')]),
         (select_fs_surf, resample, [('surf_files', 'in_file')]),
-        (resample, split_surfaces, [('out_file', 'in_surfaces')]),
+        (resample, mask_gifti, [('out_file', 'in_file')]),
+        (mask_gifti, split_surfaces, [('out_file', 'in_surfaces')]),
         (split_surfaces, gen_cifti, [
             ('left_surface', 'left_metric'),
             ('right_surface', 'right_metric')]),
