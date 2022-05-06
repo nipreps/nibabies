@@ -18,9 +18,7 @@ class _MaskGiftiInputSpec(BaseInterfaceInputSpec):
     in_file = File(exists=True, mandatory=True, desc="Input GIFTI (n-darrays)")
     mask_file = File(exists=True, mandatory=True, desc="Input mask (single binary darray)")
     threshold = traits.Float(
-        default=0,
-        usedefault=True,
-        desc="If mask is probabilistic, lower inclusion limit",
+        desc="If mask is probabilistic, inclusion limit",
     )
     metadata = traits.Dict(
         desc="Metadata to insert into GIFTI",
@@ -41,10 +39,11 @@ class MaskGifti(SimpleInterface):
         self._results["out_file"] = _mask_gifti(
             self.inputs.in_file,
             self.inputs.mask_file,
-            threshold=self.inputs.threshold,
+            threshold=self.inputs.threshold or None,
             metadata=self.inputs.metadata,
             newpath=runtime.cwd,
         )
+        return runtime
 
 
 def _mask_gifti(in_file, mask_file, *, threshold=None, metadata=None, newpath=None):
