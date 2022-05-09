@@ -15,17 +15,19 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
 
     from nibabies.interfaces.freesurfer import InfantReconAll
 
+    # Synchronized inputs to smriprep.workflows.surfaces.init_surface_recon_wf
     wf = LiterateWorkflow(name=name)
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
                 "subjects_dir",
                 "subject_id",
-                "anat_orig",
-                "anat_skullstripped",
-                "anat_preproc",
-                "anat_aseg",
+                "t1w",
                 "t2w",
+                "flair",
+                "skullstripped_t1",
+                "corrected_t1",
+                "ants_seg",
             ],
         ),
         name="inputnode",
@@ -38,8 +40,8 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
                 "anat2fsnative_xfm",
                 "fsnative2anat_xfm",
                 "surfaces",
-                "anat_aseg",
-                "anat_aparc",
+                "out_aseg",
+                "out_aparc",
             ]
         ),
         name="outputnode",
@@ -73,7 +75,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     if use_aseg:
-        wf.connect(inputnode, "anat_aseg", recon, "aseg_file")
+        wf.connect(inputnode, "ants_seg", recon, "aseg_file")
 
     # fmt: off
     wf.connect([

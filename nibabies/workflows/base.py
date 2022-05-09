@@ -323,6 +323,7 @@ It is released under the [CC0]\
         bids_root=config.execution.bids_dir,
         existing_derivatives=derivatives,
         freesurfer=config.workflow.run_reconall,
+        hires=config.workflow.hires,
         longitudinal=config.workflow.longitudinal,
         omp_nthreads=config.nipype.omp_nthreads,
         output_dir=nibabies_dir,
