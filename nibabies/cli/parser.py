@@ -655,6 +655,12 @@ discourage its usage."""
         metavar="FILE",
         help="A JSON file for customizing the derivatives queries.",
     )
+    g_baby.add_argument(
+        "--force-reconall",
+        default=False,
+        action="store_true",
+        help="Force traditional FreeSurfer surface reconstruction.",
+    )
     return parser
 
 
