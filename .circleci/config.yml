@@ -171,7 +171,7 @@ jobs:
           command: |
             if [[ ! -d /tmp/data/bcp ]]; then
               apk update && apk add --no-cache ca-certificates coreutils
-              conda install -y -c conda-forge git-annex=*=alldep*   datalad
+              conda install -y -c conda-forge datalad git
               # set config because datalad says so
               git config --global user.name "Nipreps CI"
               git config --global user.email "nipreps@gmail.com"
