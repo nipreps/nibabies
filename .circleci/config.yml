@@ -215,12 +215,10 @@ jobs:
   test_pytest:
     <<: *machine_defaults
     steps:
-      - checkout:
-          path: /home/circleci/src/nibabies
+      - checkout
       - run:
           name: Check whether build should be skipped
           command: |
-            cd /home/circleci/src/nibabies
             if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
               echo "Only docs build"
               circleci step halt
@@ -287,12 +285,10 @@ jobs:
       - DATASET: bcp
     <<: *machine_defaults
     steps:
-      - checkout:
-          path: /home/circleci/src/nibabies
+      - checkout
       - run:
           name: Check whether build should be skipped
           command: |
-            cd /home/circleci/src/nibabies
             if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
               echo "Only docs build"
               circleci step halt
@@ -335,7 +331,7 @@ jobs:
             pyenv local $PY3
             mkdir -p /tmp/${DATASET}/derivatives
             pip install --upgrade pip setuptools
-            pip install --upgrade /tmp/src/nibabies/wrapper/
+            pip install --upgrade wrapper/
       - run:
           name: Run nibabies anatomical with precomputed derivatives
           no_output_timeout: 2h
@@ -402,12 +398,10 @@ jobs:
               echo "Nothing to deploy for $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME."
               circleci step halt
             fi
-      - checkout:
-          path: /home/circleci/src/nibabies
+      - checkout
       - run:
           name: Check whether build should be skipped
           command: |
-            cd /home/circleci/src/nibabies
             if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
               echo "Only docs build"
               circleci step halt
@@ -432,12 +426,10 @@ jobs:
   deploy_docker:
     <<: *machine_defaults
     steps:
-      - checkout:
-          path: /home/circleci/src/nibabies
+      - checkout
       - run:
           name: Check whether build should be skipped
           command: |
-            cd /home/circleci/src/nibabies
             if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
               echo "Only docs build"
               circleci step halt
