@@ -84,7 +84,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('subject_id', 'subject_id'),
         ]),
         (inputnode, recon, [
-            ('anat_skullstripped', 'mask_file'),
+            ('skullstripped_t1', 'mask_file'),
             ('subject_id', 'subject_id'),
         ]),
         (gen_recon_outdir, recon, [
