@@ -731,9 +731,16 @@ surface space.
         niu.Function(function=_split_surfaces, output_names=["left_surface", "right_surface"]),
         name="split_surfaces",
     )
+
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
     gen_cifti.inputs.volume_structure_labels = str(
         tf.api.get("MNI152NLin6Asym", resolution=2, atlas="HCP", suffix="dseg")
+    )
+    gen_cifti.inputs.roi_left = tf.api.get(
+        "fsLR", density=fslr_density, hemi="L", desc="nomedialwall", suffix="dparc"
+    )
+    gen_cifti.inputs.roi_right = tf.api.get(
+        "fsLR", density=fslr_density, hemi="R", desc="nomedialwall", suffix="dparc"
     )
     gen_cifti_metadata = pe.Node(
         niu.Function(function=_gen_metadata, output_names=["out_metadata", "variant", "density"]),

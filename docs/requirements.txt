@@ -3,5 +3,3 @@ myst_nb
 sphinx-argparse
 # Relative to repository root
 ./wrapper/
-# avoid downloading new matplotlib
-scipy ~= 1.7.3

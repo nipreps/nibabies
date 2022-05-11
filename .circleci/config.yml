@@ -6,6 +6,7 @@ _machine_defaults: &machine_defaults
     image: ubuntu-2004:current
     docker_layer_caching: true
   working_directory: /tmp/src/nibabies
+  resource_class: large
 
 _python_defaults: &python_defaults
   docker:
@@ -39,6 +40,28 @@ _pull_from_registry: &pull_from_registry
     docker pull localhost:5000/nibabies
     docker tag localhost:5000/nibabies nipreps/nibabies:latest
 
+_check_skip_job: &check_skip_job
+  name: Check commit message and determine if job should be skipped
+  command: |
+    set -x +e
+    COMMIT_MSG="$(git log --format='format:%s' -n 1 $CIRCLE_SHA1)"
+    DOCBUILD="$(echo ${COMMIT_MSG} | grep -i -E '^docs?(\(\w+\))?:')"
+    SKIP_BCP="$(echo ${COMMIT_MSG} | grep -i -E '\[skip[ _]?bcp\]' )"
+    # no skipping if tagged build
+    if [[ -n "$CIRCLETAG" ]]; then
+      exit 0
+    elif [[ -n "$DOCSBUILD" ]]; then  # always try to skip docs builds
+      echo "Only docs build"
+      circleci step halt
+    elif [ -n "$CHECK_PYTEST" -a -n "$SKIP_PYTEST" ]; then
+      echo "Skipping pytest"
+      circleci step halt
+    elif [ -n "$CHECK_BCP" -a -n "$SKIP_BCP" ]; then
+      echo "Skipping BCP"
+      circleci step halt
+    fi
+    echo "No skip"
+
 version: 2.1
 orbs:
   docker: circleci/docker@1.6.0
@@ -49,13 +72,7 @@ jobs:
     <<: *machine_defaults
     steps:
       - checkout
-      - run:
-          name: Check whether build should be skipped
-          command: |
-            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
-              echo "Only docs build"
-              circleci step halt
-            fi
+      - run: *check_skip_job
       - restore_cache:
           keys:
             - build-v4-{{ .Branch }}-{{ .Revision }}
@@ -154,6 +171,7 @@ jobs:
             - /tmp/docker
             - /tmp/images
 
+
   get_data:
     docker:
       - image: continuumio/miniconda3:4.10.3-alpine
@@ -214,19 +232,11 @@ jobs:
 
   test_pytest:
     <<: *machine_defaults
+    environment:
+      CHECK_PYTEST: true
     steps:
       - checkout
-      - run:
-          name: Check whether build should be skipped
-          command: |
-            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
-              echo "Only docs build"
-              circleci step halt
-            fi
-            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[skip[ _]?tests\]' )" != "" ]]; then
-              echo "Skipping pytest job"
-              circleci step halt
-            fi
+      - run: *check_skip_job
       - attach_workspace:
           at: /tmp
       - restore_cache:
@@ -279,28 +289,16 @@ jobs:
       - store_artifacts:
           path: /tmp/data/reports
 
+
   test_bcp:
+    <<: *machine_defaults
     environment:
       - FS_LICENSE: /tmp/fslicense/license.txt
       - DATASET: bcp
-    <<: *machine_defaults
+      - CHECK_BCP: true
     steps:
       - checkout
-      - run:
-          name: Check whether build should be skipped
-          command: |
-            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
-              echo "Only docs build"
-              circleci step halt
-            fi
-            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[skip[ _]?bcp\]' )" != "" ]]; then
-              echo "Skipping bcp build"
-              circleci step halt
-            fi
-            if [[ "$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[no[ _-]?fasttrack\]' )" != "" ]]; then
-              touch /tmp/.nofasttrack
-              echo "Anatomical fasttrack reusing sMRIPrep's derivatives will not be used."
-            fi
+      - run: *check_skip_job
       - attach_workspace:
           at: /tmp
       - restore_cache:
@@ -345,8 +343,8 @@ jobs:
                 --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
                 --skull-strip-template UNCInfant:cohort-1 \
                 --output-spaces MNIInfant:cohort-1 func \
-                --sloppy --write-graph --mem_mb 8192 \
-                --nthreads 2 -vv --age-months 2 --sloppy \
+                --sloppy --write-graph --mem-mb 14000 \
+                --nthreads 4 -vv --age-months 2 --sloppy \
                 --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
                 --output-layout bids --anat-only
       - run:
@@ -371,8 +369,8 @@ jobs:
                 --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
                 --skull-strip-template UNCInfant:cohort-1 \
                 --output-spaces MNIInfant:cohort-1 func \
-                --sloppy --write-graph --mem_mb 8192 \
-                --nthreads 2 -vv --age-months 2 --sloppy \
+                --sloppy --write-graph --mem-mb 14000 \
+                --nthreads 4 -vv --age-months 2 --sloppy \
                 --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
                 --output-layout bids
       - run:
@@ -387,6 +385,7 @@ jobs:
             exit $?
       - store_artifacts:
           path: /tmp/bcp/derivatives
+
 
   deploy_docker_patches:
     <<: *machine_defaults
@@ -423,6 +422,7 @@ jobs:
             docker tag nipreps/nibabies nipreps/nibabies:${CIRCLE_BRANCH#docker/}
             docker push nipreps/nibabies:${CIRCLE_BRANCH#docker/}
 
+
   deploy_docker:
     <<: *machine_defaults
     steps:
@@ -458,6 +458,7 @@ jobs:
                 docker push nipreps/nibabies:$CIRCLE_TAG
               fi
             fi
+
 
   test_deploy_pypi:
     <<: *python_defaults
@@ -528,6 +529,7 @@ jobs:
       - store_artifacts:
           path: /tmp/src/nibabies/wrapper/dist
 
+
   deploy_pypi:
     <<: *python_defaults
     steps:
@@ -563,6 +565,7 @@ jobs:
             # upload wrapper
             export TWINE_PASSWORD=$PYPI_WRAPPER_TOKEN
             python -m twine upload wrapper/dist/nibabies*
+
 
   deployable:
     docker:
