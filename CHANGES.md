@@ -1,3 +1,16 @@
+22.0.2 (May 11, 2022)
+---------------------
+A bug-fix release in the 22.0.x series.
+
+This release includes a fix to a problem where `--cifti-output` was not
+producing any outputs.
+
+## Full Changelog
+* CI: Force all git-annex dependencies to be installed (#217)
+* CI: Simplify config with anchors (#209)
+* FIX: Remedy missing CIFTI outputs (#212)
+* MAINT: Set maximum scipy for Python 3.7.x (#216)
+
 22.0.1 (April 6, 2022)
 ----------------------
 A bug-fix release in the 22.0.x series.
