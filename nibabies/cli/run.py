@@ -13,6 +13,7 @@ def main():
     from pathlib import Path
 
     from ..utils.bids import write_bidsignore, write_derivative_description
+    from ..workflows import init_nibabies_wf
     from .parser import parse_args
 
     parse_args()
@@ -31,24 +32,10 @@ def main():
     config_file.parent.mkdir(exist_ok=True, parents=True)
     config.to_filename(config_file)
 
-    # CRITICAL Call build_workflow(config_file, retval) in a subprocess.
-    # Because Python on Linux does not ever free virtual memory (VM), running the
-    # workflow construction jailed within a process preempts excessive VM buildup.
-    with Manager() as mgr:
-        from .workflow import build_workflow
-
-        retval = mgr.dict()
-        p = Process(target=build_workflow, args=(str(config_file), retval))
-        p.start()
-        p.join()
-
-        retcode = p.exitcode or retval.get("return_code", 0)
-        nibabies_wf = retval.get("workflow", None)
-
-    # CRITICAL Load the config from the file. This is necessary because the ``build_workflow``
-    # function executed constrained in a process may change the config (and thus the global
-    # state of NiBabies).
-    config.load(config_file)
+    if "participant" in config.workflow.analysis_level:
+        nibabies_wf = init_nibabies_wf()
+        if nibabies_wf is None:
+            sys.exit(EX_SOFTWARE)
 
     if config.execution.reports_only:
         sys.exit(int(retcode > 0))
@@ -70,9 +57,6 @@ def main():
 
     if config.execution.boilerplate_only:
         sys.exit(int(retcode > 0))
-
-    # Clean up master process before running workflow, which may create forks
-    gc.collect()
 
     # Sentry tracking
     # if sentry_sdk is not None:
