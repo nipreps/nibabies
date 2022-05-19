@@ -1,7 +1,8 @@
 from itertools import product
 from pathlib import Path
-from pkg_resources import resource_filename as pkgrf
+
 from niworkflows.reports.core import Report as _Report
+from pkg_resources import resource_filename as pkgrf
 
 
 class Report(_Report):
@@ -98,6 +99,9 @@ def generate_reports(
     reportlets_dir = None
     if work_dir is not None:
         reportlets_dir = Path(work_dir) / "reportlets"
+
+    if sessions_list is None:
+        sessions_list = [None]
 
     report_errors = []
     for subject_label, session in product(subject_list, sessions_list):
