@@ -400,7 +400,7 @@ It is released under the [CC0]\
         fmap_estimators = find_estimators(
             layout=config.execution.layout,
             subject=subject_id,
-            session_id=session_id,
+            sessions=session_id,
             fmapless=False,  # config.workflow.use_syn,
             force_fmapless=False,  # config.workflow.force_syn,
         )
