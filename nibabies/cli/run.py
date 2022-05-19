@@ -149,7 +149,7 @@ def main():
         # Generate reports phase
         generate_reports(
             config.execution.participant_label,
-            config.execution.session_id,
+            config.execution.session_id or [],
             config.execution.nibabies_dir,
             config.execution.run_uuid,
             config=pkgrf("nibabies", "data/reports-spec.yml"),
