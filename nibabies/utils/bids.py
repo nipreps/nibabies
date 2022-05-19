@@ -157,7 +157,8 @@ def group_bolds_ref(*, layout, subject, session_id):
 
     # TODO: Simplify with pybids.layout.Query.OPTIONAL
     sessions = (
-        [session_id] if session_id is not False
+        [session_id]
+        if session_id is not False
         else layout.get_sessions(subject=subject, scope="raw")
     )
 
