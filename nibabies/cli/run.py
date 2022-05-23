@@ -16,6 +16,7 @@ def main():
     from .parser import parse_args
     from .workflow import build_boilerplate, build_workflow
 
+    _cwd = os.getcwd()
     # Revert OMP_NUM_THREADS + other runtime set environment variables
     atexit.register(config.restore_env)
 
@@ -39,7 +40,7 @@ def main():
             _pool = ProcessPoolExecutor(
                 max_workers=config.nipype.nprocs,
                 initializer=config._process_initializer,
-                initargs=(config.execution.cwd, config.nipype.omp_nthreads),
+                initargs=(_cwd, config.nipype.omp_nthreads),
             )
 
         # build the workflow within the same process
