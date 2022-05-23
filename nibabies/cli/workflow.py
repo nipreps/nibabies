@@ -46,6 +46,12 @@ def build_workflow(config_file, retval):
     subject_list = collect_participants(
         config.execution.layout, participant_label=config.execution.participant_label
     )
+    subjects_sessions = {
+        subject: config.execution.session_id
+        or config.execution.layout.get_sessions(scope='raw', subject=subject)
+        or [None]
+        for subject in subject_list
+    }
 
     # Called with reports only
     if config.execution.reports_only:
@@ -78,7 +84,7 @@ def build_workflow(config_file, retval):
       * Pre-run FreeSurfer's SUBJECTS_DIR: {config.execution.fs_subjects_dir}."""
     build_log.log(25, init_msg)
 
-    retval["workflow"] = init_nibabies_wf()
+    retval["workflow"] = init_nibabies_wf(subjects_sessions)
 
     # Check for FS license after building the workflow
     if not check_valid_fs_license():

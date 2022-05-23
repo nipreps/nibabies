@@ -107,7 +107,7 @@ def extract_entities(file_list):
     return {k: _unique(v) for k, v in entities.items()}
 
 
-def group_bolds_ref(*, layout, subject):
+def group_bolds_ref(*, layout, subject, session_id):
     """
     Extracts BOLD files from a BIDS dataset and combines them into buckets.
     Files in a bucket share:
@@ -123,6 +123,8 @@ def group_bolds_ref(*, layout, subject):
         Initialized BIDSLayout
     subject : str
         The subject ID
+    session_id : :obj:`str`, None, or ``False``
+        The session identifier. If ``False``, all sessions will be used (default).
 
     Outputs
     -------
@@ -153,14 +155,14 @@ def group_bolds_ref(*, layout, subject):
     # list of all BOLDS encountered
     all_bolds = []
 
-    for ses, suffix in sorted(
-        product(
-            layout.get_sessions(subject=subject, scope="raw") or (None,),
-            {
-                "bold",
-            },
-        )
-    ):
+    # TODO: Simplify with pybids.layout.Query.OPTIONAL
+    sessions = (
+        [session_id]
+        if session_id is not False
+        else layout.get_sessions(subject=subject, scope="raw")
+    )
+
+    for ses, suffix in sorted(product(sessions or (None,), {"bold"})):
         # bold files same session
         bolds = layout.get(suffix=suffix, session=ses, **base_entities)
         # some sessions may not have BOLD scans

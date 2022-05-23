@@ -1,5 +1,36 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
+#
+# STATEMENT OF CHANGES: This file is derived from sources licensed under the Apache-2.0 terms,
+# and this file has been changed.
+# The original file this work derives from is found at:
+# https://github.com/nipreps/fmriprep/blob/a4fd718/fmriprep/workflows/bold/base.py
+#
+# [January 2022] CHANGES:
+#   * `init_nibabies_wf` now takes in a dictionary composed of participant/session key/values.
+#   * `init_single_subject_wf` now differentiates between participant sessions.
+#     This change is to treat sessions as a "first-class" identifier, to better handle the
+#     potential rapid changing of brain morphometry.
+#
+# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# We support and encourage derived works from this project, please read
+# about our expectations at
+#
+#     https://www.nipreps.org/community/licensing/
+#
 """
 NiBabies base processing workflows
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +55,7 @@ from ..utils.bids import group_bolds_ref
 from .bold import init_func_preproc_wf
 
 
-def init_nibabies_wf():
+def init_nibabies_wf(participants_table):
     """
     Build *NiBabies*'s pipeline.
 
@@ -44,6 +75,10 @@ def init_nibabies_wf():
             with mock_config():
                 wf = init_nibabies_wf()
 
+    Parameters
+    ----------
+    participants_table: :obj:`dict`
+        Keys of participant labels and values of the sessions to process.
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.bids import BIDSFreeSurferDir
@@ -66,32 +101,40 @@ def init_nibabies_wf():
         if config.execution.fs_subjects_dir is not None:
             fsdir.inputs.subjects_dir = str(config.execution.fs_subjects_dir.absolute())
 
-    for subject_id in config.execution.participant_label:
-        single_subject_wf = init_single_subject_wf(subject_id)
+    for subject_id, sessions in participants_table.items():
+        for session_id in sessions:
+            single_subject_wf = init_single_subject_wf(subject_id, session_id=session_id)
 
-        single_subject_wf.config["execution"]["crashdump_dir"] = str(
-            config.execution.nibabies_dir / f"sub-{subject_id}" / "log" / config.execution.run_uuid
-        )
-        for node in single_subject_wf._get_all_nodes():
-            node.config = deepcopy(single_subject_wf.config)
-        if freesurfer:
-            nibabies_wf.connect(fsdir, "subjects_dir", single_subject_wf, "inputnode.subjects_dir")
-        else:
-            nibabies_wf.add_nodes([single_subject_wf])
+            bids_level = [f"sub-{subject_id}"]
+            if session_id:
+                bids_level.append(f"ses-{session_id}")
 
-        # Dump a copy of the config file into the log directory
-        log_dir = (
-            config.execution.nibabies_dir / f"sub-{subject_id}" / "log" / config.execution.run_uuid
-        )
-        log_dir.mkdir(exist_ok=True, parents=True)
-        config.to_filename(log_dir / "nibabies.toml")
+            log_dir = (
+                config.execution.nibabies_dir.joinpath(*bids_level)
+                / "log"
+                / config.execution.run_uuid
+            )
+
+            single_subject_wf.config["execution"]["crashdump_dir"] = str(log_dir)
+            for node in single_subject_wf._get_all_nodes():
+                node.config = deepcopy(single_subject_wf.config)
+            if freesurfer:
+                nibabies_wf.connect(
+                    fsdir, "subjects_dir", single_subject_wf, "inputnode.subjects_dir"
+                )
+            else:
+                nibabies_wf.add_nodes([single_subject_wf])
+
+            # Dump a copy of the config file into the log directory
+            log_dir.mkdir(exist_ok=True, parents=True)
+            config.to_filename(log_dir / "nibabies.toml")
 
     return nibabies_wf
 
 
-def init_single_subject_wf(subject_id):
+def init_single_subject_wf(subject_id, session_id=None):
     """
-    Organize the preprocessing pipeline for a single subject.
+    Organize the preprocessing pipeline for a single subject, at a single session.
 
     It collects and reports information about the subject, and prepares
     sub-workflows to perform anatomical and functional preprocessing.
@@ -114,6 +157,8 @@ def init_single_subject_wf(subject_id):
     ----------
     subject_id : :obj:`str`
         Subject label for this single-subject workflow.
+    session_id : :obj:`str` or None
+        Session identifier.
 
     Inputs
     ------
@@ -130,10 +175,15 @@ def init_single_subject_wf(subject_id):
     from ..utils.misc import fix_multi_source_name
     from .anatomical import init_infant_anat_wf
 
-    name = "single_subject_%s_wf" % subject_id
+    name = (
+        f"single_subject_{subject_id}_{session_id}_wf"
+        if session_id
+        else f"single_subject_{subject_id}_wf"
+    )
     subject_data = collect_data(
         config.execution.layout,
         subject_id,
+        session_id=session_id,
         task=config.execution.task_id,
         echo=config.execution.echo_idx,
         bids_filters=config.execution.bids_filters,
@@ -350,6 +400,7 @@ It is released under the [CC0]\
         fmap_estimators = find_estimators(
             layout=config.execution.layout,
             subject=subject_id,
+            sessions=session_id,
             fmapless=False,  # config.workflow.use_syn,
             force_fmapless=False,  # config.workflow.force_syn,
         )
@@ -374,7 +425,11 @@ tasks and sessions), the following preprocessing was performed.
     # 3) total readout time
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
-    _, bold_groupings = group_bolds_ref(layout=config.execution.layout, subject=subject_id)
+    _, bold_groupings = group_bolds_ref(
+        layout=config.execution.layout,
+        subject=subject_id,
+        session_id=session_id,
+    )
     if any(not x for x in bold_groupings):
         print("No BOLD files found for one or more reference groupings")
         return workflow
