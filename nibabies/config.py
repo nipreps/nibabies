@@ -506,9 +506,7 @@ class execution(_Config):
 # These variables are not necessary anymore
 del _fs_license
 del _exec_env
-del _nipype_ver
 del _templateflow_home
-del _tf_ver
 del _free_mem_at_start
 del _oc_limit
 del _oc_policy
