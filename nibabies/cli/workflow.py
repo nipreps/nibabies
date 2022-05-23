@@ -10,7 +10,7 @@ a hard-limited memory-scope.
 """
 
 
-def build_workflow():
+def build_workflow(config_file):
     """Create the Nipype Workflow that supports the whole execution graph."""
     from niworkflows.utils.bids import check_pipeline_version, collect_participants
     from niworkflows.utils.misc import check_valid_fs_license
@@ -20,6 +20,8 @@ def build_workflow():
     from ..utils.misc import check_deps
     from ..workflows.base import init_nibabies_wf
 
+    # initalize config
+    config.load(config_file)
     build_logger = config.loggers.workflow
 
     nibabies_dir = config.execution.nibabies_dir

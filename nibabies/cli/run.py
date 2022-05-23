@@ -43,8 +43,13 @@ def main():
                 initargs=(_cwd, config.nipype.omp_nthreads),
             )
 
+        config_file = config.execution.work_dir / config.execution.run_uuid / "config.toml"
+        config_file.parent.mkdir(exist_ok=True, parents=True)
+        config.to_filename(config_file)
+
         # build the workflow within the same process
-        retval = build_workflow()
+        # it still needs to be saved / loaded to be properly initialized
+        retval = build_workflow(config_file)
         retcode = retval['return_code']
         nibabies_wf = retval['workflow']
 
