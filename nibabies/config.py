@@ -80,7 +80,7 @@ except ImportError:
     # <= 3.7
     from importlib_metadata import version as get_version
 
-__version__ = get_version("mriqc")
+__version__ = get_version("nibabies")
 _pre_exec_env = dict(os.environ)
 
 # Disable NiPype etelemetry always
