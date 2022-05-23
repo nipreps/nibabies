@@ -517,6 +517,8 @@ class workflow(_Config):
 
     age_months = None
     """Age (in months)"""
+    analysis_level = "participant"
+    """Level of analysis."""
     anat_only = False
     """Execute the anatomical preprocessing only."""
     aroma_err_on_warn = None
