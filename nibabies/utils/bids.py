@@ -6,7 +6,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Union
+from typing import IO, List, Union
 
 
 @dataclass
@@ -17,7 +17,7 @@ class BOLDGrouping:
     pe_dir: str
     readout: float
     multiecho_id: str = None
-    files: list[IO] = field(default_factory=list)
+    files: List[IO] = field(default_factory=list)
 
     @property
     def name(self) -> str:
