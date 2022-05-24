@@ -428,7 +428,7 @@ tasks and sessions), the following preprocessing was performed.
     bold_groupings = group_bolds_ref(
         layout=config.execution.layout,
         subject=subject_id,
-        session_id=session_id,
+        sessions=session_id,
     )
 
     func_preproc_wfs = []
