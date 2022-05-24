@@ -4,7 +4,27 @@
 import json
 import os
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import IO, Union
+
+
+@dataclass
+class BOLDGrouping:
+    """This class is used to facilitate the grouping of BOLD series."""
+
+    session: Union[str, None]
+    pe_dir: str
+    readout: float
+    multiecho_id: str = None
+    files: list[IO] = field(default_factory=list)
+
+    @property
+    def name(self) -> str:
+        return f"{self.session}-{self.pe_dir}-{self.readout}-{self.multiecho_id}"
+
+    def add_file(self, fl) -> None:
+        self.files.append(fl)
 
 
 def write_bidsignore(deriv_dir):
@@ -107,7 +127,7 @@ def extract_entities(file_list):
     return {k: _unique(v) for k, v in entities.items()}
 
 
-def group_bolds_ref(*, layout, subject, session_id):
+def group_bolds_ref(*, layout, subject, sessions=None):
     """
     Extracts BOLD files from a BIDS dataset and combines them into buckets.
     Files in a bucket share:
@@ -123,8 +143,7 @@ def group_bolds_ref(*, layout, subject, session_id):
         Initialized BIDSLayout
     subject : str
         The subject ID
-    session_id : :obj:`str`, None, or ``False``
-        The session identifier. If ``False``, all sessions will be used (default).
+    sessions : None
 
     Outputs
     -------
@@ -136,8 +155,8 @@ def group_bolds_ref(*, layout, subject, session_id):
     Limitations
     -----------
     Single-band reference (sbref) are excluded.
-    Does not group multi-echo data.
     """
+    import re
     from contextlib import suppress
     from itertools import product
 
@@ -148,19 +167,12 @@ def group_bolds_ref(*, layout, subject, session_id):
         "extension": (".nii", ".nii.gz"),
         "scope": "raw",  # Ensure derivatives are not captured
     }
-    # list of tuples with unique combinations
-    combinations = []
-    # list of lists containing filenames that apply per combination
-    files = []
+    # dictionary containing unique Groupings and files
+    groupings = {}
     # list of all BOLDS encountered
     all_bolds = []
 
-    # TODO: Simplify with pybids.layout.Query.OPTIONAL
-    sessions = (
-        [session_id]
-        if session_id is not False
-        else layout.get_sessions(subject=subject, scope="raw")
-    )
+    sessions = sessions if sessions else layout.get_sessions(subject=subject, scope="raw")
 
     for ses, suffix in sorted(product(sessions or (None,), {"bold"})):
         # bold files same session
@@ -169,7 +181,13 @@ def group_bolds_ref(*, layout, subject, session_id):
         if bolds is None:
             continue
 
-        for bold in bolds:
+        for i, bold in enumerate(bolds):
+            multiecho_id = None
+            # multi-echo should be grouped together
+            if 'echo' in bold.entities:
+                # create unique id by dropping "_echo-{i}"
+                multiecho_id = re.sub(r"_echo-\d+", "", bold.filename)
+
             # session, pe, ro
             meta = bold.get_metadata()
             pe_dir = meta.get("PhaseEncodingDirection")
@@ -180,36 +198,38 @@ def group_bolds_ref(*, layout, subject, session_id):
             if ro is not None:
                 meta.update({"TotalReadoutTime": ro})
 
-            comb = (ses, pe_dir, ro)
+            grouping = BOLDGrouping(
+                session=ses,
+                pe_dir=pe_dir,
+                readout=ro,
+                multiecho_id=multiecho_id,
+            )
 
             if any(v is None for v in (pe_dir, ro)):
                 # cannot be certain so treat as unique
-                combinations.append(comb)
-                files.append([bold.path])
-            elif comb in combinations:
-                # do not add a new entry to the combinations
-                # instead append the file to the existing bucket
-                idx = combinations.index(comb)
-                files[idx].append(bold.path)
+                grouping.add_file(bold.path)
+                groupings[f'unknown{i}'] = grouping
             else:
-                # add a new entry and start a file bucket
-                combinations.append(comb)
-                files.append([bold.path])
+                try:
+                    grouping = groupings[grouping.name]
+                except KeyError:
+                    groupings[grouping.name] = grouping
+
+                grouping.add_file(bold.path)
 
         all_bolds += bolds
 
-        if (len(combinations) != len(files)) or (len(all_bolds) != sum([len(x) for x in files])):
+        if len(all_bolds) != sum([len(g.files) for _, g in groupings.items()]):
             msg = f"""Error encountered when grouping BOLD runs.
-Combinations: {combinations}
-Sorted files: {files}
+Combinations: {groupings}
 BOLD files: {bolds}
 
-Please share this information with the nibabies developers at:
+Please file a bug-report with the nibabies developers at:
 https://github.com/nipreps/nibabies/issues/new/choose
 """
             raise RuntimeError(msg)
 
-    return combinations, files
+    return groupings
 
 
 def validate_input_dir(exec_env, bids_dir, participant_label):

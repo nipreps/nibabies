@@ -425,24 +425,25 @@ tasks and sessions), the following preprocessing was performed.
     # 3) total readout time
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
-    _, bold_groupings = group_bolds_ref(
+    bold_groupings = group_bolds_ref(
         layout=config.execution.layout,
         subject=subject_id,
         session_id=session_id,
     )
-    if any(not x for x in bold_groupings):
-        print("No BOLD files found for one or more reference groupings")
-        return workflow
 
     func_preproc_wfs = []
     has_fieldmap = bool(fmap_estimators)
-    for idx, bold_files in enumerate(bold_groupings):
+    for idx, grouping in enumerate(bold_groupings):
         bold_ref_wf = init_epi_reference_wf(
             auto_bold_nss=True,
             name=f"bold_reference_wf{idx}",
             omp_nthreads=config.nipype.omp_nthreads,
         )
-        bold_ref_wf.inputs.inputnode.in_files = bold_files
+        bold_files = grouping.files
+        bold_ref_wf.inputs.inputnode.in_files = grouping.files
+
+        if grouping.multiecho_id is not None:
+            bold_files = [bold_files]
         for idx, bold_file in enumerate(bold_files):
             func_preproc_wf = init_func_preproc_wf(
                 bold_file,
