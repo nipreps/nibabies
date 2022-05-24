@@ -68,10 +68,7 @@ echoes following the method described in [@posse_t2s].
 The optimally combined time series was carried forward as the *preprocessed BOLD*.
 """
 
-    inputnode = pe.Node(
-        niu.IdentityInterface(fields=["bold_file", "bold_mask"]),
-        name="inputnode"
-    )
+    inputnode = pe.Node(niu.IdentityInterface(fields=["bold_file", "bold_mask"]), name="inputnode")
 
     outputnode = pe.Node(niu.IdentityInterface(fields=["bold"]), name="outputnode")
 
