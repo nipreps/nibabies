@@ -400,7 +400,7 @@ It is released under the [CC0]\
         fmap_estimators = find_estimators(
             layout=config.execution.layout,
             subject=subject_id,
-            sessions=session_id,
+            sessions=[session_id],
             fmapless=False,  # config.workflow.use_syn,
             force_fmapless=False,  # config.workflow.force_syn,
         )
@@ -428,12 +428,12 @@ tasks and sessions), the following preprocessing was performed.
     bold_groupings = group_bolds_ref(
         layout=config.execution.layout,
         subject=subject_id,
-        sessions=session_id,
+        sessions=[session_id],
     )
 
     func_preproc_wfs = []
     has_fieldmap = bool(fmap_estimators)
-    for idx, grouping in enumerate(bold_groupings):
+    for idx, grouping in enumerate(bold_groupings.values()):
         bold_ref_wf = init_epi_reference_wf(
             auto_bold_nss=True,
             name=f"bold_reference_wf{idx}",
