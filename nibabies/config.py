@@ -68,54 +68,39 @@ The :py:mod:`config` is responsible for other conveniency actions.
 
 """
 import os
+import random
 import sys
-from multiprocessing import set_start_method
+from pathlib import Path
+from time import strftime
+from uuid import uuid4
+
+try:
+    from importlib.metadata import version as get_version
+except ImportError:
+    # <= 3.7
+    from importlib_metadata import version as get_version
+
+__version__ = get_version("nibabies")
+_pre_exec_env = dict(os.environ)
 
 # Disable NiPype etelemetry always
 _disable_et = bool(os.getenv("NO_ET") is not None or os.getenv("NIPYPE_NO_ET") is not None)
 os.environ["NIPYPE_NO_ET"] = "1"
 os.environ["NO_ET"] = "1"
 
-CONFIG_FILENAME = "nibabies.toml"
-
-try:
-    set_start_method("forkserver")
-except RuntimeError:
-    pass  # context has been already set
-finally:
-    # Defer all custom import for after initializing the forkserver and
-    # ignoring the most annoying warnings
-    import random
-    from pathlib import Path
-    from time import strftime
-    from uuid import uuid4
-
-    from nipype import __version__ as _nipype_ver
-    from templateflow import __version__ as _tf_ver
-
-    from . import __version__
-
-if not hasattr(sys, "_is_pytest_session"):
-    sys._is_pytest_session = False  # Trick to avoid sklearn's FutureWarnings
-# Disable all warnings in main and children processes only on production versions
-if not any(
-    (
-        "+" in __version__,
-        __version__.endswith(".dirty"),
-        os.getenv("NIBABIES_DEV", "0").lower() in ("1", "on", "true", "y", "yes"),
-    )
-):
-    from ._warnings import logging
-
-    os.environ["PYTHONWARNINGS"] = "ignore"
-elif os.getenv("NIBABIES_WARNINGS", "0").lower() in ("1", "on", "true", "y", "yes"):
-    # allow disabling warnings on development versions
-    # https://github.com/nipreps/fmriprep/pull/2080#discussion_r409118765
-    from ._warnings import logging
-
-    os.environ["PYTHONWARNINGS"] = "ignore"
-else:
+_yes_flags = ("1", "on", "true", "y", "yes")
+# Only show warnings if requested
+if os.getenv("NIBABIES_SHOW_WARNINGS", "0").lower() in _yes_flags:
     import logging
+else:
+    from ._warnings import logging
+
+    if not hasattr(sys, "_is_pytest_session"):
+        sys._is_pytest_session = False  # Trick to avoid sklearn's FutureWarnings
+
+    if "+" not in __version__ or not __version__.endswith(".dirty"):
+        # Disable all warnings in main and children processes only on production versions
+        os.environ["PYTHONWARNINGS"] = "ignore"
 
 logging.addLevelName(25, "IMPORTANT")  # Add a new level between INFO and WARNING
 logging.addLevelName(15, "VERBOSE")  # Add a new level between INFO and DEBUG
@@ -143,7 +128,7 @@ if os.getenv("IS_DOCKER_8395080871"):
     _cgroup = Path("/proc/1/cgroup")
     if _cgroup.exists() and "docker" in _cgroup.read_text():
         _docker_ver = os.getenv("DOCKER_VERSION_8395080871")
-        _exec_env = "nibabies-docker" if _docker_ver else "docker"
+        _exec_env = "docker"
     del _cgroup
 
 _fs_license = os.getenv("FS_LICENSE")
@@ -153,9 +138,7 @@ if not _fs_license and os.getenv("FREESURFER_HOME"):
         _fs_license = str(Path(_fs_home) / "license.txt")
     del _fs_home
 
-_templateflow_home = Path(
-    os.getenv("TEMPLATEFLOW_HOME", os.path.join(os.getenv("HOME"), ".cache", "templateflow"))
-)
+_templateflow_home = Path(os.getenv("TEMPLATEFLOW_HOME", Path.home() / ".cache" / "templateflow"))
 
 try:
     from psutil import virtual_memory
@@ -182,6 +165,32 @@ try:
 except Exception:
     pass
 
+_memory_gb = None
+try:
+    if "linux" in sys.platform:
+        with open("/proc/meminfo", "r") as f_in:
+            _meminfo_lines = f_in.readlines()
+            _mem_total_line = [line for line in _meminfo_lines if "MemTotal" in line][0]
+            _mem_total = float(_mem_total_line.split()[1])
+            _memory_gb = _mem_total / (1024.0**2)
+    elif "darwin" in sys.platform:
+        _mem_str = os.popen("sysctl hw.memsize").read().strip().split(" ")[-1]
+        _memory_gb = float(_mem_str) / (1024.0**3)
+except Exception:
+    pass
+
+_available_cpus = os.cpu_count()
+# attempt a more accurate CPU count (PID restriction, etc)
+try:
+    import psutil
+
+    _available_cpus = len(psutil.Process().cpu_affinity())
+except (AttributeError, ImportError, NotImplementedError):
+    if hasattr(os, "sched_getaffinity"):
+        _available_cpus = len(os.sched_getaffinity(0))
+
+# Reduce numpy's vms by limiting OMP_NUM_THREADS
+_default_omp_threads = int(os.getenv("OMP_NUM_THREADS", _available_cpus))
 
 # Debug modes are names that influence the exposure of internal details to
 # the user, either through additional derivatives or increased verbosity
@@ -265,12 +274,14 @@ class environment(_Config):
     """Linux's kernel virtual memory overcommit policy."""
     overcommit_limit = _oc_limit
     """Linux's kernel virtual memory overcommit limits."""
-    nipype_version = _nipype_ver
+    nipype_version = get_version("nipype")
     """Nipype's current version."""
-    templateflow_version = _tf_ver
+    templateflow_version = get_version("templateflow")
     """The TemplateFlow client version installed."""
     version = __version__
     """*NiBabies*'s version."""
+    _pre_env = _pre_exec_env
+    """Environmental variables set prior to execution."""
 
 
 class nipype(_Config):
@@ -282,9 +293,9 @@ class nipype(_Config):
     """Run NiPype's tool to enlist linked libraries for every interface."""
     memory_gb = None
     """Estimation in GB of the RAM this workflow can allocate at any given time."""
-    nprocs = os.cpu_count()
+    nprocs = _available_cpus
     """Number of processes (compute tasks) that can be run in parallel (multiprocessing only)."""
-    omp_nthreads = None
+    omp_nthreads = _default_omp_threads
     """Number of CPUs a single process can access for multithreaded execution."""
     plugin = "MultiProc"
     """NiPype's execution plugin."""
@@ -495,9 +506,7 @@ class execution(_Config):
 # These variables are not necessary anymore
 del _fs_license
 del _exec_env
-del _nipype_ver
 del _templateflow_home
-del _tf_ver
 del _free_mem_at_start
 del _oc_limit
 del _oc_policy
@@ -508,6 +517,8 @@ class workflow(_Config):
 
     age_months = None
     """Age (in months)"""
+    analysis_level = "participant"
+    """Level of analysis."""
     anat_only = False
     """Execute the anatomical preprocessing only."""
     aroma_err_on_warn = None
@@ -745,3 +756,20 @@ def init_spaces(checkpoint=True):
 
     # Make the SpatialReferences object available
     workflow.spaces = spaces
+
+
+def _process_initializer(cwd, omp_nthreads):
+    """Initialize the environment of the child process."""
+    os.chdir(cwd)
+    os.environ["NIPYPE_NO_ET"] = "1"
+    os.environ["OMP_NUM_THREADS"] = f"{omp_nthreads}"
+
+
+def restore_env():
+    """Restore the original environment."""
+
+    for k in os.environ.keys():
+        if k in environment._pre_env:
+            os.environ[k] = environment._pre_env[k]
+        else:
+            del os.environ[k]

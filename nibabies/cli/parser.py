@@ -796,8 +796,13 @@ applied."""
     if missing_subjects:
         parser.error(
             "One or more participant labels were not found in the BIDS directory: "
-            "%s." % ", ".join(missing_subjects)
+            f"{', '.join(missing_subjects)}."
         )
 
     config.execution.participant_label = sorted(participant_label)
     config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
+
+    # finally, write config to file
+    config_file = config.execution.work_dir / config.execution.run_uuid / "config.toml"
+    config_file.parent.mkdir(exist_ok=True, parents=True)
+    config.to_filename(config_file)
