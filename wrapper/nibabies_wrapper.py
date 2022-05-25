@@ -26,7 +26,7 @@ __bugreports__ = 'https://github.com/nipreps/nibabies/issues'
 MISSING = """
 Image '{}' is missing
 Would you like to download? [Y/n] """
-PKG_PATH = "/opt/conda/lib/python3.8/site-packages"
+PKG_PATH = "/opt/conda/lib/python3.9/site-packages"
 TF_TEMPLATES = (
     "MNI152Lin",
     "MNI152NLin2009cAsym",
