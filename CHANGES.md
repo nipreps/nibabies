@@ -1,3 +1,14 @@
+22.1.0 (TBD)
+============
+A new minor release!
+
+22.1.0rc0 (May 25, 2022)
+------------------------
+* DOCKER: Bump Python to 3.9 (#221)
+* FIX: Vastly improve multi-echo handling (#220)
+* RF/ENH: Rework workflow generation (#219)
+
+
 22.0.2 (May 11, 2022)
 ---------------------
 A bug-fix release in the 22.0.x series.
