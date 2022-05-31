@@ -1,16 +1,18 @@
 # Use infant_recon_all to generate subcortical segmentations and cortical parcellations
 
-from nipype.interfaces import freesurfer as fs
-from nipype.interfaces import utility as niu
-from nipype.pipeline import engine as pe
-from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
-from smriprep.workflows.surfaces import init_gifti_surface_wf
-
-from ...interfaces.freesurfer import InfantReconAll
-
 
 def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
+    from nipype.interfaces import freesurfer as fs
+    from nipype.interfaces import utility as niu
+    from nipype.pipeline import engine as pe
     from niworkflows.engine.workflows import LiterateWorkflow
+    from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
+    from niworkflows.interfaces.freesurfer import (
+        PatchedRobustRegister as RobustRegister,
+    )
+    from smriprep.workflows.surfaces import init_gifti_surface_wf
+
+    from nibabies.interfaces.freesurfer import InfantReconAll
 
     wf = LiterateWorkflow(name=name)
     inputnode = pe.Node(
@@ -59,8 +61,9 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     # TODO: calculate full anat -> fsnative transform?
     get_tal_lta = pe.Node(
         niu.Function(function=_get_talairch_lta),
-        name="get_tal_xfm",
+        name="get_tal_lta",
     )
+
     fsnative2anat_xfm = pe.Node(
         LTAConvert(out_lta=True, invert=True),
         name="fsnative2anat_xfm",
@@ -74,7 +77,6 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     if use_aseg:
-        # TODO: Add precomputed segmentation upon new babyFS rel
         wf.connect(inputnode, "anat_aseg", recon, "aseg_file")
 
     # fmt: off
@@ -125,8 +127,9 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
         (fsnative2anat_xfm, outputnode, [
             ('out_lta', 'fsnative2anat_xfm'),
         ]),
-        (fsnative2anat_xfm, gifti_surface_wf, [
-            ('out_lta', 'inputnode.fsnative2t1w_xfm')]),
+        # Just use an identity transform for surfaces
+        # (fsnative2anat_xfm, gifti_surface_wf, [
+        #     ('out_lta', 'inputnode.fsnative2t1w_xfm')]),
         (gifti_surface_wf, outputnode, [
             ('outputnode.surfaces', 'surfaces'),
         ]),
