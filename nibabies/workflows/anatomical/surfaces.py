@@ -55,7 +55,11 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
 
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
-    fssource = pe.Node(nio.FreeSurferSource(), name='fssource')
+    fssource = pe.Node(
+        nio.FreeSurferSource(),
+        name='fssource',
+        run_without_submitting=True
+    )
 
     fsnative2anat_xfm = pe.Node(
         RobustRegister(auto_sens=True, est_int_scale=True),
@@ -105,17 +109,17 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
         ]),
         (inputnode, fsnative2anat_xfm, [('anat_skullstripped', 'target_file')]),
         (fssource, fsnative2anat_xfm, [
-            (('norm', _replace_mgz), 'source_file')
-        ])
+            (('norm', _replace_mgz), 'source_file'),
+        ]),
         (fsnative2anat_xfm, anat2fsnative_xfm, [('out_reg_file', 'in_lta')]),
         (fssource, aparc2nii, [
-            ('aseg_aparc', 'in_file'),
+            ('aparc_aseg', 'in_file'),
         ]),
         (aparc2nii, outputnode, [
             ('out_file', 'anat_aparc'),
         ]),
         (fsnative2anat_xfm, outputnode, [
-            ('out', 'fsnative2anat_xfm'),
+            ('out_reg_file', 'fsnative2anat_xfm'),
         ]),
         (anat2fsnative_xfm, outputnode, [
             ('out_lta', 'anat2fsnative_xfm'),
