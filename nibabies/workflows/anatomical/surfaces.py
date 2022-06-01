@@ -55,11 +55,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
 
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
-    fssource = pe.Node(
-        nio.FreeSurferSource(),
-        name='fssource',
-        run_without_submitting=True
-    )
+    fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
 
     fsnative2anat_xfm = pe.Node(
         RobustRegister(auto_sens=True, est_int_scale=True),
