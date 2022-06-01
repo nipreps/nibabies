@@ -55,12 +55,6 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
 
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
-
-    # fsnative2anat_xfm = pe.Node(
-    #     niu.Function(function=_create_identity_lta),
-    #     name="fsnative2anat_xfm",
-    # )
-
     fssource = pe.Node(nio.FreeSurferSource(), name='fssource')
 
     fsnative2anat_xfm = pe.Node(
@@ -91,8 +85,6 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('anat_skullstripped', 'mask_file'),
             ('subject_id', 'subject_id'),
         ]),
-        (inputnode, fsnative2anat_xfm, [('anat_skullstripped', 'in_file')]),
-        (fsnative2anat_xfm, anat2fsnative_xfm, [('out', 'in_lta')]),
         (gen_recon_outdir, recon, [
             ('out', 'outdir'),
         ]),
@@ -108,15 +100,14 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('subject_id', 'inputnode.subject_id'),
             (('outdir', _parent), 'inputnode.subjects_dir'),
         ]),
-        # (recon, get_aparc, [
-        #     ('outdir', 'fs_subject_dir'),
-        # ]),
-        # (recon, get_aseg, [
-        #     ('outdir', 'fs_subject_dir'),
-        # ]),
         (fssource, outputnode, [
             (('aseg', _replace_mgz), 'anat_aseg'),
         ]),
+        (inputnode, fsnative2anat_xfm, [('anat_skullstripped', 'target_file')]),
+        (fssource, fsnative2anat_xfm, [
+            (('norm', _replace_mgz), 'source_file')
+        ])
+        (fsnative2anat_xfm, anat2fsnative_xfm, [('out_reg_file', 'in_lta')]),
         (fssource, aparc2nii, [
             ('aseg_aparc', 'in_file'),
         ]),
@@ -130,7 +121,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('out_lta', 'anat2fsnative_xfm'),
         ]),
         (fsnative2anat_xfm, gifti_surface_wf, [
-            ('out', 'inputnode.fsnative2t1w_xfm')]),
+            ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
         (gifti_surface_wf, outputnode, [
             ('outputnode.surfaces', 'surfaces'),
         ]),
@@ -155,39 +146,3 @@ def _gen_recon_dir(subjects_dir, subject_id):
 
 def _replace_mgz(in_file):
     return in_file.replace('.mgz', '.nii.gz')
-
-# def _create_identity_lta(in_file):
-#     """`infant_recon_all` will use the masked T1w as fsnative"""
-#     from pathlib import Path
-
-#     import nitransforms as nt
-#     import numpy as np
-
-#     outfile = Path('identity.lta')
-#     xfm = nt.Affine(np.eye(4), in_file)
-#     xfm.to_filename(str(outfile), fmt='lta')
-#     return outfile
-
-
-
-# def _get_aseg(fs_subject_dir):
-#     """Fetch infant_recon_all's aparc+aseg"""
-#     from pathlib import Path
-
-#     aseg = Path(fs_subject_dir) / "mri" / "aseg.nii.gz"
-#     if not aseg.exists():
-#         raise FileNotFoundError("Could not find aseg.")
-#     return str(aseg)
-
-
-# def _get_aparc(fs_subject_dir):
-#     """Fetch infant_recon_all's aparc+aseg"""
-#     from pathlib import Path
-
-#     aparc = Path(fs_subject_dir) / "mri" / "aparc+aseg.mgz"
-#     if not aparc.exists():
-#         raise FileNotFoundError("Could not find aparc.")
-#     return str(aparc)
-
-
-
