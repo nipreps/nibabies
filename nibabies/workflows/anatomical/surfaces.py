@@ -3,6 +3,7 @@
 
 def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
     from nipype.interfaces import freesurfer as fs
+    from nipype.interfaces import io as nio
     from nipype.interfaces import utility as niu
     from nipype.pipeline import engine as pe
     from niworkflows.engine.workflows import LiterateWorkflow
@@ -55,9 +56,16 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
 
+    # fsnative2anat_xfm = pe.Node(
+    #     niu.Function(function=_create_identity_lta),
+    #     name="fsnative2anat_xfm",
+    # )
+
+    fssource = pe.Node(nio.FreeSurferSource(), name='fssource')
+
     fsnative2anat_xfm = pe.Node(
-        niu.Function(function=_create_identity_lta),
-        name="fsnative2anat_xfm",
+        RobustRegister(auto_sens=True, est_int_scale=True),
+        name='fsnative2anat_xfm',
     )
 
     anat2fsnative_xfm = pe.Node(
@@ -68,8 +76,6 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     # convert generated surfaces to GIFTIs
     gifti_surface_wf = init_gifti_surface_wf()
 
-    get_aseg = pe.Node(niu.Function(function=_get_aseg), name="get_aseg")
-    get_aparc = pe.Node(niu.Function(function=_get_aparc), name="get_aparc")
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     if use_aseg:
@@ -94,21 +100,25 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('subject_id', 'subject_id'),
             (('outdir', _parent), 'subjects_dir'),
         ]),
+        (recon, fssource, [
+            ('subject_id', 'subject_id'),
+            (('outdir', _parent), 'subjects_dir'),
+        ]),
         (recon, gifti_surface_wf, [
             ('subject_id', 'inputnode.subject_id'),
             (('outdir', _parent), 'inputnode.subjects_dir'),
         ]),
-        (recon, get_aparc, [
-            ('outdir', 'fs_subject_dir'),
+        # (recon, get_aparc, [
+        #     ('outdir', 'fs_subject_dir'),
+        # ]),
+        # (recon, get_aseg, [
+        #     ('outdir', 'fs_subject_dir'),
+        # ]),
+        (fssource, outputnode, [
+            (('aseg', _replace_mgz), 'anat_aseg'),
         ]),
-        (recon, get_aseg, [
-            ('outdir', 'fs_subject_dir'),
-        ]),
-        (get_aseg, outputnode, [
-            ('out', 'anat_aseg'),
-        ]),
-        (get_aparc, aparc2nii, [
-            ('out', 'in_file'),
+        (fssource, aparc2nii, [
+            ('aseg_aparc', 'in_file'),
         ]),
         (aparc2nii, outputnode, [
             ('out_file', 'anat_aparc'),
@@ -143,34 +153,41 @@ def _gen_recon_dir(subjects_dir, subject_id):
     return str(p)
 
 
-def _create_identity_lta(in_file):
-    """`infant_recon_all` will use the masked T1w as fsnative"""
-    from pathlib import Path
+def _replace_mgz(in_file):
+    return in_file.replace('.mgz', '.nii.gz')
 
-    import nitransforms as nt
-    import numpy as np
+# def _create_identity_lta(in_file):
+#     """`infant_recon_all` will use the masked T1w as fsnative"""
+#     from pathlib import Path
 
-    outfile = Path('identity.lta')
-    xfm = nt.Affine(np.eye(4), in_file)
-    xfm.to_filename(str(outfile), fmt='lta')
-    return outfile
+#     import nitransforms as nt
+#     import numpy as np
 
-
-def _get_aseg(fs_subject_dir):
-    """Fetch infant_recon_all's aparc+aseg"""
-    from pathlib import Path
-
-    aseg = Path(fs_subject_dir) / "mri" / "aseg.nii.gz"
-    if not aseg.exists():
-        raise FileNotFoundError("Could not find aseg.")
-    return str(aseg)
+#     outfile = Path('identity.lta')
+#     xfm = nt.Affine(np.eye(4), in_file)
+#     xfm.to_filename(str(outfile), fmt='lta')
+#     return outfile
 
 
-def _get_aparc(fs_subject_dir):
-    """Fetch infant_recon_all's aparc+aseg"""
-    from pathlib import Path
 
-    aparc = Path(fs_subject_dir) / "mri" / "aparc+aseg.mgz"
-    if not aparc.exists():
-        raise FileNotFoundError("Could not find aparc.")
-    return str(aparc)
+# def _get_aseg(fs_subject_dir):
+#     """Fetch infant_recon_all's aparc+aseg"""
+#     from pathlib import Path
+
+#     aseg = Path(fs_subject_dir) / "mri" / "aseg.nii.gz"
+#     if not aseg.exists():
+#         raise FileNotFoundError("Could not find aseg.")
+#     return str(aseg)
+
+
+# def _get_aparc(fs_subject_dir):
+#     """Fetch infant_recon_all's aparc+aseg"""
+#     from pathlib import Path
+
+#     aparc = Path(fs_subject_dir) / "mri" / "aparc+aseg.mgz"
+#     if not aparc.exists():
+#         raise FileNotFoundError("Could not find aparc.")
+#     return str(aparc)
+
+
+
