@@ -55,18 +55,14 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
 
-    # these files are created by babyFS, but transforms are for masked anatomicals
-    # https://github.com/freesurfer/freesurfer/blob/
-    # 8b40551f096294cc6603ce928317b8df70bce23e/infant/infant_recon_all#L744
-    # TODO: calculate full anat -> fsnative transform?
-    get_tal_lta = pe.Node(
-        niu.Function(function=_get_talairch_lta),
-        name="get_tal_lta",
+    fsnative2anat_xfm = pe.Node(
+        niu.Function(function=_create_identity_lta),
+        name="fsnative2anat_xfm",
     )
 
-    fsnative2anat_xfm = pe.Node(
+    anat2fsnative_xfm = pe.Node(
         LTAConvert(out_lta=True, invert=True),
-        name="fsnative2anat_xfm",
+        name="anat2fsnative_xfm",
     )
 
     # convert generated surfaces to GIFTIs
@@ -89,6 +85,8 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('anat_skullstripped', 'mask_file'),
             ('subject_id', 'subject_id'),
         ]),
+        (inputnode, fsnative2anat_xfm, [('anat_skullstripped', 'in_file')]),
+        (fsnative2anat_xfm, anat2fsnative_xfm, [('out', 'in_lta')]),
         (gen_recon_outdir, recon, [
             ('out', 'outdir'),
         ]),
@@ -115,21 +113,14 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
         (aparc2nii, outputnode, [
             ('out_file', 'anat_aparc'),
         ]),
-        (recon, get_tal_lta, [
-            ('outdir', 'fs_subject_dir'),
-        ]),
-        (get_tal_lta, outputnode, [
-            ('out', 'anat2fsnative_xfm'),
-        ]),
-        (get_tal_lta, fsnative2anat_xfm, [
-            ('out', 'in_lta'),
-        ]),
         (fsnative2anat_xfm, outputnode, [
-            ('out_lta', 'fsnative2anat_xfm'),
+            ('out', 'fsnative2anat_xfm'),
         ]),
-        # Just use an identity transform for surfaces
-        # (fsnative2anat_xfm, gifti_surface_wf, [
-        #     ('out_lta', 'inputnode.fsnative2t1w_xfm')]),
+        (anat2fsnative_xfm, outputnode, [
+            ('out_lta', 'anat2fsnative_xfm'),
+        ]),
+        (fsnative2anat_xfm, gifti_surface_wf, [
+            ('out', 'inputnode.fsnative2t1w_xfm')]),
         (gifti_surface_wf, outputnode, [
             ('outputnode.surfaces', 'surfaces'),
         ]),
@@ -152,14 +143,17 @@ def _gen_recon_dir(subjects_dir, subject_id):
     return str(p)
 
 
-def _get_talairch_lta(fs_subject_dir):
-    """Fetch pre-computed transform from infant_recon_all"""
+def _create_identity_lta(in_file):
+    """`infant_recon_all` will use the masked T1w as fsnative"""
     from pathlib import Path
 
-    xfm = Path(fs_subject_dir) / "mri" / "transforms" / "niftyreg_affine.lta"
-    if not xfm.exists():
-        raise FileNotFoundError("Could not find talairach transform.")
-    return str(xfm.absolute())
+    import nitransforms as nt
+    import numpy as np
+
+    outfile = Path('identity.lta')
+    xfm = nt.Affine(np.eye(4), in_file)
+    xfm.to_filename(str(outfile), fmt='lta')
+    return outfile
 
 
 def _get_aseg(fs_subject_dir):
