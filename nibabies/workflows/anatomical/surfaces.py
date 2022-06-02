@@ -1,16 +1,19 @@
 # Use infant_recon_all to generate subcortical segmentations and cortical parcellations
 
-from nipype.interfaces import freesurfer as fs
-from nipype.interfaces import utility as niu
-from nipype.pipeline import engine as pe
-from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
-from smriprep.workflows.surfaces import init_gifti_surface_wf
-
-from ...interfaces.freesurfer import InfantReconAll
-
 
 def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
+    from nipype.interfaces import freesurfer as fs
+    from nipype.interfaces import io as nio
+    from nipype.interfaces import utility as niu
+    from nipype.pipeline import engine as pe
     from niworkflows.engine.workflows import LiterateWorkflow
+    from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
+    from niworkflows.interfaces.freesurfer import (
+        PatchedRobustRegister as RobustRegister,
+    )
+    from smriprep.workflows.surfaces import init_gifti_surface_wf
+
+    from nibabies.interfaces.freesurfer import InfantReconAll
 
     wf = LiterateWorkflow(name=name)
     inputnode = pe.Node(
@@ -52,29 +55,24 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
 
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
+    fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
 
-    # these files are created by babyFS, but transforms are for masked anatomicals
-    # https://github.com/freesurfer/freesurfer/blob/
-    # 8b40551f096294cc6603ce928317b8df70bce23e/infant/infant_recon_all#L744
-    # TODO: calculate full anat -> fsnative transform?
-    get_tal_lta = pe.Node(
-        niu.Function(function=_get_talairch_lta),
-        name="get_tal_xfm",
-    )
     fsnative2anat_xfm = pe.Node(
+        RobustRegister(auto_sens=True, est_int_scale=True),
+        name='fsnative2anat_xfm',
+    )
+
+    anat2fsnative_xfm = pe.Node(
         LTAConvert(out_lta=True, invert=True),
-        name="fsnative2anat_xfm",
+        name="anat2fsnative_xfm",
     )
 
     # convert generated surfaces to GIFTIs
     gifti_surface_wf = init_gifti_surface_wf()
 
-    get_aseg = pe.Node(niu.Function(function=_get_aseg), name="get_aseg")
-    get_aparc = pe.Node(niu.Function(function=_get_aparc), name="get_aparc")
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     if use_aseg:
-        # TODO: Add precomputed segmentation upon new babyFS rel
         wf.connect(inputnode, "anat_aseg", recon, "aseg_file")
 
     # fmt: off
@@ -94,39 +92,36 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('subject_id', 'subject_id'),
             (('outdir', _parent), 'subjects_dir'),
         ]),
+        (recon, fssource, [
+            ('subject_id', 'subject_id'),
+            (('outdir', _parent), 'subjects_dir'),
+        ]),
         (recon, gifti_surface_wf, [
             ('subject_id', 'inputnode.subject_id'),
             (('outdir', _parent), 'inputnode.subjects_dir'),
         ]),
-        (recon, get_aparc, [
-            ('outdir', 'fs_subject_dir'),
+        (fssource, outputnode, [
+            (('aseg', _replace_mgz), 'anat_aseg'),
         ]),
-        (recon, get_aseg, [
-            ('outdir', 'fs_subject_dir'),
+        (inputnode, fsnative2anat_xfm, [('anat_skullstripped', 'target_file')]),
+        (fssource, fsnative2anat_xfm, [
+            (('norm', _replace_mgz), 'source_file'),
         ]),
-        (get_aseg, outputnode, [
-            ('out', 'anat_aseg'),
-        ]),
-        (get_aparc, aparc2nii, [
-            ('out', 'in_file'),
+        (fsnative2anat_xfm, anat2fsnative_xfm, [('out_reg_file', 'in_lta')]),
+        (fssource, aparc2nii, [
+            ('aparc_aseg', 'in_file'),
         ]),
         (aparc2nii, outputnode, [
             ('out_file', 'anat_aparc'),
         ]),
-        (recon, get_tal_lta, [
-            ('outdir', 'fs_subject_dir'),
-        ]),
-        (get_tal_lta, outputnode, [
-            ('out', 'anat2fsnative_xfm'),
-        ]),
-        (get_tal_lta, fsnative2anat_xfm, [
-            ('out', 'in_lta'),
-        ]),
         (fsnative2anat_xfm, outputnode, [
-            ('out_lta', 'fsnative2anat_xfm'),
+            ('out_reg_file', 'fsnative2anat_xfm'),
+        ]),
+        (anat2fsnative_xfm, outputnode, [
+            ('out_lta', 'anat2fsnative_xfm'),
         ]),
         (fsnative2anat_xfm, gifti_surface_wf, [
-            ('out_lta', 'inputnode.fsnative2t1w_xfm')]),
+            ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
         (gifti_surface_wf, outputnode, [
             ('outputnode.surfaces', 'surfaces'),
         ]),
@@ -149,31 +144,5 @@ def _gen_recon_dir(subjects_dir, subject_id):
     return str(p)
 
 
-def _get_talairch_lta(fs_subject_dir):
-    """Fetch pre-computed transform from infant_recon_all"""
-    from pathlib import Path
-
-    xfm = Path(fs_subject_dir) / "mri" / "transforms" / "niftyreg_affine.lta"
-    if not xfm.exists():
-        raise FileNotFoundError("Could not find talairach transform.")
-    return str(xfm.absolute())
-
-
-def _get_aseg(fs_subject_dir):
-    """Fetch infant_recon_all's aparc+aseg"""
-    from pathlib import Path
-
-    aseg = Path(fs_subject_dir) / "mri" / "aseg.nii.gz"
-    if not aseg.exists():
-        raise FileNotFoundError("Could not find aseg.")
-    return str(aseg)
-
-
-def _get_aparc(fs_subject_dir):
-    """Fetch infant_recon_all's aparc+aseg"""
-    from pathlib import Path
-
-    aparc = Path(fs_subject_dir) / "mri" / "aparc+aseg.mgz"
-    if not aparc.exists():
-        raise FileNotFoundError("Could not find aparc.")
-    return str(aparc)
+def _replace_mgz(in_file):
+    return in_file.replace('.mgz', '.nii.gz')
