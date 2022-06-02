@@ -2,6 +2,10 @@
 ============
 A new minor release!
 
+22.1.0rc1 (June 2, 2022)
+------------------------
+* FIX: Correct fsnative <-> anatomical transforms (#223)
+
 22.1.0rc0 (May 25, 2022)
 ------------------------
 * DOCKER: Bump Python to 3.9 (#221)
