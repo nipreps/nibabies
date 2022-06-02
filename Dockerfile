@@ -208,7 +208,7 @@ ENV FSLDIR="/opt/fsl" \
     LD_LIBRARY_PATH="/opt/fsl/lib:$LD_LIBRARY_PATH"
 
 # Install FreeSurfer
-COPY --from=mgxd/freesurfer@sha256:0cff94b8e3126a7e10bcecb89712c0852ca0d0aaf04d56e670151558f7b4715a /opt/freesurfer /opt/freesurfer
+COPY --from=nipreps/freesurfer@sha256:2ddc13f0a07b09e282a85d0a1aa715967841b1f4b734371dde98da1d1e87bed8 /opt/freesurfer /opt/freesurfer
 ENV FREESURFER_HOME="/opt/freesurfer"
 ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     FUNCTIONALS_DIR="$FREESURFER_HOME/sessions" \
