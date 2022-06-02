@@ -208,27 +208,7 @@ ENV FSLDIR="/opt/fsl" \
     LD_LIBRARY_PATH="/opt/fsl/lib:$LD_LIBRARY_PATH"
 
 # Install FreeSurfer
-RUN apt update && \
-    apt-get install -y --no-install-recommends \
-            bc \
-            libgomp1 \
-            perl \
-            tar \
-            tcsh \
-            wget \
-            vim-common \
-            libgl1-mesa-dev \
-            libsm-dev \
-            libxrender-dev \
-            libxmu-dev \
-            unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && echo "Downloading FreeSurfer + InfantFS" \
-    && mkdir -p /opt/freesurfer \
-    && curl -fSLO --retry 5 https://github.com/nipreps-containers/freesurfer/releases/download/infant-min-4a14499-fix/infant-freesurfer_dev-4a14499-min.zip \
-    && unzip infant-freesurfer_dev-4a14499-min.zip -d /opt \
-    && rm infant-freesurfer_dev-4a14499-min.zip
+COPY --from=mgxd/freesurfer@sha256:0cff94b8e3126a7e10bcecb89712c0852ca0d0aaf04d56e670151558f7b4715a /opt/freesurfer /opt/freesurfer
 ENV FREESURFER_HOME="/opt/freesurfer"
 ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     FUNCTIONALS_DIR="$FREESURFER_HOME/sessions" \
