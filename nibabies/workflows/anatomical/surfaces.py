@@ -105,7 +105,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
         (fssource, outputnode, [
             (('aseg', _replace_mgz), 'anat_aseg'),
         ]),
-        (inputnode, fsnative2anat_xfm, [('anat_skullstripped', 'target_file')]),
+        (inputnode, fsnative2anat_xfm, [('skullstripped_t1', 'target_file')]),
         (fssource, fsnative2anat_xfm, [
             (('norm', _replace_mgz), 'source_file'),
         ]),
@@ -114,7 +114,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('aparc_aseg', 'in_file'),
         ]),
         (aparc2nii, outputnode, [
-            ('out_file', 'anat_aparc'),
+            ('out_file', 'out_aparc'),
         ]),
         (fsnative2anat_xfm, outputnode, [
             ('out_reg_file', 'fsnative2anat_xfm'),
