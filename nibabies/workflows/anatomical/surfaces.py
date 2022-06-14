@@ -27,7 +27,7 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
                 "flair",
                 "skullstripped_t1",
                 "corrected_t1",
-                "ants_seg",
+                "ants_segs",
             ],
         ),
         name="inputnode",
@@ -37,8 +37,8 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
             fields=[
                 "subjects_dir",
                 "subject_id",
-                "anat2fsnative_xfm",
-                "fsnative2anat_xfm",
+                "t1w2fsnative_xfm",
+                "fsnative2t1w_xfm",
                 "surfaces",
                 "out_aseg",
                 "out_aparc",
@@ -59,14 +59,14 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     recon = pe.Node(InfantReconAll(age=age_months), name="reconall")
     fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
 
-    fsnative2anat_xfm = pe.Node(
+    fsnative2t1w_xfm = pe.Node(
         RobustRegister(auto_sens=True, est_int_scale=True),
-        name='fsnative2anat_xfm',
+        name='fsnative2t1w_xfm',
     )
 
-    anat2fsnative_xfm = pe.Node(
+    t1w2fsnative_xfm = pe.Node(
         LTAConvert(out_lta=True, invert=True),
-        name="anat2fsnative_xfm",
+        name="t1w2fsnative_xfm",
     )
 
     # convert generated surfaces to GIFTIs
@@ -75,7 +75,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     if use_aseg:
-        wf.connect(inputnode, "ants_seg", recon, "aseg_file")
+        wf.connect(inputnode, "ants_segs", recon, "aseg_file")
 
     # fmt: off
     wf.connect([
@@ -105,24 +105,24 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
         (fssource, outputnode, [
             (('aseg', _replace_mgz), 'anat_aseg'),
         ]),
-        (inputnode, fsnative2anat_xfm, [('skullstripped_t1', 'target_file')]),
-        (fssource, fsnative2anat_xfm, [
+        (inputnode, fsnative2t1w_xfm, [('skullstripped_t1', 'target_file')]),
+        (fssource, fsnative2t1w_xfm, [
             (('norm', _replace_mgz), 'source_file'),
         ]),
-        (fsnative2anat_xfm, anat2fsnative_xfm, [('out_reg_file', 'in_lta')]),
+        (fsnative2t1w_xfm, t1w2fsnative_xfm, [('out_reg_file', 'in_lta')]),
         (fssource, aparc2nii, [
             ('aparc_aseg', 'in_file'),
         ]),
         (aparc2nii, outputnode, [
             ('out_file', 'out_aparc'),
         ]),
-        (fsnative2anat_xfm, outputnode, [
-            ('out_reg_file', 'fsnative2anat_xfm'),
+        (fsnative2t1w_xfm, outputnode, [
+            ('out_reg_file', 'fsnative2t1w_xfm'),
         ]),
-        (anat2fsnative_xfm, outputnode, [
-            ('out_lta', 'anat2fsnative_xfm'),
+        (t1w2fsnative_xfm, outputnode, [
+            ('out_lta', 't1w2fsnative_xfm'),
         ]),
-        (fsnative2anat_xfm, gifti_surface_wf, [
+        (fsnative2t1w_xfm, gifti_surface_wf, [
             ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
         (gifti_surface_wf, outputnode, [
             ('outputnode.surfaces', 'surfaces'),

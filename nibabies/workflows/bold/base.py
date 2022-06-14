@@ -123,9 +123,9 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
         FreeSurfer SUBJECTS_DIR
     subject_id
         FreeSurfer subject ID
-    anat2fsnative_xfm
+    t1w2fsnative_xfm
         LTA-style affine matrix translating from T1w to FreeSurfer-conformed subject space
-    fsnative2anat_xfm
+    fsnative2t1w_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed subject space to T1w
     bold_ref
         BOLD reference file
@@ -333,8 +333,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "fmap_id",
                 "sdc_method",
                 # if reconstructing with FreeSurfer (optional)
-                "anat2fsnative_xfm",
-                "fsnative2anat_xfm",
+                "t1w2fsnative_xfm",
+                "fsnative2t1w_xfm",
                 "subject_id",
                 "subjects_dir",
             ]
@@ -596,7 +596,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             # Undefined if --fs-no-reconall, but this is safe
             ('subjects_dir', 'inputnode.subjects_dir'),
             ('subject_id', 'inputnode.subject_id'),
-            ('fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
+            ('fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
         ]),
         (bold_final, bold_reg_wf, [
             ("boldref", "inputnode.ref_bold_brain")]),
@@ -858,7 +858,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (inputnode, bold_surf_wf, [
                 ('subjects_dir', 'inputnode.subjects_dir'),
                 ('subject_id', 'inputnode.subject_id'),
-                ('anat2fsnative_xfm', 'inputnode.t1w2fsnative_xfm')]),
+                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm')]),
             (bold_t1_trans_wf, bold_surf_wf, [('outputnode.bold_t1', 'inputnode.source_file')]),
             (bold_surf_wf, outputnode, [('outputnode.surfaces', 'surfaces')]),
             (bold_surf_wf, func_derivatives_wf, [

@@ -66,10 +66,10 @@ def init_infant_anat_wf(
         Inverse transform of the above.
     subject_id
         FreeSurfer subject ID
-    anat2fsnative_xfm
+    t1w2fsnative_xfm
         LTA-style affine matrix translating from T1w to
         FreeSurfer-conformed subject space
-    fsnative2anat_xfm
+    fsnative2t1w_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed
         subject space to T1w
     surfaces
@@ -138,8 +138,8 @@ BIDS dataset."""
                 "subject_id",
                 "anat2std_xfm",
                 "std2anat_xfm",
-                "anat2fsnative_xfm",
-                "fsnative2anat_xfm",
+                "t1w2fsnative_xfm",
+                "fsnative2t1w_xfm",
                 "surfaces",
                 "anat_aseg",
                 "anat_aparc",
@@ -386,7 +386,7 @@ as target template.
             ("t2w", "inputnode.t2w"),
         ]),
         (anat_seg_wf, surface_recon_wf, [
-            ("outputnode.anat_aseg", "inputnode.ants_seg"),
+            ("outputnode.anat_aseg", "inputnode.ants_segs"),
         ]),
         (t1w_template_wf, surface_recon_wf, [
             ("outputnode.out_file", "inputnode.t1w"),
@@ -398,8 +398,8 @@ as target template.
         (surface_recon_wf, outputnode, [
             ("outputnode.subjects_dir", "subjects_dir"),
             ("outputnode.subject_id", "subject_id"),
-            ("outputnode.anat2fsnative_xfm", "anat2fsnative_xfm"),
-            ("outputnode.fsnative2anat_xfm", "fsnative2anat_xfm"),
+            ("outputnode.t1w2fsnative_xfm", "t1w2fsnative_xfm"),
+            ("outputnode.fsnative2t1w_xfm", "fsnative2t1w_xfm"),
             ("outputnode.surfaces", "surfaces"),
             ("outputnode.out_aparc", "anat_aparc"),
             ("outputnode.out_aseg", "anat_aseg"),
@@ -411,8 +411,8 @@ as target template.
         (surface_recon_wf, anat_derivatives_wf, [
             ("outputnode.out_aseg", "inputnode.t1w_fs_aseg"),
             ("outputnode.out_aparc", "inputnode.t1w_fs_aparc"),
-            ("outputnode.anat2fsnative_xfm", "inputnode.t1w2fsnative_xfm"),
-            ("outputnode.fsnative2anat_xfm", "inputnode.fsnative2t1w_xfm"),
+            ("outputnode.t1w2fsnative_xfm", "inputnode.t1w2fsnative_xfm"),
+            ("outputnode.fsnative2t1w_xfm", "inputnode.fsnative2t1w_xfm"),
             ("outputnode.surfaces", "inputnode.surfaces"),
         ]),
     ])
