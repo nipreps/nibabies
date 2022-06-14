@@ -116,6 +116,9 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
         (aparc2nii, outputnode, [
             ('out_file', 'out_aparc'),
         ]),
+        (fssource, outputnode, [
+            (('aseg', _replace_mgz), 'out_aseg'),
+        ]),
         (fsnative2t1w_xfm, outputnode, [
             ('out_reg_file', 'fsnative2t1w_xfm'),
         ]),
