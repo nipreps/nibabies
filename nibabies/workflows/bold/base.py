@@ -874,12 +874,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             )
             from .resampling import init_bold_grayords_wf
 
-            key = None
-            for space in spaces.get_spaces(nonstandard=False, dim=(3,)):
-                if "MNIInfant" in space:
-                    key = space.replace(":", "_")
-
-            assert key is not None, f"MNIInfant not found in SpatialReferences: {spaces}"
+            key = get_MNIInfant_key(spaces)
 
             # BOLD/ROIs should be in MNIInfant space
             cifti_select_std = pe.Node(
@@ -1219,3 +1214,19 @@ def get_img_orientation(imgf):
     """Return the image orientation as a string"""
     img = nb.load(imgf)
     return "".join(nb.aff2axcodes(img.affine))
+
+
+def get_MNIInfant_key(spaces):
+    """
+    Parse spaces and return matching MNIInfant space.
+    """
+    key = None
+    for space in spaces.references:
+        # str formats as <reference.name>:<reference.spec>
+        if "MNIInfant" in str(space) and "res-native" not in str(space):
+            key = str(space).replace(":", "_")
+            break
+
+    if key is None:
+        raise KeyError(f"MNIInfant not found in SpatialReferences: {spaces}")
+    return key

@@ -46,6 +46,9 @@ def _build_parser():
     def _drop_sub(value):
         return value[4:] if value.startswith("sub-") else value
 
+    def _drop_ses(value):
+        return value[4:] if value.startswith("ses-") else value
+
     def _filter_pybids_none_any(dct):
         import bids
 
@@ -134,9 +137,14 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         help="a space delimited list of participant identifiers or a single "
         "identifier (the sub- prefix can be removed)",
     )
-    # Re-enable when option is actually implemented
-    # g_bids.add_argument('-s', '--session-id', action='store', default='single_session',
-    #                     help='select a specific session to be processed')
+    g_bids.add_argument(
+        "-s",
+        "--session-id",
+        action="store",
+        nargs="+",
+        type=_drop_ses,
+        help="a space delimited list of session identifiers or a single identifier",
+    )
     # Re-enable when option is actually implemented
     # g_bids.add_argument('-r', '--run-id', action='store', default='single_run',
     #                     help='select a specific run to be processed')
@@ -788,8 +796,13 @@ applied."""
     if missing_subjects:
         parser.error(
             "One or more participant labels were not found in the BIDS directory: "
-            "%s." % ", ".join(missing_subjects)
+            f"{', '.join(missing_subjects)}."
         )
 
     config.execution.participant_label = sorted(participant_label)
     config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
+
+    # finally, write config to file
+    config_file = config.execution.work_dir / config.execution.run_uuid / "config.toml"
+    config_file.parent.mkdir(exist_ok=True, parents=True)
+    config.to_filename(config_file)

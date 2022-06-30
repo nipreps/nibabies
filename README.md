@@ -9,7 +9,7 @@
 
 Anatomical | Functional
 ---------- | ----------
-![nibabies-anat](./docs/_static/nibabies_anat.png) | ![nibabies-func](./docs/_static/nibabies_func.png)
+![nibabies-anat](https://raw.githubusercontent.com/nipreps/nibabies/master/docs/_static/nibabies_anat.png) | ![nibabies-func](https://raw.githubusercontent.com/nipreps/nibabies/master/docs/_static/nibabies_func.png)
 
 *NiBabies* is an open-source software pipeline designed to process anatomical and functional magnetic resonance imaging data.
 A member of the [NeuroImaging PREProcessing toolS (NiPreps)](https://www.nipreps.org/) family, *NiBabies* is designed and optimized for human infants between 0-2 years old.

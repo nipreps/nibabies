@@ -10,7 +10,7 @@ a hard-limited memory-scope.
 """
 
 
-def build_workflow(config_file, retval):
+def build_workflow(config_file):
     """Create the Nipype Workflow that supports the whole execution graph."""
     from niworkflows.utils.bids import check_pipeline_version, collect_participants
     from niworkflows.utils.misc import check_valid_fs_license
@@ -20,19 +20,19 @@ def build_workflow(config_file, retval):
     from ..utils.misc import check_deps
     from ..workflows.base import init_nibabies_wf
 
+    # initalize config
     config.load(config_file)
-    build_log = config.loggers.workflow
+    build_logger = config.loggers.workflow
 
     nibabies_dir = config.execution.nibabies_dir
     version = config.environment.version
 
-    retval["return_code"] = 1
-    retval["workflow"] = None
+    retval = {"return_code": 1, "workflow": None}
 
     # warn if older results exist: check for dataset_description.json in output folder
     msg = check_pipeline_version(version, nibabies_dir / "dataset_description.json")
     if msg is not None:
-        build_log.warning(msg)
+        build_logger.warning(msg)
 
     # Please note this is the input folder's dataset_description.json
     dset_desc_path = config.execution.bids_dir / "dataset_description.json"
@@ -46,12 +46,18 @@ def build_workflow(config_file, retval):
     subject_list = collect_participants(
         config.execution.layout, participant_label=config.execution.participant_label
     )
+    subjects_sessions = {
+        subject: config.execution.session_id
+        or config.execution.layout.get_sessions(scope='raw', subject=subject)
+        or [None]
+        for subject in subject_list
+    }
 
     # Called with reports only
     if config.execution.reports_only:
         from pkg_resources import resource_filename as pkgrf
 
-        build_log.log(25, "Running --reports-only on participants %s", ", ".join(subject_list))
+        build_logger.log(25, "Running --reports-only on participants %s", ", ".join(subject_list))
         retval["return_code"] = generate_reports(
             subject_list,
             nibabies_dir,
@@ -76,13 +82,13 @@ def build_workflow(config_file, retval):
     if config.execution.fs_subjects_dir:
         init_msg += f"""
       * Pre-run FreeSurfer's SUBJECTS_DIR: {config.execution.fs_subjects_dir}."""
-    build_log.log(25, init_msg)
+    build_logger.log(25, init_msg)
 
-    retval["workflow"] = init_nibabies_wf()
+    retval["workflow"] = init_nibabies_wf(subjects_sessions)
 
     # Check for FS license after building the workflow
     if not check_valid_fs_license():
-        build_log.critical(
+        build_logger.critical(
             """\
 ERROR: a valid license file is required for FreeSurfer to run. nibabies looked for an existing \
 license file at several paths, in this order: 1) command line argument ``--fs-license-file``; \
@@ -95,15 +101,15 @@ license file at several paths, in this order: 1) command line argument ``--fs-li
     # Check workflow for missing commands
     missing = check_deps(retval["workflow"])
     if missing:
-        build_log.critical(
+        build_logger.critical(
             "Cannot run nibabies. Missing dependencies:%s",
             "\n\t* ".join([""] + [f"{cmd} (Interface: {iface})" for iface, cmd in missing]),
         )
         retval["return_code"] = 127  # 127 == command not found.
         return retval
 
-    config.to_filename(config_file)
-    build_log.info(
+    # config.to_filename(config_file)
+    build_logger.info(
         "NiBabies workflow graph with %d nodes built successfully.",
         len(retval["workflow"]._get_all_nodes()),
     )
@@ -111,16 +117,13 @@ license file at several paths, in this order: 1) command line argument ``--fs-li
     return retval
 
 
-def build_boilerplate(config_file, workflow):
+def build_boilerplate(workflow):
     """Write boilerplate in an isolated process."""
     from .. import config
 
-    config.load(config_file)
     logs_path = config.execution.nibabies_dir / "logs"
     boilerplate = workflow.visit_desc()
-    citation_files = {
-        ext: logs_path / ("CITATION.%s" % ext) for ext in ("bib", "tex", "md", "html")
-    }
+    citation_files = {ext: logs_path / f"CITATION.{ext}" for ext in ("bib", "tex", "md", "html")}
 
     if boilerplate:
         # To please git-annex users and also to guarantee consistency

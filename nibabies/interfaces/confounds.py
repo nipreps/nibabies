@@ -367,7 +367,9 @@ class FMRISummary(SimpleInterface):
     output_spec = FMRISummaryOutputSpec
 
     def _run_interface(self, runtime):
-        from niworkflows.viz.plots import fMRIPlot
+        # Backwards-compatible fMRIPlot
+        # TODO: Replace with niworkflows next minor version
+        from ..utils.viz import fMRIPlot
 
         self._results["out_file"] = fname_presuffix(
             self.inputs.in_func, suffix="_fmriplot.svg", use_ext=False, newpath=runtime.cwd

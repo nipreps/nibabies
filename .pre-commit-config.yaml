@@ -10,7 +10,9 @@ repos:
     rev: 22.3.0
     hooks:
     -   id: black
+        files: ^nibabies/
 -   repo: https://github.com/pycqa/isort
     rev: 5.10.1
     hooks:
-    - id: isort
+    -   id: isort
+        files: ^nibabies/

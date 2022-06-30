@@ -208,27 +208,7 @@ ENV FSLDIR="/opt/fsl" \
     LD_LIBRARY_PATH="/opt/fsl/lib:$LD_LIBRARY_PATH"
 
 # Install FreeSurfer
-RUN apt update && \
-    apt-get install -y --no-install-recommends \
-            bc \
-            libgomp1 \
-            perl \
-            tar \
-            tcsh \
-            wget \
-            vim-common \
-            libgl1-mesa-dev \
-            libsm-dev \
-            libxrender-dev \
-            libxmu-dev \
-            unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && echo "Downloading FreeSurfer + InfantFS" \
-    && mkdir -p /opt/freesurfer \
-    && curl -fSLO --retry 5 https://github.com/nipreps-containers/freesurfer/releases/download/infant-min-4a14499-fix/infant-freesurfer_dev-4a14499-min.zip \
-    && unzip infant-freesurfer_dev-4a14499-min.zip -d /opt \
-    && rm infant-freesurfer_dev-4a14499-min.zip
+COPY --from=nipreps/freesurfer@sha256:2ddc13f0a07b09e282a85d0a1aa715967841b1f4b734371dde98da1d1e87bed8 /opt/freesurfer /opt/freesurfer
 ENV FREESURFER_HOME="/opt/freesurfer"
 ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     FUNCTIONALS_DIR="$FREESURFER_HOME/sessions" \
@@ -260,12 +240,12 @@ RUN useradd -m -s /bin/bash -G users nibabies
 WORKDIR /home/nibabies
 ENV HOME="/home/nibabies"
 
-COPY --from=nipreps/miniconda@sha256:ebbff214e6c9dc50ccc6fdbe679df1ffcbceaa45b47a75d6e34e8a064ef178da /opt/conda /opt/conda
+# py39_0525.0
+COPY --from=nipreps/miniconda@sha256:40fffd37963502dcd8549773559fc21182f52460e59e0ad6398a84faf6055641 /opt/conda /opt/conda
 
-# Installing and setting up miniconda
-RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh && \
-    bash Miniconda3-py38_4.9.2-Linux-x86_64.sh -b -p /usr/local/miniconda && \
-    rm Miniconda3-py38_4.9.2-Linux-x86_64.sh
+RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
 
 # Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
 ENV PATH="/opt/conda/bin:$PATH" \
