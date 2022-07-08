@@ -543,6 +543,8 @@ class workflow(_Config):
     """Remove the mean from fieldmaps."""
     force_syn = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation."""
+    force_reconall = False
+    """Force traditional FreeSurfer surface reconstruction instead of infant version."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     ignore = None

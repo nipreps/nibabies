@@ -15,6 +15,7 @@ def init_infant_anat_wf(
     bids_root,
     existing_derivatives,
     freesurfer,
+    hires,
     longitudinal,
     omp_nthreads,
     output_dir,
@@ -65,10 +66,10 @@ def init_infant_anat_wf(
         Inverse transform of the above.
     subject_id
         FreeSurfer subject ID
-    anat2fsnative_xfm
+    t1w2fsnative_xfm
         LTA-style affine matrix translating from T1w to
         FreeSurfer-conformed subject space
-    fsnative2anat_xfm
+    fsnative2t1w_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed
         subject space to T1w
     surfaces
@@ -91,7 +92,6 @@ def init_infant_anat_wf(
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_segmentations_wf
-    from .surfaces import init_infant_surface_recon_wf
 
     # for now, T1w only
     num_t1w = len(t1w) if t1w else 0
@@ -138,8 +138,8 @@ BIDS dataset."""
                 "subject_id",
                 "anat2std_xfm",
                 "std2anat_xfm",
-                "anat2fsnative_xfm",
-                "fsnative2anat_xfm",
+                "t1w2fsnative_xfm",
+                "fsnative2t1w_xfm",
                 "surfaces",
                 "anat_aseg",
                 "anat_aparc",
@@ -364,49 +364,55 @@ as target template.
     if not freesurfer:
         return wf
 
-    # if running with precomputed aseg, or JLF, pass the aseg along to FreeSurfer
-    use_aseg = bool(precomp_aseg) or bool(segmentation_atlases)
-    # FreeSurfer surfaces
-    surface_recon_wf = init_infant_surface_recon_wf(
-        age_months=age_months,
-        use_aseg=use_aseg,
-    )
+    if config.workflow.force_reconall:
+        from smriprep.workflows.surfaces import init_surface_recon_wf
+
+        surface_recon_wf = init_surface_recon_wf(omp_nthreads=omp_nthreads, hires=hires)
+    else:
+        from .surfaces import init_infant_surface_recon_wf
+
+        # if running with precomputed aseg, or JLF, pass the aseg along to FreeSurfer
+        use_aseg = bool(precomp_aseg or segmentation_atlases)
+        surface_recon_wf = init_infant_surface_recon_wf(
+            age_months=age_months,
+            use_aseg=use_aseg,
+        )
 
     # fmt:off
     wf.connect([
-        (anat_seg_wf, surface_recon_wf, [
-            ("outputnode.anat_aseg", "inputnode.anat_aseg"),
-        ]),
         (inputnode, surface_recon_wf, [
             ("subject_id", "inputnode.subject_id"),
             ("subjects_dir", "inputnode.subjects_dir"),
             ("t2w", "inputnode.t2w"),
         ]),
+        (anat_seg_wf, surface_recon_wf, [
+            ("outputnode.anat_aseg", "inputnode.ants_segs"),
+        ]),
         (t1w_template_wf, surface_recon_wf, [
-            ("outputnode.out_file", "inputnode.anat_orig"),
+            ("outputnode.out_file", "inputnode.t1w"),
         ]),
         (t1w_preproc_wf, surface_recon_wf, [
-            ("outputnode.t1w_brain", "inputnode.anat_skullstripped"),
-            ("outputnode.t1w_preproc", "inputnode.anat_preproc"),
+            ("outputnode.t1w_brain", "inputnode.skullstripped_t1"),
+            ("outputnode.t1w_preproc", "inputnode.corrected_t1"),
         ]),
         (surface_recon_wf, outputnode, [
             ("outputnode.subjects_dir", "subjects_dir"),
             ("outputnode.subject_id", "subject_id"),
-            ("outputnode.anat2fsnative_xfm", "anat2fsnative_xfm"),
-            ("outputnode.fsnative2anat_xfm", "fsnative2anat_xfm"),
+            ("outputnode.t1w2fsnative_xfm", "t1w2fsnative_xfm"),
+            ("outputnode.fsnative2t1w_xfm", "fsnative2t1w_xfm"),
             ("outputnode.surfaces", "surfaces"),
-            ("outputnode.anat_aparc", "anat_aparc"),
-            ("outputnode.anat_aseg", "anat_aseg"),
+            ("outputnode.out_aparc", "anat_aparc"),
+            ("outputnode.out_aseg", "anat_aseg"),
         ]),
         (surface_recon_wf, anat_reports_wf, [
             ("outputnode.subject_id", "inputnode.subject_id"),
             ("outputnode.subjects_dir", "inputnode.subjects_dir"),
         ]),
         (surface_recon_wf, anat_derivatives_wf, [
-            ("outputnode.anat_aseg", "inputnode.t1w_fs_aseg"),
-            ("outputnode.anat_aparc", "inputnode.t1w_fs_aparc"),
-            ("outputnode.anat2fsnative_xfm", "inputnode.t1w2fsnative_xfm"),
-            ("outputnode.fsnative2anat_xfm", "inputnode.fsnative2t1w_xfm"),
+            ("outputnode.out_aseg", "inputnode.t1w_fs_aseg"),
+            ("outputnode.out_aparc", "inputnode.t1w_fs_aparc"),
+            ("outputnode.t1w2fsnative_xfm", "inputnode.t1w2fsnative_xfm"),
+            ("outputnode.fsnative2t1w_xfm", "inputnode.fsnative2t1w_xfm"),
             ("outputnode.surfaces", "inputnode.surfaces"),
         ]),
     ])
