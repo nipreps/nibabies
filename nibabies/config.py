@@ -399,7 +399,7 @@ class execution(_Config):
     nibabies_dir = None
     """Root of NiBabies BIDS Derivatives dataset. Depends on output_layout."""
     notrack = False
-    """Do not monitor *nibabies* using Sentry.io."""
+    """Do not monitor *nibabies* using *migas*."""
     output_dir = None
     """Folder where derivatives will be stored."""
     me_output_echos = False
