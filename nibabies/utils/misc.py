@@ -117,6 +117,8 @@ def combine_meepi_source(in_files):
 
 def ping_migas(status='pending'):
     """Communicate with the migas telemetry server."""
+    import os
+
     import migas
 
     from ..config import execution
@@ -124,6 +126,7 @@ def ping_migas(status='pending'):
     if execution.notrack:
         return
 
+    os.environ['ENABLE_MIGAS'] = 'yes'
     session_id = None
     if execution.run_uuid:
         session_id = execution.run_uuid.split('_')[1]
