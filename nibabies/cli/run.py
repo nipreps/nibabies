@@ -13,6 +13,7 @@ def main():
     from pathlib import Path
 
     from ..utils.bids import write_bidsignore, write_derivative_description
+    from ..utils.misc import ping_migas
     from .parser import parse_args
     from .workflow import build_boilerplate, build_workflow
 
@@ -21,6 +22,10 @@ def main():
     atexit.register(config.restore_env)
 
     parse_args()
+
+    # collect telemetry information - if `--notrack` is specified,
+    # nothing is sent.
+    ping_migas()
 
     if "participant" in config.workflow.analysis_level:
         _pool = None
@@ -54,6 +59,7 @@ def main():
         nibabies_wf = retval['workflow']
 
         if nibabies_wf is None:
+            ping_migas(status='error')
             if config.execution.reports_only:
                 sys.exit(int(retcode > 0))
             sys.exit(os.EX_SOFTWARE)
@@ -62,11 +68,13 @@ def main():
             nibabies_wf.write_graph(graph2use="colored", format="svg", simple_form=True)
 
         if retcode != 0:
+            ping_migas(status='error')
             sys.exit(retcode)
 
         # generate boilerplate
         build_boilerplate(nibabies_wf)
         if config.execution.boilerplate_only:
+            ping_migas(status='success')
             sys.exit(0)
 
         gc.collect()
@@ -91,12 +99,13 @@ def main():
             nibabies_wf.run(**_plugin)
         except Exception as e:
             config.loggers.workflow.critical("nibabies failed: %s", e)
+            ping_migas(status='error')
             raise
         else:
             config.loggers.workflow.log(25, "nibabies finished successfully!")
-
             # Bother users with the boilerplate only iff the workflow went okay.
             boiler_file = config.execution.nibabies_dir / "logs" / "CITATION.md"
+            ping_migas(status='success')
             if boiler_file.exists():
                 if config.environment.exec_env in (
                     "singularity",

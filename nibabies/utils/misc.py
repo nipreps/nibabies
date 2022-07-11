@@ -2,6 +2,8 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Miscellaneous utilities."""
 
+from .. import __version__
+
 
 def fix_multi_source_name(in_files):
     """
@@ -111,3 +113,29 @@ def combine_meepi_source(in_files):
     entities = [ent for ent in in_file.split("_") if not ent.startswith("echo-")]
     basename = "_".join(entities)
     return os.path.join(base, basename)
+
+
+def ping_migas(status='pending'):
+    """Communicate with the migas telemetry server."""
+    import os
+
+    import migas
+
+    from ..config import execution
+
+    if execution.notrack:
+        return
+
+    os.environ['ENABLE_MIGAS'] = 'yes'
+    session_id = None
+    if execution.run_uuid:
+        session_id = execution.run_uuid.split('_')[1]
+
+    # TODO: check for bad versions
+    res = migas.add_project(
+        project="nipreps/nibabies",
+        project_version=__version__,
+        status=status,
+        session_id=session_id,  # uuid
+    )
+    return res
