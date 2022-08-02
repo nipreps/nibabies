@@ -1,15 +1,18 @@
-22.1.0 (TBD)
-============
-A new minor release!
+22.1.0 (August 2, 2022)
+=======================
+A new minor release! The 22.1.x series of *NiBabies* includes:
 
-22.1.0rc1 (June 2, 2022)
-------------------------
+- Improved alignment between FreeSurfer outputs and processed anatomical.
+- Decreased memory usage while running across multiple processes (default).
+- Fix to multi-echo processing in cases where an optimally combined file of all echoes was missing.
+- Fix to the subcortical CIFTI to be in *LAS* orientation.
+
+## Full Changelog
 * FIX: Correct fsnative <-> anatomical transforms (#223)
-
-22.1.0rc0 (May 25, 2022)
-------------------------
-* DOCKER: Bump Python to 3.9 (#221)
 * FIX: Vastly improve multi-echo handling (#220)
+* ENH: Add migas telemetry to nibabies (#226)
+* ENH: Add interface for reorienting images (#229)
+* DOCKER: Bump Python to 3.9 (#221)
 * RF/ENH: Rework workflow generation (#219)
 
 
