@@ -737,9 +737,6 @@ surface space.
     reorient_labels = reorient_data.clone(name="reorient_labels")
 
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
-    # gen_cifti.inputs.volume_structure_labels = str(
-    #     tf.api.get("MNI152NLin6Asym", resolution=2, atlas="HCP", suffix="dseg")
-    # )
     gen_cifti.inputs.roi_left = tf.api.get(
         "fsLR", density=fslr_density, hemi="L", desc="nomedialwall", suffix="dparc"
     )
