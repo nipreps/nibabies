@@ -7,12 +7,7 @@ def setup_migas(init_ping: bool = True) -> None:
     """
     Prepare the migas python client to communicate with a migas server.
     If `init_ping` is `True`, send an initial breadcrumb.
-
-    Does nothing if `--notrack` is used.
     """
-    if config.execution.notrack:
-        return
-
     # generate session UUID from generated run UUID
     session_id = None
     if config.execution.run_uuid:
@@ -24,12 +19,9 @@ def setup_migas(init_ping: bool = True) -> None:
         ping_migas(status='pending')
 
 
-def ping_migas(status: str = 'pending') -> dict:
+def ping_migas(*, status: str) -> dict:
     """
     Communicate with the migas telemetry server. This requires `migas.setup()` to be called.
     """
-    if config.execution.notrack:
-        return {}
-
     res = migas.add_project("nipreps/nibabies", __version__, status=status)
     return res
