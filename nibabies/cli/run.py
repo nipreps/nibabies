@@ -3,6 +3,8 @@
 """NiBabies runner."""
 from .. import config
 
+EXITCODE: int = -1
+
 
 def main():
     """Entry point."""
@@ -13,7 +15,7 @@ def main():
     from pathlib import Path
 
     from ..utils.bids import write_bidsignore, write_derivative_description
-    from ..utils.misc import ping_migas
+    from ..utils.telemetry import setup_migas
     from .parser import parse_args
     from .workflow import build_boilerplate, build_workflow
 
@@ -23,9 +25,12 @@ def main():
 
     parse_args()
 
-    # collect telemetry information - if `--notrack` is specified,
-    # nothing is sent.
-    ping_migas()
+    # collect and submit telemetry information
+    # if `--notrack` is specified, nothing is done.
+    global EXITCODE
+    if not config.execution.notrack:
+        setup_migas(init_ping=True)
+        atexit.register(_migas_exit)
 
     if "participant" in config.workflow.analysis_level:
         _pool = None
@@ -55,27 +60,27 @@ def main():
         # build the workflow within the same process
         # it still needs to be saved / loaded to be properly initialized
         retval = build_workflow(config_file)
-        retcode = retval['return_code']
+        EXITCODE = retval['return_code']
         nibabies_wf = retval['workflow']
 
-        if nibabies_wf is None:
-            ping_migas(status='error')
-            if config.execution.reports_only:
-                sys.exit(int(retcode > 0))
-            sys.exit(os.EX_SOFTWARE)
+        # exit conditions:
+        # - no workflow (--reports-only)
+        # - retcode is not 0
+        # - boilerplate only
+
+        if nibabies_wf is None and not config.execution.reports_only:
+            sys.exit(EXITCODE)
 
         if config.execution.write_graph:
             nibabies_wf.write_graph(graph2use="colored", format="svg", simple_form=True)
 
-        if retcode != 0:
-            ping_migas(status='error')
-            sys.exit(retcode)
+        if EXITCODE != 0:
+            sys.exit(EXITCODE)
 
         # generate boilerplate
         build_boilerplate(nibabies_wf)
         if config.execution.boilerplate_only:
-            ping_migas(status='success')
-            sys.exit(0)
+            sys.exit(EXITCODE)
 
         gc.collect()
 
@@ -99,13 +104,12 @@ def main():
             nibabies_wf.run(**_plugin)
         except Exception as e:
             config.loggers.workflow.critical("nibabies failed: %s", e)
-            ping_migas(status='error')
+            EXITCODE = 1
             raise
         else:
             config.loggers.workflow.log(25, "nibabies finished successfully!")
             # Bother users with the boilerplate only iff the workflow went okay.
             boiler_file = config.execution.nibabies_dir / "logs" / "CITATION.md"
-            ping_migas(status='success')
             if boiler_file.exists():
                 if config.environment.exec_env in (
                     "singularity",
@@ -145,6 +149,20 @@ def main():
             )
             write_derivative_description(config.execution.bids_dir, config.execution.nibabies_dir)
             write_bidsignore(config.execution.nibabies_dir)
+
+
+def _migas_exit() -> None:
+    """
+    Send a final crumb to the migas server signaling if the run successfully completed
+
+    This function is registered with `atexit` to run at termination.
+    """
+    global EXITCODE
+    status = 'error' if EXITCODE > 0 else 'success'
+
+    from ..utils.telemetry import ping_migas
+
+    ping_migas(status=status)
 
 
 if __name__ == "__main__":
