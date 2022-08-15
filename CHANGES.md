@@ -1,3 +1,11 @@
+22.1.1 (August 15, 2022)
+========================
+A bugfix release that includes missing files needed to run `infant_recon_all`.
+
+## Full Changelog
+* FIX: Add missing shared object for `infant_recon_all` (#231)
+* RF: `migas` reporting (#230)
+
 22.1.0 (August 2, 2022)
 =======================
 A new minor release! The 22.1.x series of *NiBabies* includes:
