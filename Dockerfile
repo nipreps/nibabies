@@ -207,7 +207,7 @@ ENV FSLDIR="/opt/fsl" \
     LD_LIBRARY_PATH="/opt/fsl/lib:$LD_LIBRARY_PATH"
 
 # Install FreeSurfer
-COPY --from=nipreps/freesurfer@sha256:119e654941a405776ac1e061cfd94d5f5710525640bc6ea76fb915d35e4b3909 /opt/freesurfer /opt/freesurfer
+COPY --from=nipreps/freesurfer@sha256:3b895fc732a7080374a15c4f976510f39c0c48dc76c030ab27316febd5e419ee /opt/freesurfer /opt/freesurfer
 ENV FREESURFER_HOME="/opt/freesurfer"
 ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     FUNCTIONALS_DIR="$FREESURFER_HOME/sessions" \
@@ -220,7 +220,6 @@ ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
 ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
-# remove build-stamp to play nice with nipype
 
 # Installing SVGO and bids-validator
 RUN npm install -g svgo@^2.3 bids-validator@1.9.0 \
