@@ -198,6 +198,7 @@ def init_single_subject_wf(subject_id, session_id=None):
     derivatives = config.execution.derivatives or {}
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     spaces = config.workflow.spaces
+    surface_sampler = config.workflow.surface_sampler
     # Make sure we always go through these two checks
     if not anat_only and not subject_data["bold"]:
         task_id = config.execution.task_id
@@ -478,6 +479,7 @@ tasks and sessions), the following preprocessing was performed.
                     ('outputnode.subject_id', 'inputnode.subject_id'),
                     ('outputnode.t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
                     ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
+                    ('outputnode.surfaces', 'inputnode.anat_giftis'),
                 ]),
             ])
             # fmt: on

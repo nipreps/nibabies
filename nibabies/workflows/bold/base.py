@@ -302,9 +302,13 @@ and co-registrations to anatomical and output spaces).
 Gridded (volumetric) resamplings were performed using `antsApplyTransforms` (ANTs),
 configured with Lanczos interpolation to minimize the smoothing
 effects of other kernels [@lanczos].
-Non-gridded (surface) resamplings were performed using `mri_vol2surf`
-(FreeSurfer).
-"""
+Non-gridded (surface) resamplings were performed using {method}..
+""".format(
+    method={"fs": "mri_vol2surf (FreeSurfer)",
+            "wb": "wb_command -volume-to-surface-mapping (Workbench)"
+            }[config.workflow.surface_sampler]
+    )
+
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -321,6 +325,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "anat2std_xfm",
                 "std2anat_xfm",
                 "template",
+                "anat_giftis",
                 # from bold reference workflow
                 "bold_ref",
                 "bold_ref_xfm",
@@ -851,6 +856,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             mem_gb=mem_gb["resampled"],
             surface_spaces=freesurfer_spaces,
             medial_surface_nan=config.workflow.medial_surface_nan,
+            project_goodvoxels=config.workflow.project_goodvoxels,
+            surface_sampler=config.workflow.surface_sampler,
             name="bold_surf_wf",
         )
         # fmt:off
@@ -858,7 +865,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (inputnode, bold_surf_wf, [
                 ('subjects_dir', 'inputnode.subjects_dir'),
                 ('subject_id', 'inputnode.subject_id'),
-                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm')]),
+                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
+                ("anat_giftis", "inputnode.anat_giftis"),
+                ("anat_mask", "inputnode.t1w_mask")]),
             (bold_t1_trans_wf, bold_surf_wf, [('outputnode.bold_t1', 'inputnode.source_file')]),
             (bold_surf_wf, outputnode, [('outputnode.surfaces', 'surfaces')]),
             (bold_surf_wf, func_derivatives_wf, [
