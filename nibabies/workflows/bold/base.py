@@ -1150,7 +1150,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         ]),
         # remaining workflow connections
         (join_sdc_echos, final_boldref_wf, [
-            ("corrected", "inputnode.bold_file"),
+            ("corrected", "inputnode.in_files"),
         ]),
         (join_sdc_echos, bold_t2s_wf, [
             (("corrected_mask", pop_file), "inputnode.bold_mask"),
