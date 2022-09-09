@@ -1,3 +1,13 @@
+22.1.3 (September 12, 2022)
+===========================
+This patch release includes a vital fix for susceptibility distortion correction on multi-echo data.
+
+* FIX: Field name for multi-echo fieldmap correction (#233)
+
+22.1.2 (August 22, 2022)
+========================
+This patch release includes a fix to FreeSurfer version detection, which was causing `recon-all` to use outdated flags.
+
 22.1.1 (August 15, 2022)
 ========================
 A bugfix release that includes missing files needed to run `infant_recon_all`.
