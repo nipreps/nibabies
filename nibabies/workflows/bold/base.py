@@ -302,12 +302,8 @@ and co-registrations to anatomical and output spaces).
 Gridded (volumetric) resamplings were performed using `antsApplyTransforms` (ANTs),
 configured with Lanczos interpolation to minimize the smoothing
 effects of other kernels [@lanczos].
-Non-gridded (surface) resamplings were performed using {method}..
-""".format(
-    method={"fs": "mri_vol2surf (FreeSurfer)",
-            "wb": "wb_command -volume-to-surface-mapping (Workbench)"
-            }[config.workflow.surface_sampler]
-    )
+Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfer)
+"""
 
 
     inputnode = pe.Node(
@@ -857,7 +853,6 @@ Non-gridded (surface) resamplings were performed using {method}..
             surface_spaces=freesurfer_spaces,
             medial_surface_nan=config.workflow.medial_surface_nan,
             project_goodvoxels=config.workflow.project_goodvoxels,
-            surface_sampler=config.workflow.surface_sampler,
             name="bold_surf_wf",
         )
         # fmt:off

@@ -198,7 +198,6 @@ def init_single_subject_wf(subject_id, session_id=None):
     derivatives = config.execution.derivatives or {}
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     spaces = config.workflow.spaces
-    surface_sampler = config.workflow.surface_sampler
     # Make sure we always go through these two checks
     if not anat_only and not subject_data["bold"]:
         task_id = config.execution.task_id

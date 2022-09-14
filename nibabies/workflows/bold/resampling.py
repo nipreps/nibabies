@@ -9,18 +9,19 @@ Resampling workflows
 .. autofunction:: init_bold_preproc_trans_wf
 
 """
+
+
 import nipype.interfaces.workbench as wb
 from nipype.interfaces import freesurfer as fs
 from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from nipype import Function
-from niworkflows.interfaces.freesurfer import MakeMidthickness
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.freesurfer import MedialNaNs
 from ...interfaces.volume import CreateSignedDistanceVolume
-from ...interfaces.metric import MetricDilate, MetricResample
-from ...interfaces.wbvoltosurf import VolumeToSurfaceMapping
+from os.path import basename
+
 
 
 
@@ -31,18 +32,12 @@ def init_bold_surf_wf(mem_gb,
                       surface_spaces,
                       medial_surface_nan,
                       project_goodvoxels,
-                      surface_sampler,
                       name="bold_surf_wf"):
     """
     Sample functional images to FreeSurfer surfaces.
 
     For each vertex, the cortical ribbon is sampled at six points (spaced 20% of thickness apart)
     and averaged.
-    
-    If --surface-sampler wb is used, Workbench's wb_command -volume-to-surface-mapping
-    with -ribbon-constrained option is used instead of the default FreeSurfer mri_vol2surf.
-    Note that unlike HCP, no additional spatial smoothing is applied to the surface-projected
-    data. 
     
     If --project-goodvoxels is used, a "goodvoxels" BOLD mask, as described in [@hcppipelines],
     is generated and applied to the functional image before sampling to surface.
@@ -57,8 +52,7 @@ def init_bold_surf_wf(mem_gb,
             wf = init_bold_surf_wf(mem_gb=0.1,
                                    surface_spaces=['fsnative', 'fsaverage5'],
                                    medial_surface_nan=False,
-                                   project_goodvoxels=False,
-                                   surface_sampler="fs")
+                                   project_goodvoxels=False)
 
     Parameters
     ----------
@@ -72,9 +66,6 @@ def init_bold_surf_wf(mem_gb,
     project_goodvoxels : :obj:`bool`
         Exclude voxels with locally high coefficient of variation, or that lie outside the
         cortical surfaces, from the surface projection.
-    surface_sampler : :obj:`str`
-        'fs' (default) or 'wb' to specify FreeSurfer-based or Workbench-based 
-        volume to surface mapping
 
     Inputs
     ------
@@ -109,10 +100,11 @@ def init_bold_surf_wf(mem_gb,
     workflow.__desc__ = """\
 The BOLD time-series were resampled onto the following surfaces
 (FreeSurfer reconstruction nomenclature):
-{out_spaces} with {sampling_method}
+{out_spaces}
 """.format(
-        out_spaces=", ".join(["*%s*" % s for s in surface_spaces])
-    )
+        out_spaces=", ".join(["*%s*" % s for s in surface_spaces]),
+)
+
 
     if project_goodvoxels:
          workflow.__desc__ += """\
@@ -176,7 +168,6 @@ surface projection.
         ),
         name_source=['source_file'],
         keep_extension=False,
-        name_template='%s.func.gii',
         iterfield=["hemi"],
         name="sampler",
         mem_gb=mem_gb * 3,
@@ -188,6 +179,15 @@ surface projection.
         MedialNaNs(), iterfield=["in_file"], name="medial_nans", mem_gb=DEFAULT_MEMORY_MIN_GB
     )
 
+    # Rename the source file to the output space to simplify naming later
+    prepend_hemi = pe.MapNode(
+        niu.Rename(format_string="%(hemi)s.target.func.gii"),
+        iterfield=["in_file", "hemi"],
+        name="prepend_hemi",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+    prepend_hemi.inputs.hemi=["lh", "rh"]
+    
     update_metadata = pe.MapNode(
         GiftiSetAnatomicalStructure(),
         iterfield=["in_file"],
@@ -200,41 +200,6 @@ surface projection.
         joinsource="itersource",
         name="outputnode",
     )
-    
-    if not project_goodvoxels:
-        # fmt: off
-        workflow.connect([
-            (inputnode, get_fsnative, [('subject_id', 'subject_id'),
-                                    ('subjects_dir', 'subjects_dir')]),
-            (inputnode, targets, [('subject_id', 'subject_id')]),
-            (inputnode, rename_src, [('source_file', 'in_file')]),
-            (inputnode, itk2lta, [('source_file', 'src_file'),
-                                ('t1w2fsnative_xfm', 'in_file')]),
-            (get_fsnative, itk2lta, [('brain', 'dst_file')]),  # InfantFS: Use brain instead of T1
-            (inputnode, sampler, [('subjects_dir', 'subjects_dir'),
-                                ('subject_id', 'subject_id')]),
-            (itersource, targets, [('target', 'space')]),
-            (itersource, rename_src, [('target', 'subject')]),
-            (itk2lta, sampler, [('out', 'reg_file')]),
-            (targets, sampler, [('out', 'target_subject')]),
-            (rename_src, sampler, [('out_file', 'source_file')]),
-            (update_metadata, outputnode, [('out_file', 'surfaces')]),
-            (itersource, outputnode, [('target', 'target')]),
-        ])
-        # fmt: on
-
-        if not medial_surface_nan:
-            workflow.connect(sampler, "out_file", update_metadata, "in_file")
-            return workflow
-
-        # fmt: off
-        workflow.connect([
-            (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
-            (sampler, medial_nans, [('out_file', 'in_file')]),
-            (medial_nans, update_metadata, [('out_file', 'in_file')]),
-        ])
-        # fmt: on
-        return workflow
 
     # 0, 1 = wm; 2, 3 = pial; 6, 7 = mid
     # note that order of lh / rh within each surf type is not guaranteed due to use
@@ -242,12 +207,12 @@ surface projection.
     # to ensure consistent ordering
     select_wm = pe.Node(
         niu.Select(index=[0, 1]),
-        name="select_wm_pial",
+        name="select_wm",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
     select_pial = pe.Node(
-        niu.Select(index=[2, 3],),
+        niu.Select(index=[2, 3]),
         name="select_pial",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
@@ -496,7 +461,6 @@ surface projection.
         fsl.ApplyMask(),
         name_source=['in_file'],
         keep_extension=True,
-        name_template='%s',
         name="goodvoxels_ribbon_mask",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
@@ -505,93 +469,53 @@ surface projection.
         fsl.ApplyMask(),
         name_source=['in_file'],
         keep_extension=True,
-        name_template='%s',
         name="apply_goodvoxels_ribbon_mask",
         mem_gb=mem_gb * 3,
     )
-        
-    get_target_wm = pe.MapNode(
-        FreeSurferSource(),
-        iterfield=["in_file", "surface"],
-        name="get_target_wm",
-        run_without_submitting=True,
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-    get_target_wm.inputs.hemi=["lh","rh"]
     
-    make_target_midthick = pe.MapNode(
-        MakeMidthickness(thickness=True, distance=0.5),
-        iterfield=["in_file"],
-        name="make_target_midthick",
-        run_without_submitting=True,
-        mem_gb=mem_gb * 3,
-    )
+    if not project_goodvoxels:
+        # fmt: off
+        workflow.connect([
+            (inputnode, get_fsnative, [('subject_id', 'subject_id'),
+                                    ('subjects_dir', 'subjects_dir')]),
+            (inputnode, targets, [('subject_id', 'subject_id')]),
+            (inputnode, rename_src, [('source_file', 'in_file')]),
+            (inputnode, itk2lta, [('source_file', 'src_file'),
+                                ('t1w2fsnative_xfm', 'in_file')]),
+            (get_fsnative, itk2lta, [('brain', 'dst_file')]),  # InfantFS: Use brain instead of T1
+            (inputnode, sampler, [('subjects_dir', 'subjects_dir'),
+                                ('subject_id', 'subject_id')]),
+            (itersource, targets, [('target', 'space')]),
+            (itersource, rename_src, [('target', 'subject')]),
+            (itk2lta, sampler, [('out', 'reg_file')]),
+            (targets, sampler, [('out', 'target_subject')]),
+            (rename_src, sampler, [('out_file', 'source_file')]),
+            (update_metadata, outputnode, [('out_file', 'surfaces')]),
+            (itersource, outputnode, [('target', 'target')]),
+        ])
+        # fmt: on
 
-    target_midthick_gifti = pe.MapNode(
-        fs.MRIsConvert(out_datatype="gii"),
-        iterfield=["in_file"],
-        name="target_midthick_gifti",
-        run_without_submitting=True,
-        mem_gb=mem_gb,
-    )
-    
-    wbsampler = pe.MapNode(
-        VolumeToSurfaceMapping(
-            mapping_method="ribbon-constrained",
-            ),
-        iterfield=["in_file"],
-        name="wbsampler",
-        mem_gb=mem_gb * 3,
-        )
+        if not medial_surface_nan:
+            workflow.connect(sampler, "out_file", update_metadata, "in_file")
+            return workflow
 
-    metric_dilate = pe.MapNode(
-        MetricDilate(
-            distance=10,
-            nearest=True,
-        ),
-        iterfield=["in_file", "surface"],
-        name="metric_dilate",
-        mem_gb=mem_gb * 3,
-    )
-    
-    native_to_target = pe.MapNode(
-        MetricResample(
-            method="ADAP_BARY_AREA",
-            area_metrics=True,
-        ),
-        iterfield=[
-            "in_file",
-            "out_file",
-            "new_sphere",
-            "new_area",
-            "current_sphere",
-            "current_area",
-        ],
-        name="native_to_target",
-    )
-    native_to_target.inputs.new_sphere = [
-        str(
-            tf.api.get("fsaverage", hemi=hemi, density="164k", desc="std", suffix="sphere")
-            ) 
-        for hemi in "LR"
-    ]
-    
-    # make FS midthick if target doesn't have them already
-    workflow.connect([
-        (inputnode, get_target_wm, [('subjects_dir', 'subjects_dir')]),
-        (targets, get_target_wm, [('out', 'subject_id')]),
-        (get_target_wm, make_target_midthick, [("white", "in_file")]),
-        (make_target_midthick, target_midthick_gifti, [("out_file", "in_file")]),
-    ])
+        # fmt: off
+        workflow.connect([
+            (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
+            (sampler, medial_nans, [('out_file', 'in_file')]),
+            (medial_nans, update_metadata, [('out_file', 'in_file')]),
+        ])
+        # fmt: on
+        return workflow
 
     # make HCP-style ribbon volume in T1w space
     workflow.connect([
         (inputnode, select_wm, [("anat_giftis", "inlist")]),
         (inputnode, select_pial, [("anat_giftis", "inlist")]),
         (inputnode, select_midthick, [("anat_giftis", "inlist")]),
-        (select_wm, create_wm_distvol, [("out", "surface")]),
+        (select_wm, create_wm_distvol, [(("out", _sorted_by_basename), "surface")]),
         (inputnode, create_wm_distvol, [("t1w_mask", "ref_space")]),
-        (select_pial, create_pial_distvol, [("out", "surface")]),
+        (select_pial, create_pial_distvol, [(("out", _sorted_by_basename), "surface")]),
         (inputnode, create_pial_distvol, [("t1w_mask", "ref_space")]),
         (create_wm_distvol, thresh_wm_distvol, [("out_vol", "in_file")]),
         (create_pial_distvol, uthresh_pial_distvol, [("out_vol", "in_file")]),
@@ -647,102 +571,51 @@ surface projection.
         (merge_goodvoxels_operands, goodvoxels_mask, [("out", "operand_files")]),
     ])
 
-    if surface_sampler is "fs":
-        # apply goodvoxels ribbon mask to bold
-        workflow.connect([
-            (goodvoxels_mask, goodvoxels_ribbon_mask, [("out_file", "in_file")]),
-            (ribbon_boldsrc_xfm, goodvoxels_ribbon_mask, [("output_image", "mask_file")]),
-            (goodvoxels_ribbon_mask, apply_goodvoxels_ribbon_mask, [("out_file", "mask_file")]),
-            (rename_src, apply_goodvoxels_ribbon_mask, [("out_file", "in_file")]),
-        ])
+    # apply goodvoxels ribbon mask to bold
+    workflow.connect([
+        (goodvoxels_mask, goodvoxels_ribbon_mask, [("out_file", "in_file")]),
+        (ribbon_boldsrc_xfm, goodvoxels_ribbon_mask, [("output_image", "mask_file")]),
+        (goodvoxels_ribbon_mask, apply_goodvoxels_ribbon_mask, [("out_file", "mask_file")]),
+        (rename_src, apply_goodvoxels_ribbon_mask, [("out_file", "in_file")]),
+    ])
 
-        # project masked bold to target surfs
-        workflow.connect([
-            (inputnode, get_fsnative, [("subject_id", "subject_id"),
-                                    ("subjects_dir", "subjects_dir")]),
-            (inputnode, targets, [("subject_id", "subject_id")]),
-            (inputnode, rename_src, [("source_file", "in_file")]),
-            (inputnode, itk2lta, [("source_file", "src_file"),
-                                ("t1w2fsnative_xfm", "in_file")]),
-            (get_fsnative, itk2lta, [("brain", "dst_file")]),  # InfantFS: Use brain instead of T1
-            (inputnode, sampler, [("subjects_dir", "subjects_dir"),
-                                ("subject_id", "subject_id")]),
-            (itersource, targets, [("target", "space")]),
-            (itersource, rename_src, [("target", "subject")]),
-            (itk2lta, sampler, [("out", "reg_file")]),
-            (targets, sampler, [("out", "target_subject")]),
-            (apply_goodvoxels_ribbon_mask, sampler, [("out_file", "source_file")]),
-            (sampler, metric_dilate, [("out_file", "in_file")]),
-            (target_midthick_gifti, metric_dilate, [("converted", "surface")]),
-            (update_metadata, outputnode, [("out_file", "surfaces")]),
-            (itersource, outputnode, [("target", "target")]),
-        ])
-        
-        # fmt:on
-        if not medial_surface_nan:
-            # fmt:off
-            workflow.connect([
-                (metric_dilate, update_metadata, [("out_file", "in_file")]),
-            ])
-            # fmt:on
-            return workflow
-
+    # project masked bold to target surfs
+    workflow.connect([
+        (inputnode, get_fsnative, [("subject_id", "subject_id"),
+                                ("subjects_dir", "subjects_dir")]),
+        (inputnode, targets, [("subject_id", "subject_id")]),
+        (inputnode, rename_src, [("source_file", "in_file")]),
+        (inputnode, itk2lta, [("source_file", "src_file"),
+                            ("t1w2fsnative_xfm", "in_file")]),
+        (get_fsnative, itk2lta, [("brain", "dst_file")]),  # InfantFS: Use brain instead of T1
+        (inputnode, sampler, [("subjects_dir", "subjects_dir"),
+                            ("subject_id", "subject_id")]),
+        (itersource, targets, [("target", "space")]),
+        (itersource, rename_src, [("target", "subject")]),
+        (itk2lta, sampler, [("out", "reg_file")]),
+        (targets, sampler, [("out", "target_subject")]),
+        (apply_goodvoxels_ribbon_mask, sampler, [("out_file", "source_file")]),
+        (update_metadata, outputnode, [("out_file", "surfaces")]),
+        (itersource, outputnode, [("target", "target")]),
+    ])
+    
+    # fmt:on
+    if not medial_surface_nan:
         # fmt:off
         workflow.connect([
-            (metric_dilate, medial_nans, [("out_file", "in_file")]),
-            (medial_nans, update_metadata, [("out_file", "in_file")]),
+            (sampler, update_metadata, [("out_file", "in_file")]),
         ])
         # fmt:on
         return workflow
 
-
-    # wb method first projects to native surfs, then resamples to fsaverage
-    # (fsaverage{3,4,5,6} not supported as yet)
-    if surface_sampler is "wb":
-        workflow.connect([
-            (inputnode, get_fsnative, [("subject_id", "subject_id"),
-                                    ("subjects_dir", "subjects_dir")]),
-            (inputnode, targets, [("subject_id", "subject_id")]),
-            (inputnode, rename_src, [("source_file", "in_file")]),
-            (inputnode, itk2lta, [("source_file", "src_file"),
-                                ("t1w2fsnative_xfm", "in_file")]),
-            (get_fsnative, itk2lta, [("brain", "dst_file")]),  # InfantFS: Use brain instead of T1
-            (itersource, targets, [("target", "space")]),
-            (itersource, rename_src, [("target", "subject")]),
-            (rename_src, wbsampler, [("out_file", "in_file")]),
-            (select_midthick, wbsampler, [(("out_file", _sorted), "surface")]),
-            (select_wm, wbsampler, [(("out_file", _sorted), "inner_surf")]),
-            (select_pial, wbsampler, [(("out_file", _sorted), "outer_surf")]),
-            (goodvoxels_mask, wbsampler, [("out_file", "roi_volume")]),
-            (wbsampler, metric_dilate, [("out_file", "in_file")]),
-            (metric_dilate, native_to_target, [("out_file", "in_file")]),  
-            (select_midthick, native_to_target, [(("out_file", _sorted), "current_area")]),
-            (get_fsnative, native_to_target, [(("sphere_reg", _sorted), "current_sphere")]), 
-            (target_midthick_gifti, native_to_target, [("converted", "new_area")]),
-            (update_metadata, outputnode, [("out_file", "surfaces")]),
-            (itersource, outputnode, [("target", "target")]),
-        ])
-
-        # fmt:on
-        if not medial_surface_nan:
-            # fmt:off
-            workflow.connect([
-                (sampler, metric_dilate, [("out_file", "in_file")]),
-                (target_midthick_gifti, metric_dilate, [("converted", "surface")]),
-                (metric_dilate, update_metadata, [("out_file", "in_file")]),
-            ])
-            # fmt:on
-            return workflow
-
-        # fmt:off
-        workflow.connect([
-            (sampler, metric_dilate, [("out_file", "in_file")]),
-            (target_midthick_gifti, metric_dilate, [("converted", "surface")]),
-            (metric_dilate, medial_nans, [("out_file", "in_file")]),
-            (medial_nans, update_metadata, [("out_file", "in_file")]),
-        ])
-        # fmt:on
-        return workflow
+    # fmt:off
+    workflow.connect([
+        (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
+        (sampler, medial_nans, [("out_file", "in_file")]),
+        (medial_nans, update_metadata, [("out_file", "in_file")]),
+    ])
+    # fmt:on
+    return workflow
 
 def init_bold_std_trans_wf(
     freesurfer,
@@ -1270,6 +1143,7 @@ surface space.
         str(tf.api.get("fsaverage", hemi=hemi, density="164k", desc="std", suffix="sphere"))
         for hemi in "LR"
     ]
+    
     resample.inputs.current_area = [
         str(
             tf.api.get("fsaverage", hemi=hemi, density="164k", desc="vaavg", suffix="midthickness")
@@ -1421,5 +1295,6 @@ def _itk2lta(in_file, src_file, dst_file):
     ).to_filename(out_file, moving=dst_file, fmt="fs")
     return str(out_file)
 
-def _sorted(inlist):
-    return sorted(inlist)
+def _sorted_by_basename(inlist):
+    from os.path import basename
+    return sorted(inlist, key=lambda x: str(basename(x)))
