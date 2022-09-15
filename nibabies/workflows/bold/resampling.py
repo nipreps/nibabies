@@ -103,7 +103,7 @@ The BOLD time-series were resampled onto the following surfaces
 {out_spaces}
 """.format(
         out_spaces=", ".join(["*%s*" % s for s in surface_spaces]),
-)
+    )
 
 
     if project_goodvoxels:
