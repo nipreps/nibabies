@@ -12,4 +12,5 @@ installation
 usage
 faqs
 outputs
+community
 ```
