@@ -18,4 +18,4 @@ A member of the [NeuroImaging PREProcessing toolS (NiPreps)](https://www.nipreps
 
 ## Getting Started
 
-For comprehensive information on *NiBabies*, including installation and usage, visit [our documentation](https://nibabies.readthedocs.io/en/latest).
+For comprehensive information on *NiBabies*, including installation and usage, visit [our documentation](https://nibabies.readthedocs.io/en/stable/).
