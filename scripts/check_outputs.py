@@ -43,6 +43,7 @@ def main(argv=None):
         if not funcs.is_dir():
             continue
         test_functionals(funcs)
+    print(f"No errors found for output directory {str(pargs.output_dir)}")
 
 
 def test_output_layout(output_dir):
@@ -108,23 +109,6 @@ def test_functionals(func_dir):
     _check_surfs(outputs['surfs'])
     _check_ciftis(outputs['ciftis'])
 
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_boldref.nii.gz
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_desc-brain_mask.json
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_desc-brain_mask.nii.gz
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_desc-confounds_timeseries.json
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_desc-confounds_timeseries.tsv
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_desc-preproc_bold.json
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_desc-preproc_bold.nii.gz
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_from-scanner_to-T1w_mode-image_xfm.txt
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_from-T1w_to-scanner_mode-image_xfm.txt
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_space-MNIInfant_cohort-1_boldref.nii.gz
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_space-MNIInfant_cohort-1_desc-aparcaseg_dseg.nii.gz
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_space-MNIInfant_cohort-1_desc-aseg_dseg.nii.gz
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_space-MNIInfant_cohort-1_desc-brain_mask.json
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_space-MNIInfant_cohort-1_desc-brain_mask.nii.gz
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_space-MNIInfant_cohort-1_desc-preproc_bold.json
-# sub-01/ses-1mo/func/sub-01_ses-1mo_task-rest_acq-PA_run-001_space-MNIInfant_cohort-1_desc-preproc_bold.nii.gz
-
 
 def _check_masks(masks):
     for mask in masks:
@@ -149,13 +133,17 @@ def _check_segs(segs):
             labels = set(np.unique(img.dataobj))
             # check for common subcortical labels
             subcor = {26, 58, 18, 54, 16, 11, 50, 8, 47, 28, 60, 17, 53, 13, 52, 12, 51, 10, 49}
-            assert not subcor.difference(labels)
+            missing = subcor.difference(labels)
+            if missing:
+                print(f"Missing labels {missing}")
         elif 'desc-aparcaseg' in seg.name:
             assert img.dataobj.dtype == np.int16
             labels = set(np.unique(img.dataobj))
             # check for common cortical labels
             cort = {1000, 1007, 1022, 2000, 2007, 2022}
-            assert not cort.difference(labels)
+            missing = cort.difference(labels)
+            if missing:
+                print(f"Missing labels {missing}")
         elif '_probseg.' in seg.name:
             assert img.dataobj.dtype == np.float32
             assert np.max(img.dataobj) == 1
