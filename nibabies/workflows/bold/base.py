@@ -583,7 +583,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # Native-space BOLD files
         (final_boldref_wf, final_boldref_mask, [('outputnode.epi_ref_file', 'in_file')]),
         (final_boldref_wf, bold_final, [('outputnode.epi_ref_file', 'boldref')]),
-        (final_boldref_mask, bold_final, [('out_file', 'mask')]),
+        (final_boldref_mask, bold_final, [('out_mask', 'mask')]),
         (bold_final, outputnode, [
             ('bold', 'bold_native'),
             ('boldref', 'bold_native_ref'),
@@ -999,7 +999,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         ] if not multiecho else [
             (inputnode, initial_boldref_mask, [('bold_ref', 'in_file')]),
             (initial_boldref_mask, bold_t2s_wf, [
-                ("out_file", "inputnode.bold_mask"),
+                ("out_mask", "inputnode.bold_mask"),
             ]),
             (bold_bold_trans_wf, join_echos, [
                 ("outputnode.bold", "bold_files"),
@@ -1075,7 +1075,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (inputnode, coeff2epi_wf, [
             ("bold_ref", "inputnode.target_ref")]),
         (initial_boldref_mask, coeff2epi_wf, [
-            ("out_file", "inputnode.target_mask")]),  # skull-stripped brain
+            ("out_mask", "inputnode.target_mask")]),  # skull-stripped brain
         (coeff2epi_wf, unwarp_wf, [
             ("outputnode.fmap_coeff", "inputnode.fmap_coeff")]),
         (inputnode, sdc_report, [("bold_ref", "before")]),
@@ -1084,7 +1084,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (bold_split, unwarp_wf, [
             ("out_files", "inputnode.distorted")]),
         (final_boldref_wf, sdc_report, [("outputnode.epi_ref_file", "after")]),
-        (final_boldref_mask, sdc_report, [("out_file", "wm_seg")]),
+        (final_boldref_mask, sdc_report, [("out_mask", "wm_seg")]),
         (inputnode, ds_report_sdc, [("bold_file", "source_file")]),
         (sdc_report, ds_report_sdc, [("out_report", "in_file")]),
 

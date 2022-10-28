@@ -383,6 +383,12 @@ jobs:
             diff /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE} /tmp/${DATASET}/test/outputs.out
             rm -rf /tmp/${DATASET}/test
             exit $?
+      - run:
+          name: Verify outputs
+          command: |
+            pip install nibabel numpy nitransforms
+            python /tmp/src/nibabies/scripts/check_outputs.py /tmp/${DATASET}/derivatives/nibabies
+            exit $?
       - store_artifacts:
           path: /tmp/bcp/derivatives
 
