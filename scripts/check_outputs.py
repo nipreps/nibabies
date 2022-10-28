@@ -155,7 +155,7 @@ def _check_xfms(xfms):
     for xfm in xfms:
         print(str(xfm), end='')
         if xfm.name.endswith(".txt"):
-            assert nt.linear.load(xfm)
+            assert nt.linear.load(xfm, fmt='itk')
         elif xfm.name.endswith('.h5'):
             assert nt.manip.load(xfm)
         else:
