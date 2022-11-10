@@ -435,14 +435,17 @@ tasks and sessions), the following preprocessing was performed.
     func_preproc_wfs = []
     has_fieldmap = bool(fmap_estimators)
     for idx, grouping in enumerate(bold_groupings.values()):
+        # the EPI reference workflow will take in either a list of BOLDS or SBRefs
+        has_sbrefs = bool(grouping.sbref_files)
         bold_ref_wf = init_epi_reference_wf(
-            auto_bold_nss=True,
+            auto_bold_nss=not has_sbrefs,
             name=f"bold_reference_wf{idx}",
             omp_nthreads=config.nipype.omp_nthreads,
         )
-        bold_files = grouping.files
-        bold_ref_wf.inputs.inputnode.in_files = grouping.files
+        # use sbrefs if available
+        bold_ref_wf.inputs.inputnode.in_files = grouping.sbref_files or grouping.files
 
+        bold_files = grouping.files
         if grouping.multiecho_id is not None:
             bold_files = [bold_files]
         for idx, bold_file in enumerate(bold_files):

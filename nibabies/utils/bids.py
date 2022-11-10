@@ -6,25 +6,9 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, List, Union
+from typing import IO, List, Optional
 
-
-@dataclass
-class BOLDGrouping:
-    """This class is used to facilitate the grouping of BOLD series."""
-
-    session: Union[str, None]
-    pe_dir: str
-    readout: float
-    multiecho_id: str = None
-    files: List[IO] = field(default_factory=list)
-
-    @property
-    def name(self) -> str:
-        return f"{self.session}-{self.pe_dir}-{self.readout}-{self.multiecho_id}"
-
-    def add_file(self, fl) -> None:
-        self.files.append(fl)
+from bids.layout import BIDSLayout, parse_file_entities
 
 
 def write_bidsignore(deriv_dir):
@@ -127,7 +111,12 @@ def extract_entities(file_list):
     return {k: _unique(v) for k, v in entities.items()}
 
 
-def group_bolds_ref(*, layout, subject, sessions=None):
+def group_bolds_ref(
+    *,
+    layout: BIDSLayout,
+    subject: str,
+    sessions: Optional[list] = None,
+) -> dict:
     """
     Extracts BOLD files from a BIDS dataset and combines them into buckets.
     Files in a bucket share:
@@ -139,11 +128,11 @@ def group_bolds_ref(*, layout, subject, sessions=None):
 
     Parameters
     ----------
-    layout : pybids.layout.BIDSLayout
+    layout :
         Initialized BIDSLayout
-    subject : str
+    subject :
         The subject ID
-    sessions : None
+    sessions :
 
     Outputs
     -------
@@ -151,16 +140,33 @@ def group_bolds_ref(*, layout, subject, sessions=None):
         Each tuple is composed of (session, PEdir, TRT)
     files : list of lists
         Files matching each combination.
-
-    Limitations
-    -----------
-    Single-band reference (sbref) are excluded.
     """
     import re
     from contextlib import suppress
     from itertools import product
 
     from sdcflows.utils.epimanip import get_trt
+
+    @dataclass
+    class BOLDGrouping:
+        """This class is used to facilitate the grouping of BOLD series."""
+
+        session: Optional[str]
+        pe_dir: str
+        readout: float
+        multiecho_id: str = None
+        files: List[IO] = field(default_factory=list)
+        sbref_files: Optional[List[IO]] = None
+
+        @property
+        def name(self) -> str:
+            return (
+                f"{self.session}|{self.pe_dir}|{self.readout}|{self.multiecho_id}"
+                f"|{bool(self.sbref_files)}"
+            )
+
+        def add_file(self, fl) -> None:
+            self.files.append(fl)
 
     base_entities = {
         "subject": subject,
@@ -172,7 +178,7 @@ def group_bolds_ref(*, layout, subject, sessions=None):
     # list of all BOLDS encountered
     all_bolds = []
 
-    sessions = sessions if sessions else layout.get_sessions(subject=subject, scope="raw")
+    sessions = sessions or layout.get_sessions(subject=subject, scope="raw")
 
     for ses, suffix in sorted(product(sessions or (None,), {"bold"})):
         # bold files same session
@@ -182,11 +188,18 @@ def group_bolds_ref(*, layout, subject, sessions=None):
             continue
 
         for i, bold in enumerate(bolds):
+            entities = parse_file_entities(bold.filename)
+
             multiecho_id = None
-            # multi-echo should be grouped together
-            if 'echo' in bold.entities:
+            sbrefs = None
+            if 'echo' in entities:
                 # create unique id by dropping "_echo-{i}"
                 multiecho_id = re.sub(r"_echo-\d+", "", bold.filename)
+            else:
+                # search for an sbref
+                # due to lack of experience, avoid handling sbrefs with multi-echo data
+                entities['suffix'] = 'sbref'
+                sbrefs = layout.get(**entities)
 
             # session, pe, ro
             meta = bold.get_metadata()
@@ -203,9 +216,14 @@ def group_bolds_ref(*, layout, subject, sessions=None):
                 pe_dir=pe_dir,
                 readout=ro,
                 multiecho_id=multiecho_id,
+                sbrefs=sbrefs,
             )
 
-            if any(v is None for v in (pe_dir, ro)):
+            if sbrefs:  # if sbref is found, treat as separate group
+                grouping.add_file(bold.path)
+                groupings[grouping.name] = grouping
+
+            elif any(v is None for v in (pe_dir, ro)):
                 # cannot be certain so treat as unique
                 grouping.add_file(bold.path)
                 groupings[f'unknown{i}'] = grouping
