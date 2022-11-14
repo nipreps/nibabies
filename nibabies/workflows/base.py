@@ -419,17 +419,16 @@ tasks and sessions), the following preprocessing was performed.
 """
     )
 
-    # calculate reference image(s) for BOLD images
-    # group all BOLD files based on same:
-    # 1) session
-    # 2) PE direction
-    # 3) total readout time
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
 
+    # BOLD images are grouped together to calculate a reference image
+    # groups share: 1) session 2) phase-encoding and 3) total readout time
+    # if a matching sbref is found, that is used instead
     bold_groupings = group_bolds_ref(
         layout=config.execution.layout,
         subject=subject_id,
         sessions=[session_id],
+        get_sbrefs='sbref' not in config.workflow.ignore,
     )
 
     func_preproc_wfs = []
@@ -442,28 +441,53 @@ tasks and sessions), the following preprocessing was performed.
             name=f"bold_reference_wf{idx}",
             omp_nthreads=config.nipype.omp_nthreads,
         )
-        # use sbrefs if available
-        bold_ref_wf.inputs.inputnode.in_files = grouping.sbref_files or grouping.files
+
+        if has_sbrefs:
+            # use sbrefs if available, and calculate dummy scans
+            bold_ref_wf.inputs.inputnode.in_files = grouping.sbref_files
+        else:
+            bold_ref_wf.inputs.inputnode.in_files = grouping.files
 
         bold_files = grouping.files
         if grouping.multiecho_id is not None:
             bold_files = [bold_files]
+
+        if has_sbrefs:
+            from niworkflows.interfaces.bold import NonSteadyStatesDetector
+
+            nss_detector = pe.MapNode(
+                NonSteadyStatesDetector(),
+                iterfield=['in_file'],
+                name='nss_detector',
+            )
+            nss_detector.inputs.in_file = bold_files
+
         for idx, bold_file in enumerate(bold_files):
             func_preproc_wf = init_func_preproc_wf(
                 bold_file,
                 has_fieldmap=has_fieldmap,
                 existing_derivatives=derivatives,
             )
+
+            if has_sbrefs:
+                # fmt:off
+                workflow.connect(
+                    nss_detector, ('n_dummy', _select_iter_idx, idx),
+                    func_preproc_wf, 'inputnode.n_dummy_scans'
+                )
+                # fmt:on
+            else:
+                # fmt:off
+                workflow.connect(
+                    bold_ref_wf, ('outputnode.n_dummy', _select_iter_idx, idx),
+                    func_preproc_wf, 'inputnode.n_dummy_scans'
+                )
+                # fmt:on
             # fmt: off
             workflow.connect([
                 (bold_ref_wf, func_preproc_wf, [
                     ('outputnode.epi_ref_file', 'inputnode.bold_ref'),
-                    (
-                        ('outputnode.xfm_files', _select_iter_idx, idx),
-                        'inputnode.bold_ref_xfm'),
-                    (
-                        ('outputnode.n_dummy', _select_iter_idx, idx),
-                        'inputnode.n_dummy_scans'),
+                    (('outputnode.xfm_files', _select_iter_idx, idx), 'inputnode.bold_ref_xfm'),
                 ]),
                 (anat_preproc_wf, func_preproc_wf, [
                     ('outputnode.anat_preproc', 'inputnode.anat_preproc'),

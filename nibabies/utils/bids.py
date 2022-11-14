@@ -116,6 +116,7 @@ def group_bolds_ref(
     layout: BIDSLayout,
     subject: str,
     sessions: Optional[list] = None,
+    get_sbrefs: bool = True,
 ) -> dict:
     """
     Extracts BOLD files from a BIDS dataset and combines them into buckets.
@@ -195,7 +196,7 @@ def group_bolds_ref(
             if 'echo' in entities:
                 # create unique id by dropping "_echo-{i}"
                 multiecho_id = re.sub(r"_echo-\d+", "", bold.filename)
-            else:
+            elif get_sbrefs:
                 # search for an sbref
                 # due to lack of experience, avoid handling sbrefs with multi-echo data
                 entities['suffix'] = 'sbref'
