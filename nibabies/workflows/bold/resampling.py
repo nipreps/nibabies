@@ -199,6 +199,29 @@ surface projection.
         name="outputnode",
     )
 
+    if project_goodvoxels:
+        workflow, apply_goodvoxels_ribbon_mask = apply_goodvoxels(
+            workflow, inputnode, mem_gb, rename_src
+        )
+
+    # If not applying goodvoxels, then get sampler.source_file from rename_src
+    # instead in connect_bold_surf_wf
+        apply_goodvx_or_rename = apply_goodvoxels_ribbon_mask
+    else:
+        apply_goodvx_or_rename = rename_src
+
+    # fmt: off
+    workflow = connect_bold_surf_wf(
+        workflow, inputnode, outputnode, get_fsnative, itersource, targets,
+        rename_src, sampler, itk2lta, update_metadata, apply_goodvx_or_rename
+    )
+    # fmt: on
+    return apply_med_surf_nans_if(medial_surface_nan, workflow,
+                                  inputnode, sampler,
+                                  update_metadata, medial_nans)
+
+
+def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
     # 0, 1 = wm; 2, 3 = pial; 6, 7 = mid
     # note that order of lh / rh within each surf type is not guaranteed due to use
     # of unsorted glob by FreeSurferSource prior, but we can do a sort
@@ -470,41 +493,6 @@ surface projection.
         name="apply_goodvoxels_ribbon_mask",
         mem_gb=mem_gb * 3,
     )
-    
-    if not project_goodvoxels:
-        # fmt: off
-        workflow.connect([
-            (inputnode, get_fsnative, [('subject_id', 'subject_id'),
-                                    ('subjects_dir', 'subjects_dir')]),
-            (inputnode, targets, [('subject_id', 'subject_id')]),
-            (inputnode, rename_src, [('source_file', 'in_file')]),
-            (inputnode, itk2lta, [('source_file', 'src_file'),
-                                ('t1w2fsnative_xfm', 'in_file')]),
-            (get_fsnative, itk2lta, [('brain', 'dst_file')]),  # InfantFS: Use brain instead of T1
-            (inputnode, sampler, [('subjects_dir', 'subjects_dir'),
-                                ('subject_id', 'subject_id')]),
-            (itersource, targets, [('target', 'space')]),
-            (itersource, rename_src, [('target', 'subject')]),
-            (itk2lta, sampler, [('out', 'reg_file')]),
-            (targets, sampler, [('out', 'target_subject')]),
-            (rename_src, sampler, [('out_file', 'source_file')]),
-            (update_metadata, outputnode, [('out_file', 'surfaces')]),
-            (itersource, outputnode, [('target', 'target')]),
-        ])
-        # fmt: on
-
-        if not medial_surface_nan:
-            workflow.connect(sampler, "out_file", update_metadata, "in_file")
-            return workflow
-
-        # fmt: off
-        workflow.connect([
-            (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
-            (sampler, medial_nans, [('out_file', 'in_file')]),
-            (medial_nans, update_metadata, [('out_file', 'in_file')]),
-        ])
-        # fmt: on
-        return workflow
 
     # make HCP-style ribbon volume in T1w space
     workflow.connect([
@@ -533,10 +521,10 @@ surface projection.
     # make HCP-style "goodvoxels" mask in t1w space for filtering outlier voxels
     # in bold timeseries, based on modulated normalized covariance
     workflow.connect([
-        (combine_ribbon_vol_hemis, ribbon_boldsrc_xfm, [("out_file", 'input_image')]),
+        (combine_ribbon_vol_hemis, ribbon_boldsrc_xfm, [("out_file", "input_image")]),
         (rename_src, stdev_volume, [("out_file", "in_file")]),
         (rename_src, mean_volume, [("out_file", "in_file")]),
-        (mean_volume, ribbon_boldsrc_xfm, [('out_file', 'reference_image')]),
+        (mean_volume, ribbon_boldsrc_xfm, [("out_file", "reference_image")]),
         (stdev_volume, cov_volume, [("out_file", "in_file")]),
         (mean_volume, cov_volume, [("out_file", "operand_file")]),
         (cov_volume, cov_ribbon, [("out_file", "in_file")]),
@@ -577,7 +565,27 @@ surface projection.
         (rename_src, apply_goodvoxels_ribbon_mask, [("out_file", "in_file")]),
     ])
 
-    # project masked bold to target surfs
+    return workflow, apply_goodvoxels_ribbon_mask
+
+
+def apply_med_surf_nans_if(medial_surface_nan, workflow, inputnode, sampler,
+                           update_metadata, medial_nans):
+    if medial_surface_nan:
+        # fmt: off
+        workflow.connect([
+            (inputnode, medial_nans, [("subjects_dir", "subjects_dir")]),
+            (sampler, medial_nans, [("out_file", "in_file")]),
+            (medial_nans, update_metadata, [("out_file", "in_file")]),
+        ])
+        # fmt: on
+    else:
+        workflow.connect(sampler, "out_file", update_metadata, "in_file")
+    return workflow
+
+
+def connect_bold_surf_wf(workflow, inputnode, outputnode, get_fsnative,
+                         itersource, targets, rename_src, sampler, itk2lta,
+                         update_metadata, apply_goodvoxels_or_rename):
     workflow.connect([
         (inputnode, get_fsnative, [("subject_id", "subject_id"),
                                 ("subjects_dir", "subjects_dir")]),
@@ -592,28 +600,12 @@ surface projection.
         (itersource, rename_src, [("target", "subject")]),
         (itk2lta, sampler, [("out", "reg_file")]),
         (targets, sampler, [("out", "target_subject")]),
-        (apply_goodvoxels_ribbon_mask, sampler, [("out_file", "source_file")]),
+        (apply_goodvoxels_or_rename, sampler, [("out_file", "source_file")]),
         (update_metadata, outputnode, [("out_file", "surfaces")]),
         (itersource, outputnode, [("target", "target")]),
     ])
-    
-    # fmt:on
-    if not medial_surface_nan:
-        # fmt:off
-        workflow.connect([
-            (sampler, update_metadata, [("out_file", "in_file")]),
-        ])
-        # fmt:on
-        return workflow
-
-    # fmt:off
-    workflow.connect([
-        (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
-        (sampler, medial_nans, [("out_file", "in_file")]),
-        (medial_nans, update_metadata, [("out_file", "in_file")]),
-    ])
-    # fmt:on
     return workflow
+
 
 def init_bold_std_trans_wf(
     freesurfer,
