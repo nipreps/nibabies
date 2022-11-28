@@ -19,6 +19,7 @@ from nipype.interfaces.base import (
     isdefined,
     traits,
 )
+from niworkflows.interfaces.reportlets import base as nrb
 from smriprep.interfaces.freesurfer import ReconAll
 
 LOGGER = logging.getLogger("nipype.interface")
@@ -294,6 +295,49 @@ class AboutSummary(SummaryInterface):
             command=self.inputs.command,
             date=time.strftime("%Y-%m-%d %H:%M:%S %z"),
         )
+
+
+class LabeledHistogramInputSpec(nrb._SVGReportCapableInputSpec):
+    in_file = traits.File(exists=True, mandatory=True, desc="Image containing values to plot")
+    label_file = traits.File(
+        exists=True,
+        desc="Mask or label image where non-zero values will be used to extract data from in_file",
+    )
+    mapping = traits.Dict(desc="Map integer label values onto names of voxels")
+    xlabel = traits.Str("voxels", usedefault=True, desc="Description of values plotted")
+
+
+class LabeledHistogram(nrb.ReportingInterface):
+    input_spec = LabeledHistogramInputSpec
+
+    def _generate_report(self):
+        import nibabel as nb
+        import numpy as np
+        import seaborn as sns
+        from matplotlib import pyplot as plt
+        from nilearn.image import resample_to_img
+
+        report_file = self._out_report
+        img = nb.load(self.inputs.in_file)
+        data = img.get_fdata(dtype=np.float32)
+
+        if self.inputs.label_file:
+            label_img = nb.load(self.inputs.label_file)
+            if label_img.shape != img.shape[:3] or not np.allclose(label_img.affine, img.affine):
+                label_img = resample_to_img(label_img, img, interpolation="nearest")
+            labels = np.uint16(label_img.dataobj)
+        else:
+            labels = np.uint8(data > 0)
+
+        uniq_labels = np.unique(labels[labels > 0])
+        label_map = self.inputs.mapping or {label: label for label in uniq_labels}
+
+        rois = {label_map.get(label, label): data[labels == label] for label in label_map}
+        with sns.axes_style('whitegrid'):
+            fig = sns.histplot(rois, bins=50)
+            fig.set_xlabel(self.inputs.xlabel)
+        plt.savefig(report_file)
+        plt.close()
 
 
 def get_world_pedir(ornt, pe_direction):
