@@ -182,6 +182,7 @@ def init_bold_std_trans_wf(
     mem_gb,
     omp_nthreads,
     spaces,
+    multiecho,
     name="bold_std_trans_wf",
     use_compression=True,
 ):
@@ -321,6 +322,7 @@ preprocessed BOLD runs*: {tpl}.
                 "bold_aseg",
                 "bold_mask",
                 "bold_split",
+                "t2star",
                 "fieldwarp",
                 "hmc_xforms",
                 "itk_bold_to_t1",
@@ -426,7 +428,11 @@ preprocessed BOLD runs*: {tpl}.
         "bold_std_ref",
         "spatial_reference",
         "template",
-    ] + freesurfer * ["bold_aseg_std", "bold_aparc_std"]
+    ]
+    if freesurfer:
+        output_names.extend(["bold_aseg_std", "bold_aparc_std"])
+    if multiecho:
+        output_names.append("t2star_std")
 
     poutputnode = pe.Node(niu.IdentityInterface(fields=output_names), name="poutputnode")
     # fmt: off
@@ -462,6 +468,21 @@ preprocessed BOLD runs*: {tpl}.
             (aparc_std_tfm, poutputnode, [('output_image', 'bold_aparc_std')]),
         ])
         # fmt: on
+
+    if multiecho:
+        t2star_std_tfm = pe.Node(
+            ApplyTransforms(interpolation="LanczosWindowedSinc", float=True),
+            name="t2star_std_tfm",
+            mem_gb=1,
+        )
+        # fmt:off
+        workflow.connect([
+            (inputnode, t2star_std_tfm, [("t2star", "input_image")]),
+            (select_std, t2star_std_tfm, [("anat2std_xfm", "transforms")]),
+            (gen_ref, t2star_std_tfm, [("out_file", "reference_image")]),
+            (t2star_std_tfm, poutputnode, [("output_image", "t2star_std")]),
+        ])
+        # fmt:on
 
     # Connect parametric outputs to a Join outputnode
     outputnode = pe.JoinNode(
