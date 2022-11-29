@@ -372,6 +372,10 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "melodic_mix",
                 "nonaggr_denoised_file",
                 "confounds_metadata",
+                "t2star_bold",
+                "t2star_t1",
+                "t2star_std",
+                "hmc_xforms",
             ]
         ),
         name="outputnode",
