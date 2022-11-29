@@ -69,7 +69,7 @@ from .resampling import (
     init_bold_surf_wf,
 )
 from .stc import init_bold_stc_wf
-from .t2s import init_bold_t2s_wf
+from .t2s import init_bold_t2s_wf, init_t2s_reporting_wf
 
 
 def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=None):
@@ -553,6 +553,28 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             mem_gb=mem_gb["resampled"],
             omp_nthreads=omp_nthreads,
             name="bold_t2smap_wf",
+        )
+
+        t2s_reporting_wf = init_t2s_reporting_wf()
+
+        ds_report_t2scomp = pe.Node(
+            DerivativesDataSink(
+                desc="t2scomp",
+                datatype="figures",
+                dismiss_entities=("echo",),
+            ),
+            name="ds_report_t2scomp",
+            run_without_submitting=True,
+        )
+
+        ds_report_t2star_hist = pe.Node(
+            DerivativesDataSink(
+                desc="t2starhist",
+                datatype="figures",
+                dismiss_entities=("echo",),
+            ),
+            name="ds_report_t2star_hist",
+            run_without_submitting=True,
         )
 
     bold_final = pe.Node(
