@@ -174,7 +174,8 @@ surface projection.
 
     # Refine if medial vertices should be NaNs
     medial_nans = pe.MapNode(
-        MedialNaNs(), iterfield=["in_file"], name="medial_nans", mem_gb=DEFAULT_MEMORY_MIN_GB
+        MedialNaNs(), iterfield=["in_file"], name="medial_nans",
+        mem_gb=DEFAULT_MEMORY_MIN_GB
     )
 
     # Rename the source file to the output space to simplify naming later
@@ -183,6 +184,7 @@ surface projection.
         iterfield=["in_file", "hemi"],
         name="prepend_hemi",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
     prepend_hemi.inputs.hemi=["lh", "rh"]
     
@@ -191,17 +193,25 @@ surface projection.
         iterfield=["in_file"],
         name="update_metadata",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     outputnode = pe.JoinNode(
         niu.IdentityInterface(fields=["surfaces", "target"]),
         joinsource="itersource",
         name="outputnode",
+        run_without_submitting=True,
     )
 
     if project_goodvoxels:
-        workflow, apply_goodvoxels_ribbon_mask = apply_goodvoxels(
-            workflow, inputnode, mem_gb, rename_src
+        workflow, combine_ribbon_vol_hemis = make_ribbon_file(
+            workflow, mem_gb, inputnode
+        )
+        workflow, goodvoxels_mask, ribbon_boldsrc_xfm = mask_outliers(
+            workflow, mem_gb, rename_src, combine_ribbon_vol_hemis
+        )
+        workflow, apply_goodvoxels_ribbon_mask = project_vol_to_surf(
+            workflow, mem_gb, rename_src, goodvoxels_mask, ribbon_boldsrc_xfm
         )
 
     # If not applying goodvoxels, then get sampler.source_file from rename_src
@@ -221,7 +231,14 @@ surface projection.
                                   update_metadata, medial_nans)
 
 
-def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
+def make_ribbon_file(workflow, mem_gb, inputnode):
+    """
+    _summary_ 
+    :param workflow: _type_, _description_
+    :param mem_gb: _type_, _description_
+    :param inputnode: _type_, _description_
+    :return: _type_, _description_
+    """
     # 0, 1 = wm; 2, 3 = pial; 6, 7 = mid
     # note that order of lh / rh within each surf type is not guaranteed due to use
     # of unsorted glob by FreeSurferSource prior, but we can do a sort
@@ -230,30 +247,33 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         niu.Select(index=[0, 1]),
         name="select_wm",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     select_pial = pe.Node(
         niu.Select(index=[2, 3]),
         name="select_pial",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     select_midthick = pe.Node(
         niu.Select(index=[6, 7]),
         name="select_midthick",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )    
 
     create_wm_distvol = pe.MapNode(
         CreateSignedDistanceVolume(),
-        iterfield=["surface"],
+        iterfield=["surf_file"],
         name="create_wm_distvol",
         mem_gb=mem_gb,
     )
 
     create_pial_distvol = pe.MapNode(
         CreateSignedDistanceVolume(),
-        iterfield=["surface"],
+        iterfield=["surf_file"],
         name="create_pial_distvol",
         mem_gb=mem_gb,
     )
@@ -290,6 +310,7 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         niu.Split(splits=[1, 1]),
         name="split_wm_distvol",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     merge_wm_distvol_no_flatten = pe.Node(
@@ -297,10 +318,11 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         no_flatten=True,
         name="merge_wm_distvol_no_flatten",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     make_ribbon_vol = pe.MapNode(
-        fsl.maths.MultiImageMaths(op_string="-mas %s -mul 255 "),
+        fsl.maths.MultiImageMaths(op_string="-mas %s -mul 255"),
         iterfield=["in_file", "operand_files"],
         name="make_ribbon_vol",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
@@ -317,6 +339,7 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         niu.Split(splits=[1, 1], squeeze=True),
         name="split_squeeze_ribbon",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     combine_ribbon_vol_hemis = pe.Node(
@@ -325,6 +348,34 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
+    # make HCP-style ribbon volume in T1w space
+    workflow.connect([
+        (inputnode, select_wm, [("anat_giftis", "inlist")]),
+        (inputnode, select_pial, [("anat_giftis", "inlist")]),
+        (inputnode, select_midthick, [("anat_giftis", "inlist")]),
+        (select_wm, create_wm_distvol, [(("out", _sorted_by_basename), "surf_file")]),
+        (inputnode, create_wm_distvol, [("t1w_mask", "ref_file")]),
+        (select_pial, create_pial_distvol, [(("out", _sorted_by_basename), "surf_file")]),
+        (inputnode, create_pial_distvol, [("t1w_mask", "ref_file")]),
+        (create_wm_distvol, thresh_wm_distvol, [("out_file", "in_file")]),
+        (create_pial_distvol, uthresh_pial_distvol, [("out_file", "in_file")]),
+        (thresh_wm_distvol, bin_wm_distvol, [("out_file", "in_file")]),
+        (uthresh_pial_distvol, bin_pial_distvol, [("out_file", "in_file")]),   
+        (bin_wm_distvol, split_wm_distvol, [("out_file", "inlist")]),
+        (split_wm_distvol, merge_wm_distvol_no_flatten, [("out1", "in1")]),
+        (split_wm_distvol, merge_wm_distvol_no_flatten, [("out2", "in2")]),
+        (bin_pial_distvol, make_ribbon_vol, [("out_file", "in_file")]),
+        (merge_wm_distvol_no_flatten, make_ribbon_vol, [("out", "operand_files")]),
+        (make_ribbon_vol, bin_ribbon_vol, [("out_file", "in_file")]),
+        (bin_ribbon_vol, split_squeeze_ribbon_vol, [("out_file", "inlist")]),
+        (split_squeeze_ribbon_vol, combine_ribbon_vol_hemis, [("out1", "in_file")]),
+        (split_squeeze_ribbon_vol, combine_ribbon_vol_hemis, [("out2", "operand_file")]),
+    ])
+
+    return workflow, combine_ribbon_vol_hemis
+
+
+def mask_outliers(workflow, mem_gb, rename_src, combine_ribbon_vol_hemis):
     ribbon_boldsrc_xfm = pe.Node(
         ApplyTransforms(interpolation='MultiLabel',
                         transforms='identity'),
@@ -357,13 +408,13 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
     )
 
     cov_ribbon_mean = pe.Node(
-        fsl.ImageStats(op_string='-M '),
+        fsl.ImageStats(op_string='-M'),
         name="cov_ribbon_mean",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
     cov_ribbon_std = pe.Node(
-        fsl.ImageStats(op_string='-S '),
+        fsl.ImageStats(op_string='-S'),
         name="cov_ribbon_std",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
@@ -375,7 +426,7 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
     )
 
     smooth_norm = pe.Node(
-        fsl.maths.MathsCommand(args="-bin -s 5 "),
+        fsl.maths.MathsCommand(args="-bin -s 5"),
         name="smooth_norm",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
@@ -384,10 +435,11 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         niu.Merge(1),
         name="merge_smooth_norm",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     cov_ribbon_norm_smooth = pe.Node(
-        fsl.maths.MultiImageMaths(op_string='-s 5 -div %s -dilD '),
+        fsl.maths.MultiImageMaths(op_string='-s 5 -div %s -dilD'),
         name="cov_ribbon_norm_smooth",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
@@ -437,13 +489,13 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
     )
 
     mod_ribbon_mean = pe.Node(
-        fsl.ImageStats(op_string='-M '),
+        fsl.ImageStats(op_string='-M'),
         name="mod_ribbon_mean",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
     mod_ribbon_std = pe.Node(
-        fsl.ImageStats(op_string='-S '),
+        fsl.ImageStats(op_string='-S'),
         name="mod_ribbon_std",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
@@ -452,6 +504,7 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         niu.Merge(2),
         name="merge_mod_ribbon_stats",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     bin_mean_volume = pe.Node(
@@ -464,6 +517,7 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         niu.Merge(2),
         name="merge_goodvoxels_operands",
         mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
     )
 
     goodvoxels_thr = pe.Node(
@@ -473,50 +527,10 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
     )
 
     goodvoxels_mask = pe.Node(
-        fsl.maths.MultiImageMaths(op_string='-bin -sub %s -mul -1 '),
+        fsl.maths.MultiImageMaths(op_string='-bin -sub %s -mul -1'),
         name="goodvoxels_mask",
         mem_gb=mem_gb,
     )
-    
-    goodvoxels_ribbon_mask = pe.Node(
-        fsl.ApplyMask(),
-        name_source=['in_file'],
-        keep_extension=True,
-        name="goodvoxels_ribbon_mask",
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    apply_goodvoxels_ribbon_mask = pe.Node(
-        fsl.ApplyMask(),
-        name_source=['in_file'],
-        keep_extension=True,
-        name="apply_goodvoxels_ribbon_mask",
-        mem_gb=mem_gb * 3,
-    )
-
-    # make HCP-style ribbon volume in T1w space
-    workflow.connect([
-        (inputnode, select_wm, [("anat_giftis", "inlist")]),
-        (inputnode, select_pial, [("anat_giftis", "inlist")]),
-        (inputnode, select_midthick, [("anat_giftis", "inlist")]),
-        (select_wm, create_wm_distvol, [(("out", _sorted_by_basename), "surface")]),
-        (inputnode, create_wm_distvol, [("t1w_mask", "ref_space")]),
-        (select_pial, create_pial_distvol, [(("out", _sorted_by_basename), "surface")]),
-        (inputnode, create_pial_distvol, [("t1w_mask", "ref_space")]),
-        (create_wm_distvol, thresh_wm_distvol, [("out_vol", "in_file")]),
-        (create_pial_distvol, uthresh_pial_distvol, [("out_vol", "in_file")]),
-        (thresh_wm_distvol, bin_wm_distvol, [("out_file", "in_file")]),
-        (uthresh_pial_distvol, bin_pial_distvol, [("out_file", "in_file")]),   
-        (bin_wm_distvol, split_wm_distvol, [("out_file", "inlist")]),
-        (split_wm_distvol, merge_wm_distvol_no_flatten, [("out1", "in1")]),
-        (split_wm_distvol, merge_wm_distvol_no_flatten, [("out2", "in2")]),
-        (bin_pial_distvol, make_ribbon_vol, [("out_file", "in_file")]),
-        (merge_wm_distvol_no_flatten, make_ribbon_vol, [("out", "operand_files")]),
-        (make_ribbon_vol, bin_ribbon_vol, [("out_file", "in_file")]),
-        (bin_ribbon_vol, split_squeeze_ribbon_vol, [("out_file", "inlist")]),
-        (split_squeeze_ribbon_vol, combine_ribbon_vol_hemis, [("out1", "in_file")]),
-        (split_squeeze_ribbon_vol, combine_ribbon_vol_hemis, [("out2", "operand_file")]),
-    ])
 
     # make HCP-style "goodvoxels" mask in t1w space for filtering outlier voxels
     # in bold timeseries, based on modulated normalized covariance
@@ -557,6 +571,39 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
         (merge_goodvoxels_operands, goodvoxels_mask, [("out", "operand_files")]),
     ])
 
+    return workflow, goodvoxels_mask, ribbon_boldsrc_xfm
+
+
+def project_vol_to_surf(workflow, mem_gb, rename_src, goodvoxels_mask,
+                        ribbon_boldsrc_xfm):
+    """ 
+    Parameters
+    ----------
+    workflow : :obj:
+    mem_gb : :obj:`float`
+        Size of BOLD file in GB
+    rename_src: _type_, _description_
+    goodvoxels_mask: _type_, _description_
+    ribbon_boldsrc_xfm: _type_, _description_
+
+    :return: _type_, _description_
+    """
+    goodvoxels_ribbon_mask = pe.Node(
+        fsl.ApplyMask(),
+        name_source=['in_file'],
+        keep_extension=True,
+        name="goodvoxels_ribbon_mask",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    apply_goodvoxels_ribbon_mask = pe.Node(
+        fsl.ApplyMask(),
+        name_source=['in_file'],
+        keep_extension=True,
+        name="apply_goodvoxels_ribbon_mask",
+        mem_gb=mem_gb * 3,
+    )
+
     # apply goodvoxels ribbon mask to bold
     workflow.connect([
         (goodvoxels_mask, goodvoxels_ribbon_mask, [("out_file", "in_file")]),
@@ -570,6 +617,19 @@ def apply_goodvoxels(workflow, inputnode, mem_gb, rename_src):
 
 def apply_med_surf_nans_if(medial_surface_nan, workflow, inputnode, sampler,
                            update_metadata, medial_nans):
+    """
+    Parameters
+    ----------
+    medial_surface_nan : :obj:`bool`
+        Replace medial wall values with NaNs on functional GIFTI files 
+    workflow : _type_, _description_
+    inputnode : _type_, _description_
+    sampler : _type_, _description_
+    update_metadata : _type_, _description_
+    medial_nans : _type_, _description_
+    
+    :return: workflow, with medial surface NaNs applied if medial_surface_nan
+    """
     if medial_surface_nan:
         # fmt: off
         workflow.connect([
