@@ -548,9 +548,6 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
                 fmap_wf_inputs = getattr(fmap_wf.inputs, f"in_{estimator.bids_id}")
                 fmap_wf_inputs.in_data = [str(s.path) for s in estimator.sources]
                 fmap_wf_inputs.metadata = [s.metadata for s in estimator.sources]
-
-                flatten = fmap_wf.get_node(f"wf_{estimator.bids_id}.flatten")
-                flatten.inputs.max_trs = config.workflow.topup_max_vols
             else:
                 raise NotImplementedError(
                     "Sophisticated PEPOLAR schemes (e.g., using DWI+EPI) are unsupported."
