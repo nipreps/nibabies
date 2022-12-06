@@ -141,6 +141,7 @@ BIDS dataset."""
                 "t1w2fsnative_xfm",
                 "fsnative2t1w_xfm",
                 "surfaces",
+                "morphometrics",
                 "anat_aseg",
                 "anat_aparc",
                 "template",
@@ -401,6 +402,7 @@ as target template.
             ("outputnode.t1w2fsnative_xfm", "t1w2fsnative_xfm"),
             ("outputnode.fsnative2t1w_xfm", "fsnative2t1w_xfm"),
             ("outputnode.surfaces", "surfaces"),
+            ("outputnode.morphometrics", "morphometrics"),
             ("outputnode.out_aparc", "anat_aparc"),
             ("outputnode.out_aseg", "anat_aseg"),
         ]),
@@ -414,6 +416,7 @@ as target template.
             ("outputnode.t1w2fsnative_xfm", "inputnode.t1w2fsnative_xfm"),
             ("outputnode.fsnative2t1w_xfm", "inputnode.fsnative2t1w_xfm"),
             ("outputnode.surfaces", "inputnode.surfaces"),
+            ("outputnode.morphometrics", "inputnode.morphometrics"),
         ]),
     ])
     # fmt: on
