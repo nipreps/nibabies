@@ -296,6 +296,7 @@ jobs:
       - FS_LICENSE: /tmp/fslicense/license.txt
       - DATASET: bcp
       - CHECK_BCP: true
+      - MIGAS_OPTOUT: "1"
     steps:
       - checkout
       - run: *check_skip_job
@@ -364,7 +365,7 @@ jobs:
             nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
                 -i nipreps/nibabies:latest \
                 -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
-                --network none --notrack \
+                --network none \
                 --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
                 --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
                 --skull-strip-template UNCInfant:cohort-1 \

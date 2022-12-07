@@ -15,7 +15,6 @@ def main():
     from pathlib import Path
 
     from ..utils.bids import write_bidsignore, write_derivative_description
-    from ..utils.telemetry import setup_migas
     from .parser import parse_args
     from .workflow import build_boilerplate, build_workflow
 
@@ -29,8 +28,10 @@ def main():
     # if `--notrack` is specified, nothing is done.
     global EXITCODE
     if not config.execution.notrack:
-        setup_migas(init_ping=True)
-        atexit.register(_migas_exit)
+        from nibabies.utils.telemetry import setup_migas
+
+        setup_migas(init=True)
+        atexit.register(migas_exit)
 
     if "participant" in config.workflow.analysis_level:
         _pool = None
@@ -151,18 +152,36 @@ def main():
             write_bidsignore(config.execution.nibabies_dir)
 
 
-def _migas_exit() -> None:
+def migas_exit() -> None:
     """
     Send a final crumb to the migas server signaling if the run successfully completed
-
-    This function is registered with `atexit` to run at termination.
+    This function should be registered with `atexit` to run at termination.
     """
+    import sys
+
+    from nibabies.utils.telemetry import send_breadcrumb
+
     global EXITCODE
-    status = 'error' if EXITCODE > 0 else 'success'
+    migas_kwargs = {'status': 'C'}
+    # `sys` will not have these attributes unless an error has been handled
+    if hasattr(sys, 'last_type'):
+        migas_kwargs = {
+            'status': 'F',
+            'status_desc': 'Finished with error(s)',
+            'error_type': sys.last_type,
+            'error_desc': sys.last_value,
+        }
+    elif EXITCODE != 0:
+        migas_kwargs.update(
+            {
+                'status': 'F',
+                'status_desc': f'Completed with exitcode {EXITCODE}',
+            }
+        )
+    else:
+        migas_kwargs['status_desc'] = 'Success'
 
-    from ..utils.telemetry import ping_migas
-
-    ping_migas(status=status)
+    send_breadcrumb(**migas_kwargs)
 
 
 if __name__ == "__main__":
