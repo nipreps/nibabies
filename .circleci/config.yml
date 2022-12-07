@@ -379,7 +379,6 @@ jobs:
             mkdir -p /tmp/${DATASET}/test
             CHECK_OUTPUTS_FILE="${DATASET}_full_outputs.txt"
             cd /tmp/${DATASET}/derivatives/nibabies && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
-            cat /tmp/${DATASET}/test/outputs.out
             diff /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE} /tmp/${DATASET}/test/outputs.out
             rm -rf /tmp/${DATASET}/test
             exit $?

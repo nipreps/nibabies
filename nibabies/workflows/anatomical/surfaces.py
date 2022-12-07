@@ -40,6 +40,7 @@ def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_sur
                 "t1w2fsnative_xfm",
                 "fsnative2t1w_xfm",
                 "surfaces",
+                "morphometrics",
                 "out_aseg",
                 "out_aparc",
             ]
@@ -129,6 +130,7 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
             ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
         (gifti_surface_wf, outputnode, [
             ('outputnode.surfaces', 'surfaces'),
+            ('outputnode.morphometrics', 'morphometrics'),
         ]),
     ])
     # fmt: on
