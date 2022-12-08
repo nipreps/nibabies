@@ -109,7 +109,6 @@ The BOLD time-series were resampled onto the following surfaces
     itk2lta = pe.Node(niu.Function(function=_itk2lta), name="itk2lta", run_without_submitting=True)
     sampler = pe.MapNode(
         fs.SampleToSurface(
-            cortex_mask=True,
             interp_method="trilinear",
             out_type="gii",
             override_reg_subj=True,
