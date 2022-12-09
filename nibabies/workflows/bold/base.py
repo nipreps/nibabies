@@ -305,7 +305,6 @@ effects of other kernels [@lanczos].
 Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfer)
 """
 
-
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
@@ -321,7 +320,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 "anat2std_xfm",
                 "std2anat_xfm",
                 "template",
-                "anat_giftis",
+                "anat_ribbon",
                 # from bold reference workflow
                 "bold_ref",
                 "bold_ref_xfm",
@@ -861,7 +860,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 ('subjects_dir', 'inputnode.subjects_dir'),
                 ('subject_id', 'inputnode.subject_id'),
                 ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
-                ("anat_giftis", "inputnode.anat_giftis"),
+                ("anat_ribbon", "inputnode.anat_ribbon"),
                 ("anat_mask", "inputnode.t1w_mask")]),
             (bold_t1_trans_wf, bold_surf_wf, [('outputnode.bold_t1', 'inputnode.source_file')]),
             (bold_surf_wf, outputnode, [('outputnode.surfaces', 'surfaces')]),
