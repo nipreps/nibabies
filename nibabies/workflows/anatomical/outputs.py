@@ -308,6 +308,10 @@ def init_anat_derivatives_wf(
         FreeSurfer's aseg segmentation, in native T1w space
     t1w_fs_aparc
         FreeSurfer's aparc+aseg segmentation, in native T1w space
+    t2w_source_files
+        List of input T2w images
+    t2w_preproc
+        The T2w image in T1w space. 
     """
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect
@@ -338,6 +342,8 @@ def init_anat_derivatives_wf(
                 "surfaces",
                 "t1w_fs_aseg",
                 "t1w_fs_aparc",
+                "t2w_source_files",
+                "t2w_preproc",
             ]
         ),
         name="inputnode",
@@ -366,6 +372,12 @@ def init_anat_derivatives_wf(
         run_without_submitting=True,
     )
 
+    ds_t2w_preproc = pe.Node(
+        DerivativesDataSink(base_directory=output_dir, space="T1w", desc="preproc", compress=True),
+        name="ds_t2w_preproc",
+        run_without_submitting=True,
+    )
+
     ds_t1w_tpms = pe.Node(
         DerivativesDataSink(base_directory=output_dir, suffix="probseg", compress=True),
         name="ds_t1w_tpms",
@@ -378,6 +390,8 @@ def init_anat_derivatives_wf(
         (inputnode, raw_sources, [('source_files', 'in_files')]),
         (inputnode, ds_t1w_preproc, [('t1w_preproc', 'in_file'),
                                      ('source_files', 'source_file')]),
+        (inputnode, ds_t2w_preproc, [('t2w_preproc', 'in_file'),
+                                     ('t2w_source_files', 'source_file')]),
         (inputnode, ds_t1w_mask, [('t1w_mask', 'in_file'),
                                   ('source_files', 'source_file')]),
         (inputnode, ds_t1w_tpms, [('t1w_tpms', 'in_file'),
