@@ -415,7 +415,7 @@ as target template.
         ]),
         (t1w_preproc_wf, anat_ribbon_wf, [
             ("outputnode.t1w_mask", "inputnode.t1w_mask"),
-        ])
+        ]),
         (surface_recon_wf, anat_ribbon_wf, [
             ("outputnode.surfaces", "inputnode.surfaces"),
         ]),

@@ -1476,26 +1476,26 @@ class CreateSignedDistanceVolumeInputSpec(CommandLineInputSpec):
         desc="Name of file to store a mask where the ``out_file`` has a computed value",
     )
     fill_value = traits.Float(
+        0.0,
         mandatory=False,
-        default=0.0,
         usedefault=True,
         argstr="-fill-value %f",
         desc="value to put in all voxels that don't get assigned a distance",
     )
     exact_limit = traits.Float(
-        default=5.0,
+        5.0,
         usedefault=True,
         argstr="-exact-limit %f",
         desc="distance for exact output in mm",
     )
     approx_limit = traits.Float(
-        default=20.0,
+        20.0,
         usedefault=True,
         argstr="-approx-limit %f",
         desc="distance for approximate output in mm",
     )
     approx_neighborhood = traits.Int(
-        default=2,
+        2,
         usedefault=True,
         argstr="-approx-neighborhood %d",
         desc="size of neighborhood cube measured from center to face in voxels, default 2 = 5x5x5",
