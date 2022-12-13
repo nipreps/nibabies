@@ -13,10 +13,10 @@ set -u         # Treat unset variables as an error when substituting.
 set -x         # Print command traces before executing command.
 
 # Check whether the Upcoming release header is present
-head -1 CHANGES.rst | grep -q Upcoming
+head -1 CHANGES.md | grep -q Upcoming
 UPCOMING=$?
 if [[ "$UPCOMING" == "0" ]]; then
-    head -n3  CHANGES.rst >> newchanges
+    head -n3  CHANGES.md >> newchanges
 fi
 
 # Elaborate today's release header
@@ -26,15 +26,28 @@ echo $( printf "%${#HEADER}s" | tr " " "=" ) >> newchanges
 echo "" >> newchanges
 
 # Search for PRs since previous release
-git log --grep="Merge pull request" `git describe --tags --abbrev=0`..HEAD --pretty='format:  * %b %s' | sed  's/Merge pull request \#\([^\d]*\)\ from\ .*/(\#\1)/' >> newchanges
-echo "" >> newchanges
-echo "" >> newchanges
+MERGE_COMMITS=$( git log --grep="Merge pull request\|(#.*)$" `git describe --tags --abbrev=0`..HEAD --pretty='format:%h' )
+for COMMIT in ${MERGE_COMMITS//\n}; do
+    SUB=$( git log -n 1 --pretty="format:%s" $COMMIT )
+    if ( echo $SUB | grep "^Merge pull request" ); then
+        # Merge commit
+        PR=$( echo $SUB | sed -e "s/Merge pull request \#\([0-9]*\).*/\1/" )
+        TITLE=$( git log -n 1 --pretty="format:%b" $COMMIT )
+    else
+        # Squashed merge
+        PR=$( echo $SUB | sed -e "s/.*(\#\([0-9]*\))$/\1/" )
+        TITLE=$( echo $SUB | sed -e "s/\(.*\) (\#[0-9]*)$/\1/" )
+    fi
+    echo "  * $TITLE (#$PR)" >> newchanges
+done
+echo >> newchanges
+echo >> newchanges
 
 # Add back the Upcoming header if it was present
 if [[ "$UPCOMING" == "0" ]]; then
-    tail -n+4 CHANGES.rst >> newchanges
+    tail -n+4 CHANGES.md >> newchanges
 else
-    cat CHANGES.rst >> newchanges
+    cat CHANGES.md >> newchanges
 fi
 
 # Replace old CHANGES.md with new file
