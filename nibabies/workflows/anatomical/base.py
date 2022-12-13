@@ -91,7 +91,7 @@ def init_infant_anat_wf(
     )
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
-    from .segmentation import init_anat_segmentations_wf, init_aseg_to_drawem_wf
+    from .segmentation import init_anat_segmentations_wf, init_aseg_to_mcrib_wf
 
     # for now, T1w only
     num_t1w = len(t1w) if t1w else 0
@@ -244,7 +244,7 @@ as target template.
     )
 
     # TODO: run only if using MIRTK T2w surf workflow
-    aseg_to_drawem_wf = init_aseg_to_drawem_wf(
+    aseg_to_mcrib_wf = init_aseg_to_mcrib_wf(
         omp_nthreads=omp_nthreads,
     )
 
@@ -393,7 +393,7 @@ as target template.
         (anat_seg_wf, surface_recon_wf, [
             ("outputnode.anat_aseg", "inputnode.ants_segs"),
         ]),
-        (anat_seg_wf, aseg_to_drawem_wf, [
+        (anat_seg_wf, aseg_to_mcrib_wf, [
             ("outputnode.anat_aseg", "inputnode.anat_aseg"),
         ]),
         (t1w_template_wf, surface_recon_wf, [
