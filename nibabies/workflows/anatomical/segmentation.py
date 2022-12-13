@@ -1,12 +1,8 @@
-import os
 import sys
-import nibabel as nib
-import numpy as np
 
 from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.interfaces.ants.segmentation import JointFusion
-#from nipype.interfaces.freesurfer.model import Binarize
 from nipype.pipeline import engine as pe
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
@@ -24,7 +20,6 @@ from ...config import DEFAULT_MEMORY_MIN_GB
 
 
 def init_aseg_to_drawem_wf(
-    sloppy=False,
     omp_nthreads=1,
     name="aseg_to_drawem_wf"
 ):
