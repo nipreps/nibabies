@@ -8,7 +8,6 @@ Image tools interfaces
 
 
 """
-from textwrap import indent
 
 import nibabel as nb
 import numpy as np
