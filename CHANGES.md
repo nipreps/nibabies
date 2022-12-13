@@ -1,3 +1,25 @@
+22.2.0 (December 13, 2022)
+==========================
+The final *NiBabies* minor series of 2022!
+Some highlights of the new additions in this release series includes:
+- surface morphometrics outputs, including cortical thickness
+- T2star maps for multiecho data, projected to target output spaces
+
+This series will be the last to support Python 3.7.
+
+A full list of changes can be found below.
+
+## Full Changelog
+  * FIX: Remove cortex masking during vol2surf sampling (#258)
+  * ENH: Improve migas telemetry (#257)
+  * CI: GitHub actions update (#256)
+  * ENH: Add morphometric outputs (#255)
+  * ENH: Output T2star maps for multiecho data (#252)
+  * FIX: Use the binarized output from the brain extraction (#246)
+  * DOC: Add long description including background/significance (#243)
+  * CI: Fix docker credential error (#244)
+  * DOC: Advertise nipreps community pages, add section on contributions (#242)
+
 22.1.3 (September 12, 2022)
 ===========================
 This patch release includes a vital fix for susceptibility distortion correction on multi-echo data.
