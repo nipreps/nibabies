@@ -1,8 +1,12 @@
+import os
 import sys
+import nibabel as nib
+import numpy as np
 
 from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.interfaces.ants.segmentation import JointFusion
+#from nipype.interfaces.freesurfer.model import Binarize
 from nipype.pipeline import engine as pe
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
@@ -13,9 +17,44 @@ from smriprep.workflows.anatomical import (
     _probseg_fast2bids,
     _split_segments,
 )
+from ...interfaces.images import RemapLabels
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 
+
+
+def init_aseg_to_drawem_wf(
+    sloppy=False,
+    omp_nthreads=1,
+    name="aseg_to_drawem_wf"
+):
+    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+    
+    wf = Workflow(name=name)
+    wf.__desc__ = """Segmentation volume label indices were remapped from FreeSurfer to MIRTK Draw-EM format. """
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=["anat_aseg"]),
+        name="inputnode",
+    )
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=["anat_drawem"]),
+        name="outputnode",
+    )
+
+    aseg2drawem={2: 51, 3: 21, 4: 49, 5: 0, 7: 17, 8: 17, 10: 43, 11: 41, 12: 47, 13: 47, 14: 0, 15: 0, 16: 19, 17: 1, 18: 3, 26: 41, 28: 45, 31: 49, 41: 52, 42: 20, 43: 50, 44: 0, 46: 18, 47: 18, 49: 42, 50: 40, 51: 46, 52: 46, 53: 2, 54: 4, 58: 40, 60: 44, 63: 50, 253: 48}
+
+    remap_labels = pe.Node(RemapLabels(dict=aseg2drawem), name="remap_labels")
+    
+    # fmt:off
+    wf.connect([
+        (inputnode, remap_labels, [("anat_aseg", "in_file")]),
+        (remap_labels, outputnode, [("out_file", "anat_drawem")]),
+    ])
+    # fmt:on
+
+    # TODO Pass in the anat_drawem as the segmentation for the MCRIB-based reconall in base.py
+    return wf
 
 def init_anat_segmentations_wf(
     anat_modality="T1w",
