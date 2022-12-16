@@ -341,6 +341,7 @@ def init_anat_derivatives_wf(
                 "morphometrics",
                 "t1w_fs_aseg",
                 "t1w_fs_aparc",
+                "anat_ribbon",
             ]
         ),
         name="inputnode",
@@ -355,6 +356,12 @@ def init_anat_derivatives_wf(
         run_without_submitting=True,
     )
     ds_t1w_preproc.inputs.SkullStripped = False
+
+    ds_anat_ribbon = pe.Node(
+        DerivativesDataSink(base_directory=output_dir, suffix="ribbon", compress=True),
+        name="ds_anat_ribbon",
+        run_without_submitting=True,
+    )
 
     ds_t1w_mask = pe.Node(
         DerivativesDataSink(base_directory=output_dir, desc="brain", suffix="mask", compress=True),
@@ -387,6 +394,8 @@ def init_anat_derivatives_wf(
                                   ('source_files', 'source_file')]),
         (inputnode, ds_t1w_dseg, [('t1w_dseg', 'in_file'),
                                   ('source_files', 'source_file')]),
+        (inputnode, ds_anat_ribbon, [('anat_ribbon', 'in_file'),
+                                     ('source_files', 'source_file')]),
         (raw_sources, ds_t1w_mask, [('out', 'RawSources')]),
     ])
     # fmt: on
