@@ -215,24 +215,24 @@ as target template.
         precomp_mask_wf = init_precomputed_mask_wf(omp_nthreads=omp_nthreads)
         precomp_mask_wf.inputs.inputnode.t1w_mask = precomp_mask
 
-    else:
-        brain_extraction_wf = init_infant_brain_extraction_wf(
-            age_months=age_months,
-            ants_affine_init=ants_affine_init,
-            skull_strip_template=skull_strip_template.space,
-            template_specs=skull_strip_template.spec,
-            omp_nthreads=omp_nthreads,
-            sloppy=sloppy,
-            debug="registration" in config.execution.debug,
-        )
-        coregistration_wf = init_coregistration_wf(
-            omp_nthreads=omp_nthreads,
-            sloppy=sloppy,
-            debug="registration" in config.execution.debug,
-        )
-        coreg_report_wf = init_coreg_report_wf(
-            output_dir=output_dir,
-        )
+    # else: brain_extraction_wf = ...
+    brain_extraction_wf = init_infant_brain_extraction_wf(
+        age_months=age_months,
+        ants_affine_init=ants_affine_init,
+        skull_strip_template=skull_strip_template.space,
+        template_specs=skull_strip_template.spec,
+        omp_nthreads=omp_nthreads,
+        sloppy=sloppy,
+        debug="registration" in config.execution.debug,
+    )
+    coregistration_wf = init_coregistration_wf(
+        omp_nthreads=omp_nthreads,
+        sloppy=sloppy,
+        debug="registration" in config.execution.debug,
+    )
+    coreg_report_wf = init_coreg_report_wf(
+        output_dir=output_dir,
+    )
     t1w_preproc_wf = precomp_mask_wf if precomp_mask else coregistration_wf
 
     # Segmentation - initial implementation should be simple: JLF
@@ -285,6 +285,9 @@ as target template.
             ("outputnode.t1w_mask", "inputnode.t1w_mask"),
             ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
         ]),
+        (coregistration_wf, anat_derivatives_wf, [
+            ("outputnode.t2w_preproc", "inputnode.t2w_preproc")
+         ]),
         (t1w_preproc_wf, outputnode, [
             ("outputnode.t1w_preproc", "anat_preproc"),
             ("outputnode.t1w_brain", "anat_brain"),
@@ -296,36 +299,41 @@ as target template.
         wf.connect([
             (t1w_preproc_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
         ])
-
+    wf.connect([
+        (inputnode, t2w_template_wf, [("t2w", "inputnode.in_files")]),
+    ])
     if precomp_mask:
         wf.connect([
             (t1w_template_wf, precomp_mask_wf, [
                 ("outputnode.out_file", "inputnode.t1w"),
             ]),
         ])
-    else:
-        wf.connect([
-            (inputnode, t2w_template_wf, [("t2w", "inputnode.in_files")]),
-            (t2w_template_wf, brain_extraction_wf, [
-                ("outputnode.out_file", "inputnode.in_t2w"),
-            ]),
-            (t1w_template_wf, coregistration_wf, [
-                ("outputnode.out_file", "inputnode.in_t1w"),
-            ]),
-            (brain_extraction_wf, coregistration_wf, [
-                ("outputnode.t2w_preproc", "inputnode.in_t2w_preproc"),
-                ("outputnode.out_mask", "inputnode.in_mask"),
-                ("outputnode.out_probmap", "inputnode.in_probmap"),
-            ]),
-            (inputnode, coreg_report_wf, [
-                ("t1w", "inputnode.source_file"),
-            ]),
-            (t1w_preproc_wf, coreg_report_wf, [
-                ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
-                ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
-                ("outputnode.t1w_mask", "inputnode.in_mask"),
-            ]),
-        ])
+    
+    wf.connect([
+        (t2w_template_wf, brain_extraction_wf, [
+            ("outputnode.out_file", "inputnode.in_t2w"),
+        ]),
+    ])
+    wf.connect([
+        (t1w_template_wf, coregistration_wf, [
+            ("outputnode.out_file", "inputnode.in_t1w"),
+        ]),
+        (brain_extraction_wf, coregistration_wf, [
+            ("outputnode.t2w_preproc", "inputnode.in_t2w_preproc"),
+            ("outputnode.out_mask", "inputnode.in_mask"),
+            ("outputnode.out_probmap", "inputnode.in_probmap"),
+        ]),
+        (inputnode, coreg_report_wf, [
+            ("t1w", "inputnode.source_file"),
+        ]),
+        (t1w_preproc_wf, coreg_report_wf, [
+            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
+            ("outputnode.t1w_mask", "inputnode.in_mask"),
+        ]),
+        (coregistration_wf, coreg_report_wf, [
+            ("outputnode.t2w_preproc", "inputnode.t2w_preproc")
+        ]),
+    ])
 
     wf.connect([
         # reports
@@ -349,6 +357,9 @@ as target template.
         (t1w_template_wf, anat_derivatives_wf, [
             ("outputnode.valid_list", "inputnode.source_files"),
             ("outputnode.realign_xfms", "inputnode.t1w_ref_xfms"),
+        ]),
+        (t2w_template_wf, anat_derivatives_wf, [
+            ("outputnode.valid_list", "inputnode.t2w_source_files"),
         ]),
         (anat_norm_wf, anat_derivatives_wf, [
             ("outputnode.template", "inputnode.template"),
