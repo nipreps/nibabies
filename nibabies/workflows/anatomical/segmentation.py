@@ -6,6 +6,7 @@ from nipype.interfaces.ants.segmentation import JointFusion
 from nipype.pipeline import engine as pe
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
+from niworkflows.interfaces.nibabel import MapLabels
 from pkg_resources import resource_filename as pkgr_fn
 from smriprep.utils.misc import apply_lut as _apply_bids_lut
 from smriprep.workflows.anatomical import (
@@ -51,7 +52,7 @@ def init_anat_segmentations_wf(
         name="inputnode",
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_aseg", "anat_dseg", "anat_tpms"]),
+        niu.IdentityInterface(fields=["anat_aseg", "anat_mcrib", "anat_dseg", "anat_tpms"]),
         name="outputnode",
     )
 
@@ -184,6 +185,57 @@ white-matter (WM) and gray-matter (GM) was performed on """
         (split_seg, outputnode, [('out', 'anat_tpms')]),
     ])
     # fmt: on
+    
+    wf.__desc__ += """Segmentation volume label indices were remapped
+                     from FreeSurfer to M-CRIB-compatible format. """
+
+    # dictionary to map labels from aseg to mcrib
+    aseg2mcrib = {
+        2: 51,
+        3: 21,
+        4: 49,
+        5: 0,
+        7: 17,
+        8: 17,
+        10: 43,
+        11: 41,
+        12: 47,
+        13: 47,
+        14: 0,
+        15: 0,
+        16: 19,
+        17: 1,
+        18: 3,
+        26: 41,
+        28: 45,
+        31: 49,
+        41: 52,
+        42: 20,
+        43: 50,
+        44: 0,
+        46: 18,
+        47: 18,
+        49: 42,
+        50: 40,
+        51: 46,
+        52: 46,
+        53: 2,
+        54: 4,
+        58: 40,
+        60: 44,
+        63: 50,
+        253: 48,
+    }
+
+    map_labels = pe.Node(MapLabels(mappings=aseg2mcrib), name="map_labels")
+
+    # fmt:off
+    wf.connect([
+        (out_aseg, map_labels, [("out_file", "in_file")]),
+        (map_labels, outputnode, [("out_file", "anat_mcrib")]),
+    ])
+    # fmt: on
+
     return wf
 
 
