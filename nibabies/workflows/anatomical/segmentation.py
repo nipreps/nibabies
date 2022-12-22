@@ -185,7 +185,7 @@ white-matter (WM) and gray-matter (GM) was performed on """
         (split_seg, outputnode, [('out', 'anat_tpms')]),
     ])
     # fmt: on
-    
+
     wf.__desc__ += """Segmentation volume label indices were remapped
                      from FreeSurfer to M-CRIB-compatible format. """
 
