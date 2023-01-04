@@ -98,3 +98,5 @@ ENV/
 work/
 testdata/
 .vscode/
+
+nibabies/_version.py

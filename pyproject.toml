@@ -1,9 +1,113 @@
+[build-system]
+requires = ["flit_scm", "nipreps-versions"]
+build-backend = "flit_scm:buildapi"
+
+[project]
+name = "nibabies"
+description = "Processing workflows for magnetic resonance images of the brain in infants"
+readme = "long_description.md"
+authors = [{name = "The NiPreps Developers", email = "nipreps@gmail.com"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+dependencies = [
+    "migas >= 0.3.0",
+    "nibabel >= 3.0.1",
+    "nipype >= 1.8.1",
+    "nitime",
+    "nitransforms >= 21.0.0",
+    "niworkflows ~= 1.7.0",
+    "numpy >= 1.21.0",
+    "packaging",
+    "pandas",
+    "psutil >= 5.4",
+    "pybids >= 0.15.0",
+    "requests",
+    "sdcflows ~= 2.2.2",
+    "smriprep ~= 0.10.0",
+    "tedana ~= 0.0.12",
+    "templateflow >= 0.6",
+    "toml",
+]
+dynamic = ["version"]
+
+[project.urls]
+Documentation = "https://nibabies.readthedocs.io/en/latest/"
+"Source Code" = "https://github.com/nipreps/nibabies"
+"Bug Tracker" = "https://github.com/nipreps/nibabies/issues"
+"Docker Images" = "https://hub.docker.com/r/nipreps/nibabies"
+
+[project.optional-dependencies]
+dev = [
+    "black ~= 22.3.0",
+    "isort ~= 5.10.1",
+    "pre-commit",
+]
+doc = [
+    "pydot >= 1.2.3",
+    "sphinx >= 1.8",
+    "sphinx-argparse",
+    "sphinx_rtd_theme",
+    "myst_nb",
+]
+duecredit = ["duecredit"]
+maint = [
+    "fuzzywuzzy",
+    "python-Levenshtein",
+]
+test = [
+    "coverage",
+    "codecov",
+    "pytest",
+    "pytest-cov",
+    "pytest-env",
+]
+# Aliases
+docs = ["nibabies[doc]"]
+tests = ["nibabies[test]"]
+all = ["nibabies[dev,doc,maint,telemetry,test]"]
+
+[project.scripts]
+nibabies = "nibabies.cli.run:main"
+
+[tool.flit.sdist]
+include = ["CHANGES.md"]
+exclude = [".gitignore"]
+
+[tool.setuptools_scm]
+write_to = "nibabies/_version.py"
+version_scheme = "nipreps-calver"
+
 [tool.black]
 line-length = 99
 target-version = ['py39']
 skip-string-normalization = true
-extend-exclude = '_version.py|versioneer.py'
 
 [tool.isort]
 profile = 'black'
-extend_skip = '_version.py'
+
+[tool.flake8]
+max-line-length = "99"
+doctests = "False"
+exclude = "*build/"
+ignore = ["W503", "E203"]
+per-file-ignores = [
+    "**/__init__.py : F401",
+    "docs/conf.py : E265",
+]
+
+[tool.pytest.ini_options]
+norecursedirs = [".git"]
+addopts = "-svx --doctest-modules"
+doctest_optionflags = "ALLOW_UNICODE NORMALIZE_WHITESPACE ELLIPSIS"
+env = "PYTHONHASHSEED=0"
+filterwarnings = ["ignore::DeprecationWarning"]
+junit_family = "xunit2"
