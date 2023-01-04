@@ -1,4 +1,11 @@
 # Ubuntu 20.04 LTS
+FROM python:3.10-slim AS src
+RUN pip install build
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git
+COPY . /src/nibabies
+RUN python -m build /src/nibabies
+
 FROM ubuntu:focal-20210827
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
