@@ -174,7 +174,7 @@ jobs:
 
   get_data:
     docker:
-      - image: continuumio/miniconda3:4.10.3-alpine
+      - image: circleci/python:3.9.6
     working_directory: /home/circleci/data
     steps:
       - restore_cache:
@@ -188,11 +188,12 @@ jobs:
           name: Install datalad + git-annex
           command: |
             if [[ ! -d /tmp/data/bcp ]]; then
-              apk update && apk add --no-cache ca-certificates coreutils
-              conda install -y -c conda-forge datalad git
-              # set config because datalad says so
+              pip install datalad-installer
+              datalad-installer --sudo ok git-annex -m datalad/git-annex:release
+              git config --global filter.annex.process "git-annex filter-process"
               git config --global user.name "Nipreps CI"
               git config --global user.email "nipreps@gmail.com"
+              pip install datalad
             fi
       - run:
           name: Get bcp test data

@@ -647,13 +647,9 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
     Outputs
     -------
     cifti_bold : :obj:`str`
-        List of BOLD grayordinates files - (L)eft and (R)ight.
-    cifti_variant : :obj:`str`
-        Only ``'HCP Grayordinates'`` is currently supported.
+        BOLD CIFTI dense timeseries.
     cifti_metadata : :obj:`str`
-        Path of metadata files corresponding to ``cifti_bold``.
-    cifti_density : :obj:`str`
-        Density (i.e., either `91k` or `170k`) of ``cifti_bold``.
+        BIDS metadata file corresponding to ``cifti_bold``.
 
     """
     import templateflow as tf
@@ -687,14 +683,7 @@ surface space.
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                "cifti_bold",
-                "cifti_variant",
-                "cifti_metadata",
-                "cifti_density",
-            ]
-        ),
+        niu.IdentityInterface(fields=["cifti_bold", "cifti_metadata"]),
         name="outputnode",
     )
 
@@ -764,7 +753,7 @@ surface space.
         "fsLR", density=fslr_density, hemi="R", desc="nomedialwall", suffix="dparc"
     )
     gen_cifti_metadata = pe.Node(
-        niu.Function(function=_gen_metadata, output_names=["out_metadata", "variant", "density"]),
+        niu.Function(function=_gen_metadata, output_names=["out_metadata"]),
         name="gen_cifti_metadata",
     )
     gen_cifti_metadata.inputs.grayord_density = grayord_density
@@ -783,10 +772,7 @@ surface space.
             ('left_surface', 'left_metric'),
             ('right_surface', 'right_metric')]),
         (gen_cifti, outputnode, [('out_file', 'cifti_bold')]),
-        (gen_cifti_metadata, outputnode, [
-            ('variant', 'cifti_variant'),
-            ('out_metadata', 'cifti_metadata'),
-            ('density', 'cifti_density')]),
+        (gen_cifti_metadata, outputnode, [('out_metadata', 'cifti_metadata')]),
     ])
     # fmt: on
     return workflow
@@ -796,17 +782,12 @@ def _gen_metadata(grayord_density):
     import json
     from pathlib import Path
 
-    space = "HCP grayordinates"
-    out_json = {
-        "grayordinates": grayord_density,
-        "space": space,
-        "surface": "fsLR",
-        "volume": "MNI152NLin6Asym",
-        "surface_density": "32k" if grayord_density == "91k" else "59k",
-    }
-    out_metadata = Path("dtseries_variant.json").absolute()
-    out_metadata.write_text(json.dumps(out_json, indent=2))
-    return str(out_metadata), space, grayord_density
+    from niworkflows.interfaces.cifti import _prepare_cifti
+
+    _, _, metadata = _prepare_cifti(grayord_density)
+    metadata_file = Path("bold.dtseries.json").absolute()
+    metadata_file.write_text(json.dumps(metadata, indent=2))
+    return str(metadata_file)
 
 
 def _split_surfaces(in_surfaces):
