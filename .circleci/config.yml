@@ -3,14 +3,14 @@ _machine_defaults: &machine_defaults
     TZ: "/usr/share/zoneinfo/America/New_York"
     SCRATCH: "/scratch"
   machine:
-    image: ubuntu-2004:current
+    image: ubuntu-2204:current
     docker_layer_caching: true
   working_directory: /tmp/src/nibabies
   resource_class: large
 
 _python_defaults: &python_defaults
   docker:
-    - image: circleci/python:3.9.6
+    - image: cimg/python:3.10.9
   working_directory: /tmp/src/nibabies
 
 
@@ -121,7 +121,7 @@ jobs:
                          sed -e 's/.* 3\./3./' -e 's/ .*//')
             pyenv local $PY3
             # Get version, update files.
-            THISVERSION=$( python3 get_version.py )
+            THISVERSION=$( python -m setuptools_scm )
             if [[ ${THISVERSION:0:1} == "0" ]] ; then
               echo "WARNING: latest git tag could not be found"
               echo "Please, make sure you fetch all tags from upstream with"
@@ -174,7 +174,7 @@ jobs:
 
   get_data:
     docker:
-      - image: circleci/python:3.9.6
+      - image: cimg/python:3.10.9
     working_directory: /home/circleci/data
     steps:
       - restore_cache:
@@ -472,25 +472,18 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Update build tools
+          command: python -m pip install --user pip build twine setuptools_scm nipreps-versions
+      - run:
           name: Build nibabies
-          command: |
-            python -m pip install --user twine  # For use in checking distributions
-            THISVERSION=$( python get_version.py )
-            THISVERSION=${THISVERSION%.dirty*}
-            THISVERSION=${CIRCLE_TAG:-$THISVERSION}
-            virtualenv --python=python build
-            source build/bin/activate
-            pip install --upgrade "pip>=19.1" numpy
-            echo "${CIRCLE_TAG:-$THISVERSION}" > nibabies/VERSION
-            python setup.py sdist
-            python -m pip wheel --no-deps -w dist/ .
+          command: python -m build
       - store_artifacts:
           path: /tmp/src/nibabies/dist
       - run:
           name: Check sdist distribution
           command: |
-            THISVERSION=$( python get_version.py )
-            THISVERSION=${THISVERSION%.dirty*}
+            THISVERSION=$( python -m setuptools_scm)
+            THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.tar.gz
             virtualenv --python=python sdist
@@ -507,8 +500,8 @@ jobs:
       - run:
           name: Check wheel distribution
           command: |
-            THISVERSION=$( python get_version.py )
-            THISVERSION=${THISVERSION%.dirty*}
+            THISVERSION=$( python -m setuptools_scm )
+            THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.whl
             virtualenv --python=python wheel
@@ -524,15 +517,10 @@ jobs:
       - run:
           name: Build nibabies-wrapper
           command: |
-            THISVERSION=$( python get_version.py )
-            THISVERSION=${THISVERSION%.dirty*}
-            cd wrapper
-            virtualenv --python=python build
-            source build/bin/activate
-            python -m pip install --upgrade "pip>=19.1"
-            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_wrapper.py
-            python setup.py sdist
-            python -m pip wheel --no-deps -w dist/ .
+            THISVERSION=$( python -m setuptools_scm )
+            THISVERSION=${THISVERSION%.d*}
+            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
+            python -m build wrapper/
       - store_artifacts:
           path: /tmp/src/nibabies/wrapper/dist
 
@@ -542,26 +530,18 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Update build tools
+          command: python -m pip install --user pip build twine setuptools_scm nipreps-versions
+      - run:
           name: Build nibabies
-          command: |
-            THISVERSION=$( python get_version.py )
-            virtualenv --python=python build
-            source build/bin/activate
-            python -m pip install --upgrade "pip>=19.1"
-            echo "${CIRCLE_TAG:-$THISVERSION}" > nibabies/VERSION
-            python setup.py sdist
-            python -m pip wheel --no-deps -w dist/ .
+          command: python -m build
       - run:
           name: Build nibabies-wrapper
           command: |
-            THISVERSION=$( python get_version.py )
-            cd wrapper
-            virtualenv --python=python build
-            source build/bin/activate
-            python -m pip install --upgrade "pip>=19.1"
-            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" nibabies_wrapper.py
-            python setup.py sdist
-            python -m pip wheel --no-deps -w dist/ .
+            THISVERSION=$( python -m setuptools_scm )
+            THISVERSION=${THISVERSION%.d*}
+            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
+            python -m build wrapper/
       - run:
           name: Upload packages to PyPI
           command: |
