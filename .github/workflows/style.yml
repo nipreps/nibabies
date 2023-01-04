@@ -32,7 +32,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        pip install $(grep -e "black" -e "isort" setup.cfg | sed "s/ //g" | tr "\n" " ")
+        pip install black isort
     - name: black code formatting check
       run: |
         black --check nibabies/
