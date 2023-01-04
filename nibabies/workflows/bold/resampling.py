@@ -787,7 +787,7 @@ def _gen_metadata(grayord_density):
     _, _, metadata = _prepare_cifti(grayord_density)
     metadata_file = Path("bold.dtseries.json").absolute()
     metadata_file.write_text(json.dumps(metadata, indent=2))
-    return metadata_file
+    return str(metadata_file)
 
 
 def _split_surfaces(in_surfaces):
