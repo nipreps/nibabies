@@ -8,7 +8,7 @@ import os
 import sys
 from datetime import datetime
 from sphinx import __version__ as sphinxversion
-from packaging.version import Version
+from packaging.version import Version, parse
 
 # -- Path setup --------------------------------------------------------------
 
@@ -46,7 +46,7 @@ autodoc_mock_imports = [
     "nibabel",
     "nilearn"
 ]
-if Version.parse(sphinxversion) >= Version.parse("1.7.0"):
+if parse(sphinxversion) >= parse("1.7.0"):
     autodoc_mock_imports += [
         "pandas",
         "nilearn",
