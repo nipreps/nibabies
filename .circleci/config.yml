@@ -121,6 +121,7 @@ jobs:
                          sed -e 's/.* 3\./3./' -e 's/ .*//')
             pyenv local $PY3
             # Get version, update files.
+            python -m pip install --user setuptools_scm nipreps-versions
             THISVERSION=$( python -m setuptools_scm )
             if [[ ${THISVERSION:0:1} == "0" ]] ; then
               echo "WARNING: latest git tag could not be found"
