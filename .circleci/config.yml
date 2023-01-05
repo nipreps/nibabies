@@ -3,14 +3,14 @@ _machine_defaults: &machine_defaults
     TZ: "/usr/share/zoneinfo/America/New_York"
     SCRATCH: "/scratch"
   machine:
-    image: ubuntu-2004:current
+    image: ubuntu-2204:current
     docker_layer_caching: true
   working_directory: /tmp/src/nibabies
   resource_class: large
 
 _python_defaults: &python_defaults
   docker:
-    - image: circleci/python:3.9.6
+    - image: cimg/python:3.10.9
       auth:
         username: $DOCKER_USER
         password: $DOCKER_PAT    
@@ -177,7 +177,7 @@ jobs:
 
   get_data:
     docker:
-      - image: circleci/python:3.9.6
+      - image: cimg/python:3.10.9
     working_directory: /home/circleci/data
     steps:
       - restore_cache:
@@ -196,7 +196,7 @@ jobs:
               git config --global filter.annex.process "git-annex filter-process"
               git config --global user.name "Nipreps CI"
               git config --global user.email "nipreps@gmail.com"
-              pip install datalad
+              pip install "datalad<0.18"
             fi
       - run:
           name: Get bcp test data
