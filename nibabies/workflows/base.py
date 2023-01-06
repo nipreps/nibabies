@@ -408,7 +408,7 @@ It is released under the [CC0]\
 
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
-    anat_preproc_wf.__postdesc__ = getattr(anat_preproc_wf, '__postdesc__', '')
+    anat_preproc_wf.__postdesc__ = getattr(anat_preproc_wf, '__postdesc__') or ''
     func_pre_desc = f"""
 
 Functional data preprocessing
@@ -423,7 +423,7 @@ tasks and sessions), the following preprocessing was performed."""
         if func_preproc_wf is None:
             continue
 
-        func_preproc_wf.__desc__ = func_pre_desc + getattr(func_preproc_wf, '__desc__', '')
+        func_preproc_wf.__desc__ = func_pre_desc + (getattr(func_preproc_wf, '__desc__') or '')
         # fmt:off
         workflow.connect([
             (anat_preproc_wf, func_preproc_wf, [
