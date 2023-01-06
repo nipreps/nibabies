@@ -513,7 +513,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     # Detect dummy scans
     nss_detector = pe.Node(NonsteadyStatesDetector(), name='nss_detector')
-    nss_detector.inputs.inputnode = bold_file
+    nss_detector.inputs.in_file = ref_file
 
     # SLICE-TIME CORRECTION (or bypass) #############################################
     if run_stc:
