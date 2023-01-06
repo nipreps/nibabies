@@ -71,7 +71,7 @@ def init_infant_epi_reference_wf(
     # fmt:on
     if not is_sbref:
         select_frames = pe.Node(
-            niu.Function(function=_select_frames, output_names=['t_mask']),
+            niu.Function(function=_select_frames, output_names=['t_masks']),
             name='select_frames',
         )
         select_frames.inputs.start_frame = start_frame
