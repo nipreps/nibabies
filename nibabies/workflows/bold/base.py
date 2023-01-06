@@ -580,7 +580,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     # Create a reference image for the bold run
     initial_boldref_wf = init_infant_epi_reference_wf(omp_nthreads, is_sbref=bool(sbref_files))
-    initial_boldref_wf.inputs.inputnode.epi_file = pop_file(sbref_files) or pop_file(bold_file)
+    initial_boldref_wf.inputs.inputnode.epi_file = (
+        pop_file(sbref_files) if sbref_files else ref_file
+    )
 
     # This final boldref will be calculated after bold_bold_trans_wf, which includes one or more:
     # HMC (head motion correction)
