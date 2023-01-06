@@ -63,9 +63,9 @@ def init_infant_epi_reference_wf(
 
     # fmt:off
     wf.connect([
-        (inputnode, epi_reference_wf, [('epi_file', 'in_files')]),
-        (epi_reference_wf, boldref_mask, [('epi_ref_file', 'in_file')]),
-        (epi_reference_wf, outputnode, [('epi_ref_file', 'boldref_file')]),
+        (inputnode, epi_reference_wf, [('epi_file', 'inputnode.in_files')]),
+        (epi_reference_wf, boldref_mask, [('outputnode.epi_ref_file', 'in_file')]),
+        (epi_reference_wf, outputnode, [('outputnode.epi_ref_file', 'boldref_file')]),
         (boldref_mask, outputnode, [('out_mask', 'boldref_mask')]),
     ])
     # fmt:on
@@ -78,7 +78,7 @@ def init_infant_epi_reference_wf(
         # fmt:off
         wf.connect([
             (inputnode, select_frames, [('epi_file', 'in_file')]),
-            (select_frames, epi_reference_wf, [('t_mask', 't_mask')]),
+            (select_frames, epi_reference_wf, [('t_masks', 'inputnode.t_masks')]),
         ])
         # fmt:on
     return wf
