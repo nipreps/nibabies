@@ -408,80 +408,44 @@ It is released under the [CC0]\
 
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
-    anat_preproc_wf.__postdesc__ = (
-        (anat_preproc_wf.__postdesc__ if hasattr(anat_preproc_wf, "__postdesc__") else "")
-        + f"""
+    anat_preproc_wf.__postdesc__ = getattr(anat_preproc_wf, '__postdesc__', '')
+    func_pre_desc = f"""
 
 Functional data preprocessing
 
 : For each of the {len(subject_data['bold'])} BOLD runs found per subject (across all
-tasks and sessions), the following preprocessing was performed.
-"""
-    )
-
-    # calculate reference image(s) for BOLD images
-    # group all BOLD files based on same:
-    # 1) session
-    # 2) PE direction
-    # 3) total readout time
-    from niworkflows.workflows.epi.refmap import init_epi_reference_wf
-
-    bold_groupings = group_bolds_ref(
-        layout=config.execution.layout,
-        subject=subject_id,
-        sessions=[session_id],
-    )
+tasks and sessions), the following preprocessing was performed."""
 
     func_preproc_wfs = []
     has_fieldmap = bool(fmap_estimators)
-    for idx, grouping in enumerate(bold_groupings.values()):
-        bold_ref_wf = init_epi_reference_wf(
-            auto_bold_nss=True,
-            name=f"bold_reference_wf{idx}",
-            omp_nthreads=config.nipype.omp_nthreads,
-        )
-        bold_files = grouping.files
-        bold_ref_wf.inputs.inputnode.in_files = grouping.files
+    for bold_file in subject_data['bold']:
+        func_preproc_wf = init_func_preproc_wf(bold_file, has_fieldmap=has_fieldmap)
+        if func_preproc_wf is None:
+            continue
 
-        if grouping.multiecho_id is not None:
-            bold_files = [bold_files]
-        for idx, bold_file in enumerate(bold_files):
-            func_preproc_wf = init_func_preproc_wf(
-                bold_file,
-                has_fieldmap=has_fieldmap,
-                existing_derivatives=derivatives,
-            )
-            # fmt: off
-            workflow.connect([
-                (bold_ref_wf, func_preproc_wf, [
-                    ('outputnode.epi_ref_file', 'inputnode.bold_ref'),
-                    (
-                        ('outputnode.xfm_files', _select_iter_idx, idx),
-                        'inputnode.bold_ref_xfm'),
-                    (
-                        ('outputnode.n_dummy', _select_iter_idx, idx),
-                        'inputnode.n_dummy_scans'),
-                ]),
-                (anat_preproc_wf, func_preproc_wf, [
-                    ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
-                    ('outputnode.anat_mask', 'inputnode.anat_mask'),
-                    ('outputnode.anat_brain', 'inputnode.anat_brain'),
-                    ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                    ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
-                    ('outputnode.anat_aparc', 'inputnode.anat_aparc'),
-                    ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-                    ('outputnode.template', 'inputnode.template'),
-                    ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
-                    ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
-                    # Undefined if --fs-no-reconall, but this is safe
-                    ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-                    ('outputnode.subject_id', 'inputnode.subject_id'),
-                    ('outputnode.t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
-                    ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
-                ]),
-            ])
-            # fmt: on
-            func_preproc_wfs.append(func_preproc_wf)
+        func_preproc_wf.__desc__ = func_pre_desc + getattr(func_preproc_wf, '__desc__', '')
+        # fmt:off
+        workflow.connect([
+            (anat_preproc_wf, func_preproc_wf, [
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_brain', 'inputnode.anat_brain'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+                ('outputnode.anat_aparc', 'inputnode.anat_aparc'),
+                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                ('outputnode.template', 'inputnode.template'),
+                ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
+                # Undefined if --fs-no-reconall, but this is safe
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+                ('outputnode.t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
+                ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
+            ]),
+        ])
+        # fmt:on
+        func_preproc_wfs.append(func_preproc_wf)
 
     if not has_fieldmap:
         config.loggers.workflow.warning(
@@ -506,6 +470,7 @@ tasks and sessions), the following preprocessing was performed.
         subject=subject_id,
     )
     fmap_wf.__desc__ = f"""
+
 Preprocessing of B<sub>0</sub> inhomogeneity mappings
 
 : A total of {len(fmap_estimators)} fieldmaps were found available within the input
