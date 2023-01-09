@@ -1,5 +1,5 @@
 # Ubuntu 20.04 LTS
-FROM python:3.10-slim AS src
+FROM python:slim AS src
 RUN pip install build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git
