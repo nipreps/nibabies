@@ -132,8 +132,6 @@ jobs:
               echo "the command ``git fetch --tags --verbose`` and push"
               echo "them to your fork with ``git push origin --tags``"
             fi
-            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
-            sed -i "s/title = {nibabies}/title = {nibabies ${CIRCLE_TAG:-$THISVERSION}}/" nibabies/data/boilerplate.bib
             # Build docker image
             e=1 && for i in {1..5}; do
               docker build --rm \
@@ -523,7 +521,6 @@ jobs:
           command: |
             THISVERSION=$( python -m hatch version )
             THISVERSION=${THISVERSION%.d*}
-            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
             python -m build wrapper/
       - store_artifacts:
           path: /tmp/src/nibabies/wrapper/dist
@@ -544,12 +541,11 @@ jobs:
           command: |
             THISVERSION=$( python -m hatch version )
             THISVERSION=${THISVERSION%.d*}
-            sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
             python -m build wrapper/
       - run:
           name: Upload packages to PyPI
           command: |
-            python -m pip install --user twine
+            python -m pip install twine
             # upload nibabies
             python -m twine upload dist/nibabies*
             # upload wrapper
