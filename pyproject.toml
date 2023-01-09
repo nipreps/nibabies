@@ -1,6 +1,6 @@
 [build-system]
-requires = ["flit_scm", "nipreps-versions"]
-build-backend = "flit_scm:buildapi"
+requires = ["hatchling", "hatch-vcs", "nipreps-versions"]
+build-backend = "hatchling.build"
 
 [project]
 name = "nibabies"
@@ -78,13 +78,21 @@ all = ["nibabies[dev,doc,maint,telemetry,test]"]
 [project.scripts]
 nibabies = "nibabies.cli.run:main"
 
-[tool.flit.sdist]
-include = ["CHANGES.md"]
-exclude = [".gitignore"]
+[tool.hatch.build.targets.sdist]
+exclude = [".git_archival.txt"]  # No longer needed in sdist
 
-[tool.setuptools_scm]
-write_to = "nibabies/_version.py"
-version_scheme = "nipreps-calver"
+[tool.hatch.build.targets.wheel]
+packages = ["nibabies"]
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { version_scheme = "nipreps-calver" }
+
+[tool.hatch.build.hooks.vcs]
+version-file = "nibabies/_version.py"
+
+[tool.distutils.bdist_wheel]
+universal = true
 
 [tool.black]
 line-length = 99
