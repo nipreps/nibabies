@@ -313,7 +313,7 @@ def init_anat_derivatives_wf(
     t2w_source_files
         List of input T2w images
     t2w_preproc
-        The T2w image in T1w space. 
+        The T2w image in T1w space.
     """
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect
@@ -376,7 +376,9 @@ def init_anat_derivatives_wf(
     )
 
     ds_t2w_preproc = pe.Node(
-        DerivativesDataSink(data_dtype="i2", base_directory=output_dir, space="T1w", desc="preproc", compress=True),
+        DerivativesDataSink(
+            data_dtype="i2", base_directory=output_dir, space="T1w", desc="preproc", compress=True
+        ),
         name="ds_t2w_preproc",
         run_without_submitting=True,
     )

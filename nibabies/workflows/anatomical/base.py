@@ -77,8 +77,9 @@ def init_infant_anat_wf(
     """
     from nipype.interfaces.ants.base import Info as ANTsInfo
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-
-    from sdcflows.workflows.ancillary import init_brainextraction_wf as init_sdc_brain_extraction_wf
+    from sdcflows.workflows.ancillary import (
+        init_brainextraction_wf as init_sdc_brain_extraction_wf,
+    )
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import (
