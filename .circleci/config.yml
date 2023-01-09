@@ -124,6 +124,7 @@ jobs:
                          sed -e 's/.* 3\./3./' -e 's/ .*//')
             pyenv local $PY3
             # Get version, update files.
+            python -m pip install hatch
             THISVERSION=$( hatch version )
             if [[ ${THISVERSION:0:1} == "0" ]] ; then
               echo "WARNING: latest git tag could not be found"
@@ -476,7 +477,7 @@ jobs:
       - checkout
       - run:
           name: Update build tools
-          command: python -m pip install --user pip build twine
+          command: python -m pip install --user pip build twine hatch
       - run:
           name: Build nibabies
           command: python -m build
@@ -534,7 +535,7 @@ jobs:
       - checkout
       - run:
           name: Update build tools
-          command: python -m pip install --user pip build twine
+          command: python -m pip install --user pip build twine hatch
       - run:
           name: Build nibabies
           command: python -m build
