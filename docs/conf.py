@@ -95,6 +95,11 @@ myst_enable_extensions = [
     "substitution",
 ]
 
+linkcode_resolve = make_linkcode_resolve("nibabies",
+                                         "https://github.com/nipreps/"
+                                         "nibabies/blob/{revision}/"
+                                         "{package}/{path}#L{lineno}")
+
 project = "NiBabies"
 author = "The NiPreps developers"
 copyright = "2021-%s, %s" % (datetime.now().year, author)
