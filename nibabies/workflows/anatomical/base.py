@@ -78,6 +78,8 @@ def init_infant_anat_wf(
     from nipype.interfaces.ants.base import Info as ANTsInfo
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
+    from sdcflows.workflows.ancillary import init_brainextraction_wf as init_sdc_brain_extraction_wf
+
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import (
         init_infant_brain_extraction_wf,
@@ -214,8 +216,9 @@ as target template.
     if precomp_mask:
         precomp_mask_wf = init_precomputed_mask_wf(omp_nthreads=omp_nthreads)
         precomp_mask_wf.inputs.inputnode.t1w_mask = precomp_mask
-
-    # else: brain_extraction_wf = ...
+        sdc_brain_extraction_wf = init_sdc_brain_extraction_wf(
+            name="sdc_brain_extraction_wf",
+        )
     brain_extraction_wf = init_infant_brain_extraction_wf(
         age_months=age_months,
         ants_affine_init=ants_affine_init,
@@ -307,22 +310,31 @@ as target template.
             (t1w_template_wf, precomp_mask_wf, [
                 ("outputnode.out_file", "inputnode.t1w"),
             ]),
+            (t2w_template_wf, sdc_brain_extraction_wf, [
+                ("outputnode.out_file", "inputnode.in_file"),
+            ]),
+            (sdc_brain_extraction_wf, coregistration_wf, [
+                ("outputnode.out_file", "inputnode.in_t2w_preproc"),
+                ("outputnode.out_mask", "inputnode.in_mask"),
+                ("outputnode.out_probseg", "inputnode.in_probmap"),
+            ]),
         ])
-    
-    wf.connect([
-        (t2w_template_wf, brain_extraction_wf, [
-            ("outputnode.out_file", "inputnode.in_t2w"),
-        ]),
-    ])
+    else:
+        wf.connect([
+            (t2w_template_wf, brain_extraction_wf, [
+                ("outputnode.out_file", "inputnode.in_t2w"),
+            ]),
+            (brain_extraction_wf, coregistration_wf, [
+                ("outputnode.t2w_preproc", "inputnode.in_t2w_preproc"),
+                ("outputnode.out_mask", "inputnode.in_mask"),
+                ("outputnode.out_probmap", "inputnode.in_probmap"),
+            ]),
+        ])
     wf.connect([
         (t1w_template_wf, coregistration_wf, [
             ("outputnode.out_file", "inputnode.in_t1w"),
         ]),
-        (brain_extraction_wf, coregistration_wf, [
-            ("outputnode.t2w_preproc", "inputnode.in_t2w_preproc"),
-            ("outputnode.out_mask", "inputnode.in_mask"),
-            ("outputnode.out_probmap", "inputnode.in_probmap"),
-        ]),
+
         (inputnode, coreg_report_wf, [
             ("t1w", "inputnode.source_file"),
         ]),
