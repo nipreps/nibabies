@@ -13,7 +13,7 @@ _python_defaults: &python_defaults
     - image: cimg/python:3.10.9
       auth:
         username: $DOCKER_USER
-        password: $DOCKER_PAT    
+        password: $DOCKER_PAT
   working_directory: /tmp/src/nibabies
 
 
@@ -124,8 +124,8 @@ jobs:
                          sed -e 's/.* 3\./3./' -e 's/ .*//')
             pyenv local $PY3
             # Get version, update files.
-            python -m pip install hatch
-            THISVERSION=$( hatch version )
+            python -m pip install -U pip hatch
+            THISVERSION=$( python -m hatch version )
             if [[ ${THISVERSION:0:1} == "0" ]] ; then
               echo "WARNING: latest git tag could not be found"
               echo "Please, make sure you fetch all tags from upstream with"
@@ -477,7 +477,7 @@ jobs:
       - checkout
       - run:
           name: Update build tools
-          command: python -m pip install --user pip build twine hatch
+          command: python -m pip install pip build twine hatch
       - run:
           name: Build nibabies
           command: python -m build
@@ -486,7 +486,7 @@ jobs:
       - run:
           name: Check sdist distribution
           command: |
-            THISVERSION=$( hatch version )
+            THISVERSION=$( python -m hatch version )
             THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.tar.gz
@@ -504,7 +504,7 @@ jobs:
       - run:
           name: Check wheel distribution
           command: |
-            THISVERSION=$( hatch version )
+            THISVERSION=$( python -m hatch version )
             THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.whl
@@ -521,7 +521,7 @@ jobs:
       - run:
           name: Build nibabies-wrapper
           command: |
-            THISVERSION=$( hatch version )
+            THISVERSION=$( python -m hatch version )
             THISVERSION=${THISVERSION%.d*}
             sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
             python -m build wrapper/
@@ -535,14 +535,14 @@ jobs:
       - checkout
       - run:
           name: Update build tools
-          command: python -m pip install --user pip build twine hatch
+          command: python -m pip install pip build twine hatch
       - run:
           name: Build nibabies
           command: python -m build
       - run:
           name: Build nibabies-wrapper
           command: |
-            THISVERSION=$( hatch version )
+            THISVERSION=$( python -m hatch version )
             THISVERSION=${THISVERSION%.d*}
             sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
             python -m build wrapper/
