@@ -11,12 +11,12 @@ from sphinx import __version__ as sphinxversion
 from packaging.version import Version, parse
 
 # -- Path setup --------------------------------------------------------------
-
+here = os.path.dirname(__file__)
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.append(os.path.abspath("sphinxext"))
-sys.path.insert(0, os.path.abspath("../wrapper"))
+sys.path.append(os.path.join(here, "sphinxext"))
+sys.path.insert(0, os.path.join(here, "..", "wrapper"))
 
 from github_link import make_linkcode_resolve  # this is only available after sphinxext to PATH
 
