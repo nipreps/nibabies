@@ -121,8 +121,7 @@ jobs:
                          sed -e 's/.* 3\./3./' -e 's/ .*//')
             pyenv local $PY3
             # Get version, update files.
-            python -m pip install --user setuptools_scm nipreps-versions
-            THISVERSION=$( python -m setuptools_scm )
+            THISVERSION=$( hatch version )
             if [[ ${THISVERSION:0:1} == "0" ]] ; then
               echo "WARNING: latest git tag could not be found"
               echo "Please, make sure you fetch all tags from upstream with"
@@ -474,7 +473,7 @@ jobs:
       - checkout
       - run:
           name: Update build tools
-          command: python -m pip install --user pip build twine setuptools_scm nipreps-versions
+          command: python -m pip install --user pip build twine
       - run:
           name: Build nibabies
           command: python -m build
@@ -483,7 +482,7 @@ jobs:
       - run:
           name: Check sdist distribution
           command: |
-            THISVERSION=$( python -m setuptools_scm)
+            THISVERSION=$( hatch version )
             THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.tar.gz
@@ -501,7 +500,7 @@ jobs:
       - run:
           name: Check wheel distribution
           command: |
-            THISVERSION=$( python -m setuptools_scm )
+            THISVERSION=$( hatch version )
             THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.whl
@@ -518,7 +517,7 @@ jobs:
       - run:
           name: Build nibabies-wrapper
           command: |
-            THISVERSION=$( python -m setuptools_scm )
+            THISVERSION=$( hatch version )
             THISVERSION=${THISVERSION%.d*}
             sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
             python -m build wrapper/
@@ -532,14 +531,14 @@ jobs:
       - checkout
       - run:
           name: Update build tools
-          command: python -m pip install --user pip build twine setuptools_scm nipreps-versions
+          command: python -m pip install --user pip build twine
       - run:
           name: Build nibabies
           command: python -m build
       - run:
           name: Build nibabies-wrapper
           command: |
-            THISVERSION=$( python -m setuptools_scm )
+            THISVERSION=$( hatch version )
             THISVERSION=${THISVERSION%.d*}
             sed -i -E "s/(__version__ = )'[A-Za-z0-9.-]+'/\1'${CIRCLE_TAG:-$THISVERSION}'/" wrapper/nibabies_wrapper.py
             python -m build wrapper/
