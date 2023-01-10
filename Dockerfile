@@ -28,6 +28,7 @@ RUN apt-get update && \
                     pandoc \
                     pandoc-citeproc \
                     pkg-config \
+                    unzip \
                     xvfb && \
     curl -sSL https://deb.nodesource.com/setup_14.x | bash - && \
     apt-get install -y --no-install-recommends \
@@ -45,7 +46,6 @@ RUN curl -sSL "https://dl.dropbox.com/s/gwf51ykkk5bifyj/ants-Linux-centos6_x86_6
 # # AFNI latest (neurodocker build)
 RUN apt-get update -qq \
     && apt-get install -y -q --no-install-recommends \
-           apt-utils \
            ed \
            gsl-bin \
            libglib2.0-0 \
