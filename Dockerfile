@@ -245,8 +245,8 @@ RUN useradd -m -s /bin/bash -G users nibabies
 WORKDIR /home/nibabies
 ENV HOME="/home/nibabies"
 
-# py39_0525.0
-COPY --from=nipreps/miniconda@sha256:40fffd37963502dcd8549773559fc21182f52460e59e0ad6398a84faf6055641 /opt/conda /opt/conda
+# py39_2209.01
+COPY --from=nipreps/miniconda@sha256:8894ca17e3c8ba963812a6876093463eab6b88871bcfe23f71ebc84cf38451db /opt/conda /opt/conda
 
 RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
