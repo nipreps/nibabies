@@ -262,20 +262,14 @@ ENV PATH="/opt/conda/bin:$PATH" \
     CONDA_PYTHON="/opt/conda/bin/python"
 
 # Precaching atlases
-COPY setup.cfg nibabies-setup.cfg
 COPY scripts/fetch_templates.py fetch_templates.py
-RUN ${CONDA_PYTHON} -m pip install --no-cache-dir "$( grep templateflow nibabies-setup.cfg | xargs )" && \
+RUN ${CONDA_PYTHON} -m pip install --no-cache-dir templateflow && \
     ${CONDA_PYTHON} fetch_templates.py && \
-    rm nibabies-setup.cfg fetch_templates.py && \
+    rm fetch_templates.py && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
 COPY . /src/nibabies
-# Force static versioning within container
-ARG VERSION
-RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
-    echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
-    ${CONDA_PYTHON} -m pip install --no-cache-dir "/src/nibabies[all]"
 
 # ABI tags can interfere when running on Singularity/Apptainer
 RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
@@ -285,6 +279,7 @@ RUN ldconfig
 WORKDIR /tmp
 ARG BUILD_DATE
 ARG VCS_REF
+ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="nibabies" \
       org.label-schema.description="nibabies - NeuroImaging tools for babies" \
