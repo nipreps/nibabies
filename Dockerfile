@@ -268,7 +268,7 @@ RUN ${CONDA_PYTHON} -m pip install --no-cache-dir templateflow && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
-COPY --from=src /src/fmriprep/dist/*.whl .
+COPY --from=src /src/nibabies/dist/*.whl .
 RUN /opt/conda/bin/python -m pip install --no-cache-dir $( ls *.whl )[all]
 
 # ABI tags can interfere when running on Singularity/Apptainer
