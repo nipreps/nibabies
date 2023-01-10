@@ -11,9 +11,6 @@ ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
     LC_ALL="en_US.UTF-8"
 
-# Pre-cache neurodebian key
-COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
-
 # Prepare environment
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -36,15 +33,6 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
                     nodejs && \
     locale-gen en_US.UTF-8 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Installing Neurodebian packages (workbench, git-annex)
-RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
-    apt-key add /usr/local/etc/neurodebian.gpg && \
-    (apt-key adv --refresh-keys --keyserver hkp://ha.pool.sks-keyservers.net 0xA5D32F012649A5A9 || true)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-                    connectome-workbench=1.5.0-1~nd20.04+1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Installing ANTs 2.3.4 (NeuroDocker build)
@@ -229,8 +217,18 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
 
+# Workbench
+WORKDIR /opt
+RUN curl -sSLO https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v1.5.0.zip && \
+    unzip workbench-linux64-v1.5.0.zip && \
+    rm workbench-linux64-v1.5.0.zip && \
+    rm -rf /opt/workbench/libs_linux64_software_opengl /opt/workbench/plugins_linux64 && \
+    strip --remove-section=.note.ABI-tag /opt/workbench/libs_linux64/libQt5Core.so.5
+ENV PATH="/opt/workbench/bin_linux64:$PATH" \
+    LD_LIBRARY_PATH="/opt/workbench/lib_linux64:$LD_LIBRARY_PATH"
+
 # Installing SVGO and bids-validator
-RUN npm install -g svgo@^2.3 bids-validator@1.9.0 \
+RUN npm install -g svgo@^2.3 bids-validator@1.9.9 \
   && rm -rf ~/.npm ~/.empty /root/.npm
 
 # ICA AROMA
