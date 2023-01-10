@@ -1,4 +1,4 @@
-# Ubuntu 20.04 LTS
+# Build wheel separately
 FROM python:slim AS src
 RUN pip install build
 RUN apt-get update && \
@@ -6,6 +6,7 @@ RUN apt-get update && \
 COPY . /src/nibabies
 RUN python -m build /src/nibabies
 
+# Ubuntu 20.04 LTS
 FROM ubuntu:focal-20221130
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
@@ -224,6 +225,7 @@ RUN curl -sSLO https://www.humanconnectome.org/storage/app/media/workbench/workb
     rm workbench-linux64-v1.5.0.zip && \
     rm -rf /opt/workbench/libs_linux64_software_opengl /opt/workbench/plugins_linux64 && \
     strip --remove-section=.note.ABI-tag /opt/workbench/libs_linux64/libQt5Core.so.5
+    # ABI tags can interfere when running on Singularity/Apptainer
 ENV PATH="/opt/workbench/bin_linux64:$PATH" \
     LD_LIBRARY_PATH="/opt/workbench/lib_linux64:$LD_LIBRARY_PATH"
 
@@ -268,11 +270,9 @@ RUN ${CONDA_PYTHON} -m pip install --no-cache-dir templateflow && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
+# Install pre-built wheel
 COPY --from=src /src/nibabies/dist/*.whl .
-RUN /opt/conda/bin/python -m pip install --no-cache-dir $( ls *.whl )[all]
-
-# ABI tags can interfere when running on Singularity/Apptainer
-RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
+RUN ${CONDA_PYTHON} -m pip install --no-cache-dir $( ls *.whl )[all]
 
 # Final settings
 RUN ldconfig
@@ -282,7 +282,7 @@ ARG VCS_REF
 ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="nibabies" \
-      org.label-schema.description="nibabies - NeuroImaging tools for babies" \
+      org.label-schema.description="NiBabies - NeuroImaging tools for babies" \
       org.label-schema.url="https://github.com/nipreps/nibabies" \
       org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.vcs-url="https://github.com/nipreps/nibabies" \
