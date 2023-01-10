@@ -6,7 +6,7 @@ RUN apt-get update && \
 COPY . /src/nibabies
 RUN python -m build /src/nibabies
 
-FROM ubuntu:focal-20210827
+FROM ubuntu:focal-20221130
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
     LC_ALL="en_US.UTF-8"
@@ -57,6 +57,7 @@ RUN curl -sSL "https://dl.dropbox.com/s/gwf51ykkk5bifyj/ants-Linux-centos6_x86_6
 # # AFNI latest (neurodocker build)
 RUN apt-get update -qq \
     && apt-get install -y -q --no-install-recommends \
+           apt-utils \
            ed \
            gsl-bin \
            libglib2.0-0 \
