@@ -83,11 +83,11 @@ jobs:
       - run: *check_skip_job
       - restore_cache:
           keys:
-            - build-v5-{{ .Branch }}-{{ .Revision }}
-            - build-v5--{{ .Revision }}
-            - build-v5-{{ .Branch }}-
-            - build-v5-master-
-            - build-v5-
+            - build-v6-{{ .Branch }}-{{ .Revision }}
+            - build-v6--{{ .Revision }}
+            - build-v6-{{ .Branch }}-
+            - build-v6-master-
+            - build-v6-
           paths:
             - /tmp/docker
             - /tmp/images
@@ -179,7 +179,7 @@ jobs:
           paths:
             - src/nibabies
       - save_cache:
-         key: build-v5-{{ .Branch }}-{{ .Revision }}
+         key: build-v6-{{ .Branch }}-{{ .Revision }}
          paths:
             - /tmp/docker
             - /tmp/images
@@ -256,7 +256,7 @@ jobs:
           at: /tmp
       - restore_cache:
           keys:
-            - build-v5-{{ .Branch }}-{{ .Revision }}
+            - build-v6-{{ .Branch }}-{{ .Revision }}
           paths:
             - /tmp/docker
             - /tmp/images
@@ -319,7 +319,7 @@ jobs:
           at: /tmp
       - restore_cache:
           keys:
-            - build-v5-{{ .Branch }}-{{ .Revision }}
+            - build-v6-{{ .Branch }}-{{ .Revision }}
           paths:
             - /tmp/docker
             - /tmp/images
@@ -429,7 +429,7 @@ jobs:
             fi
       - restore_cache:
           keys:
-            - build-v5-{{ .Branch }}-{{ .Revision }}
+            - build-v6-{{ .Branch }}-{{ .Revision }}
           paths:
             - /tmp/docker
             - /tmp/images
@@ -459,7 +459,7 @@ jobs:
             fi
       - restore_cache:
           keys:
-            - build-v5-{{ .Branch }}-{{ .Revision }}
+            - build-v6-{{ .Branch }}-{{ .Revision }}
           paths:
             - /tmp/docker
             - /tmp/images
