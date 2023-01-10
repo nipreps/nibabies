@@ -174,7 +174,8 @@ jobs:
                          sed -e 's/.* 3\./3./' -e 's/ .*//')
             pyenv local $PY3
             # Get version, update files.
-            THISVERSION=$( hatch version )
+            python -m pip install -U pip hatch
+            THISVERSION=$( python -m hatch version )
             BUILT_VERSION=$( docker run --rm nipreps/nibabies:dev --version )
             BUILT_VERSION=${BUILT_VERSION%$'\r'}
             BUILT_VERSION=${BUILT_VERSION#*"NiBabies v"}
