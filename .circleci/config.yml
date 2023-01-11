@@ -294,7 +294,7 @@ jobs:
             docker run -ti --rm=false \
               -e TEST_READONLY_FILESYSTEM=1 -v $HOME:/home/readonly:ro \
               --entrypoint="pytest" nipreps/nibabies:dev \
-              /src/nibabies/nibabies -svx --doctest-modules
+              --pyargs nibabies -svx --doctest-modules
       - run:
           name: Test nibabies-wrapper (Python 2)
           command: |
