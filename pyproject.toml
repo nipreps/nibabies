@@ -24,7 +24,7 @@ dependencies = [
     "nipype >= 1.8.1",
     "nitime",
     "nitransforms >= 21.0.0",
-    "niworkflows ~= 1.7.0",
+    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@fix/nii-plotting",
     "numpy >= 1.21.0",
     "packaging",
     "pandas",
@@ -77,6 +77,9 @@ all = ["nibabies[dev,doc,maint,telemetry,test]"]
 
 [project.scripts]
 nibabies = "nibabies.cli.run:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.sdist]
 exclude = [".git_archival.txt"]  # No longer needed in sdist
