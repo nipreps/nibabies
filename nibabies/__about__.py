@@ -9,7 +9,7 @@ except ImportError:
 
 __org__ = "nipreps"
 __packagename__ = "nibabies"
-__copyright__ = "Copyright 2021, Center for Reproducible Neuroscience, Stanford University"
+__copyright__ = "Copyright 2023, Center for Reproducible Neuroscience, Stanford University"
 __credits__ = (
     "Contributors: please check the ``.zenodo.json`` file at the top-level folder"
     "of the repository"
