@@ -94,9 +94,6 @@ raw-options = { version_scheme = "nipreps-calver" }
 [tool.hatch.build.hooks.vcs]
 version-file = "nibabies/_version.py"
 
-[tool.distutils.bdist_wheel]
-universal = true
-
 [tool.black]
 line-length = 99
 target-version = ['py39']

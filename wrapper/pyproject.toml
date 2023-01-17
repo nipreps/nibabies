@@ -50,6 +50,9 @@ raw-options = { version_scheme = "nipreps-calver", root = ".." }
 [tool.hatch.build.hooks.vcs]
 version-file = "src/nibabies_wrapper/_version.py"
 
+[tool.distutils.bdist_wheel]
+universal = true
+
 #
 # Developer tool configurations
 #
