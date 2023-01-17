@@ -296,6 +296,14 @@ jobs:
               --entrypoint="pytest" nipreps/nibabies:dev \
               --pyargs nibabies -svx --doctest-modules
       - run:
+          name: Build nibabies-wrapper wheel
+          command: |
+            export PY3=$(pyenv versions | grep '3\.' |
+                         sed -e 's/.* 3\./3./' -e 's/ .*//')
+            pyenv local $PY3
+            pip install --upgrade pip build
+            python -m build wrapper/
+      - run:
           name: Test nibabies-wrapper (Python 2)
           command: |
             export PY2=$(pyenv versions | grep '2\.' |
@@ -304,7 +312,7 @@ jobs:
             echo -n "Python version: "
             python --version
             pip install --upgrade "pip<21"
-            pip install --upgrade wrapper/
+            pip install wrapper/dist/*.whl
             which nibabies-wrapper
             nibabies-wrapper --help
             nibabies-wrapper --version
@@ -317,7 +325,7 @@ jobs:
             echo -n "Python version: "
             python --version
             pip install --upgrade pip
-            pip install --upgrade wrapper/
+            pip install wrapper/dist/*.whl
             which nibabies-wrapper
             nibabies-wrapper --help
             nibabies-wrapper --version
