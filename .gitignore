@@ -99,5 +99,4 @@ work/
 testdata/
 .vscode/
 
-nibabies/_version.py
-wrapper/**/_version.py
+_version.py
