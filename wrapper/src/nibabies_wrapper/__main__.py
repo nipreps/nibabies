@@ -19,7 +19,10 @@ import os
 import re
 import subprocess
 
-__version__ = '99.99.99'
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = '0+unknown'
 __copyright__ = 'Copyright 2023, The NiPreps Developers'
 __bugreports__ = 'https://github.com/nipreps/nibabies/issues'
 
@@ -735,4 +738,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if '__main__.py' in sys.argv[0]:
+        sys.argv[0] = '%s -m %s' % (sys.executable, __name__)
     sys.exit(main())
