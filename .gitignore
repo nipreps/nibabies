@@ -100,3 +100,4 @@ testdata/
 .vscode/
 
 nibabies/_version.py
+wrapper/**/_version.py

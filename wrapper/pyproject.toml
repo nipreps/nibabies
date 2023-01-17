@@ -34,7 +34,7 @@ Documentation = "https://nibabies.readthedocs.io/en/latest/"
 NiPreps = "https://www.nipreps.org/"
 
 [project.scripts]
-fmriprep-docker = "nibabies_wrapper.__main__:main"
+nibabies-wrapper = "nibabies_wrapper.__main__:main"
 
 #
 # Hatch configurations
