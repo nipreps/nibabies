@@ -1,7 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 #
-# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+# Copyright 2023 The NiPreps Developers <nipreps@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ def prepare_timing_parameters(metadata):
     >>> prepare_timing_parameters(dict(RepetitionTime=2, DelayTime=0.5))
     {'RepetitionTime': 2, 'DelayTime': 0.5, 'SliceTimingCorrected': False}
     >>> prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                AcquisitionDuration=1.0))
+    ...                                AcquisitionDuration=1.0))  #doctest: +NORMALIZE_WHITESPACE
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'AcquisitionDuration': 1.0,
      'SliceTimingCorrected': False}
 
@@ -64,8 +64,9 @@ def prepare_timing_parameters(metadata):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': True, 'DelayTime': 1.2, 'StartTime': 0.3}
     >>> with mock.patch("nibabies.config.workflow.ignore", []):
-    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
+    ...     prepare_timing_parameters(
+    ...         dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...              SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  #doctest: +NORMALIZE_WHITESPACE
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': True,
      'AcquisitionDuration': 1.0, 'StartTime': 0.4}
 
@@ -76,8 +77,9 @@ def prepare_timing_parameters(metadata):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': False, 'DelayTime': 1.2}
     >>> with mock.patch("nibabies.config.workflow.ignore", ["slicetiming"]):
-    ...     prepare_timing_parameters(dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
-    ...                                    SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))
+    ...     prepare_timing_parameters(
+    ...         dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
+    ...              SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  #doctest: +NORMALIZE_WHITESPACE
     {'VolumeTiming': [0.0, 1.0, 2.0, 5.0, 6.0, 7.0], 'SliceTimingCorrected': False,
      'AcquisitionDuration': 1.0}
     """

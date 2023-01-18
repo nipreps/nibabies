@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs", "nipreps-versions"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nibabies-wrapper"
+description = "A wrapper for generating Docker and Apptainer/Singularity commands for simpler NiBabies usage"
+readme = "README.rst"
+authors = [{name = "The NiPreps Developers", email = "nipreps@gmail.com"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+license = {file = "LICENSE"}
+requires-python = ">=2.7"
+dependencies = []
+dynamic = ["version"]
+
+[project.urls]
+Documentation = "https://nibabies.readthedocs.io/en/latest/"
+"Source Code" = "https://github.com/nipreps/nibabies"
+"Bug Tracker" = "https://github.com/nipreps/nibabies/issues"
+"Docker Images" = "https://hub.docker.com/r/nipreps/nibabies"
+NiPreps = "https://www.nipreps.org/"
+
+[project.scripts]
+nibabies-wrapper = "nibabies_wrapper.__main__:main"
+
+#
+# Hatch configurations
+#
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nibabies_wrapper"]
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { version_scheme = "nipreps-calver", root = ".." }
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/nibabies_wrapper/_version.py"
+
+[tool.distutils.bdist_wheel]
+universal = true
+
+#
+# Developer tool configurations
+#
+
+[tool.black]
+line-length = 99
+target-version = ['py39']
+skip-string-normalization = true
+
+[tool.isort]
+profile = 'black'

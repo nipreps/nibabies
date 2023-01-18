@@ -1,11 +1,16 @@
+# Build wheel separately
+FROM python:slim AS src
+RUN pip install build
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git
+COPY . /src/nibabies
+RUN python -m build /src/nibabies
+
 # Ubuntu 20.04 LTS
-FROM ubuntu:focal-20210827
+FROM ubuntu:focal-20221130
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
     LC_ALL="en_US.UTF-8"
-
-# Pre-cache neurodebian key
-COPY docker/files/neurodebian.gpg /usr/local/etc/neurodebian.gpg
 
 # Prepare environment
 RUN apt-get update && \
@@ -24,20 +29,12 @@ RUN apt-get update && \
                     pandoc \
                     pandoc-citeproc \
                     pkg-config \
+                    unzip \
                     xvfb && \
     curl -sSL https://deb.nodesource.com/setup_14.x | bash - && \
     apt-get install -y --no-install-recommends \
                     nodejs && \
     locale-gen en_US.UTF-8 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Installing Neurodebian packages (workbench, git-annex)
-RUN curl -sSL "http://neuro.debian.net/lists/$( lsb_release -c | cut -f2 ).us-ca.full" >> /etc/apt/sources.list.d/neurodebian.sources.list && \
-    apt-key add /usr/local/etc/neurodebian.gpg && \
-    (apt-key adv --refresh-keys --keyserver hkp://ha.pool.sks-keyservers.net 0xA5D32F012649A5A9 || true)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-                    connectome-workbench=1.5.0-1~nd20.04+1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Installing ANTs 2.3.4 (NeuroDocker build)
@@ -221,8 +218,19 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
 
+# Workbench
+WORKDIR /opt
+RUN curl -sSLO https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v1.5.0.zip && \
+    unzip workbench-linux64-v1.5.0.zip && \
+    rm workbench-linux64-v1.5.0.zip && \
+    rm -rf /opt/workbench/libs_linux64_software_opengl /opt/workbench/plugins_linux64 && \
+    strip --remove-section=.note.ABI-tag /opt/workbench/libs_linux64/libQt5Core.so.5
+    # ABI tags can interfere when running on Singularity/Apptainer
+ENV PATH="/opt/workbench/bin_linux64:$PATH" \
+    LD_LIBRARY_PATH="/opt/workbench/lib_linux64:$LD_LIBRARY_PATH"
+
 # Installing SVGO and bids-validator
-RUN npm install -g svgo@^2.3 bids-validator@1.9.0 \
+RUN npm install -g svgo@^2.3 bids-validator@1.9.9 \
   && rm -rf ~/.npm ~/.empty /root/.npm
 
 # ICA AROMA
@@ -238,8 +246,8 @@ RUN useradd -m -s /bin/bash -G users nibabies
 WORKDIR /home/nibabies
 ENV HOME="/home/nibabies"
 
-# py39_0525.0
-COPY --from=nipreps/miniconda@sha256:40fffd37963502dcd8549773559fc21182f52460e59e0ad6398a84faf6055641 /opt/conda /opt/conda
+# py39_2209.01
+COPY --from=nipreps/miniconda@sha256:8894ca17e3c8ba963812a6876093463eab6b88871bcfe23f71ebc84cf38451db /opt/conda /opt/conda
 
 RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
@@ -255,32 +263,26 @@ ENV PATH="/opt/conda/bin:$PATH" \
     CONDA_PYTHON="/opt/conda/bin/python"
 
 # Precaching atlases
-COPY setup.cfg nibabies-setup.cfg
 COPY scripts/fetch_templates.py fetch_templates.py
-RUN ${CONDA_PYTHON} -m pip install --no-cache-dir "$( grep templateflow nibabies-setup.cfg | xargs )" && \
+RUN ${CONDA_PYTHON} -m pip install --no-cache-dir templateflow && \
     ${CONDA_PYTHON} fetch_templates.py && \
-    rm nibabies-setup.cfg fetch_templates.py && \
+    rm fetch_templates.py && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
-COPY . /src/nibabies
-# Force static versioning within container
-ARG VERSION
-RUN echo "${VERSION}" > /src/nibabies/nibabies/VERSION && \
-    echo "include nibabies/VERSION" >> /src/nibabies/MANIFEST.in && \
-    ${CONDA_PYTHON} -m pip install --no-cache-dir "/src/nibabies[all]"
-
-# ABI tags can interfere when running on Singularity/Apptainer
-RUN strip --remove-section=.note.ABI-tag /usr/lib/x86_64-linux-gnu/libQt5Core.so.5
+# Install pre-built wheel
+COPY --from=src /src/nibabies/dist/*.whl .
+RUN ${CONDA_PYTHON} -m pip install --no-cache-dir $( ls *.whl )[all]
 
 # Final settings
 RUN ldconfig
 WORKDIR /tmp
 ARG BUILD_DATE
 ARG VCS_REF
+ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.name="nibabies" \
-      org.label-schema.description="nibabies - NeuroImaging tools for babies" \
+      org.label-schema.description="NiBabies - NeuroImaging tools for babies" \
       org.label-schema.url="https://github.com/nipreps/nibabies" \
       org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.vcs-url="https://github.com/nipreps/nibabies" \

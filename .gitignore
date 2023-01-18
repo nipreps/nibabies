@@ -98,3 +98,5 @@ ENV/
 work/
 testdata/
 .vscode/
+
+_version.py

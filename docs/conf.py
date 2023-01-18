@@ -4,40 +4,40 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Path setup --------------------------------------------------------------
+import os
+import sys
+from datetime import datetime
+from sphinx import __version__ as sphinxversion
+from packaging.version import Version, parse
 
+# -- Path setup --------------------------------------------------------------
+here = os.path.dirname(__file__)
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
-from datetime import datetime
-from packaging.version import Version
-import nibabies
+sys.path.append(os.path.join(here, "sphinxext"))
+sys.path.insert(0, os.path.join(here, "..", "wrapper"))
 
-
-# -- Project information -----------------------------------------------------
-
-project = 'NiBabies'
-start_year = 2020
-latest_release = '21.0.1'
-
-author = f'The {project} Developers'
-copyright = f'{start_year}-{datetime.now().year}, {author}'
-
+from github_link import make_linkcode_resolve  # this is only available after sphinxext to PATH
 
 # -- General configuration ---------------------------------------------------
+
+# If your documentation needs a minimal Sphinx version, state it here.
+needs_sphinx = "1.5.3"
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    # "sphinx.ext.autodoc",
-    # "nipype.sphinxext.plot_workflow",
-    # "sphinxcontrib.napoleon",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.coverage",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.linkcode",
+    "sphinx.ext.napoleon",
     "sphinxarg.ext",  # argparse extension
+    "nipype.sphinxext.plot_workflow",
     "myst_nb",  # stop segregating rst/md
 ]
 
@@ -46,6 +46,12 @@ autodoc_mock_imports = [
     "nibabel",
     "nilearn"
 ]
+if parse(sphinxversion) >= parse("1.7.0"):
+    autodoc_mock_imports += [
+        "pandas",
+        "nilearn",
+        "seaborn",
+    ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -89,8 +95,19 @@ myst_enable_extensions = [
     "substitution",
 ]
 
+linkcode_resolve = make_linkcode_resolve("nibabies",
+                                         "https://github.com/nipreps/"
+                                         "nibabies/blob/{revision}/"
+                                         "{package}/{path}#L{lineno}")
+
+project = "NiBabies"
+author = "The NiPreps developers"
+copyright = "2021-%s, %s" % (datetime.now().year, author)
+
+import nibabies
+
 nibabies_ver = Version(nibabies.__version__)
-release = latest_release if nibabies_ver.is_prerelease else nibabies_ver.public
+release = "version" if nibabies_ver.is_prerelease else nibabies_ver.public
 
 myst_substitutions = {
     "release": release,
