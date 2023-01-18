@@ -511,16 +511,21 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     )
     bold_confounds_wf.get_node("inputnode").inputs.t1_transform_flags = [False]
 
-    # Detect dummy scans
-    nss_detector = pe.Node(NonsteadyStatesDetector(), name='nss_detector')
-    nss_detector.inputs.in_file = ref_file
+    dummy_buffer = pe.Node(niu.IdentityInterface(fields=['n_dummy']), name='dummy_buffer')
+    if (dummy := config.workflow.dummy_scans) is not None:
+        dummy_buffer.inputs.n_dummy = dummy
+    else:
+        # Detect dummy scans
+        nss_detector = pe.Node(NonsteadyStatesDetector(), name='nss_detector')
+        nss_detector.inputs.in_file = ref_file
+        workflow.connect(nss_detector, 'n_dummy', dummy_buffer, 'n_dummy')
 
     # SLICE-TIME CORRECTION (or bypass) #############################################
     if run_stc:
         bold_stc_wf = init_bold_stc_wf(name="bold_stc_wf", metadata=metadata)
         # fmt:off
         workflow.connect([
-            (nss_detector, bold_stc_wf, [('n_dummy', 'inputnode.skip_vols')]),
+            (dummy_buffer, bold_stc_wf, [('n_dummy', 'inputnode.skip_vols')]),
             (select_bold, bold_stc_wf, [("out", 'inputnode.bold_file')]),
             (bold_stc_wf, boldbuffer, [('outputnode.stc_file', 'bold_file')]),
         ])
@@ -663,7 +668,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('outputnode.rmsd_file', 'inputnode.rmsd_file')]),
         (bold_reg_wf, bold_confounds_wf, [
             ('outputnode.itk_t1_to_bold', 'inputnode.t1_bold_xform')]),
-        (nss_detector, bold_confounds_wf, [
+        (dummy_buffer, bold_confounds_wf, [
             ('n_dummy', 'inputnode.skip_vols')]),
         (bold_final, bold_confounds_wf, [
             ('bold', 'inputnode.bold'),
@@ -676,7 +681,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('outputnode.tcompcor_mask', 'tcompcor_mask'),
         ]),
         # Summary
-        (nss_detector, summary, [('n_dummy', 'algo_dummy_scans')]),
+        (dummy_buffer, summary, [('n_dummy', 'algo_dummy_scans')]),
         (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
         (outputnode, summary, [('confounds', 'confounds_file')]),
         # Select echo indices for original/validated BOLD files
@@ -878,7 +883,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                     ('bold_file', 'inputnode.name_source')]),
                 (bold_hmc_wf, ica_aroma_wf, [
                     ('outputnode.movpar_file', 'inputnode.movpar_file')]),
-                (nss_detector, ica_aroma_wf, [
+                (dummy_buffer, ica_aroma_wf, [
                     ('n_dummy', 'inputnode.skip_vols')]),
                 (bold_confounds_wf, join, [
                     ('outputnode.confounds_file', 'in_file')]),
