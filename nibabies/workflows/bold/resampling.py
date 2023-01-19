@@ -87,6 +87,7 @@ def init_bold_surf_wf(
     from nipype.interfaces.io import FreeSurferSource
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.surf import GiftiSetAnatomicalStructure
+
     from ...interfaces.metric import MetricDilate
 
     workflow = Workflow(name=name)

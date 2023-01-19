@@ -4,9 +4,9 @@
 """This module provides interfaces for workbench surface commands"""
 import os
 
-from nipype.interfaces.base import TraitedSpec, File, traits, CommandLineInputSpec
-from nipype.interfaces.workbench.base import WBCommand
 from nipype import logging
+from nipype.interfaces.base import CommandLineInputSpec, File, TraitedSpec, traits
+from nipype.interfaces.workbench.base import WBCommand
 
 iflogger = logging.getLogger("nipype.interface")
 
