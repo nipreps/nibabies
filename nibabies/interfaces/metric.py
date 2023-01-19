@@ -119,20 +119,6 @@ class MetricDilate(WBCommand):
     If -bad-vertex-roi is specified, all values, including those with
     value zero, are good, except for locations with a positive value in the
     ROI.  If it is not specified, only values equal to zero are bad.
-
-    >>> from nipype.interfaces.workbench import MetricDilate
-    >>> metdil = MetricDilate()
-    >>> metdil.inputs.in_file = 'sub-01_task-rest_bold_space-fsaverage5.L.func.gii'
-    >>> metdil.inputs.surface = 'sub-01.L.midthickness.surf.gii'
-    >>> metdil.inputs.distance = 10
-    >>> metdil.inputs.nearest = True
-    >>> metdil.cmdline
-    'wb_command -metric-dilate \
-    sub-01_task-rest_bold_space-fsaverage5.L.func.gii \
-    sub-01.L.midthickness.surf.gii \
-    10 \
-    sub-01_task-rest_bold_space-fsaverage5.L.func.gii \
-    -nearest'
     """
 
     input_spec = MetricDilateInputSpec
@@ -252,23 +238,6 @@ class MetricResample(WBCommand):
     The ``-largest option`` results in nearest vertex behavior when used with
     ``BARYCENTRIC``.  When resampling a binary metric, consider thresholding at
     0.5 after resampling rather than using ``-largest``.
-
-    >>> from nipype.interfaces.workbench import MetricResample
-    >>> metres = MetricResample()
-    >>> metres.inputs.in_file = 'sub-01_task-rest_bold_space-fsaverage5.L.func.gii'
-    >>> metres.inputs.method = 'ADAP_BARY_AREA'
-    >>> metres.inputs.current_sphere = 'fsaverage5_std_sphere.L.10k_fsavg_L.surf.gii'
-    >>> metres.inputs.new_sphere = 'fs_LR-deformed_to-fsaverage.L.sphere.32k_fs_LR.surf.gii'
-    >>> metres.inputs.area_metrics = True
-    >>> metres.inputs.current_area = 'fsaverage5.L.midthickness_va_avg.10k_fsavg_L.shape.gii'
-    >>> metres.inputs.new_area = 'fs_LR.L.midthickness_va_avg.32k_fs_LR.shape.gii'
-    >>> metres.cmdline
-    'wb_command -metric-resample sub-01_task-rest_bold_space-fsaverage5.L.func.gii \
-    fsaverage5_std_sphere.L.10k_fsavg_L.surf.gii \
-    fs_LR-deformed_to-fsaverage.L.sphere.32k_fs_LR.surf.gii \
-    ADAP_BARY_AREA fs_LR-deformed_to-fsaverage.L.sphere.32k_fs_LR.surf.out \
-    -area-metrics fsaverage5.L.midthickness_va_avg.10k_fsavg_L.shape.gii \
-    fs_LR.L.midthickness_va_avg.32k_fs_LR.shape.gii'
     """
 
     input_spec = MetricResampleInputSpec
