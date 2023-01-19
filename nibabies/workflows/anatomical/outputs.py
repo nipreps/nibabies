@@ -364,7 +364,7 @@ def init_anat_derivatives_wf(
     ds_t1w_preproc.inputs.SkullStripped = False
 
     ds_anat_ribbon = pe.Node(
-        DerivativesDataSink(base_directory=output_dir, suffix="ribbon", compress=True),
+        DerivativesDataSink(base_directory=output_dir, desc="ribbon", suffix="mask", compress=True),
         name="ds_anat_ribbon",
         run_without_submitting=True,
     )
