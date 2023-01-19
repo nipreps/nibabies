@@ -57,6 +57,7 @@ from ...interfaces import DerivativesDataSink
 from ...interfaces.reports import FunctionalSummary
 from ...utils.bids import extract_entities
 from ...utils.misc import combine_meepi_source
+from .boldref import init_infant_epi_reference_wf
 
 # BOLD workflows
 from .confounds import init_bold_confs_wf, init_carpetplot_wf
@@ -127,12 +128,6 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
         LTA-style affine matrix translating from T1w to FreeSurfer-conformed subject space
     fsnative2t1w_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed subject space to T1w
-    bold_ref
-        BOLD reference file
-    bold_ref_xfm
-        Transform file in LTA format from bold to reference
-    n_dummy_scans
-        Number of nonsteady states at the beginning of the BOLD run
 
     Outputs
     -------
@@ -177,6 +172,7 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+    from niworkflows.interfaces.bold import NonsteadyStatesDetector
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import DictMerge, KeySelect
     from niworkflows.workflows.epi.refmap import init_epi_reference_wf
@@ -244,9 +240,14 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
     )
 
     # Find associated sbref, if possible
-    entities["suffix"] = "sbref"
-    entities["extension"] = [".nii", ".nii.gz"]  # Overwrite extensions
-    sbref_files = layout.get(scope="raw", return_type="file", **entities)
+    overrides = {
+        "suffix": "sbref",
+        "extension": [".nii", ".nii.gz"],
+    }
+    if config.execution.bids_filters:
+        overrides.update(config.execution.bids_filters.get('sbref', {}))
+    sb_ents = {**entities, **overrides}
+    sbref_files = layout.get(return_type="file", **sb_ents)
 
     sbref_msg = f"No single-band-reference found for {os.path.basename(ref_file)}."
     if sbref_files and "sbref" in config.workflow.ignore:
@@ -319,10 +320,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "anat2std_xfm",
                 "std2anat_xfm",
                 "template",
-                # from bold reference workflow
-                "bold_ref",
-                "bold_ref_xfm",
-                "n_dummy_scans",
                 # from sdcflows (optional)
                 "fmap",
                 "fmap_ref",
@@ -514,12 +511,21 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     )
     bold_confounds_wf.get_node("inputnode").inputs.t1_transform_flags = [False]
 
+    dummy_buffer = pe.Node(niu.IdentityInterface(fields=['n_dummy']), name='dummy_buffer')
+    if (dummy := config.workflow.dummy_scans) is not None:
+        dummy_buffer.inputs.n_dummy = dummy
+    else:
+        # Detect dummy scans
+        nss_detector = pe.Node(NonsteadyStatesDetector(), name='nss_detector')
+        nss_detector.inputs.in_file = ref_file
+        workflow.connect(nss_detector, 'n_dummy', dummy_buffer, 'n_dummy')
+
     # SLICE-TIME CORRECTION (or bypass) #############################################
     if run_stc:
         bold_stc_wf = init_bold_stc_wf(name="bold_stc_wf", metadata=metadata)
         # fmt:off
         workflow.connect([
-            (inputnode, bold_stc_wf, [('n_dummy_scans', 'inputnode.skip_vols')]),
+            (dummy_buffer, bold_stc_wf, [('n_dummy', 'inputnode.skip_vols')]),
             (select_bold, bold_stc_wf, [("out", 'inputnode.bold_file')]),
             (bold_stc_wf, boldbuffer, [('outputnode.stc_file', 'bold_file')]),
         ])
@@ -577,8 +583,11 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         name="bold_final",
     )
 
-    # Mask input BOLD reference image
-    initial_boldref_mask = pe.Node(BrainExtraction(), name="initial_boldref_mask")
+    # Create a reference image for the bold run
+    initial_boldref_wf = init_infant_epi_reference_wf(omp_nthreads, is_sbref=bool(sbref_files))
+    initial_boldref_wf.inputs.inputnode.epi_file = (
+        pop_file(sbref_files) if sbref_files else ref_file
+    )
 
     # This final boldref will be calculated after bold_bold_trans_wf, which includes one or more:
     # HMC (head motion correction)
@@ -602,8 +611,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # BOLD buffer has slice-time corrected if it was run, original otherwise
         (boldbuffer, bold_split, [('bold_file', 'in_file')]),
         # HMC
-        (inputnode, bold_hmc_wf, [
-            ('bold_ref', 'inputnode.raw_ref_image')]),
+        (initial_boldref_wf, bold_hmc_wf, [
+            ('outputnode.boldref_file', 'inputnode.raw_ref_image')]),
         (validate_bolds, bold_hmc_wf, [
             (("out_file", pop_file), 'inputnode.bold_file')]),
         (bold_hmc_wf, outputnode, [
@@ -659,8 +668,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('outputnode.rmsd_file', 'inputnode.rmsd_file')]),
         (bold_reg_wf, bold_confounds_wf, [
             ('outputnode.itk_t1_to_bold', 'inputnode.t1_bold_xform')]),
-        (inputnode, bold_confounds_wf, [
-            ('n_dummy_scans', 'inputnode.skip_vols')]),
+        (dummy_buffer, bold_confounds_wf, [
+            ('n_dummy', 'inputnode.skip_vols')]),
         (bold_final, bold_confounds_wf, [
             ('bold', 'inputnode.bold'),
             ('mask', 'inputnode.bold_mask'),
@@ -672,7 +681,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ('outputnode.tcompcor_mask', 'tcompcor_mask'),
         ]),
         # Summary
-        (inputnode, summary, [('n_dummy_scans', 'algo_dummy_scans')]),
+        (dummy_buffer, summary, [('n_dummy', 'algo_dummy_scans')]),
         (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
         (outputnode, summary, [('confounds', 'confounds_file')]),
         # Select echo indices for original/validated BOLD files
@@ -874,8 +883,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                     ('bold_file', 'inputnode.name_source')]),
                 (bold_hmc_wf, ica_aroma_wf, [
                     ('outputnode.movpar_file', 'inputnode.movpar_file')]),
-                (inputnode, ica_aroma_wf, [
-                    ('n_dummy_scans', 'inputnode.skip_vols')]),
+                (dummy_buffer, ica_aroma_wf, [
+                    ('n_dummy', 'inputnode.skip_vols')]),
                 (bold_confounds_wf, join, [
                     ('outputnode.confounds_file', 'in_file')]),
                 (bold_confounds_wf, mrg_conf_metadata,
@@ -1051,9 +1060,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ("outputnode.bold", "inputnode.in_files"),
             ]),
         ] if not multiecho else [
-            (inputnode, initial_boldref_mask, [('bold_ref', 'in_file')]),
-            (initial_boldref_mask, bold_t2s_wf, [
-                ("out_mask", "inputnode.bold_mask"),
+            (initial_boldref_wf, bold_t2s_wf, [
+                ("outputnode.boldref_mask", "inputnode.bold_mask"),
             ]),
             (bold_bold_trans_wf, join_echos, [
                 ("outputnode.bold", "bold_files"),
@@ -1125,14 +1133,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("fmap_coeff", "inputnode.fmap_coeff"),
             ("fmap_mask", "inputnode.fmap_mask")]),
         (output_select, summary, [("sdc_method", "distortion_correction")]),
-        (inputnode, initial_boldref_mask, [('bold_ref', 'in_file')]),
-        (inputnode, coeff2epi_wf, [
-            ("bold_ref", "inputnode.target_ref")]),
-        (initial_boldref_mask, coeff2epi_wf, [
-            ("out_mask", "inputnode.target_mask")]),  # skull-stripped brain
+        (initial_boldref_wf, coeff2epi_wf, [
+            ("outputnode.boldref_file", "inputnode.target_ref")]),
+        (initial_boldref_wf, coeff2epi_wf, [
+            ("outputnode.boldref_mask", "inputnode.target_mask")]),  # skull-stripped brain
         (coeff2epi_wf, unwarp_wf, [
             ("outputnode.fmap_coeff", "inputnode.fmap_coeff")]),
-        (inputnode, sdc_report, [("bold_ref", "before")]),
+        (initial_boldref_wf, sdc_report, [("outputnode.boldref_file", "before")]),
         (bold_hmc_wf, unwarp_wf, [
             ("outputnode.xforms", "inputnode.hmc_xforms")]),
         (bold_split, unwarp_wf, [
