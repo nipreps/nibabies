@@ -1,3 +1,21 @@
+23.0.0 (January 23, 2023)
+=========================
+New year, new *NiBabies* minor series!
+Some of the highlights of this release include:
+- New run-wise BOLD reference generation, prioritizing single-band references if available, unless avoided with the `--ignore sbrefs` flag.
+- New output: Preprocessed T2w in T1w space.
+
+A full list of changes can be found below.
+
+## Full Changelog
+  * ENH: Runwise bold reference generation (#268)
+  * ENH: Add preprocessed T2w volume to outputs (#271)
+  * MAINT: Drop versioneer for hatch backend, fully embrace pyproject.toml (#265)
+  * MAINT: Rotate CircleCI secrets and setup up org-level context (#266)
+  * CI: Bump convenience images, limit datalad (#267)
+  * FIX: Remove legacy CIFTI variant support (#264)
+
+
 22.2.0 (December 13, 2022)
 ==========================
 The final *NiBabies* minor series of 2022!

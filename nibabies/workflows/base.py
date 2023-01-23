@@ -51,7 +51,6 @@ from packaging.version import Version
 from .. import config
 from ..interfaces import DerivativesDataSink
 from ..interfaces.reports import AboutSummary, SubjectSummary
-from ..utils.bids import group_bolds_ref
 from .bold import init_func_preproc_wf
 
 
