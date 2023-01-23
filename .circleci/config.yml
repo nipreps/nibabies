@@ -518,7 +518,9 @@ jobs:
       - checkout
       - run:
           name: Update build tools
-          command: python -m pip install pip build twine hatch
+          command: |
+            python -m pip install -U pip
+            python -m pip install -U build twine hatch
       - run:
           name: Build nibabies
           command: python -m build
@@ -527,7 +529,7 @@ jobs:
       - run:
           name: Check sdist distribution
           command: |
-            THISVERSION=$( python -m hatch version )
+            THISVERSION=$( python -m hatch version | tail -n1 )
             THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.tar.gz
