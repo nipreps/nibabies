@@ -530,7 +530,6 @@ jobs:
           name: Check sdist distribution
           command: |
             THISVERSION=$( python -m hatch version | tail -n1 )
-            THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.tar.gz
             virtualenv --python=python sdist
@@ -548,7 +547,6 @@ jobs:
           name: Check wheel distribution
           command: |
             THISVERSION=$( python -m hatch version )
-            THISVERSION=${THISVERSION%.d*}
             THISVERSION=${CIRCLE_TAG:-$THISVERSION}
             python -m twine check dist/nibabies*.whl
             virtualenv --python=python wheel
@@ -565,7 +563,6 @@ jobs:
           name: Build nibabies-wrapper
           command: |
             THISVERSION=$( python -m hatch version )
-            THISVERSION=${THISVERSION%.d*}
             python -m build wrapper/
       - store_artifacts:
           path: /tmp/src/nibabies/wrapper/dist
@@ -585,7 +582,6 @@ jobs:
           name: Build nibabies-wrapper
           command: |
             THISVERSION=$( python -m hatch version )
-            THISVERSION=${THISVERSION%.d*}
             python -m build wrapper/
       - run:
           name: Upload packages to PyPI
