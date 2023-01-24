@@ -232,7 +232,7 @@ white-matter (WM) and gray-matter (GM) was performed on """
     # fmt:off
     wf.connect([
         (out_aseg, map_labels, [("out_file", "in_file")]),
-        (map_labels, outputnode, [("out_file", "anat_mcrib")]),
+        (map_labels, outputnode, [("out_file", "anat_mcrib_aseg")]),
     ])
     # fmt: on
 
