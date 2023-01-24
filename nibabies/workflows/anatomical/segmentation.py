@@ -177,7 +177,7 @@ white-matter (WM) and gray-matter (GM) was performed on """
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
     out_aseg = validate_aseg if precomp_aseg else jf_label
     map_labels = pe.Node(MapLabels(mappings=aseg2mcrib), name="map_labels")
-    
+
     # fmt: off
     wf.connect([
         (out_aseg, outputnode, [('out_file', 'anat_aseg')]),
