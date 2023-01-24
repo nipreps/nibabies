@@ -52,7 +52,7 @@ def init_anat_segmentations_wf(
         name="inputnode",
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_aseg", "anat_mcrib", "anat_dseg", "anat_tpms"]),
+        niu.IdentityInterface(fields=["anat_aseg", "anat_mcrib_aseg", "anat_dseg", "anat_tpms"]),
         name="outputnode",
     )
 
