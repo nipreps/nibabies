@@ -176,19 +176,6 @@ white-matter (WM) and gray-matter (GM) was performed on """
     lut_anat_dseg.inputs.lut = _aseg_to_three()
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
     out_aseg = validate_aseg if precomp_aseg else jf_label
-    map_labels = pe.Node(MapLabels(mappings=aseg2mcrib), name="map_labels")
-
-    # fmt: off
-    wf.connect([
-        (out_aseg, outputnode, [('out_file', 'anat_aseg')]),
-        (out_aseg, lut_anat_dseg, [('out_file', 'in_dseg')]),
-        (lut_anat_dseg, outputnode, [('out', 'anat_dseg')]),
-        (lut_anat_dseg, split_seg, [('out', 'in_file')]),
-        (split_seg, outputnode, [('out', 'anat_tpms')]),
-        (out_aseg, map_labels, [("out_file", "in_file")]),
-        (map_labels, outputnode, [("out_file", "anat_mcrib_aseg")]),
-    ])
-    # fmt: on
 
     wf.__desc__ += """Segmentation volume label indices were remapped
                      from FreeSurfer to M-CRIB-compatible format. """
@@ -230,6 +217,19 @@ white-matter (WM) and gray-matter (GM) was performed on """
         63: 50,
         253: 48,
     }
+    map_labels = pe.Node(MapLabels(mappings=aseg2mcrib), name="map_labels")
+
+    # fmt: off
+    wf.connect([
+        (out_aseg, outputnode, [('out_file', 'anat_aseg')]),
+        (out_aseg, lut_anat_dseg, [('out_file', 'in_dseg')]),
+        (lut_anat_dseg, outputnode, [('out', 'anat_dseg')]),
+        (lut_anat_dseg, split_seg, [('out', 'in_file')]),
+        (split_seg, outputnode, [('out', 'anat_tpms')]),
+        (out_aseg, map_labels, [("out_file", "in_file")]),
+        (map_labels, outputnode, [("out_file", "anat_mcrib_aseg")]),
+    ])
+    # fmt: on
 
     return wf
 
