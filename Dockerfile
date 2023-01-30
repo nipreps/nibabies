@@ -233,7 +233,7 @@ ENV PATH="/opt/ICA-AROMA:$PATH" \
     AROMA_VERSION="0.4.5"
 
 # Create a shared $HOME directory
-RUN useradd -m -s /bin/bash -G users nibabies
+RUN useradd -m -s /bin/bash -G users nibabies && chmod -R 777 /home/nibabies
 WORKDIR /home/nibabies
 ENV HOME="/home/nibabies" \
     LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
