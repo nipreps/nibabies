@@ -7,7 +7,7 @@ COPY . /src/nibabies
 RUN python -m build /src/nibabies
 
 # Ubuntu 20.04 LTS
-FROM ubuntu:focal-20221130
+FROM ubuntu:jammy-20221130
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
     LC_ALL="en_US.UTF-8"
@@ -22,12 +22,11 @@ RUN apt-get update && \
                     ca-certificates \
                     curl \
                     git \
-                    graphviz \
+                    gnupg \
                     libtool \
                     locales \
                     lsb-release \
-                    pandoc \
-                    pandoc-citeproc \
+                    netbase \
                     pkg-config \
                     unzip \
                     xvfb && \
@@ -44,6 +43,9 @@ WORKDIR $ANTSPATH
 RUN curl -sSL "https://dl.dropbox.com/s/gwf51ykkk5bifyj/ants-Linux-centos6_x86_64-v2.3.4.tar.gz" \
     | tar -xzC $ANTSPATH --strip-components 1
 
+RUN GNUPGHOME=/tmp gpg --keyserver hkps://keyserver.ubuntu.com --no-default-keyring --keyring /usr/share/keyrings/linuxuprising.gpg --recv 0xEA8CACC073C3DB2A \
+    && echo "deb [signed-by=/usr/share/keyrings/linuxuprising.gpg] https://ppa.launchpadcontent.net/linuxuprising/libpng12/ubuntu jammy main" > /etc/apt/sources.list.d/linuxuprising.list
+
 # # AFNI latest (neurodocker build)
 RUN apt-get update -qq \
     && apt-get install -y -q --no-install-recommends \
@@ -54,6 +56,7 @@ RUN apt-get update -qq \
            libglw1-mesa \
            libgomp1 \
            libjpeg62 \
+           libpng12-0 \
            libxm4 \
            netpbm \
            tcsh \
@@ -67,9 +70,6 @@ RUN apt-get update -qq \
     && curl -sSL --retry 5 -o /tmp/libxp6.deb http://mirrors.kernel.org/debian/pool/main/libx/libxp/libxp6_1.0.2-2_amd64.deb \
     && dpkg -i /tmp/libxp6.deb \
     && rm /tmp/libxp6.deb \
-    && curl -sSL --retry 5 -o /tmp/libpng.deb http://snapshot.debian.org/archive/debian-security/20160113T213056Z/pool/updates/main/libp/libpng/libpng12-0_1.2.49-1%2Bdeb7u2_amd64.deb \
-    && dpkg -i /tmp/libpng.deb \
-    && rm /tmp/libpng.deb \
     && apt-get install -f \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -111,16 +111,6 @@ RUN echo "Downloading AFNI ..." \
         -name "3dAutomask" -or \
         -name "3dvolreg" \) -delete
 
-# Convert3D (neurodocker build)
-RUN echo "Downloading Convert3D ..." \
-    && mkdir -p /opt/convert3d-1.0.0 \
-    && curl -fsSL --retry 5 https://sourceforge.net/projects/c3d/files/c3d/1.0.0/c3d-1.0.0-Linux-x86_64.tar.gz/download \
-    | tar -xz -C /opt/convert3d-1.0.0 --strip-components 1 \
-    --exclude "c3d-1.0.0-Linux-x86_64/lib" \
-    --exclude "c3d-1.0.0-Linux-x86_64/share" \
-    --exclude "c3d-1.0.0-Linux-x86_64/bin/c3d_gui"
-ENV C3DPATH="/opt/convert3d-1.0.0" \
-    PATH="/opt/convert3d-1.0.0/bin:$PATH"
 
 # FSL 6.0.5.1
 RUN apt-get update -qq \
@@ -213,7 +203,8 @@ ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     MINC_BIN_DIR="$FREESURFER_HOME/mni/bin" \
     MINC_LIB_DIR="$FREESURFER_HOME/mni/lib" \
     MNI_DATAPATH="$FREESURFER_HOME/mni/data" \
-    FSL_DIR=${FSLDIR}
+    FSL_DIR=${FSLDIR} \
+    FREESURFER="/opt/freesurfer"
 ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
@@ -261,6 +252,16 @@ ENV PATH="/opt/conda/bin:$PATH" \
     OMP_NUM_THREADS=1 \
     IS_DOCKER_8395080871=1 \
     CONDA_PYTHON="/opt/conda/bin/python"
+
+# Convert3d
+RUN conda install -y -n base \
+    -c anaconda \
+    -c conda-forge \
+    convert3d=1.3.0 \
+    && sync \
+    && conda clean -afy; sync \
+    && rm -rf ~/.conda ~/.cache/pip/*; sync \
+    && ldconfig
 
 # Precaching atlases
 COPY scripts/fetch_templates.py fetch_templates.py
