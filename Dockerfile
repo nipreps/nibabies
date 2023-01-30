@@ -235,14 +235,15 @@ ENV PATH="/opt/ICA-AROMA:$PATH" \
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users nibabies
 WORKDIR /home/nibabies
-ENV HOME="/home/nibabies"
+ENV HOME="/home/nibabies" \
+    LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
 
 # py39_2209.01
 COPY --from=nipreps/miniconda@sha256:8894ca17e3c8ba963812a6876093463eab6b88871bcfe23f71ebc84cf38451db /opt/conda /opt/conda
 
 RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
-    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-    echo "conda activate base" >> ~/.bashrc
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ${HOME}/.bashrc && \
+    echo "conda activate base" >> ${HOME}/.bashrc
 
 # Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
 ENV PATH="/opt/conda/bin:$PATH" \
@@ -265,8 +266,7 @@ RUN conda install -y -n base \
 
 # Precaching atlases
 COPY scripts/fetch_templates.py fetch_templates.py
-RUN ${CONDA_PYTHON} -m pip install --no-cache-dir templateflow && \
-    ${CONDA_PYTHON} fetch_templates.py && \
+RUN ${CONDA_PYTHON} fetch_templates.py && \
     rm fetch_templates.py && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
