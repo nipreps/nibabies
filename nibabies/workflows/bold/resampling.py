@@ -35,7 +35,9 @@ def init_bold_surf_wf(
     and averaged.
 
     If --project-goodvoxels is used, a "goodvoxels" BOLD mask, as described in [@hcppipelines],
-    is generated and applied to the functional image before sampling to surface.
+    is generated and applied to the functional image before sampling to surface. After sampling,
+    empty vertices are filled by dilating in data from the nearest "good" vertex, within a 
+    radius of 10 mm (as measured on the target midthickness surface). 
     Outputs are in GIFTI format.
 
     Workflow Graph
