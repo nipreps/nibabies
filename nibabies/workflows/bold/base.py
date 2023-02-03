@@ -320,6 +320,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 "std2anat_xfm",
                 "template",
                 "anat_ribbon",
+                "anat_ribbon",
                 # from bold reference workflow
                 "bold_ref",
                 "bold_ref_xfm",
@@ -419,6 +420,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
         bids_root=layout.root,
         cifti_output=config.workflow.cifti_output,
         freesurfer=freesurfer,
+        project_goodvoxels=config.workflow.project_goodvoxels,
         project_goodvoxels=config.workflow.project_goodvoxels,
         all_metadata=all_metadata,
         multiecho=multiecho,
@@ -922,6 +924,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             surface_spaces=freesurfer_spaces,
             medial_surface_nan=config.workflow.medial_surface_nan,
             project_goodvoxels=config.workflow.project_goodvoxels,
+            project_goodvoxels=config.workflow.project_goodvoxels,
             name="bold_surf_wf",
         )
         # fmt:off
@@ -932,10 +935,15 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
                 ("anat_ribbon", "inputnode.anat_ribbon"),
                 ("anat_mask", "inputnode.t1w_mask")]),
+                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
+                ("anat_ribbon", "inputnode.anat_ribbon"),
+                ("anat_mask", "inputnode.t1w_mask")]),
             (bold_t1_trans_wf, bold_surf_wf, [('outputnode.bold_t1', 'inputnode.source_file')]),
             (bold_surf_wf, outputnode, [('outputnode.surfaces', 'surfaces')]),
             (bold_surf_wf, func_derivatives_wf, [
                 ('outputnode.target', 'inputnode.surf_refs')]),
+            (bold_surf_wf, func_derivatives_wf, [("outputnode.goodvoxels_ribbon",
+                                                  "inputnode.goodvoxels_ribbon")]),
             (bold_surf_wf, func_derivatives_wf, [("outputnode.goodvoxels_ribbon",
                                                   "inputnode.goodvoxels_ribbon")]),
         ])
