@@ -320,7 +320,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 "std2anat_xfm",
                 "template",
                 "anat_ribbon",
-                "anat_ribbon",
                 # from bold reference workflow
                 "bold_ref",
                 "bold_ref_xfm",
