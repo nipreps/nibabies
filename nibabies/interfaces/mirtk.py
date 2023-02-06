@@ -166,8 +166,9 @@ class ReconNeonatalCortex(CommandLine):
                 # directory setup
                 'out_dir': str(out_dir),
                 'mesh_dir': str(out_dir / 'meshes'),
-                'temp_dir': str(work_dir),
+                'temp_dir': str(work_dir / 'tmp'),
                 'logs_dir': str(out_dir / 'logs'),
+                'work_dir': str(work_dir),
                 'tissueseg_dir': '%(work_dir)s/TissueSeg',
                 'tissuesegmcribs_dir': '%(work_dir)s/TissueSegMCRIBS',
                 **inputs,  # input images
