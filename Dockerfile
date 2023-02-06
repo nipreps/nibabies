@@ -264,6 +264,20 @@ RUN conda install -y -n base \
     && rm -rf ~/.conda ~/.cache/pip/*; sync \
     && ldconfig
 
+# MIRTK
+COPY --from=nipreps/mirtk@sha256:428e2bd9411c09624710eff05b91ad87f576b8091c8dba0ebc7640bd03df8bb4 /opt/mirtk /opt/mirtk
+COPY --from=nipreps/mirtk@sha256:428e2bd9411c09624710eff05b91ad87f576b8091c8dba0ebc7640bd03df8bb4 /opt/vtk/lib /opt/itk/lib /opt/mirtk/deps/
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libarpack2-dev \
+        libcgal-dev \
+        libeigen3-dev \
+        libpng-dev \
+        libsuitesparse-dev \
+        libtbb-dev && \
+    rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/mirtk/bin:${PATH}" \
+    LD_LIBRARY_PATH="/opt/mirtk/deps:${LD_LIBRARY_PATH}"
+
 # Precaching atlases
 COPY scripts/fetch_templates.py fetch_templates.py
 RUN ${CONDA_PYTHON} fetch_templates.py && \
