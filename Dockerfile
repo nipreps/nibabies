@@ -265,8 +265,8 @@ RUN conda install -y -n base \
     && ldconfig
 
 # MIRTK
-COPY --from=nipreps/mirtk@sha256:428e2bd9411c09624710eff05b91ad87f576b8091c8dba0ebc7640bd03df8bb4 /opt/mirtk /opt/mirtk
-COPY --from=nipreps/mirtk@sha256:428e2bd9411c09624710eff05b91ad87f576b8091c8dba0ebc7640bd03df8bb4 /opt/vtk/lib /opt/itk/lib /opt/mirtk/deps/
+COPY --from=nipreps/mirtk@sha256:b483e74407b1f3466d865277883a11fb6f6c7a9c57ef9c1dd360f8f27a0bae4e /opt/mirtk /opt/mirtk
+COPY --from=nipreps/mirtk@sha256:b483e74407b1f3466d865277883a11fb6f6c7a9c57ef9c1dd360f8f27a0bae4e /opt/vtk/lib /opt/itk/lib /opt/mirtk/deps/
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libarpack2-dev \
         libcgal-dev \
