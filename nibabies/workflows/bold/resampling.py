@@ -74,8 +74,8 @@ def init_bold_surf_wf(
         FreeSurfer subject ID
     t1w2fsnative_xfm
         LTA-style affine matrix translating from T1w to FreeSurfer-conformed subject space
-    anat_giftis
-        GIFTI anatomical surfaces in T1w space
+    anat_ribbon
+        Cortical ribbon in T1w space
     t1w_mask
         Mask of the skull-stripped T1w image
 
@@ -296,10 +296,38 @@ surface projection.
 
     return workflow
 
-    return workflow
-
 
 def init_goodvoxels_bold_mask_wf(mem_gb, name="goodvoxels_bold_mask_wf"):
+    """
+    Workflow Graph
+        .. workflow::
+            :graph2use: colored
+            :simple_form: yes
+
+            from nibabies.workflows.bold import init_goodvoxels_mask_wf
+            wf = init_goodvoxels_mask_wf(mem_gb=0.1)
+
+    Parameters
+    ----------
+    mem_gb : :obj:`float`
+        Size of BOLD file in GB
+    name : :obj:`str`
+        Name of workflow (default: ``goodvoxels_bold_mask_wf``)
+
+    Inputs
+    ------
+    anat_ribbon
+        Cortical ribbon in T1w space
+    bold_file
+        Motion-corrected BOLD series in T1w space
+
+    Outputs
+    -------
+    masked_bold
+        BOLD series after masking outlier voxels with locally high COV
+    goodvoxels_ribbon
+        Cortical ribbon mask excluding voxels with locally high COV
+    """
     workflow = pe.Workflow(name=name)
 
     inputnode = pe.Node(
@@ -540,43 +568,6 @@ def init_goodvoxels_bold_mask_wf(mem_gb, name="goodvoxels_bold_mask_wf"):
         ]
     )
 
-    return workflow  # , apply_goodvoxels_ribbon_mask
-
-
-def connect_bold_surf_wf(
-    workflow,
-    inputnode,
-    outputnode,
-    get_fsnative,
-    itersource,
-    targets,
-    rename_src,
-    sampler,
-    itk2lta,
-    update_metadata,
-    apply_goodvoxels_or_rename,
-):
-    workflow.connect(
-        [
-            (
-                inputnode,
-                get_fsnative,
-                [("subject_id", "subject_id"), ("subjects_dir", "subjects_dir")],
-            ),
-            (inputnode, targets, [("subject_id", "subject_id")]),
-            (inputnode, rename_src, [("source_file", "in_file")]),
-            (inputnode, itk2lta, [("source_file", "src_file"), ("t1w2fsnative_xfm", "in_file")]),
-            (get_fsnative, itk2lta, [("brain", "dst_file")]),  # InfantFS: Use brain instead of T1
-            (inputnode, sampler, [("subjects_dir", "subjects_dir"), ("subject_id", "subject_id")]),
-            (itersource, targets, [("target", "space")]),
-            (itersource, rename_src, [("target", "subject")]),
-            (itk2lta, sampler, [("out", "reg_file")]),
-            (targets, sampler, [("out", "target_subject")]),
-            (apply_goodvoxels_or_rename, sampler, [("out_file", "source_file")]),
-            (update_metadata, outputnode, [("out_file", "surfaces")]),
-            (itersource, outputnode, [("target", "target")]),
-        ]
-    )
     return workflow
 
 
