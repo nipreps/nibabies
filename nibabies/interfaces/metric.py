@@ -12,7 +12,6 @@ iflogger = logging.getLogger("nipype.interface")
 
 
 class MetricDilateInputSpec(CommandLineInputSpec):
-
     in_file = File(
         exists=True,
         mandatory=True,
