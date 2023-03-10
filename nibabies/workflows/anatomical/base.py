@@ -24,6 +24,7 @@ def init_infant_anat_wf(
     skull_strip_template,
     sloppy,
     spaces,
+    cifti_output=False,
     name="infant_anat_wf",
 ):
     """
@@ -193,6 +194,7 @@ as target template.
         num_t1w=num_t1w,
         output_dir=output_dir,
         spaces=spaces,
+        cifti_output=cifti_output,
     )
 
     # Multiple T1w files -> generate average reference
@@ -444,4 +446,21 @@ as target template.
         ]),
     ])
     # fmt: on
+
+    if cifti_output:
+        morph_grayords_wf = init_morph_grayords_wf(grayord_density=cifti_output)
+        anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
+        # fmt:off
+        workflow.connect([
+            (surface_recon_wf, morph_grayords_wf, [
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+            ]),
+            (morph_grayords_wf, anat_derivatives_wf, [
+                ("outputnode.cifti_morph", "inputnode.cifti_morph"),
+                ("outputnode.cifti_metadata", "inputnode.cifti_metadata"),
+            ]),
+        ])
+        # fmt:on
+
     return wf
