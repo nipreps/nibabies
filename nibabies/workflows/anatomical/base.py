@@ -453,7 +453,7 @@ as target template.
         morph_grayords_wf = init_morph_grayords_wf(grayord_density=cifti_output)
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
         # fmt:off
-        workflow.connect([
+        wf.connect([
             (surface_recon_wf, morph_grayords_wf, [
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
