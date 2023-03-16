@@ -448,6 +448,8 @@ as target template.
     # fmt: on
 
     if cifti_output:
+        from smriprep.workflows.surfaces import init_morph_grayords_wf
+
         morph_grayords_wf = init_morph_grayords_wf(grayord_density=cifti_output)
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
         # fmt:off
