@@ -266,7 +266,8 @@ RUN conda install -y -n base \
 
 # Precaching atlases
 COPY scripts/fetch_templates.py fetch_templates.py
-RUN ${CONDA_PYTHON} fetch_templates.py && \
+RUN ${CONDA_PYTHON} -m pip install --no-cache-dir --upgrade templateflow && \
+    ${CONDA_PYTHON} fetch_templates.py && \
     rm fetch_templates.py && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +

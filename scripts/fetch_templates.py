@@ -68,6 +68,8 @@ def fetch_fsLR():
     tpl-fsLR/tpl-fsLR_space-fsaverage_hemi-R_den-32k_sphere.surf.gii
     """
     tf.get('fsLR', density='32k')
+    tf.get('fsLR', density="164k", desc="std", suffix="sphere")
+    tf.get('fsLR', density="164k", suffix="midthickness")
 
 
 def fetch_MNIInfant(cohort=1):
