@@ -21,14 +21,13 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
     subjects_dir = Directory(
         exists=True,
         hash_files=False,
-        desc='path to subjects directory',
-        required=True,
+        desc='Path to FreeSurfer subjects directory',
     )
     subject_id = traits.Str(
-        # required=True,
+        required=True,
         argstr='%s',
         position=-1,
-        desc='subject name',
+        desc='Subject ID',
     )
     t1w_file = File(
         exists=True,
@@ -112,7 +111,7 @@ class MCRIBReconAll(CommandLine):
         # Avoid processing if valid
         if self.inputs.outdir:
             sid = self.inputs.subject_id
-            logf = self.inputs.outdir / sid / 'logs' / f'{sid}.log'
+            logf = Path(self.inputs.outdir) / sid / 'logs' / f'{sid}.log'
             if logf.exists():
                 logtxt = logf.read_text().splitlines()[-3:]
                 self._no_run = 'Finished without error' in logtxt
@@ -203,7 +202,7 @@ class MCRIBReconAll(CommandLine):
         # Copy freesurfer directory into FS subjects dir
         sid = self.inputs.subject_id
         mcribs_fs = self._mcribs_dir / sid / 'freesurfer' / sid
-        if mcribs_fs.exists():
+        if mcribs_fs.exists() and self.inputs.subjects_dir:
             dst = Path(self.inputs.subjects_dir) / self.inputs.subject_id
             if not dst.exists():
                 shutil.copytree(mcribs_fs, dst)
