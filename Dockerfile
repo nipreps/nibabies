@@ -6,7 +6,12 @@ RUN apt-get update && \
 COPY . /src/nibabies
 RUN python -m build /src/nibabies
 
-# Ubuntu 20.04 LTS
+# Python to support legacy MCRIBS
+FROM python:3.6.15-slim as pyenv
+RUN pip install --no-cache-dir numpy nibabel scipy pandas numexpr contextlib2 \
+    && cp /usr/lib/x86_64-linux-gnu/libffi.so.7* /usr/local/lib
+
+# Ubuntu 22.04 LTS
 FROM ubuntu:jammy-20221130
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
@@ -264,6 +269,23 @@ RUN conda install -y -n base \
     && rm -rf ~/.conda ~/.cache/pip/*; sync \
     && ldconfig
 
+# MCRIBS
+COPY --from=nipreps/mcribs@sha256:6c7a8dedd61d0ead8c7c4a57ab158928c1c1d787d87dae33ab7ee43226fb1e0f /opt/MCRIBS/ /opt/MCRIBS
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libboost-dev \
+        libeigen3-dev \
+        libflann-dev \
+        libgl1-mesa-dev \
+        libglu1-mesa-dev \
+        libssl-dev \
+        libxt-dev \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/MCRIBS/bin:/opt/MCRIBS/MIRTK/MIRTK-install/bin:/opt/MCRIBS/MIRTK/MIRTK-install/lib/tools:${PATH}" \
+    LD_LIBRARY_PATH="/opt/MCRIBS/lib:/opt/MCRIBS/ITK/ITK-install/lib:/opt/MCRIBS/VTK/VTK-install/lib:/opt/MCRIBS/MIRTK/MIRTK-install/lib:${LD_LIBRARY_PATH}" \
+    MCRIBS_HOME="/opt/MCRIBS" \
+    PYTHONPATH="/opt/MCRIBS/lib/python:$PYTHONPATH"
+
 # Precaching atlases
 COPY scripts/fetch_templates.py fetch_templates.py
 RUN ${CONDA_PYTHON} fetch_templates.py && \
@@ -290,4 +312,6 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.version=$VERSION \
       org.label-schema.schema-version="1.0"
 
+COPY --from=pyenv /usr/local/lib/ /usr/local/lib/
+ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 ENTRYPOINT ["/opt/conda/bin/nibabies"]
