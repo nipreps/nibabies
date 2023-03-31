@@ -1,4 +1,3 @@
-import os
 import shutil
 from pathlib import Path
 
@@ -14,6 +13,11 @@ from nipype.interfaces.base import (
 
 class MCRIBReconAllInputSpec(CommandLineInputSpec):
     # Input structure massaging
+    outdir = Directory(
+        exists=True,
+        hash_files=False,
+        desc='Path to save output, or path of existing MCRIBS output',
+    )
     subjects_dir = Directory(
         exists=True,
         hash_files=False,
@@ -100,6 +104,21 @@ class MCRIBReconAll(CommandLine):
     _cmd = 'MCRIBReconAll'
     input_spec = MCRIBReconAllInputSpec
     output_spec = MCRIBReconAllOutputSpec
+    _no_run = False
+
+    @property
+    def cmdline(self):
+        cmd = super().cmdline
+        # Avoid processing if valid
+        if self.inputs.outdir:
+            sid = self.inputs.subject_id
+            logf = self.inputs.outdir / sid / 'logs' / f'{sid}.log'
+            if logf.exists():
+                logtxt = logf.read_text().splitlines()[-3:]
+                self._no_run = 'Finished without error' in logtxt
+            if self._no_run:
+                return "echo MCRIBSReconAll: nothing to do"
+        return cmd
 
     def _setup_directory_structure(self, mcribs_dir: Path) -> None:
         '''
@@ -138,9 +157,9 @@ class MCRIBReconAll(CommandLine):
             t2wiso = root / 'RawT2RadiologicalIsotropic' / f'{sid}.nii.gz'
             t2wiso.parent.mkdir(**mkdir_kw)
             if not t2wiso.exists():
-                t2wiso.symlink_to(f'../../RawT2/{sid}.nii.gz')
+                t2wiso.symlink_to(f'../RawT2/{sid}.nii.gz')
 
-            n4 = root / sid / 'N4' / f'{sid}.nii.gz'
+            n4 = root / 'TissueSegDrawEM' / sid / 'N4' / f'{sid}.nii.gz'
             n4.parent.mkdir(**mkdir_kw)
             if not n4.exists():
                 n4.symlink_to(f'../../../RawT2/{sid}.nii.gz')
@@ -151,37 +170,42 @@ class MCRIBReconAll(CommandLine):
             tisseg = root / 'TissueSeg' / f'{sid}_all_labels.nii.gz'
             tisseg.parent.mkdir(**mkdir_kw)
             if not tisseg.exists():
-                shutil.copy(self.inputs.segmentation, str(tisseg))
+                shutil.copy(self.inputs.segmentation_file, str(tisseg))
             manedit = tisseg.parent / f'{sid}_all_labels_manedit.nii.gz'
             if not manedit.exists():
                 manedit.symlink_to(tisseg.name)
 
             if self.inputs.surfrecon:
+                t2wseg = root / 'TissueSeg' / f'{sid}_t2w_restore.nii.gz'
+                if not t2wseg.exists():
+                    t2wseg.symlink_to(f'../RawT2/{sid}.nii.gz')
+
                 surfrec = root / 'SurfReconDeformable' / sid / 'temp' / 't2w-image.nii.gz'
                 surfrec.parent.mkdir(**mkdir_kw)
                 if not surfrec.exists():
-                    surfrec.symlink_to(f'../../../../RawT2/{sid}.nii.gz')
-
-        # TODO: T1w -> <subject_id>/RawT1RadiologicalIsotropic/<subjectid>.nii.gz
+                    surfrec.symlink_to(f'../../../RawT2/{sid}.nii.gz')
+        # TODO?: T1w -> <subject_id>/RawT1RadiologicalIsotropic/<subjectid>.nii.gz
         return
 
     def _run_interface(self, runtime):
         # if users wish to preserve their runs
-        mcribs_dir = os.getenv('MCRIBS_SUBJECTS')
-        if mcribs_dir is None or not Path(mcribs_dir).exists():
-            mcribs_dir = runtime.cwd / 'mcribs'
-        self._mcribs_dir = mcribs_dir
-        self._setup_directory_structure(mcribs_dir)
-        # runs in CWD
-        os.chdir(mcribs_dir / self.inputs.subject_id)
+        mcribs_dir = self.inputs.outdir or Path(runtime.cwd) / 'mcribs'
+        self._mcribs_dir = Path(mcribs_dir)
+        self._setup_directory_structure(self._mcribs_dir)
+        # overwrite CWD to be in MCRIB subject's directory
+        runtime.cwd = str(self._mcribs_dir / self.inputs.subject_id)
         return super()._run_interface(runtime)
 
     def _list_outputs(self):
         outputs = self._outputs().get()
-        outputs['mcribs_dir'] = self._mcribs_dir
+        outputs['mcribs_dir'] = str(self._mcribs_dir)
 
-        # TODO: Copy freesurfer directory into FS subjects dir
-        # fs_outputs = self._mcribs_dir / self.inputs.subject_id / 'freesurfer'
-        # if fs_outputs.exists():
-        #     pass
+        # Copy freesurfer directory into FS subjects dir
+        sid = self.inputs.subject_id
+        mcribs_fs = self._mcribs_dir / sid / 'freesurfer' / sid
+        if mcribs_fs.exists():
+            dst = Path(self.inputs.subjects_dir) / self.inputs.subject_id
+            if not dst.exists():
+                shutil.copytree(mcribs_fs, dst)
+
         return outputs
