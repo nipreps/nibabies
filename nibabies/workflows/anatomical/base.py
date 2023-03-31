@@ -147,6 +147,7 @@ BIDS dataset."""
                 "surfaces",
                 "morphometrics",
                 "anat_aseg",
+                "anat_mcrib",
                 "anat_aparc",
                 "template",
             ]
