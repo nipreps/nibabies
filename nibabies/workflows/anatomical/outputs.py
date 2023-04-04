@@ -249,6 +249,7 @@ def init_anat_derivatives_wf(
     num_t1w,
     output_dir,
     spaces,
+    cifti_output,
     name="anat_derivatives_wf",
     tpm_labels=BIDS_TISSUE_ORDER,
 ):
@@ -314,6 +315,12 @@ def init_anat_derivatives_wf(
         List of input T2w images
     t2w_preproc
         The T2w image in T1w space.
+    cifti_morph
+        Morphometric CIFTI-2 dscalar files
+    cifti_density
+        Grayordinate density
+    cifti_metadata
+        JSON files containing metadata dictionaries
     """
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect
@@ -348,6 +355,9 @@ def init_anat_derivatives_wf(
                 "t2w_source_files",
                 "t2w_preproc",
                 "anat_ribbon",
+                "cifti_metadata",
+                "cifti_density",
+                "cifti_morph",
             ]
         ),
         name="inputnode",
@@ -717,6 +727,26 @@ def init_anat_derivatives_wf(
                                     ('source_files', 'source_file')]),
     ])
     # fmt: on
+    if cifti_output:
+        ds_cifti_morph = pe.MapNode(
+            DerivativesDataSink(
+                base_directory=output_dir,
+                suffix=['curv', 'sulc', 'thickness'],
+                compress=False,
+                space='fsLR',
+            ),
+            name='ds_cifti_morph',
+            run_without_submitting=True,
+            iterfield=["in_file", "meta_dict", "suffix"],
+        )
+        # fmt:off
+        workflow.connect([
+            (inputnode, ds_cifti_morph, [('cifti_morph', 'in_file'),
+                                         ('source_files', 'source_file'),
+                                         ('cifti_density', 'density'),
+                                         (('cifti_metadata', _read_jsons), 'meta_dict')])
+        ])
+        # fmt:on
     return workflow
 
 
@@ -729,3 +759,10 @@ def _set_tpl_res(space, resolution):
         return int(resolution)
     except ValueError:
         return 1
+
+
+def _read_jsons(in_file):
+    from json import loads
+    from pathlib import Path
+
+    return [loads(Path(f).read_text()) for f in in_file]

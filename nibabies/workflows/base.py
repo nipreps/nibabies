@@ -331,6 +331,7 @@ It is released under the [CC0]\
         skull_strip_template=Reference.from_string(config.workflow.skull_strip_template)[0],
         sloppy=config.execution.sloppy,
         spaces=spaces,
+        cifti_output=config.workflow.cifti_output,
     )
 
     # fmt: off
