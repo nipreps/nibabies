@@ -166,11 +166,64 @@ surface projection.
     )
     sampler.inputs.hemi = ["lh", "rh"]
 
+    update_metadata = pe.MapNode(
+        GiftiSetAnatomicalStructure(),
+        iterfield=["in_file"],
+        name="update_metadata",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    joinnode = pe.JoinNode(
+        niu.IdentityInterface(fields=["surfaces", "target"]),
+        joinsource="itersource",
+        name="joinnode",
+    )
+
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=["surfaces", "target", "goodvoxels_ribbon"]),
+        name="outputnode",
+    )
+
+    # fmt: off
+    workflow.connect([
+        (inputnode, get_fsnative, [
+            ("subject_id", "subject_id"),
+            ("subjects_dir", "subjects_dir")
+        ]),
+        (inputnode, targets, [("subject_id", "subject_id")]),
+        (inputnode, itk2lta, [
+            ("source_file", "src_file"),
+            ("t1w2fsnative_xfm", "in_file"),
+        ]),
+        (get_fsnative, itk2lta, [("T1", "dst_file")]),
+        (inputnode, sampler, [
+            ("subjects_dir", "subjects_dir"),
+            ("subject_id", "subject_id"),
+        ]),
+        (itersource, targets, [("target", "space")]),
+        (itersource, rename_src, [("target", "subject")]),
+        (rename_src, sampler, [("out_file", "source_file")]),
+        (itk2lta, sampler, [("out", "reg_file")]),
+        (targets, sampler, [("out", "target_subject")]),
+        (update_metadata, joinnode, [("out_file", "surfaces")]),
+        (itersource, joinnode, [("target", "target")]),
+        (joinnode, outputnode, [
+            ("surfaces", "surfaces"),
+            ("target", "target"),
+        ]),
+    ])
+    # fmt: on
+
+    # At this point, rename_src.in_file and update_metadata.in_file need connecting
+    #
+    # These depend on two optional steps: goodvoxel projection and medial wall nan replacment
+    #
+    # inputnode -> optional(goodvoxels_bold_mask_wf) -> rename_src
+    # sampler -> optional(metric_dilate) -> optional(medial_nans) -> update_metadata
+    #
+
     metric_dilate = pe.MapNode(
-        MetricDilate(
-            distance=10,
-            nearest=True,
-        ),
+        MetricDilate(distance=10, nearest=True),
         iterfield=["in_file", "surf_file"],
         name="metric_dilate",
         mem_gb=mem_gb * 3,
@@ -193,107 +246,41 @@ surface projection.
         MedialNaNs(), iterfield=["in_file"], name="medial_nans", mem_gb=DEFAULT_MEMORY_MIN_GB
     )
 
-    # Rename the source file to the output space to simplify naming later
-    prepend_hemi = pe.MapNode(
-        niu.Rename(format_string="%(hemi)s.target.func.gii"),
-        iterfield=["in_file", "hemi"],
-        name="prepend_hemi",
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-    prepend_hemi.inputs.hemi = ["lh", "rh"]
-
-    update_metadata = pe.MapNode(
-        GiftiSetAnatomicalStructure(),
-        iterfield=["in_file"],
-        name="update_metadata",
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-
-    outputnode = pe.JoinNode(
-        niu.IdentityInterface(fields=["surfaces", "target", "goodvoxels_ribbon"]),
-        joinsource="itersource",
-        name="outputnode",
-        run_without_submitting=True,
-    )
-
     if project_goodvoxels:
         goodvoxels_bold_mask_wf = init_goodvoxels_bold_mask_wf(mem_gb)
 
         # fmt: off
         workflow.connect([
-            (inputnode, goodvoxels_bold_mask_wf, [("source_file", "inputnode.bold_file"),
-                                                  ("anat_ribbon", "inputnode.anat_ribbon")]),
+            (inputnode, goodvoxels_bold_mask_wf, [
+                ("source_file", "inputnode.bold_file"),
+                ("anat_ribbon", "inputnode.anat_ribbon"),
+            ]),
             (goodvoxels_bold_mask_wf, rename_src, [("outputnode.masked_bold", "in_file")]),
-            (goodvoxels_bold_mask_wf, outputnode, [("outputnode.goodvoxels_ribbon",
-                                                    "goodvoxels_ribbon")]),
+            (goodvoxels_bold_mask_wf, outputnode, [
+                ("outputnode.goodvoxels_ribbon", "goodvoxels_ribbon"),
+            ]),
+            (sampler, metric_dilate, [("out_file", "in_file")]),
         ])
         # fmt: on
     else:
-        # fmt: off
-        workflow.connect([
-            (inputnode, rename_src, [("source_file", "in_file")]),
-        ])
-        # fmt: on
-
-    # fmt: off
-    workflow.connect(
-        [
-            (
-                inputnode,
-                get_fsnative,
-                [("subject_id", "subject_id"), ("subjects_dir", "subjects_dir")],
-            ),
-            (inputnode, targets, [("subject_id", "subject_id")]),
-            (inputnode, itk2lta, [("source_file", "src_file"), ("t1w2fsnative_xfm", "in_file")]),
-            (get_fsnative, itk2lta, [("brain", "dst_file")]),  # InfantFS: Use brain instead of T1
-            (inputnode, sampler, [("subjects_dir", "subjects_dir"), ("subject_id", "subject_id")]),
-            (itersource, targets, [("target", "space")]),
-            (itersource, rename_src, [("target", "subject")]),
-            (rename_src, sampler, [("out_file", "source_file")]),
-            (itk2lta, sampler, [("out", "reg_file")]),
-            (targets, sampler, [("out", "target_subject")]),
-            (update_metadata, outputnode, [("out_file", "surfaces")]),
-            (itersource, outputnode, [("target", "target")]),
-        ]
-    )
-    # fmt: on
+        workflow.connect(inputnode, "source_file", rename_src, "in_file")
 
     if medial_surface_nan:
-        if project_goodvoxels:
-            # fmt: off
-            workflow.connect([
-                (inputnode, medial_nans, [("subjects_dir", "subjects_dir")]),
-                (sampler, metric_dilate, [("out_file", "in_file")]),
-                (metric_dilate, medial_nans, [("out_file", "in_file")]),
-                (medial_nans, update_metadata, [("out_file", "in_file")]),
-            ])
-            # fmt: on
-        else:
-            # fmt: off
-            workflow.connect([
-                (inputnode, medial_nans, [("subjects_dir", "subjects_dir")]),
-                (sampler, medial_nans, [("out_file", "in_file")]),
-                (medial_nans, update_metadata, [("out_file", "in_file")]),
-            ])
-            # fmt: on
+        # fmt: off
+        workflow.connect([
+            (inputnode, medial_nans, [("subjects_dir", "subjects_dir")]),
+            (medial_nans, update_metadata, [("out_file", "in_file")]),
+        ])
+        # fmt: on
 
+    if medial_surface_nan and project_goodvoxels:
+        workflow.connect(metric_dilate, "out_file", medial_nans, "in_file")
+    elif medial_surface_nan:
+        workflow.connect(sampler, "out_file", medial_nans, "in_file")
+    elif project_goodvoxels:
+        workflow.connect(metric_dilate, "out_file", update_metadata, "in_file")
     else:
-        if project_goodvoxels:
-            # fmt: off
-            workflow.connect([
-                (sampler, metric_dilate, [("out_file", "in_file")]),
-                (metric_dilate, update_metadata, [("out_file", "in_file")]),
-            ])
-            # fmt: on
-        else:
-            # fmt: off
-            workflow.connect([
-                (sampler, update_metadata, [("out_file", "in_file")]),
-            ])
-            # fmt: on
-
+        workflow.connect(sampler, "out_file", update_metadata, "in_file")
     return workflow
 
 
