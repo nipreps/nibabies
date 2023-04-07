@@ -21,7 +21,7 @@ def init_infant_epi_reference_wf(
     ----------
     omp_nthreads
         Maximum number of threads an individual process may use
-    has_sbref
+    is_sbref
         A single-band reference is provided.
     start_frame
         BOLD frame to start creating the reference map from. Any earlier frames are discarded.
@@ -57,7 +57,7 @@ def init_infant_epi_reference_wf(
         name='outputnode',
     )
 
-    epi_reference_wf = init_epi_reference_wf(omp_nthreads)
+    epi_reference_wf = init_epi_reference_wf(omp_nthreads, auto_bold_nss=False)
 
     boldref_mask = pe.Node(BrainExtraction(), name='boldref_mask')
 
@@ -81,6 +81,10 @@ def init_infant_epi_reference_wf(
             (select_frames, epi_reference_wf, [('t_masks', 'inputnode.t_masks')]),
         ])
         # fmt:on
+    else:
+        # Won't be used but needed to placate iternode
+        # To consider: Add a check to ensure this is a 3D file
+        epi_reference_wf.inputs.inputnode.t_masks = [True]
     return wf
 
 
