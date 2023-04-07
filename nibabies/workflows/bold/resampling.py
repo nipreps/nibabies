@@ -195,7 +195,8 @@ surface projection.
             ("source_file", "src_file"),
             ("t1w2fsnative_xfm", "in_file"),
         ]),
-        (get_fsnative, itk2lta, [("T1", "dst_file")]),
+        # TODO: Dynamically adjust based on MCRIBS/InfantFS/FS
+        (get_fsnative, itk2lta, [('brain', 'dst_file')]),  # InfantFS: Use brain instead of T1
         (inputnode, sampler, [
             ("subjects_dir", "subjects_dir"),
             ("subject_id", "subject_id"),
