@@ -183,6 +183,12 @@ class MCRIBReconAll(CommandLine):
                 surfrec.parent.mkdir(**mkdir_kw)
                 if not surfrec.exists():
                     surfrec.symlink_to(f'../../../RawT2/{sid}.nii.gz')
+
+        if self.inputs.surfrecon:
+            # Create FreeSurfer layout to safeguard against cd-ing into missing directories
+            for d in ('surf', 'mri', 'label', 'scripts', 'stats'):
+                (root / 'freesurfer' / sid / d).mkdir(**mkdir_kw)
+
         # TODO?: T1w -> <subject_id>/RawT1RadiologicalIsotropic/<subjectid>.nii.gz
         return
 
