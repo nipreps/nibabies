@@ -45,7 +45,6 @@ jobs:
         source /tmp/venv/bin/activate
         pytest -sv --doctest-modules --cov nibabies --cov-report xml nibabies
     - name: Submit coverage
-      run: |
-        # Pin codecov version to reduce scope for malicious updates
-        python -m pip install "codecov==2.1.11"
-        python -m codecov --file coverage.xml
+      uses: codecov/codecov-action@v3
+      with:
+        files: coverage.xml
