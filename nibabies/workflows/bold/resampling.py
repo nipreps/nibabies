@@ -9,20 +9,35 @@ Resampling workflows
 .. autofunction:: init_bold_preproc_trans_wf
 
 """
+
+
+from os.path import basename
+
 import nipype.interfaces.workbench as wb
+from nipype import Function
 from nipype.interfaces import freesurfer as fs
+from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
+from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+from niworkflows.interfaces.freesurfer import MedialNaNs
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 
 
-def init_bold_surf_wf(mem_gb, surface_spaces, medial_surface_nan, name="bold_surf_wf"):
+def init_bold_surf_wf(
+    mem_gb, surface_spaces, medial_surface_nan, project_goodvoxels, name="bold_surf_wf"
+):
     """
     Sample functional images to FreeSurfer surfaces.
 
     For each vertex, the cortical ribbon is sampled at six points (spaced 20% of thickness apart)
     and averaged.
+
+    If --project-goodvoxels is used, a "goodvoxels" BOLD mask, as described in [@hcppipelines],
+    is generated and applied to the functional image before sampling to surface. After sampling,
+    empty vertices are filled by dilating in data from the nearest "good" vertex, within a
+    radius of 10 mm (as measured on the target midthickness surface).
     Outputs are in GIFTI format.
 
     Workflow Graph
@@ -33,7 +48,8 @@ def init_bold_surf_wf(mem_gb, surface_spaces, medial_surface_nan, name="bold_sur
             from fmriprep.workflows.bold import init_bold_surf_wf
             wf = init_bold_surf_wf(mem_gb=0.1,
                                    surface_spaces=['fsnative', 'fsaverage5'],
-                                   medial_surface_nan=False)
+                                   medial_surface_nan=False,
+                                   project_goodvoxels=False)
 
     Parameters
     ----------
@@ -44,19 +60,24 @@ def init_bold_surf_wf(mem_gb, surface_spaces, medial_surface_nan, name="bold_sur
         native surface.
     medial_surface_nan : :obj:`bool`
         Replace medial wall values with NaNs on functional GIFTI files
+    project_goodvoxels : :obj:`bool`
+        Exclude voxels with locally high coefficient of variation, or that lie outside the
+        cortical surfaces, from the surface projection.
 
     Inputs
     ------
     source_file
-        Motion-corrected BOLD series in T1 space
-    t1w_preproc
-        Bias-corrected structural template image
+        Motion-corrected BOLD series in T1w space
     subjects_dir
         FreeSurfer SUBJECTS_DIR
     subject_id
         FreeSurfer subject ID
     t1w2fsnative_xfm
         LTA-style affine matrix translating from T1w to FreeSurfer-conformed subject space
+    anat_ribbon
+        Cortical ribbon in T1w space
+    t1w_mask
+        Mask of the skull-stripped T1w image
 
     Outputs
     -------
@@ -64,25 +85,44 @@ def init_bold_surf_wf(mem_gb, surface_spaces, medial_surface_nan, name="bold_sur
         BOLD series, resampled to FreeSurfer surfaces
 
     """
+    import templateflow.api as tf
     from nipype.interfaces.io import FreeSurferSource
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.surf import GiftiSetAnatomicalStructure
+
+    from ...interfaces.metric import MetricDilate
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
 The BOLD time-series were resampled onto the following surfaces
 (FreeSurfer reconstruction nomenclature):
-{out_spaces}.
+{out_spaces}
 """.format(
-        out_spaces=", ".join(["*%s*" % s for s in surface_spaces])
+        out_spaces=", ".join(["*%s*" % s for s in surface_spaces]),
     )
+
+    if project_goodvoxels:
+        workflow.__desc__ += """\
+Before resampling, a "goodvoxels" mask [@hcppipelines] was applied,
+excluding voxels whose time-series have a locally high coefficient of
+variation, or that lie outside the cortical surfaces, from the
+surface projection.
+"""
 
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=["source_file", "subject_id", "subjects_dir", "t1w2fsnative_xfm"]
+            fields=[
+                "source_file",
+                "subject_id",
+                "subjects_dir",
+                "t1w2fsnative_xfm",
+                "anat_ribbon",
+                "t1w_mask",
+            ]
         ),
         name="inputnode",
     )
+
     itersource = pe.Node(niu.IdentityInterface(fields=["target"]), name="itersource")
     itersource.iterables = [("target", surface_spaces)]
 
@@ -106,7 +146,9 @@ The BOLD time-series were resampled onto the following surfaces
         run_without_submitting=True,
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
+
     itk2lta = pe.Node(niu.Function(function=_itk2lta), name="itk2lta", run_without_submitting=True)
+
     sampler = pe.MapNode(
         fs.SampleToSurface(
             interp_method="trilinear",
@@ -116,11 +158,14 @@ The BOLD time-series were resampled onto the following surfaces
             sampling_range=(0, 1, 0.2),
             sampling_units="frac",
         ),
+        name_source=['source_file'],
+        keep_extension=False,
         iterfield=["hemi"],
         name="sampler",
         mem_gb=mem_gb * 3,
     )
     sampler.inputs.hemi = ["lh", "rh"]
+
     update_metadata = pe.MapNode(
         GiftiSetAnatomicalStructure(),
         iterfield=["in_file"],
@@ -128,51 +173,389 @@ The BOLD time-series were resampled onto the following surfaces
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
-    outputnode = pe.JoinNode(
+    joinnode = pe.JoinNode(
         niu.IdentityInterface(fields=["surfaces", "target"]),
         joinsource="itersource",
+        name="joinnode",
+    )
+
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=["surfaces", "target", "goodvoxels_ribbon"]),
         name="outputnode",
     )
 
     # fmt: off
     workflow.connect([
-        (inputnode, get_fsnative, [('subject_id', 'subject_id'),
-                                   ('subjects_dir', 'subjects_dir')]),
-        (inputnode, targets, [('subject_id', 'subject_id')]),
-        (inputnode, rename_src, [('source_file', 'in_file')]),
-        (inputnode, itk2lta, [('source_file', 'src_file'),
-                              ('t1w2fsnative_xfm', 'in_file')]),
+        (inputnode, get_fsnative, [
+            ("subject_id", "subject_id"),
+            ("subjects_dir", "subjects_dir")
+        ]),
+        (inputnode, targets, [("subject_id", "subject_id")]),
+        (inputnode, itk2lta, [
+            ("source_file", "src_file"),
+            ("t1w2fsnative_xfm", "in_file"),
+        ]),
+        # TODO: Dynamically adjust based on MCRIBS/InfantFS/FS
         (get_fsnative, itk2lta, [('brain', 'dst_file')]),  # InfantFS: Use brain instead of T1
-        (inputnode, sampler, [('subjects_dir', 'subjects_dir'),
-                              ('subject_id', 'subject_id')]),
-        (itersource, targets, [('target', 'space')]),
-        (itersource, rename_src, [('target', 'subject')]),
-        (itk2lta, sampler, [('out', 'reg_file')]),
-        (targets, sampler, [('out', 'target_subject')]),
-        (rename_src, sampler, [('out_file', 'source_file')]),
-        (update_metadata, outputnode, [('out_file', 'surfaces')]),
-        (itersource, outputnode, [('target', 'target')]),
+        (inputnode, sampler, [
+            ("subjects_dir", "subjects_dir"),
+            ("subject_id", "subject_id"),
+        ]),
+        (itersource, targets, [("target", "space")]),
+        (itersource, rename_src, [("target", "subject")]),
+        (rename_src, sampler, [("out_file", "source_file")]),
+        (itk2lta, sampler, [("out", "reg_file")]),
+        (targets, sampler, [("out", "target_subject")]),
+        (update_metadata, joinnode, [("out_file", "surfaces")]),
+        (itersource, joinnode, [("target", "target")]),
+        (joinnode, outputnode, [
+            ("surfaces", "surfaces"),
+            ("target", "target"),
+        ]),
     ])
     # fmt: on
 
-    if not medial_surface_nan:
-        workflow.connect(sampler, "out_file", update_metadata, "in_file")
-        return workflow
+    # At this point, rename_src.in_file and update_metadata.in_file need connecting
+    #
+    # These depend on two optional steps: goodvoxel projection and medial wall nan replacment
+    #
+    # inputnode -> optional(goodvoxels_bold_mask_wf) -> rename_src
+    # sampler -> optional(metric_dilate) -> optional(medial_nans) -> update_metadata
+    #
 
-    from niworkflows.interfaces.freesurfer import MedialNaNs
+    metric_dilate = pe.MapNode(
+        MetricDilate(distance=10, nearest=True),
+        iterfield=["in_file", "surf_file"],
+        name="metric_dilate",
+        mem_gb=mem_gb * 3,
+    )
+    metric_dilate.inputs.surf_file = [
+        str(
+            tf.get(
+                "fsaverage",
+                hemi=hemi,
+                density="164k",
+                suffix="midthickness",
+                extension=".surf.gii",
+            )
+        )
+        for hemi in "LR"
+    ]
 
     # Refine if medial vertices should be NaNs
     medial_nans = pe.MapNode(
         MedialNaNs(), iterfield=["in_file"], name="medial_nans", mem_gb=DEFAULT_MEMORY_MIN_GB
     )
 
-    # fmt: off
-    workflow.connect([
-        (inputnode, medial_nans, [('subjects_dir', 'subjects_dir')]),
-        (sampler, medial_nans, [('out_file', 'in_file')]),
-        (medial_nans, update_metadata, [('out_file', 'in_file')]),
-    ])
-    # fmt: on
+    if project_goodvoxels:
+        goodvoxels_bold_mask_wf = init_goodvoxels_bold_mask_wf(mem_gb)
+
+        # fmt: off
+        workflow.connect([
+            (inputnode, goodvoxels_bold_mask_wf, [
+                ("source_file", "inputnode.bold_file"),
+                ("anat_ribbon", "inputnode.anat_ribbon"),
+            ]),
+            (goodvoxels_bold_mask_wf, rename_src, [("outputnode.masked_bold", "in_file")]),
+            (goodvoxels_bold_mask_wf, outputnode, [
+                ("outputnode.goodvoxels_ribbon", "goodvoxels_ribbon"),
+            ]),
+            (sampler, metric_dilate, [("out_file", "in_file")]),
+        ])
+        # fmt: on
+    else:
+        workflow.connect(inputnode, "source_file", rename_src, "in_file")
+
+    if medial_surface_nan:
+        # fmt: off
+        workflow.connect([
+            (inputnode, medial_nans, [("subjects_dir", "subjects_dir")]),
+            (medial_nans, update_metadata, [("out_file", "in_file")]),
+        ])
+        # fmt: on
+
+    if medial_surface_nan and project_goodvoxels:
+        workflow.connect(metric_dilate, "out_file", medial_nans, "in_file")
+    elif medial_surface_nan:
+        workflow.connect(sampler, "out_file", medial_nans, "in_file")
+    elif project_goodvoxels:
+        workflow.connect(metric_dilate, "out_file", update_metadata, "in_file")
+    else:
+        workflow.connect(sampler, "out_file", update_metadata, "in_file")
+    return workflow
+
+
+def init_goodvoxels_bold_mask_wf(mem_gb, name="goodvoxels_bold_mask_wf"):
+    """
+    Workflow Graph
+        .. workflow::
+            :graph2use: colored
+            :simple_form: yes
+
+            from nibabies.workflows.bold import init_goodvoxels_mask_wf
+            wf = init_goodvoxels_mask_wf(mem_gb=0.1)
+
+    Parameters
+    ----------
+    mem_gb : :obj:`float`
+        Size of BOLD file in GB
+    name : :obj:`str`
+        Name of workflow (default: ``goodvoxels_bold_mask_wf``)
+
+    Inputs
+    ------
+    anat_ribbon
+        Cortical ribbon in T1w space
+    bold_file
+        Motion-corrected BOLD series in T1w space
+
+    Outputs
+    -------
+    masked_bold
+        BOLD series after masking outlier voxels with locally high COV
+    goodvoxels_ribbon
+        Cortical ribbon mask excluding voxels with locally high COV
+    """
+    workflow = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                "anat_ribbon",
+                "bold_file",
+            ]
+        ),
+        name="inputnode",
+    )
+    outputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                "masked_bold",
+                "goodvoxels_ribbon",
+            ]
+        ),
+        name="outputnode",
+    )
+    ribbon_boldsrc_xfm = pe.Node(
+        ApplyTransforms(interpolation='MultiLabel', transforms='identity'),
+        name="ribbon_boldsrc_xfm",
+        mem_gb=mem_gb,
+    )
+
+    stdev_volume = pe.Node(
+        fsl.maths.StdImage(dimension='T'),
+        name="stdev_volume",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    mean_volume = pe.Node(
+        fsl.maths.MeanImage(dimension='T'),
+        name="mean_volume",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_volume = pe.Node(
+        fsl.maths.BinaryMaths(operation='div'),
+        name="cov_volume",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_ribbon = pe.Node(
+        fsl.ApplyMask(),
+        name="cov_ribbon",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_ribbon_mean = pe.Node(
+        fsl.ImageStats(op_string='-M'),
+        name="cov_ribbon_mean",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_ribbon_std = pe.Node(
+        fsl.ImageStats(op_string='-S'),
+        name="cov_ribbon_std",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_ribbon_norm = pe.Node(
+        fsl.maths.BinaryMaths(operation='div'),
+        name="cov_ribbon_norm",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    smooth_norm = pe.Node(
+        fsl.maths.MathsCommand(args="-bin -s 5"),
+        name="smooth_norm",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    merge_smooth_norm = pe.Node(
+        niu.Merge(1),
+        name="merge_smooth_norm",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
+    )
+
+    cov_ribbon_norm_smooth = pe.Node(
+        fsl.maths.MultiImageMaths(op_string='-s 5 -div %s -dilD'),
+        name="cov_ribbon_norm_smooth",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_norm = pe.Node(
+        fsl.maths.BinaryMaths(operation='div'),
+        name="cov_norm",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_norm_modulate = pe.Node(
+        fsl.maths.BinaryMaths(operation='div'),
+        name="cov_norm_modulate",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    cov_norm_modulate_ribbon = pe.Node(
+        fsl.ApplyMask(),
+        name="cov_norm_modulate_ribbon",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    def _calc_upper_thr(in_stats):
+        return in_stats[0] + (in_stats[1] * 0.5)
+
+    upper_thr_val = pe.Node(
+        Function(
+            input_names=["in_stats"], output_names=["upper_thresh"], function=_calc_upper_thr
+        ),
+        name="upper_thr_val",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    def _calc_lower_thr(in_stats):
+        return in_stats[1] - (in_stats[0] * 0.5)
+
+    lower_thr_val = pe.Node(
+        Function(
+            input_names=["in_stats"], output_names=["lower_thresh"], function=_calc_lower_thr
+        ),
+        name="lower_thr_val",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    mod_ribbon_mean = pe.Node(
+        fsl.ImageStats(op_string='-M'),
+        name="mod_ribbon_mean",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    mod_ribbon_std = pe.Node(
+        fsl.ImageStats(op_string='-S'),
+        name="mod_ribbon_std",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    merge_mod_ribbon_stats = pe.Node(
+        niu.Merge(2),
+        name="merge_mod_ribbon_stats",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
+    )
+
+    bin_mean_volume = pe.Node(
+        fsl.maths.UnaryMaths(operation="bin"),
+        name="bin_mean_volume",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    merge_goodvoxels_operands = pe.Node(
+        niu.Merge(2),
+        name="merge_goodvoxels_operands",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+        run_without_submitting=True,
+    )
+
+    goodvoxels_thr = pe.Node(
+        fsl.maths.Threshold(),
+        name="goodvoxels_thr",
+        mem_gb=mem_gb,
+    )
+
+    goodvoxels_mask = pe.Node(
+        fsl.maths.MultiImageMaths(op_string='-bin -sub %s -mul -1'),
+        name="goodvoxels_mask",
+        mem_gb=mem_gb,
+    )
+
+    # make HCP-style "goodvoxels" mask in t1w space for filtering outlier voxels
+    # in bold timeseries, based on modulated normalized covariance
+    workflow.connect(
+        [
+            (inputnode, ribbon_boldsrc_xfm, [("anat_ribbon", "input_image")]),
+            (inputnode, stdev_volume, [("bold_file", "in_file")]),
+            (inputnode, mean_volume, [("bold_file", "in_file")]),
+            (mean_volume, ribbon_boldsrc_xfm, [("out_file", "reference_image")]),
+            (stdev_volume, cov_volume, [("out_file", "in_file")]),
+            (mean_volume, cov_volume, [("out_file", "operand_file")]),
+            (cov_volume, cov_ribbon, [("out_file", "in_file")]),
+            (ribbon_boldsrc_xfm, cov_ribbon, [("output_image", "mask_file")]),
+            (cov_ribbon, cov_ribbon_mean, [("out_file", "in_file")]),
+            (cov_ribbon, cov_ribbon_std, [("out_file", "in_file")]),
+            (cov_ribbon, cov_ribbon_norm, [("out_file", "in_file")]),
+            (cov_ribbon_mean, cov_ribbon_norm, [("out_stat", "operand_value")]),
+            (cov_ribbon_norm, smooth_norm, [("out_file", "in_file")]),
+            (smooth_norm, merge_smooth_norm, [("out_file", "in1")]),
+            (cov_ribbon_norm, cov_ribbon_norm_smooth, [("out_file", "in_file")]),
+            (merge_smooth_norm, cov_ribbon_norm_smooth, [("out", "operand_files")]),
+            (cov_ribbon_mean, cov_norm, [("out_stat", "operand_value")]),
+            (cov_volume, cov_norm, [("out_file", "in_file")]),
+            (cov_norm, cov_norm_modulate, [("out_file", "in_file")]),
+            (cov_ribbon_norm_smooth, cov_norm_modulate, [("out_file", "operand_file")]),
+            (cov_norm_modulate, cov_norm_modulate_ribbon, [("out_file", "in_file")]),
+            (ribbon_boldsrc_xfm, cov_norm_modulate_ribbon, [("output_image", "mask_file")]),
+            (cov_norm_modulate_ribbon, mod_ribbon_mean, [("out_file", "in_file")]),
+            (cov_norm_modulate_ribbon, mod_ribbon_std, [("out_file", "in_file")]),
+            (mod_ribbon_mean, merge_mod_ribbon_stats, [("out_stat", "in1")]),
+            (mod_ribbon_std, merge_mod_ribbon_stats, [("out_stat", "in2")]),
+            (merge_mod_ribbon_stats, upper_thr_val, [("out", "in_stats")]),
+            (merge_mod_ribbon_stats, lower_thr_val, [("out", "in_stats")]),
+            (mean_volume, bin_mean_volume, [("out_file", "in_file")]),
+            (upper_thr_val, goodvoxels_thr, [("upper_thresh", "thresh")]),
+            (cov_norm_modulate, goodvoxels_thr, [("out_file", "in_file")]),
+            (bin_mean_volume, merge_goodvoxels_operands, [("out_file", "in1")]),
+            (goodvoxels_thr, goodvoxels_mask, [("out_file", "in_file")]),
+            (merge_goodvoxels_operands, goodvoxels_mask, [("out", "operand_files")]),
+        ]
+    )
+
+    goodvoxels_ribbon_mask = pe.Node(
+        fsl.ApplyMask(),
+        name_source=['in_file'],
+        keep_extension=True,
+        name="goodvoxels_ribbon_mask",
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+
+    apply_goodvoxels_ribbon_mask = pe.Node(
+        fsl.ApplyMask(),
+        name_source=['in_file'],
+        keep_extension=True,
+        name="apply_goodvoxels_ribbon_mask",
+        mem_gb=mem_gb * 3,
+    )
+
+    # apply goodvoxels ribbon mask to bold
+    workflow.connect(
+        [
+            (goodvoxels_mask, goodvoxels_ribbon_mask, [("out_file", "in_file")]),
+            (ribbon_boldsrc_xfm, goodvoxels_ribbon_mask, [("output_image", "mask_file")]),
+            (goodvoxels_ribbon_mask, apply_goodvoxels_ribbon_mask, [("out_file", "mask_file")]),
+            (inputnode, apply_goodvoxels_ribbon_mask, [("bold_file", "in_file")]),
+            (apply_goodvoxels_ribbon_mask, outputnode, [("out_file", "masked_bold")]),
+            (goodvoxels_ribbon_mask, outputnode, [("out_file", "goodvoxels_ribbon")]),
+        ]
+    )
+
     return workflow
 
 
@@ -640,7 +1023,7 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
     subcortical_labels : :obj:`str`
         Volume file containing all subcortical labels
     surf_files : :obj:`str`
-        List of BOLD files resampled on the fsaverage (ico7) surfaces.
+        List of BOLD files resampled on the fsaverage (ico7) surfaces
     surf_refs :
         List of unique identifiers corresponding to the BOLD surface-conversions.
 
@@ -656,7 +1039,6 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.utility import KeySelect
 
-    from ...interfaces.nibabel import ReorientImage
     from ...interfaces.workbench import CiftiCreateDenseTimeseries
 
     workflow = Workflow(name=name)
@@ -713,6 +1095,7 @@ surface space.
         str(tf.api.get("fsaverage", hemi=hemi, density="164k", desc="std", suffix="sphere"))
         for hemi in "LR"
     ]
+
     resample.inputs.current_area = [
         str(
             tf.api.get("fsaverage", hemi=hemi, density="164k", desc="vaavg", suffix="midthickness")
@@ -741,16 +1124,9 @@ surface space.
         niu.Function(function=_split_surfaces, output_names=["left_surface", "right_surface"]),
         name="split_surfaces",
     )
-
-    reorient_data = pe.Node(ReorientImage(target_orientation="LAS"), name="reorient_data")
-    reorient_labels = reorient_data.clone(name="reorient_labels")
-
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
-    gen_cifti.inputs.roi_left = tf.api.get(
-        "fsLR", density=fslr_density, hemi="L", desc="nomedialwall", suffix="dparc"
-    )
-    gen_cifti.inputs.roi_right = tf.api.get(
-        "fsLR", density=fslr_density, hemi="R", desc="nomedialwall", suffix="dparc"
+    gen_cifti.inputs.volume_structure_labels = str(
+        tf.api.get("MNI152NLin6Asym", resolution=2, atlas="HCP", suffix="dseg")
     )
     gen_cifti_metadata = pe.Node(
         niu.Function(function=_gen_metadata, output_names=["out_metadata"]),
@@ -760,10 +1136,9 @@ surface space.
 
     # fmt: off
     workflow.connect([
-        (inputnode, reorient_data, [("subcortical_volume", "in_file")]),
-        (inputnode, reorient_labels, [("subcortical_labels", "in_file")]),
-        (reorient_data, gen_cifti, [("out_file", "volume_data")]),
-        (reorient_labels, gen_cifti, [("out_file", "volume_structure_labels")]),
+        (inputnode, gen_cifti, [
+            ('subcortical_volume', 'volume_data'),
+            ('subcortical_labels', 'volume_structure_labels')]),
         (inputnode, select_fs_surf, [('surf_files', 'surf_files'),
                                      ('surf_refs', 'keys')]),
         (select_fs_surf, resample, [('surf_files', 'in_file')]),

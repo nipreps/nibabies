@@ -193,6 +193,15 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
     freesurfer = config.workflow.run_reconall
     spaces = config.workflow.spaces
     nibabies_dir = str(config.execution.nibabies_dir)
+    freesurfer_spaces = spaces.get_fs_spaces()
+    project_goodvoxels = config.workflow.project_goodvoxels
+
+    if project_goodvoxels and freesurfer_spaces != ["fsaverage"]:
+        config.loggers.workflow.critical(
+            f"--project-goodvoxels only works with fsaverage (requested: {freesurfer_spaces})"
+        )
+        config.loggers.workflow.warn("Disabling --project-goodvoxels")
+        project_goodvoxels = False
 
     # Extract BIDS entities and metadata from BOLD file(s)
     entities = extract_entities(bold_file)
@@ -301,8 +310,7 @@ and co-registrations to anatomical and output spaces).
 Gridded (volumetric) resamplings were performed using `antsApplyTransforms` (ANTs),
 configured with Lanczos interpolation to minimize the smoothing
 effects of other kernels [@lanczos].
-Non-gridded (surface) resamplings were performed using `mri_vol2surf`
-(FreeSurfer).
+Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfer)
 """
 
     inputnode = pe.Node(
@@ -320,6 +328,11 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "anat2std_xfm",
                 "std2anat_xfm",
                 "template",
+                "anat_ribbon",
+                # from bold reference workflow
+                "bold_ref",
+                "bold_ref_xfm",
+                "n_dummy_scans",
                 # from sdcflows (optional)
                 "fmap",
                 "fmap_ref",
@@ -415,6 +428,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         bids_root=layout.root,
         cifti_output=config.workflow.cifti_output,
         freesurfer=freesurfer,
+        project_goodvoxels=project_goodvoxels,
         all_metadata=all_metadata,
         multiecho=multiecho,
         output_dir=nibabies_dir,
@@ -916,6 +930,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             mem_gb=mem_gb["resampled"],
             surface_spaces=freesurfer_spaces,
             medial_surface_nan=config.workflow.medial_surface_nan,
+            project_goodvoxels=project_goodvoxels,
             name="bold_surf_wf",
         )
         # fmt:off
@@ -923,11 +938,15 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (inputnode, bold_surf_wf, [
                 ('subjects_dir', 'inputnode.subjects_dir'),
                 ('subject_id', 'inputnode.subject_id'),
-                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm')]),
+                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
+                ("anat_ribbon", "inputnode.anat_ribbon"),
+                ("anat_mask", "inputnode.t1w_mask")]),
             (bold_t1_trans_wf, bold_surf_wf, [('outputnode.bold_t1', 'inputnode.source_file')]),
             (bold_surf_wf, outputnode, [('outputnode.surfaces', 'surfaces')]),
             (bold_surf_wf, func_derivatives_wf, [
                 ('outputnode.target', 'inputnode.surf_refs')]),
+            (bold_surf_wf, func_derivatives_wf, [("outputnode.goodvoxels_ribbon",
+                                                  "inputnode.goodvoxels_ribbon")]),
         ])
         # fmt:on
 

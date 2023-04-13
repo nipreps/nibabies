@@ -96,6 +96,7 @@ def init_infant_anat_wf(
     from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_segmentations_wf
+    from .surfaces import init_anat_ribbon_wf
 
     # for now, T1w only
     num_t1w = len(t1w) if t1w else 0
@@ -149,6 +150,7 @@ BIDS dataset."""
                 "anat_aseg",
                 "anat_mcrib",
                 "anat_aparc",
+                "anat_ribbon",
                 "template",
             ]
         ),
@@ -257,6 +259,10 @@ as target template.
         omp_nthreads=omp_nthreads,
         templates=spaces.get_spaces(nonstandard=False, dim=(3,)),
     )
+
+    # Anatomical ribbon file using HCP signed-distance volume method
+    # if config.workflow.project_goodvoxels:
+    anat_ribbon_wf = init_anat_ribbon_wf()
 
     # fmt:off
     wf.connect([
@@ -382,6 +388,9 @@ as target template.
             ("outputnode.anat2std_xfm", "inputnode.anat2std_xfm"),
             ("outputnode.std2anat_xfm", "inputnode.std2anat_xfm"),
         ]),
+        (anat_ribbon_wf, anat_derivatives_wf, [
+            ("outputnode.anat_ribbon", "inputnode.anat_ribbon"),
+        ]),
         (anat_seg_wf, anat_derivatives_wf, [
             ("outputnode.anat_dseg", "inputnode.t1w_dseg"),
             ("outputnode.anat_tpms", "inputnode.t1w_tpms"),
@@ -432,6 +441,15 @@ as target template.
             ("outputnode.morphometrics", "morphometrics"),
             ("outputnode.out_aparc", "anat_aparc"),
             ("outputnode.out_aseg", "anat_aseg"),
+        ]),
+        (t1w_preproc_wf, anat_ribbon_wf, [
+            ("outputnode.t1w_mask", "inputnode.t1w_mask"),
+        ]),
+        (surface_recon_wf, anat_ribbon_wf, [
+            ("outputnode.surfaces", "inputnode.surfaces"),
+        ]),
+        (anat_ribbon_wf, outputnode, [
+            ("outputnode.anat_ribbon", "anat_ribbon")
         ]),
         (surface_recon_wf, anat_reports_wf, [
             ("outputnode.subject_id", "inputnode.subject_id"),
