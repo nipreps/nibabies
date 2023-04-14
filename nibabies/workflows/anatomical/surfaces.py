@@ -1,4 +1,140 @@
-# Use infant_recon_all to generate subcortical segmentations and cortical parcellations
+"""Anatomical surface projections"""
+from nipype.interfaces import freesurfer as fs
+from nipype.interfaces import io as nio
+from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
+from niworkflows.engine.workflows import LiterateWorkflow
+from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
+from niworkflows.interfaces.freesurfer import PatchedRobustRegister as RobustRegister
+from smriprep.workflows.surfaces import init_gifti_surface_wf
+
+SURFACE_INPUTS = [
+    "subjects_dir",
+    "subject_id",
+    "t1w",
+    "t2w",
+    "flair",
+    "skullstripped_t1",
+    "corrected_t1",
+    "ants_segs",
+]
+SURFACE_OUTPUTS = [
+    "subjects_dir",
+    "subject_id",
+    "t1w2fsnative_xfm",
+    "fsnative2t1w_xfm",
+    "surfaces",
+    "morphometrics",
+    "out_aseg",
+    "out_aparc",
+]
+
+
+def init_mcribs_surface_recon_wf(*, mcribs_dir=None, name="mcribs_surface_recon_wf"):
+    from niworkflows.interfaces.nibabel import MapLabels, ReorientImage
+
+    from ...interfaces.mcribs import MCRIBReconAll
+
+    inputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_INPUTS), name='inputnode')
+    outputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_OUTPUTS), name='outputnode')
+
+    wf = LiterateWorkflow(name=name)
+    wf.__desc__ = f"""\
+Brain surfaces were reconstructed using `MCRIBReconAll` [M-CRIB-S, @mcribs],
+leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
+"""
+
+    # dictionary to map labels from FS to M-CRIB-S
+    aseg2mcrib = {
+        2: 51,
+        3: 21,
+        4: 49,
+        5: 0,
+        7: 17,
+        8: 17,
+        10: 43,
+        11: 41,
+        12: 47,
+        13: 47,
+        14: 0,
+        15: 0,
+        16: 19,
+        17: 1,
+        18: 3,
+        26: 41,
+        28: 45,
+        31: 49,
+        41: 52,
+        42: 20,
+        43: 50,
+        44: 0,
+        46: 18,
+        47: 18,
+        49: 42,
+        50: 40,
+        51: 46,
+        52: 46,
+        53: 2,
+        54: 4,
+        58: 40,
+        60: 44,
+        63: 50,
+        253: 48,
+    }
+    map_labels = pe.Node(MapLabels(mappings=aseg2mcrib), name="map_labels")
+
+    t2w_las = pe.Node(ReorientImage(target_orientation="LAS"), name="t2w_las")
+    seg_las = t2w_las.clone(name="seg_las")
+
+    mcribs_recon = pe.Node(
+        MCRIBReconAll(surfrecon=True, autorecon_after_surf=True), name="mcribs_recon"
+    )
+    if mcribs_dir:
+        mcribs_recon.inputs.outdir = mcribs_dir
+
+    fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
+    norm2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="norm2nii")
+
+    fsnative2t1w_xfm = pe.Node(
+        RobustRegister(auto_sens=True, est_int_scale=True),
+        name='fsnative2t1w_xfm',
+    )
+
+    t1w2fsnative_xfm = pe.Node(
+        LTAConvert(out_lta=True, invert=True),
+        name="t1w2fsnative_xfm",
+    )
+    gifti_surface_wf = init_gifti_surface_wf()
+
+    # fmt:off
+    wf.connect([
+        (inputnode, t2w_las, [("t2w", "in_file")]),
+        (inputnode, map_labels, [("ants_segs", "in_file")])
+        (map_labels, seg_las, [("out_file", "in_file")]),
+        (inputnode, mcribs_recon, [
+            ("subjects_dir", "subjects_dir"),
+            ("subject_id", "subject_id")]),
+        (t2w_las, mcribs_recon, [("out_file", "t2w_file")]),
+        (seg_las, mcribs_recon, [("out_file", "segmentation_file")]),
+        (map_labels, outputnode, [("out_file", "out_aseg")]),
+
+        # copied from infantFS workflow
+        (inputnode, fsnative2t1w_xfm, [('skullstripped_t1', 'target_file')]),
+        (fssource, norm2nii, [('norm', 'in_file')]),
+        (norm2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
+        (fsnative2t1w_xfm, t1w2fsnative_xfm, [('out_reg_file', 'in_lta')]),
+        (inputnode, gifti_surface_wf, [
+            ("subjects_dir", "subjects_dir"),
+            ("subject_id", "subject_id")]),
+        (fsnative2t1w_xfm, gifti_surface_wf, [
+            ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
+        (gifti_surface_wf, outputnode, [
+            ('outputnode.surfaces', 'surfaces'),
+            ('outputnode.morphometrics', 'morphometrics'),
+        ]),
+    ])
+    # fmt:on
+    return wf
 
 from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
@@ -9,49 +145,12 @@ from ...interfaces.workbench import CreateSignedDistanceVolume
 
 
 def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
-    from nipype.interfaces import freesurfer as fs
-    from nipype.interfaces import io as nio
-    from niworkflows.engine.workflows import LiterateWorkflow
-    from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
-    from niworkflows.interfaces.freesurfer import (
-        PatchedRobustRegister as RobustRegister,
-    )
-    from smriprep.workflows.surfaces import init_gifti_surface_wf
-
     from nibabies.interfaces.freesurfer import InfantReconAll
 
     # Synchronized inputs to smriprep.workflows.surfaces.init_surface_recon_wf
     wf = LiterateWorkflow(name=name)
-    inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                "subjects_dir",
-                "subject_id",
-                "t1w",
-                "t2w",
-                "flair",
-                "skullstripped_t1",
-                "corrected_t1",
-                "ants_segs",
-            ],
-        ),
-        name="inputnode",
-    )
-    outputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                "subjects_dir",
-                "subject_id",
-                "t1w2fsnative_xfm",
-                "fsnative2t1w_xfm",
-                "surfaces",
-                "morphometrics",
-                "out_aseg",
-                "out_aparc",
-            ]
-        ),
-        name="outputnode",
-    )
+    inputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_INPUTS), name="inputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_OUTPUTS), name="outputnode")
 
     wf.__desc__ = f"""\
 Brain surfaces were reconstructed using `infant_recon_all` [FreeSurfer
