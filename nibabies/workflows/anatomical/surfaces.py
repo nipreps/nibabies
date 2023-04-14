@@ -30,7 +30,13 @@ SURFACE_OUTPUTS = [
 ]
 
 
-def init_mcribs_surface_recon_wf(*, mcribs_dir=None, name="mcribs_surface_recon_wf"):
+def init_mcribs_surface_recon_wf(*, use_aseg, mcribs_dir=None, name="mcribs_surface_recon_wf"):
+    """
+    Reconstruct cortical surfaces using the M-CRIB-S pipeline.
+
+    This workflow injects a precomputed segmentation into the M-CRIB-S pipeline, bypassing the
+    DrawEM segmentation step that is normally performed.
+    """
     from niworkflows.interfaces.nibabel import MapLabels, ReorientImage
 
     from ...interfaces.mcribs import MCRIBReconAll
@@ -136,6 +142,7 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
     # fmt:on
     return wf
 
+
 from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -144,7 +151,9 @@ from ...config import DEFAULT_MEMORY_MIN_GB
 from ...interfaces.workbench import CreateSignedDistanceVolume
 
 
-def init_infant_surface_recon_wf(*, age_months, use_aseg=False, name="infant_surface_recon_wf"):
+def init_infantfs_surface_recon_wf(
+    *, age_months, use_aseg=False, name="infantfs_surface_recon_wf"
+):
     from nibabies.interfaces.freesurfer import InfantReconAll
 
     # Synchronized inputs to smriprep.workflows.surfaces.init_surface_recon_wf

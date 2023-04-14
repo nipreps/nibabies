@@ -401,19 +401,23 @@ as target template.
     if not freesurfer:
         return wf
 
-    if config.workflow.force_reconall:
+    if config.workflow.surface_recon_method == 'freesurfer':
         from smriprep.workflows.surfaces import init_surface_recon_wf
 
         surface_recon_wf = init_surface_recon_wf(omp_nthreads=omp_nthreads, hires=hires)
-    else:
-        from .surfaces import init_infant_surface_recon_wf
+    elif config.workflow.surface_recon_method == 'infantfs':
+        from .surfaces import init_infantfs_surface_recon_wf
 
         # if running with precomputed aseg, or JLF, pass the aseg along to FreeSurfer
         use_aseg = bool(precomp_aseg or segmentation_atlases)
-        surface_recon_wf = init_infant_surface_recon_wf(
+        surface_recon_wf = init_infantfs_surface_recon_wf(
             age_months=age_months,
             use_aseg=use_aseg,
         )
+    elif config.workflow.surface_recon_method == 'mcribs':
+        from .surfaces import init_mcribs_surface_recon_wf
+
+        surface_recon_wf = init_mcribs_surface_recon_wf(use_aseg=bool(precomp_aseg))
 
     # fmt:off
     wf.connect([
