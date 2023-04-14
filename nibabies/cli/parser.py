@@ -759,9 +759,9 @@ applied."""
 
     if config.execution.fs_subjects_dir is None:
         if output_layout == "bids":
-            config.execution.fs_subjects_dir = output_dir / "sourcedata" / "infant-freesurfer"
+            config.execution.fs_subjects_dir = output_dir / "sourcedata" / "freesurfer"
         elif output_layout == "legacy":
-            config.execution.fs_subjects_dir = output_dir / "infant-freesurfer"
+            config.execution.fs_subjects_dir = output_dir / "freesurfer"
     if config.execution.nibabies_dir is None:
         if output_layout == "bids":
             config.execution.nibabies_dir = output_dir
