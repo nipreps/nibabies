@@ -394,6 +394,8 @@ class execution(_Config):
     """Output verbosity."""
     low_mem = None
     """Utilize uncompressed NIfTIs and other tricks to minimize memory allocation."""
+    mcribs_dir = None
+    """M-CRIB-S processing and output directory."""
     md_only_boilerplate = False
     """Do not convert boilerplate from MarkDown to LaTex and HTML."""
     nibabies_dir = None
@@ -439,6 +441,7 @@ class execution(_Config):
         "fs_subjects_dir",
         "layout",
         "log_dir",
+        "mcribs_dir",
         "nibabies_dir",
         "output_dir",
         "segmentation_atlases_dir",

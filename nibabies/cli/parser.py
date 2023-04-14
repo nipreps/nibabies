@@ -767,6 +767,11 @@ applied."""
             config.execution.nibabies_dir = output_dir
         elif output_layout == "legacy":
             config.execution.nibabies_dir = output_dir / "nibabies"
+    if config.workflow.surface_recon_method == "mcribs":
+        if output_layout == "bids":
+            config.execution.mcribs_dir = output_dir / "sourcedata" / "mcribs"
+        elif output_layout == "legacy":
+            config.execution.mcribs_dir = output_dir / "mcribs"
 
     # Wipe out existing work_dir
     if opts.clean_workdir and work_dir.exists():

@@ -417,7 +417,10 @@ as target template.
     elif config.workflow.surface_recon_method == 'mcribs':
         from .surfaces import init_mcribs_surface_recon_wf
 
-        surface_recon_wf = init_mcribs_surface_recon_wf(use_aseg=bool(precomp_aseg))
+        surface_recon_wf = init_mcribs_surface_recon_wf(
+            use_aseg=bool(precomp_aseg),
+            mcribs_dir=config.execution.mcribs_dir,  # Needed to preserve runs
+        )
 
     # fmt:off
     wf.connect([
