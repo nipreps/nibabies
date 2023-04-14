@@ -664,6 +664,12 @@ discourage its usage."""
         action="store_true",
         help="Force traditional FreeSurfer surface reconstruction.",
     )
+    g_baby.add_argument(
+        "--surface-recon-method",
+        choices=("infantfs", "freesurfer", "mcribs"),
+        default="infantfs",
+        help="Method to use for surface reconstruction",
+    )
     return parser
 
 
@@ -673,6 +679,14 @@ def parse_args(args=None, namespace=None):
 
     parser = _build_parser()
     opts = parser.parse_args(args, namespace)
+
+    # Deprecations
+    if opts.force_reconall:
+        config.loggers.cli.warning(
+            "--force-reconall is deprecated and will be removed in a future release."
+            "To run traditional `recon-all`, use `--surface-recon-method freesurfer` instead."
+        )
+        opts.surface_recon_method = "freesurfer"
 
     if opts.config_file:
         skip = {} if opts.reports_only else {"execution": ("run_uuid",)}
