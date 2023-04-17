@@ -97,6 +97,7 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
 
 class MCRIBReconAllOutputSpec(TraitedSpec):
     mcribs_dir = Directory(desc='MCRIBS output directory')
+    subjects_dir = Directory(desc='FreeSurfer output directory')
 
 
 class MCRIBReconAll(CommandLine):
@@ -212,5 +213,6 @@ class MCRIBReconAll(CommandLine):
             dst = Path(self.inputs.subjects_dir) / self.inputs.subject_id
             if not dst.exists():
                 shutil.copytree(mcribs_fs, dst)
+            outputs['subjects_dir'] = str(dst)
 
         return outputs
