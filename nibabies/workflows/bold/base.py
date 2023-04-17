@@ -931,6 +931,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             surface_spaces=freesurfer_spaces,
             medial_surface_nan=config.workflow.medial_surface_nan,
             project_goodvoxels=project_goodvoxels,
+            surface_recon_method=config.workflow.surface_recon_method,
             name="bold_surf_wf",
         )
         # fmt:off
