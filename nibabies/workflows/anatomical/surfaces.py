@@ -6,7 +6,10 @@ from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow
 from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
 from niworkflows.interfaces.freesurfer import PatchedRobustRegister as RobustRegister
+from niworkflows.utils.connections import pop_file
 from smriprep.workflows.surfaces import init_gifti_surface_wf
+
+from ...config import DEFAULT_MEMORY_MIN_GB
 
 SURFACE_INPUTS = [
     "subjects_dir",
@@ -30,7 +33,9 @@ SURFACE_OUTPUTS = [
 ]
 
 
-def init_mcribs_surface_recon_wf(*, use_aseg, mcribs_dir=None, name="mcribs_surface_recon_wf"):
+def init_mcribs_surface_recon_wf(
+    *, use_aseg: bool, mcribs_dir: str = None, name: str = "mcribs_surface_recon_wf"
+):
     """
     Reconstruct cortical surfaces using the M-CRIB-S pipeline.
 
@@ -40,6 +45,11 @@ def init_mcribs_surface_recon_wf(*, use_aseg, mcribs_dir=None, name="mcribs_surf
     from niworkflows.interfaces.nibabel import MapLabels, ReorientImage
 
     from ...interfaces.mcribs import MCRIBReconAll
+
+    if not use_aseg:
+        raise NotImplementedError(
+            "A previously computed segmentation is required for the M-CRIB-S workflow."
+        )
 
     inputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_INPUTS), name='inputnode')
     outputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_OUTPUTS), name='outputnode')
@@ -100,6 +110,7 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
 
     fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
     norm2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="norm2nii")
+    aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     fsnative2t1w_xfm = pe.Node(
         RobustRegister(auto_sens=True, est_int_scale=True),
@@ -115,40 +126,38 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
     # fmt:off
     wf.connect([
         (inputnode, t2w_las, [("t2w", "in_file")]),
-        (inputnode, map_labels, [("ants_segs", "in_file")])
+        (inputnode, map_labels, [("ants_segs", "in_file")]),
+        (inputnode, outputnode, [("ants_segs", "out_aseg")]),  # Input segs are final
         (map_labels, seg_las, [("out_file", "in_file")]),
         (inputnode, mcribs_recon, [
             ("subjects_dir", "subjects_dir"),
             ("subject_id", "subject_id")]),
         (t2w_las, mcribs_recon, [("out_file", "t2w_file")]),
         (seg_las, mcribs_recon, [("out_file", "segmentation_file")]),
-        (map_labels, outputnode, [("out_file", "out_aseg")]),
+        (inputnode, fssource, [("subject_id", "subject_id")]),
+        (mcribs_recon, fssource, [("subjects_dir", "subjects_dir")]),
+        (mcribs_recon, outputnode, [("subjects_dir", "subjects_dir")]),
+        (inputnode, outputnode, [("subject_id", "subject_id")]),
 
-        # copied from infantFS workflow
         (inputnode, fsnative2t1w_xfm, [('skullstripped_t1', 'target_file')]),
         (fssource, norm2nii, [('norm', 'in_file')]),
+        (fssource, aparc2nii, [(('aparc_aseg', pop_file), 'in_file')]),
+        (aparc2nii, outputnode, [('out_file', 'out_aparc')]),
         (norm2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
         (fsnative2t1w_xfm, t1w2fsnative_xfm, [('out_reg_file', 'in_lta')]),
         (inputnode, gifti_surface_wf, [
-            ("subjects_dir", "subjects_dir"),
-            ("subject_id", "subject_id")]),
+            ("subjects_dir", "inputnode.subjects_dir"),
+            ("subject_id", "inputnode.subject_id")]),
         (fsnative2t1w_xfm, gifti_surface_wf, [
             ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
+        (fsnative2t1w_xfm, outputnode, [('out_reg_file', 'fsnative2t1w_xfm')]),
+        (t1w2fsnative_xfm, outputnode, [('out_lta', 't1w2fsnative_xfm')]),
         (gifti_surface_wf, outputnode, [
             ('outputnode.surfaces', 'surfaces'),
-            ('outputnode.morphometrics', 'morphometrics'),
-        ]),
+            ('outputnode.morphometrics', 'morphometrics')]),
     ])
     # fmt:on
     return wf
-
-
-from nipype.interfaces import fsl
-from nipype.interfaces import utility as niu
-from nipype.pipeline import engine as pe
-
-from ...config import DEFAULT_MEMORY_MIN_GB
-from ...interfaces.workbench import CreateSignedDistanceVolume
 
 
 def init_infantfs_surface_recon_wf(
@@ -251,6 +260,10 @@ leveraging the masked, preprocessed T1w and anatomical segmentation.
 
 
 def init_anat_ribbon_wf(name="anat_ribbon_wf"):
+    from nipype.interfaces import fsl
+
+    from nibabies.interfaces.workbench import CreateSignedDistanceVolume
+
     # 0, 1 = wm; 2, 3 = pial; 6, 7 = mid
     # note that order of lh / rh within each surf type is not guaranteed due to use
     # of unsorted glob by FreeSurferSource prior, but we can do a sort

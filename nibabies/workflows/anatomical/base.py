@@ -419,7 +419,7 @@ as target template.
 
         surface_recon_wf = init_mcribs_surface_recon_wf(
             use_aseg=bool(precomp_aseg),
-            mcribs_dir=config.execution.mcribs_dir,  # Needed to preserve runs
+            mcribs_dir=str(config.execution.mcribs_dir),  # Needed to preserve runs
         )
 
     # fmt:off
