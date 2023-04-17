@@ -772,6 +772,8 @@ applied."""
             config.execution.mcribs_dir = output_dir / "sourcedata" / "mcribs"
         elif output_layout == "legacy":
             config.execution.mcribs_dir = output_dir / "mcribs"
+        # Ensure the directory is created
+        config.execution.mcribs_dir.mkdir(exist_ok=True, parents=True)
 
     # Wipe out existing work_dir
     if opts.clean_workdir and work_dir.exists():
