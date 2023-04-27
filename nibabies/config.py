@@ -143,7 +143,7 @@ _templateflow_home = Path(os.getenv("TEMPLATEFLOW_HOME", Path.home() / ".cache" 
 try:
     from psutil import virtual_memory
 
-    _free_mem_at_start = round(virtual_memory().free / 1024**3, 1)
+    _free_mem_at_start = round(virtual_memory().available / 1024**3, 1)
 except Exception:
     _free_mem_at_start = None
 
