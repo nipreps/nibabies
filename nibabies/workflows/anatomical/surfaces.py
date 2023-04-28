@@ -145,9 +145,8 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
         (aparc2nii, outputnode, [('out_file', 'out_aparc')]),
         (norm2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
         (fsnative2t1w_xfm, t1w2fsnative_xfm, [('out_reg_file', 'in_lta')]),
-        (inputnode, gifti_surface_wf, [
-            ("subjects_dir", "inputnode.subjects_dir"),
-            ("subject_id", "inputnode.subject_id")]),
+        (inputnode, gifti_surface_wf, [("subject_id", "inputnode.subject_id")]),
+        (mcribs_recon, gifti_surface_wf, [("subjects_dir", "inputnode.subjects_dir")]),
         (fsnative2t1w_xfm, gifti_surface_wf, [
             ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
         (fsnative2t1w_xfm, outputnode, [('out_reg_file', 'fsnative2t1w_xfm')]),
