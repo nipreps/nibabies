@@ -1156,6 +1156,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             ("outputnode.boldref_file", "inputnode.target_ref")]),
         (initial_boldref_wf, coeff2epi_wf, [
             ("outputnode.boldref_mask", "inputnode.target_mask")]),  # skull-stripped brain
+        (initial_boldref_wf, unwarp_wf, [
+            ("outputnode.boldref_file", "inputnode.distorted_ref"),
+        ]),
         (coeff2epi_wf, unwarp_wf, [
             ("outputnode.fmap_coeff", "inputnode.fmap_coeff")]),
         (initial_boldref_wf, sdc_report, [("outputnode.boldref_file", "before")]),
@@ -1181,11 +1184,11 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             ]),
             (unwarp_wf, bold_t1_trans_wf, [
                 # TEMPORARY: For the moment we can't use frame-wise fieldmaps
-                (("outputnode.fieldwarp", pop_file), "inputnode.fieldwarp"),
+                (("outputnode.fieldwarp_ref", pop_file), "inputnode.fieldwarp"),
             ]),
             (unwarp_wf, bold_std_trans_wf, [
                 # TEMPORARY: For the moment we can't use frame-wise fieldmaps
-                (("outputnode.fieldwarp", pop_file), "inputnode.fieldwarp"),
+                (("outputnode.fieldwarp_ref", pop_file), "inputnode.fieldwarp"),
             ]),
         ])
         # fmt:on
