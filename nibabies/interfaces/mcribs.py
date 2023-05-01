@@ -213,6 +213,6 @@ class MCRIBReconAll(CommandLine):
             dst = Path(self.inputs.subjects_dir) / self.inputs.subject_id
             if not dst.exists():
                 shutil.copytree(mcribs_fs, dst)
-            outputs['subjects_dir'] = str(dst)
+            outputs['subjects_dir'] = self.inputs.subjects_dir
 
         return outputs
