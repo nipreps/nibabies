@@ -267,6 +267,7 @@ as target template.
     # fmt:off
     wf.connect([
         (inputnode, t1w_template_wf, [("t1w", "inputnode.in_files")]),
+        (inputnode, t2w_template_wf, [("t2w", "inputnode.in_files")]),
         (t1w_template_wf, outputnode, [
             ("outputnode.realign_xfms", "anat_ref_xfms"),
         ]),
@@ -298,49 +299,6 @@ as target template.
             ("outputnode.t1w_mask", "inputnode.t1w_mask"),
             ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
         ]),
-        (coregistration_wf, anat_derivatives_wf, [
-            ("outputnode.t2w_preproc", "inputnode.t2w_preproc")
-         ]),
-        (t1w_preproc_wf, outputnode, [
-            ("outputnode.t1w_preproc", "anat_preproc"),
-            ("outputnode.t1w_brain", "anat_brain"),
-            ("outputnode.t1w_mask", "anat_mask"),
-        ]),
-    ])
-
-    if not precomp_aseg:
-        wf.connect([
-            (t1w_preproc_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
-        ])
-    wf.connect([
-        (inputnode, t2w_template_wf, [("t2w", "inputnode.in_files")]),
-    ])
-    if precomp_mask:
-        wf.connect([
-            (t1w_template_wf, precomp_mask_wf, [
-                ("outputnode.out_file", "inputnode.t1w"),
-            ]),
-            (t2w_template_wf, sdc_brain_extraction_wf, [
-                ("outputnode.out_file", "inputnode.in_file"),
-            ]),
-            (sdc_brain_extraction_wf, coregistration_wf, [
-                ("outputnode.out_file", "inputnode.in_t2w_preproc"),
-                ("outputnode.out_mask", "inputnode.in_mask"),
-                ("outputnode.out_probseg", "inputnode.in_probmap"),
-            ]),
-        ])
-    else:
-        wf.connect([
-            (t2w_template_wf, brain_extraction_wf, [
-                ("outputnode.out_file", "inputnode.in_t2w"),
-            ]),
-            (brain_extraction_wf, coregistration_wf, [
-                ("outputnode.t2w_preproc", "inputnode.in_t2w_preproc"),
-                ("outputnode.out_mask", "inputnode.in_mask"),
-                ("outputnode.out_probmap", "inputnode.in_probmap"),
-            ]),
-        ])
-    wf.connect([
         (t1w_template_wf, coregistration_wf, [
             ("outputnode.out_file", "inputnode.in_t1w"),
         ]),
@@ -355,9 +313,14 @@ as target template.
         (coregistration_wf, coreg_report_wf, [
             ("outputnode.t2w_preproc", "inputnode.t2w_preproc")
         ]),
-    ])
-
-    wf.connect([
+        (coregistration_wf, anat_derivatives_wf, [
+            ("outputnode.t2w_preproc", "inputnode.t2w_preproc")
+         ]),
+        (t1w_preproc_wf, outputnode, [
+            ("outputnode.t1w_preproc", "anat_preproc"),
+            ("outputnode.t1w_brain", "anat_brain"),
+            ("outputnode.t1w_mask", "anat_mask"),
+        ]),
         # reports
         (inputnode, anat_reports_wf, [
             ("t1w", "inputnode.source_file"),
@@ -396,6 +359,33 @@ as target template.
             ("outputnode.anat_tpms", "inputnode.t1w_tpms"),
         ]),
     ])
+
+    if precomp_mask:
+        wf.connect([
+            (t1w_template_wf, precomp_mask_wf, [
+                ("outputnode.out_file", "inputnode.t1w"),
+            ]),
+            (t2w_template_wf, sdc_brain_extraction_wf, [
+                ("outputnode.out_file", "inputnode.in_file"),
+            ]),
+            (sdc_brain_extraction_wf, coregistration_wf, [
+                ("outputnode.out_file", "inputnode.in_t2w_preproc"),
+                ("outputnode.out_mask", "inputnode.in_mask"),
+                ("outputnode.out_probseg", "inputnode.in_probmap"),
+            ]),
+        ])
+    else:
+        wf.connect([
+            (t2w_template_wf, brain_extraction_wf, [
+                ("outputnode.out_file", "inputnode.in_t2w"),
+            ]),
+            (brain_extraction_wf, coregistration_wf, [
+                ("outputnode.t2w_preproc", "inputnode.in_t2w_preproc"),
+                ("outputnode.out_mask", "inputnode.in_mask"),
+                ("outputnode.out_probmap", "inputnode.in_probmap"),
+            ]),
+            (t1w_preproc_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
+        ])
     # fmt:on
 
     if not freesurfer:
