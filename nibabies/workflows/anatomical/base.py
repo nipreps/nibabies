@@ -417,7 +417,9 @@ as target template.
         (inputnode, surface_recon_wf, [
             ("subject_id", "inputnode.subject_id"),
             ("subjects_dir", "inputnode.subjects_dir"),
-            ("t2w", "inputnode.t2w"),
+        ]),
+        (coregistration_wf, surface_recon_wf, [
+            ("outputnode.t2w_preproc", "inputnode.t2w"),
         ]),
         (anat_seg_wf, surface_recon_wf, [
             ("outputnode.anat_aseg", "inputnode.ants_segs"),
