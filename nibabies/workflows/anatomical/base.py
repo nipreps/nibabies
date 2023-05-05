@@ -412,14 +412,20 @@ as target template.
             mcribs_dir=str(config.execution.mcribs_dir),  # Needed to preserve runs
         )
 
+    if precomp_mask:
+        wf.connect(
+            sdc_brain_extraction_wf, 'outputnode.out_file', surface_recon_wf, 'inputnode.t2w'
+        )
+    else:
+        wf.connect(
+            brain_extraction_wf, 'outputnode.t2w_preproc', surface_recon_wf, 'inputnode.t2w'
+        )
+
     # fmt:off
     wf.connect([
         (inputnode, surface_recon_wf, [
             ("subject_id", "inputnode.subject_id"),
             ("subjects_dir", "inputnode.subjects_dir"),
-        ]),
-        (coregistration_wf, surface_recon_wf, [
-            ("outputnode.t2w_preproc", "inputnode.t2w"),
         ]),
         (anat_seg_wf, surface_recon_wf, [
             ("outputnode.anat_aseg", "inputnode.ants_segs"),
