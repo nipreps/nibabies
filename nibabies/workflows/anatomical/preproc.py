@@ -57,7 +57,7 @@ def init_anat_average_wf(
         Path to a reportlet summarizing what happened in this workflow.
 
     """
-    from nipype.interfaces.ants import N4BiasFieldCorrection
+    from nipype.interfaces.ants import DenoiseImage, N4BiasFieldCorrection
     from nipype.interfaces.image import Reorient
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
@@ -88,8 +88,17 @@ def init_anat_average_wf(
     # 2. Ensure we don't have two timepoints and implicitly squeeze image
     split = pe.MapNode(SplitSeries(), iterfield="in_file", name="split")
 
-    # 3. INU correction of all independent volumes
+    # 3. Preclip intensities
     clip_preinu = pe.MapNode(IntensityClip(p_min=50), iterfield="in_file", name="clip_preinu")
+
+    # 4. Denoise image
+    denoise = pe.MapNode(
+        DenoiseImage(dimension=3, noise_model="Rician"),
+        iterfield="input_image",
+        name="denoise",
+    )
+
+    # 5. INU correction of all independent volumes
     correct_inu = pe.MapNode(
         N4BiasFieldCorrection(
             dimension=3,
@@ -108,7 +117,7 @@ def init_anat_average_wf(
         IntensityClip(p_min=10.0, p_max=99.5), iterfield="in_file", name="clip_postinu"
     )
 
-    # 4. Reorient T2w image(s) to RAS and resample to common voxel space
+    # 6. Reorient T2w image(s) to RAS and resample to common voxel space
     ref_dimensions = pe.Node(TemplateDimensions(), name="ref_dimensions")
     conform = pe.MapNode(Conform(), iterfield="in_file", name="conform")
     # fmt:off
@@ -117,7 +126,9 @@ def init_anat_average_wf(
         (inputnode, validate, [("in_files", "in_file")]),
         (validate, split, [("out_file", "in_file")]),
         (split, clip_preinu, [(("out_files", _flatten), "in_file")]),
-        (clip_preinu, correct_inu, [("out_file", "input_image")]),
+        (clip_preinu, denoise, [("out_file", "input_image")]),
+        (denoise, correct_inu, [("output_image", "input_image")]),
+        # (clip_preinu, correct_inu, [("out_file", "input_image")]),
         (correct_inu, clip_postinu, [("output_image", "in_file")]),
         (ref_dimensions, conform, [
             ("t1w_valid_list", "in_file"),
@@ -128,7 +139,7 @@ def init_anat_average_wf(
     ])
     # fmt:on
 
-    # 5. Reorient template to RAS, if needed (mri_robust_template may set to LIA)
+    # 7. Reorient template to RAS, if needed (mri_robust_template may set to LIA)
     ensure_ras = pe.Node(Reorient(), name="ensure_ras")
 
     if num_maps == 1:
@@ -157,7 +168,7 @@ An anatomical reference-map was computed after registration of
         name="conform_xfm",
     )
 
-    # 6. StructuralReference is fs.RobustTemplate if > 1 volume, copying otherwise
+    # 8. StructuralReference is fs.RobustTemplate if > 1 volume, copying otherwise
     merge = pe.Node(
         StructuralReference(
             auto_detect_sensitivity=True,
@@ -172,7 +183,7 @@ An anatomical reference-map was computed after registration of
         name="merge",
     )
 
-    # 7. Final intensity equalization/conformation
+    # 9. Final intensity equalization/conformation
     clip_final = pe.Node(IntensityClip(p_min=2.0, p_max=99.9), name="clip_final")
 
     merge_xfm = pe.MapNode(
