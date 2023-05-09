@@ -93,10 +93,10 @@ def init_infant_anat_wf(
         init_anat_reports_wf,
         init_coreg_report_wf,
     )
-    from .preproc import init_anat_average_wf
     from .registration import init_coregistration_wf
     from .segmentation import init_anat_segmentations_wf
     from .surfaces import init_anat_ribbon_wf
+    from .template import init_anat_template_wf
 
     # for now, T1w only
     num_t1w = len(t1w) if t1w else 0
@@ -201,17 +201,21 @@ as target template.
     )
 
     # Multiple T1w files -> generate average reference
-    t1w_template_wf = init_anat_average_wf(
+    t1w_template_wf = init_anat_template_wf(
+        contrast="T1w",
+        num_files=num_t1w,
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
-        num_maps=num_t1w,
+        sloppy=sloppy,
         name="t1w_template_wf",
     )
 
-    t2w_template_wf = init_anat_average_wf(
+    t2w_template_wf = init_anat_template_wf(
+        contrast="T2w",
+        num_files=num_t2w,
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
-        num_maps=num_t2w,
+        sloppy=sloppy,
         name="t2w_template_wf",
     )
 
