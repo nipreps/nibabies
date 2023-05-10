@@ -1,15 +1,15 @@
-import nipype.engine.pipeline as pe
 import nipype.interfaces.utility as niu
+import nipype.pipeline.engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow
 
 
-def init_preproc_anat_wf(
-    *, bspline_fitting_distance: int = 200, name: str = "preproc_anat_wf"
+def init_anat_preproc_wf(
+    *, bspline_fitting_distance: int = 200, name: str = "anat_preproc_wf"
 ) -> LiterateWorkflow:
     """Polish up raw anatomical data.
 
     This workflow accepts T1w/T2w images as inputs (either raw or a merged template) and performs:
-    - Intesity clipping
+    - Intensity clipping
     - Denoising
     - N4 Bias Field Correction
 
@@ -53,7 +53,6 @@ def init_preproc_anat_wf(
 
     # fmt:off
     wf.connect([
-        # 1. Massage T2w
         (inputnode, clip, [("in_anat", "in_file")]),
         (clip, denoise, [("out_file", "input_image")]),
         (denoise, n4_correct, [("output_image", "input_image")]),

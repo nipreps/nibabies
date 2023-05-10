@@ -86,10 +86,11 @@ An anatomical {contrast}-reference map was computed after registration of
     outputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
-                "out_file",
-                "valid_list",
-                "realign_xfms",
+                "anat_ref",
+                "anat_valid_list",
+                "anat_realign_xfm",
                 "out_report",
+                # only if precomputed inputs
                 "anat_mask",
                 "anat_aseg",
             ],
@@ -118,7 +119,7 @@ An anatomical {contrast}-reference map was computed after registration of
             anat_mask_conform = pe.Node(Conform(), name='anat_mask_conform')
             # fmt:off
             wf.connect([
-                (inputnode, anat_mask_conform, [('aseg', 'in_file')]),
+                (inputnode, anat_mask_conform, [('anat_mask', 'in_file')]),
                 (anat_ref_dimensions, anat_mask_conform, [
                     ('target_zooms', 'target_zooms'),
                     ('target_shape', 'target_shape')]),
@@ -129,7 +130,7 @@ An anatomical {contrast}-reference map was computed after registration of
             anat_aseg_conform = pe.Node(Conform(), name='anat_aseg_conform')
             # fmt:off
             wf.connect([
-                (inputnode, anat_aseg_conform, [('aseg', 'in_file')]),
+                (inputnode, anat_aseg_conform, [('anat_aseg', 'in_file')]),
                 (anat_ref_dimensions, anat_aseg_conform, [
                     ('target_zooms', 'target_zooms'),
                     ('target_shape', 'target_shape')]),

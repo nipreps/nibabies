@@ -55,7 +55,7 @@ def init_anat_segmentations_wf(
         niu.IdentityInterface(fields=["anat_aseg", "anat_dseg", "anat_tpms"]),
         name="outputnode",
     )
-    buffernode = niu.IdentityInterface(fields=["final_aseg"], name='buffernode')
+    buffernode = pe.Node(niu.IdentityInterface(fields=["final_aseg"]), name='buffernode')
 
     wf.__desc__ = """Brain tissue segmentation of cerebrospinal fluid (CSF),
 white-matter (WM) and gray-matter (GM) was performed on """

@@ -177,9 +177,10 @@ def init_coregistration_wf(
         # Generate a quick, rough mask of the T2w to be used to facilitate co-registration.
         from sdcflows.interfaces.brainmask import BrainExtraction
 
-        masker = pe.Node(BrainExtraction(), name="t2w-masker")
+        masker = pe.Node(BrainExtraction(), name="t2w_masker")
         # fmt:off
         workflow.connect([
+            (inputnode, masker, [("in_t2w", "in_file")]),
             (masker, reg_mask, [("out_mask", "in_file")]),
             (masker, refine_mask, [("out_mask", "in_file")]),
             (inputnode, apply_mask, [("in_mask", "in_mask")]),

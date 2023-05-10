@@ -80,9 +80,6 @@ def init_infant_anat_wf(
     """
     from nipype.interfaces.ants.base import Info as ANTsInfo
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from sdcflows.workflows.ancillary import (
-        init_brainextraction_wf as init_sdc_brain_extraction_wf,
-    )
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import (
@@ -270,31 +267,45 @@ as target template.
 
     # fmt:off
     wf.connect([
-        (inputnode, t1w_template_wf, [("t1w", "inputnode.in_files")]),
-        (inputnode, t2w_template_wf, [("t2w", "inputnode.in_files")]),
+        (inputnode, t1w_template_wf, [("t1w", "inputnode.anat_files")]),
+        (inputnode, t2w_template_wf, [("t2w", "inputnode.anat_files")]),
         (inputnode, anat_reports_wf, [("t1w", "inputnode.source_file")]),
         (inputnode, coreg_report_wf, [("t1w", "inputnode.source_file")]),
         (inputnode, anat_norm_wf, [(("t1w", fix_multi_source_name), "inputnode.orig_t1w")]),
 
         (t1w_template_wf, outputnode, [
-            ("outputnode.realign_xfms", "anat_ref_xfms")]),
-        (t1w_template_wf, t1w_preproc_wf, [("outputnode.out_file", "inputnode.in_anat")]),
-        (t2w_template_wf, t2w_preproc_wf, [("outputnode.out_file", "inputnode.in_anat")]),
+            ("outputnode.anat_realign_xfm", "anat_ref_xfms")]),
+        (t1w_template_wf, t1w_preproc_wf, [("outputnode.anat_ref", "inputnode.in_anat")]),
         (t1w_template_wf, anat_derivatives_wf, [
-            ("outputnode.valid_list", "inputnode.source_files"),
-            ("outputnode.realign_xfms", "inputnode.t1w_ref_xfms")]),
+            ("outputnode.anat_valid_list", "inputnode.source_files"),
+            ("outputnode.anat_realign_xfm", "inputnode.t1w_ref_xfms")]),
+        (t1w_template_wf, anat_reports_wf, [
+            ("outputnode.out_report", "inputnode.t1w_conform_report")]),
+
+        (t2w_template_wf, t2w_preproc_wf, [("outputnode.anat_ref", "inputnode.in_anat")]),
         (t2w_template_wf, anat_derivatives_wf, [
-            ("outputnode.valid_list", "inputnode.t2w_source_files")]),
+            ("outputnode.anat_valid_list", "inputnode.t2w_source_files")]),
 
         (t1w_preproc_wf, coregistration_wf, [("outputnode.anat_preproc", "inputnode.in_t1w")]),
         (t1w_preproc_wf, coreg_report_wf, [("outputnode.anat_preproc", "inputnode.t1w_preproc")]),
-        (t1w_preproc_wf, anat_norm_wf, [
-            ("outputnode.t1w_preproc", "inputnode.moving_image"),
-            ("outputnode.t1w_mask", "inputnode.moving_mask")]),
 
         (coregistration_wf, coreg_report_wf, [
             ("outputnode.t1w_mask", "inputnode.in_mask"),
             ("outputnode.t2w_preproc", "inputnode.t2w_preproc")]),
+        (coregistration_wf, anat_norm_wf, [
+            ("outputnode.t1w_preproc", "inputnode.moving_image"),
+            ("outputnode.t1w_mask", "inputnode.moving_mask")]),
+        (coregistration_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
+        (coregistration_wf, anat_derivatives_wf, [
+            ("outputnode.t1w_mask", "inputnode.t1w_mask"),
+            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
+            ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
+         ]),
+        (coregistration_wf, outputnode, [
+            ("outputnode.t1w_preproc", "anat_preproc"),
+            ("outputnode.t1w_brain", "anat_brain"),
+            ("outputnode.t1w_mask", "anat_mask"),
+        ]),
 
         (anat_seg_wf, outputnode, [
             ("outputnode.anat_dseg", "anat_dseg"),
@@ -321,20 +332,6 @@ as target template.
             ("outputnode.anat2std_xfm", "inputnode.anat2std_xfm"),
             ("outputnode.std2anat_xfm", "inputnode.std2anat_xfm")]),
 
-        (coregistration_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
-        (coregistration_wf, anat_derivatives_wf, [
-            ("outputnode.t1w_mask", "inputnode.t1w_mask"),
-            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
-            ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
-         ]),
-        (coregistration_wf, outputnode, [
-            ("outputnode.t1w_preproc", "anat_preproc"),
-            ("outputnode.t1w_brain", "anat_brain"),
-            ("outputnode.t1w_mask", "anat_mask"),
-        ]),
-
-        (t1w_template_wf, anat_reports_wf, [
-            ("outputnode.out_report", "inputnode.t1w_conform_report")]),
         (outputnode, anat_reports_wf, [
             ("anat_preproc", "inputnode.t1w_preproc"),
             ("anat_mask", "inputnode.t1w_mask"),
@@ -347,9 +344,12 @@ as target template.
     if precomp_mask:
         # Ensure the mask is conformed along with the T1w
         t1w_template_wf.inputs.inputnode.anat_mask = precomp_mask
+        # fmt:off
         wf.connect([
             (t1w_template_wf, coregistration_wf, [("outputnode.anat_mask", "inputnode.in_mask")]),
+            (t2w_preproc_wf, coregistration_wf, [("outputnode.anat_preproc", "inputnode.in_t2w")])
         ])
+        # fmt:on
     else:
         # Run brain extraction on the T2w
         brain_extraction_wf = init_infant_brain_extraction_wf(
@@ -361,7 +361,7 @@ as target template.
             sloppy=sloppy,
             debug="registration" in config.execution.debug,
         )
-
+        # fmt:off
         wf.connect([
             (t1w_preproc_wf, brain_extraction_wf, [
                 ("outputnode.anat_preproc", "inputnode.in_t1w")]),
@@ -372,13 +372,12 @@ as target template.
                 ("outputnode.out_mask", "inputnode.in_mask"),
                 ("outputnode.out_probmap", "inputnode.in_probmap")]),
         ])
+        # fmt:on
 
     if precomp_aseg:
         # Ensure the segmentation is conformed along with the T1w
         t1w_template_wf.inputs.inputnode.anat_aseg = precomp_aseg
-        wf.connect([
-            (t1w_template_wf, anat_seg_wf, [("outputnode.anat_aseg", "inputnode.anat_aseg")]),
-        ])
+        wf.connect(t1w_template_wf, "outputnode.anat_aseg", anat_seg_wf, "inputnode.anat_aseg")
 
     if not freesurfer:
         return wf
@@ -411,7 +410,7 @@ as target template.
             ("outputnode.anat_aseg", "inputnode.ants_segs"),
         ]),
         (t1w_template_wf, surface_recon_wf, [
-            ("outputnode.out_file", "inputnode.t1w"),
+            ("outputnode.anat_ref", "inputnode.t1w"),
         ]),
         (coregistration_wf, surface_recon_wf, [
             ("outputnode.t1w_brain", "inputnode.skullstripped_t1"),
