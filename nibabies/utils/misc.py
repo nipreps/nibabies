@@ -2,6 +2,9 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Miscellaneous utilities."""
 
+from pathlib import Path
+from typing import Union
+
 from .. import __version__
 
 
@@ -14,7 +17,6 @@ def fix_multi_source_name(in_files):
     '/path/to/sub-045_T1w.nii.gz'
     """
     import re
-    from pathlib import Path
 
     from nipype.utils.filemanip import filename_to_list
 
@@ -113,3 +115,23 @@ def combine_meepi_source(in_files):
     entities = [ent for ent in in_file.split("_") if not ent.startswith("echo-")]
     basename = "_".join(entities)
     return os.path.join(base, basename)
+
+
+def get_file(pkg: str, src_path: Union[str, Path]) -> str:
+    """
+    Get or extract a source file.
+    Assures the file will be available until the lifetime of the current Python process.
+    """
+    import atexit
+    from contextlib import ExitStack
+
+    try:
+        from importlib.resources import as_file, files
+    except ImportError:
+        from importlib_resources import as_file, files
+
+    file_manager = ExitStack()
+    atexit.register(file_manager.close)
+    ref = files(pkg) / str(src_path)
+    fl = file_manager.enter_context(as_file(ref))
+    return str(fl)
