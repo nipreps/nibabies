@@ -52,9 +52,10 @@ def init_anat_segmentations_wf(
         name="inputnode",
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_aseg", "anat_mcrib_aseg", "anat_dseg", "anat_tpms"]),
+        niu.IdentityInterface(fields=["anat_aseg", "anat_dseg", "anat_tpms"]),
         name="outputnode",
     )
+    buffernode = pe.Node(niu.IdentityInterface(fields=["final_aseg"]), name='buffernode')
 
     wf.__desc__ = """Brain tissue segmentation of cerebrospinal fluid (CSF),
 white-matter (WM) and gray-matter (GM) was performed on """
@@ -160,74 +161,27 @@ white-matter (WM) and gray-matter (GM) was performed on """
             (apply_atlas, jointfusion, [('output_image', 'atlas_image')]),
             (apply_seg, jointfusion, [('output_image', 'atlas_segmentation_image')]),
             (jointfusion, jf_label, [('out_label_fusion', 'in_file')]),
+            (jf_label, buffernode, [('out_file', 'final_aseg')]),
         ])
         # fmt:on
 
     elif precomp_aseg:
         wf.__desc__ += "a pre-computed segmentation."
-        from niworkflows.interfaces.header import ValidateImage
 
-        inputnode.inputs.anat_aseg = precomp_aseg
-        validate_aseg = pe.Node(ValidateImage(), name="validate_aseg")
-        wf.connect(inputnode, "anat_aseg", validate_aseg, "in_file")
+        wf.connect(inputnode, "anat_aseg", buffernode, "final_aseg")
 
     # Otherwise, the final aseg will be split into three tissue classes
     # regardless if it was precomputed or generated via JLF
     lut_anat_dseg.inputs.lut = _aseg_to_three()
     split_seg = pe.Node(niu.Function(function=_split_segments), name="split_seg")
-    out_aseg = validate_aseg if precomp_aseg else jf_label
-
-    wf.__desc__ += """Segmentation volume label indices were remapped
-                     from FreeSurfer to M-CRIB-compatible format. """
-
-    # dictionary to map labels from aseg to mcrib
-    aseg2mcrib = {
-        2: 51,
-        3: 21,
-        4: 49,
-        5: 0,
-        7: 17,
-        8: 17,
-        10: 43,
-        11: 41,
-        12: 47,
-        13: 47,
-        14: 0,
-        15: 0,
-        16: 19,
-        17: 1,
-        18: 3,
-        26: 41,
-        28: 45,
-        31: 49,
-        41: 52,
-        42: 20,
-        43: 50,
-        44: 0,
-        46: 18,
-        47: 18,
-        49: 42,
-        50: 40,
-        51: 46,
-        52: 46,
-        53: 2,
-        54: 4,
-        58: 40,
-        60: 44,
-        63: 50,
-        253: 48,
-    }
-    map_labels = pe.Node(MapLabels(mappings=aseg2mcrib), name="map_labels")
 
     # fmt: off
     wf.connect([
-        (out_aseg, outputnode, [('out_file', 'anat_aseg')]),
-        (out_aseg, lut_anat_dseg, [('out_file', 'in_dseg')]),
+        (buffernode, outputnode, [('final_aseg', 'anat_aseg')]),
+        (buffernode, lut_anat_dseg, [('final_aseg', 'in_dseg')]),
         (lut_anat_dseg, outputnode, [('out', 'anat_dseg')]),
         (lut_anat_dseg, split_seg, [('out', 'in_file')]),
         (split_seg, outputnode, [('out', 'anat_tpms')]),
-        (out_aseg, map_labels, [("out_file", "in_file")]),
-        (map_labels, outputnode, [("out_file", "anat_mcrib_aseg")]),
     ])
     # fmt: on
 

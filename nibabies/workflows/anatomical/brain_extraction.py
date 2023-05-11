@@ -60,8 +60,8 @@ def init_infant_brain_extraction_wf(
 
     Inputs
     ------
-    in_t2w : :obj:`str`
-        The unprocessed input T2w image.
+    t2w_preproc : :obj:`str`
+        The preprocessed T2w image (Denoising/INU/N4)
 
     Outputs
     -------
@@ -87,7 +87,6 @@ def init_infant_brain_extraction_wf(
         BinaryDilation,
         IntensityClip,
     )
-    from templateflow.api import get as get_template
 
     from ...utils.misc import cohort_by_months
 
@@ -101,41 +100,20 @@ def init_infant_brain_extraction_wf(
             raise KeyError(f"Age or cohort for {skull_strip_template} must be provided!")
         template_specs["cohort"] = cohort_by_months(skull_strip_template, age_months)
 
-    tpl_target_path = get_template(
-        skull_strip_template,
-        suffix="T1w",  # no T2w template
-        desc=None,
-        **template_specs,
-    )
-    if not tpl_target_path:
-        raise RuntimeError(
-            f"An instance of template <tpl-{skull_strip_template}> with T1w suffix "
-            "could not be found."
-        )
-
-    tpl_brainmask_path = get_template(
-        skull_strip_template, label="brain", suffix="probseg", **template_specs
-    ) or get_template(skull_strip_template, desc="brain", suffix="mask", **template_specs)
-
-    tpl_regmask_path = get_template(
-        skull_strip_template,
-        label="BrainCerebellumExtraction",
-        suffix="mask",
-        **template_specs,
-    )
+    template_files = fetch_templates(skull_strip_template, template_specs)
 
     # main workflow
     workflow = pe.Workflow(name)
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=["in_t2w"]), name="inputnode")
+    inputnode = pe.Node(niu.IdentityInterface(fields=["t2w_preproc"]), name="inputnode")
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["t2w_preproc", "t2w_brain", "out_mask", "out_probmap"]),
+        niu.IdentityInterface(fields=["t2w_brain", "out_mask", "out_probmap"]),
         name="outputnode",
     )
 
     # Ensure template comes with a range of intensities ANTs will like
     clip_tmpl = pe.Node(IntensityClip(p_max=99), name="clip_tmpl")
-    clip_tmpl.inputs.in_file = _pop(tpl_target_path)
+    clip_tmpl.inputs.in_file = _pop(template_files['anat'])
 
     # Generate laplacian registration targets
     lap_tmpl = pe.Node(ImageMath(operation="Laplacian", op2="0.4 1"), name="lap_tmpl")
@@ -147,13 +125,15 @@ def init_infant_brain_extraction_wf(
     mrg_tmpl = pe.Node(niu.Merge(2), name="mrg_tmpl", run_without_submitting=True)
     mrg_t2w = pe.Node(niu.Merge(2), name="mrg_t2w", run_without_submitting=True)
     bin_regmask = pe.Node(Binarize(thresh_low=0.20), name="bin_regmask")
-    bin_regmask.inputs.in_file = str(tpl_brainmask_path)
+    bin_regmask.inputs.in_file = str(template_files['mask'])
     refine_mask = pe.Node(BinaryDilation(radius=3, iterations=2), name="refine_mask")
 
     fixed_masks = pe.Node(niu.Merge(4), name="fixed_masks", run_without_submitting=True)
     fixed_masks.inputs.in1 = "NULL"
     fixed_masks.inputs.in2 = "NULL"
-    fixed_masks.inputs.in3 = "NULL" if not tpl_regmask_path else _pop(tpl_regmask_path)
+    fixed_masks.inputs.in3 = (
+        "NULL" if not template_files['regmask'] else _pop(template_files['regmask'])
+    )
 
     # Set up initial spatial normalization
     ants_params = "testing" if sloppy else "precise"
@@ -176,7 +156,7 @@ def init_infant_brain_extraction_wf(
     )
 
     # map template brainmask to t2w space
-    map_mask_t2w.inputs.input_image = str(tpl_brainmask_path)
+    map_mask_t2w.inputs.input_image = str(template_files['mask'])
 
     thr_t2w_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_t2w_mask")
 
@@ -200,7 +180,7 @@ def init_infant_brain_extraction_wf(
 
     # fmt:off
     workflow.connect([
-        (inputnode, final_n4, [("in_t2w", "input_image")]),
+        (inputnode, final_n4, [("t2w_preproc", "input_image")]),
         # 1. Massage T2w
         (inputnode, mrg_t2w, [("in_t2w", "in1")]),
         (inputnode, lap_t2w, [("in_t2w", "op1")]),
@@ -229,7 +209,7 @@ def init_infant_brain_extraction_wf(
         # 5. Refine T2w INU correction with brain mask
         (map_mask_t2w, final_n4, [("output_image", "weight_image")]),
         (final_n4, final_clip, [("output_image", "in_file")]),
-        # 9. Outputs
+        # 6. Outputs
         (final_clip, outputnode, [("out_file", "t2w_preproc")]),
         (map_mask_t2w, outputnode, [("output_image", "out_probmap")]),
         (thr_t2w_mask, outputnode, [("out_mask", "out_mask")]),
@@ -255,8 +235,8 @@ def init_infant_brain_extraction_wf(
             name="init_aff",
             n_procs=omp_nthreads,
         )
-        if tpl_regmask_path:
-            init_aff.inputs.fixed_image_mask = _pop(tpl_regmask_path)
+        if template_files['regmask']:
+            init_aff.inputs.fixed_image_mask = _pop(template_files['regmask'])
 
         # fmt:off
         workflow.connect([
@@ -266,57 +246,6 @@ def init_infant_brain_extraction_wf(
         ])
         # fmt:on
 
-    return workflow
-
-
-def init_precomputed_mask_wf(
-    bspline_fitting_distance=200, omp_nthreads=None, name="precomputed_mask_wf"
-):
-    from nipype.interfaces.ants import N4BiasFieldCorrection
-    from niworkflows.interfaces.header import CopyXForm, ValidateImage
-    from niworkflows.interfaces.nibabel import ApplyMask, IntensityClip
-
-    workflow = pe.Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=["t1w", "t1w_mask"]), name="inputnode")
-    outputnode = pe.Node(
-        niu.IdentityInterface(fields=["t1w_preproc", "t1w_mask", "t1w_brain"]),
-        name="outputnode",
-    )
-
-    validate_mask = pe.Node(ValidateImage(), name="validate_mask")
-    fix_hdr = pe.Node(CopyXForm(), mem_gb=0.1, name="fix_hdr")
-    final_n4 = pe.Node(
-        N4BiasFieldCorrection(
-            dimension=3,
-            bspline_fitting_distance=bspline_fitting_distance,
-            save_bias=True,
-            copy_header=True,
-            n_iterations=[50] * 5,
-            convergence_threshold=1e-7,
-            rescale_intensities=True,
-            shrink_factor=4,
-        ),
-        n_procs=omp_nthreads,
-        name="final_n4",
-    )
-    final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=99.5), name="final_clip")
-    apply_mask = pe.Node(ApplyMask(), name="apply_mask")
-
-    # fmt:off
-    workflow.connect([
-        (inputnode, validate_mask, [("t1w_mask", "in_file")]),
-        (validate_mask, fix_hdr, [("out_file", "in_file")]),
-        (inputnode, fix_hdr, [("t1w", "hdr_file")]),
-        (inputnode, final_n4, [("t1w", "input_image")]),
-        (fix_hdr, final_n4, [("out_file", "weight_image")]),
-        (fix_hdr, apply_mask, [("out_file", "in_mask")]),
-        (final_n4, apply_mask, [("output_image", "in_file")]),
-        (final_n4, final_clip, [("output_image", "in_file")]),
-        (fix_hdr, outputnode, [("out_file", "t1w_mask")]),
-        (final_clip, outputnode, [("out_file", "t1w_preproc")]),
-        (apply_mask, outputnode, [("out_file", "t1w_brain")]),
-    ])
-    # fmt:on
     return workflow
 
 
@@ -349,3 +278,20 @@ def _norm_lap(in_file):
     hdr.set_data_dtype("float32")
     img.__class__(data.astype("float32"), img.affine, hdr).to_filename(out_file)
     return out_file
+
+
+def fetch_templates(template: str, specs: dict) -> dict:
+    from templateflow.api import get
+
+    template_files = {}
+    # Anatomical reference
+    template_files['anat'] = get(template, suffix="T1w", desc=None, raise_empty=True, **specs)
+    # Anatomical mask, prefer probseg if available
+    template_files['mask'] = get(template, label="brain", suffix="probseg", **specs) or get(
+        template, desc="brain", suffix="mask", **specs
+    )
+    # More dilated mask to facilitate registration
+    template_files['regmask'] = get(
+        template, label="BrainCerebellumExtraction", suffix="mask", **specs
+    )
+    return template_files
