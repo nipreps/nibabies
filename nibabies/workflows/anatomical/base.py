@@ -1,34 +1,38 @@
 """Base anatomical preprocessing."""
 import warnings
+from pathlib import Path
+from typing import Literal, Optional, Union
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
+from niworkflows.engine.workflows import LiterateWorkflow
+from niworkflows.utils.spaces import Reference, SpatialReferences
 
 from ... import config
 
 
 def init_infant_anat_wf(
     *,
-    age_months,
-    ants_affine_init,
-    t1w,
-    t2w,
-    anat_modality,
-    bids_root,
-    existing_derivatives,
-    freesurfer,
-    hires,
-    longitudinal,
-    omp_nthreads,
-    output_dir,
-    segmentation_atlases,
-    skull_strip_mode,
-    skull_strip_template,
-    sloppy,
-    spaces,
-    cifti_output=False,
-    name="infant_anat_wf",
-):
+    age_months: Optional[int],
+    ants_affine_init: bool,
+    t1w: list,
+    t2w: list,
+    anat_modality: str,
+    bids_root: Optional[Union[str, Path]],
+    existing_derivatives: dict,
+    freesurfer: bool,
+    hires: Optional[bool],
+    longitudinal: bool,
+    omp_nthreads: int,
+    output_dir: Union[str, Path],
+    segmentation_atlases: Optional[Union[str, Path]],
+    skull_strip_mode: str,
+    skull_strip_template: Reference,
+    sloppy: bool,
+    spaces: Optional[SpatialReferences],
+    cifti_output: Optional[Literal['91k', '170k']],
+    name: str = "infant_anat_wf",
+) -> LiterateWorkflow:
     """
 
       - T1w reference: realigning and then averaging anatomical images.
@@ -79,7 +83,6 @@ def init_infant_anat_wf(
         GIFTI surfaces (gray/white boundary, midthickness, pial, inflated)
     """
     from nipype.interfaces.ants.base import Info as ANTsInfo
-    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     from ...utils.misc import fix_multi_source_name
     from .brain_extraction import init_infant_brain_extraction_wf
@@ -122,7 +125,7 @@ def init_infant_anat_wf(
             precomp_mask = validated_derivatives.get("anat_mask")
             precomp_aseg = validated_derivatives.get("anat_aseg")
 
-    wf = Workflow(name=name)
+    wf = LiterateWorkflow(name=name)
     desc = f"""\n
 Anatomical data preprocessing
 
