@@ -82,10 +82,7 @@ def init_infant_anat_wf(
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     from ...utils.misc import fix_multi_source_name
-    from .brain_extraction import (
-        init_infant_brain_extraction_wf,
-        init_precomputed_mask_wf,
-    )
+    from .brain_extraction import init_infant_brain_extraction_wf
     from .norm import init_anat_norm_wf
     from .outputs import (
         init_anat_derivatives_wf,
