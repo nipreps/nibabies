@@ -43,6 +43,7 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
     segmentation_file = File(
         desc='Segmentation file (skips tissue segmentation)',
     )
+    mask_file = File(desc='T2w mask')
 
     # MCRIBS options
     conform = traits.Bool(
@@ -184,6 +185,11 @@ class MCRIBReconAll(CommandLine):
                 surfrec.parent.mkdir(**mkdir_kw)
                 if not surfrec.exists():
                     surfrec.symlink_to(f'../../../RawT2/{sid}.nii.gz')
+
+                if self.inputs.mask_file:
+                    surfrec_mask = surfrec.parent / 'mask-image.nii.gz'
+                    if not surfrec_mask.exists():
+                        shutil.copy(self.inputs.mask_file, str(surfrec_mask))
 
         if self.inputs.surfrecon:
             # Create FreeSurfer layout to safeguard against cd-ing into missing directories
