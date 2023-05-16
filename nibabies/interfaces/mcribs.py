@@ -36,14 +36,14 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
     )
     t2w_file = File(
         exists=True,
-        required=True,
         copyfile=True,
         desc='T2w (Isotropic + N4 corrected)',
     )
     segmentation_file = File(
+        exists=True,
         desc='Segmentation file (skips tissue segmentation)',
     )
-    mask_file = File(desc='T2w mask')
+    mask_file = File(exists=True, desc='T2w mask')
 
     # MCRIBS options
     conform = traits.Bool(
@@ -55,39 +55,31 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
         desc='Perform tissue type segmentation',
     )
     surfrecon = traits.Bool(
-        True,
-        usedefault=True,
         argstr='--surfrecon',
         desc='Reconstruct surfaces',
     )
     surfrecon_method = traits.Enum(
         'Deformable',
         argstr='--surfreconmethod %s',
-        usedefault=True,
+        requires=['surfrecon'],
         desc='Surface reconstruction method',
     )
     join_thresh = traits.Float(
-        1.0,
         argstr='--deformablejointhresh %f',
-        usedefault=True,
+        requires=['surfrecon'],
         desc='Join threshold parameter for Deformable',
     )
     fast_collision = traits.Bool(
-        True,
         argstr='--deformablefastcollision',
-        usedefault=True,
+        requires=['surfrecon'],
         desc='Use Deformable fast collision test',
     )
     autorecon_after_surf = traits.Bool(
-        True,
         argstr='--autoreconaftersurf',
-        usedefault=True,
         desc='Do all steps after surface reconstruction',
     )
     segstats = traits.Bool(
-        True,
         argstr='--segstats',
-        usedefault=True,
         desc='Compute statistics on segmented volumes',
     )
     nthreads = traits.Int(
@@ -113,10 +105,17 @@ class MCRIBReconAll(CommandLine):
         # Avoid processing if valid
         if self.inputs.outdir:
             sid = self.inputs.subject_id
-            logf = Path(self.inputs.outdir) / sid / 'logs' / f'{sid}.log'
-            if logf.exists():
-                logtxt = logf.read_text().splitlines()[-3:]
-                self._no_run = 'Finished without error' in logtxt
+            # Check MIRTK surface recon deformable
+            if self.inputs.surfrecon:
+                surfrecon_dir = Path(self.inputs.outdir) / sid / 'SurfReconDeformable' / sid
+                if self._verify_surfrecon_outputs(surfrecon_dir, error=False):
+                    self._no_run = True
+            # Check FS directory population
+            elif self.inputs.autorecon_after_surf:
+                fs_dir = Path(self.inputs.outdir) / sid / 'freesurfer' / sid
+                if self._verify_autorecon_outputs(fs_dir, error=False):
+                    self._no_run = True
+
             if self._no_run:
                 return "echo MCRIBSReconAll: nothing to do"
         return cmd
@@ -149,21 +148,22 @@ class MCRIBReconAll(CommandLine):
         root.mkdir(**mkdir_kw)
 
         # T2w operations
-        t2w = root / 'RawT2' / f'{sid}.nii.gz'
-        t2w.parent.mkdir(**mkdir_kw)
-        if not t2w.exists():
-            shutil.copy(self.inputs.t2w_file, str(t2w))
+        if self.inputs.t2w_file:
+            t2w = root / 'RawT2' / f'{sid}.nii.gz'
+            t2w.parent.mkdir(**mkdir_kw)
+            if not t2w.exists():
+                shutil.copy(self.inputs.t2w_file, str(t2w))
 
-        if not self.inputs.conform:
-            t2wiso = root / 'RawT2RadiologicalIsotropic' / f'{sid}.nii.gz'
-            t2wiso.parent.mkdir(**mkdir_kw)
-            if not t2wiso.exists():
-                t2wiso.symlink_to(f'../RawT2/{sid}.nii.gz')
+            if not self.inputs.conform:
+                t2wiso = root / 'RawT2RadiologicalIsotropic' / f'{sid}.nii.gz'
+                t2wiso.parent.mkdir(**mkdir_kw)
+                if not t2wiso.exists():
+                    t2wiso.symlink_to(f'../RawT2/{sid}.nii.gz')
 
-            n4 = root / 'TissueSegDrawEM' / sid / 'N4' / f'{sid}.nii.gz'
-            n4.parent.mkdir(**mkdir_kw)
-            if not n4.exists():
-                n4.symlink_to(f'../../../RawT2/{sid}.nii.gz')
+                n4 = root / 'TissueSegDrawEM' / sid / 'N4' / f'{sid}.nii.gz'
+                n4.parent.mkdir(**mkdir_kw)
+                if not n4.exists():
+                    n4.symlink_to(f'../../../RawT2/{sid}.nii.gz')
 
         # Segmentation
         if self.inputs.segmentation_file:
@@ -187,7 +187,7 @@ class MCRIBReconAll(CommandLine):
                     surfrec.symlink_to(f'../../../RawT2/{sid}.nii.gz')
 
                 if self.inputs.mask_file:
-                    surfrec_mask = surfrec.parent / 'mask-image.nii.gz'
+                    surfrec_mask = surfrec.parent / 'brain-mask.nii.gz'
                     if not surfrec_mask.exists():
                         shutil.copy(self.inputs.mask_file, str(surfrec_mask))
 
@@ -203,22 +203,82 @@ class MCRIBReconAll(CommandLine):
         # if users wish to preserve their runs
         mcribs_dir = self.inputs.outdir or Path(runtime.cwd) / 'mcribs'
         self._mcribs_dir = Path(mcribs_dir)
-        self._setup_directory_structure(self._mcribs_dir)
+        if self.inputs.surfrecon:
+            assert self.inputs.t2w_file, "Missing T2w input"
+            self._setup_directory_structure(self._mcribs_dir)
         # overwrite CWD to be in MCRIB subject's directory
         runtime.cwd = str(self._mcribs_dir / self.inputs.subject_id)
         return super()._run_interface(runtime)
 
     def _list_outputs(self):
         outputs = self._outputs().get()
-        outputs['mcribs_dir'] = str(self._mcribs_dir)
-
-        # Copy freesurfer directory into FS subjects dir
         sid = self.inputs.subject_id
-        mcribs_fs = self._mcribs_dir / sid / 'freesurfer' / sid
-        if mcribs_fs.exists() and self.inputs.subjects_dir:
+        if self.inputs.surfrecon:
+            # verify surface reconstruction was successful
+            surfrecon_dir = self._mcribs_dir / sid / 'SurfReconDeformable' / sid
+            self._verify_surfrecon_outputs(surfrecon_dir, error=True)
+
+        outputs['mcribs_dir'] = str(self._mcribs_dir)
+        if self.inputs.autorecon_after_surf and self.inputs.subjects_dir:
+            mcribs_fs = self._mcribs_dir / sid / 'freesurfer' / sid
+            self._verify_autorecon_outputs(mcribs_fs, error=True)
             dst = Path(self.inputs.subjects_dir) / self.inputs.subject_id
             if not dst.exists():
                 shutil.copytree(mcribs_fs, dst)
             outputs['subjects_dir'] = self.inputs.subjects_dir
 
         return outputs
+
+    @staticmethod
+    def _verify_surfrecon_outputs(surfrecon_dir: Path, error: bool) -> bool:
+        """
+        Sanity check to ensure the surface reconstruction was successful.
+
+        MCRIBReconAll does not return a failing exit code if a step failed, which leads
+        this interface to be marked as completed without error in such cases.
+        """
+        # fmt:off
+        surfrecon_files = {
+            'meshes': (
+                'pial-lh-reordered.vtp',
+                'pial-rh-reordered.vtp',
+                'white-rh.vtp',
+                'white-lh.vtp',
+            )
+        }
+        # fmt:on
+        for d, fls in surfrecon_files.items():
+            for fl in fls:
+                if not (surfrecon_dir / d / fl).exists():
+                    if error:
+                        raise FileNotFoundError(f"SurfReconDeformable missing: {fl}")
+                    return False
+        return True
+
+    @staticmethod
+    def _verify_autorecon_outputs(fs_dir: Path, error: bool) -> bool:
+        """
+        Sanity check to ensure the necessary FreeSurfer files have been created.
+
+        MCRIBReconAll does not return a failing exit code if a step failed, which leads
+        this interface to be marked as completed without error in such cases.
+        """
+        # fmt:off
+        fs_files = {
+            'mri': ('T2.mgz', 'aseg.presurf.mgz', 'ribbon.mgz', 'brain.mgz'),
+            'label': ('lh.cortex.label', 'rh.cortex.label'),
+            'stats': ('aseg.stats', 'brainvol.stats', 'lh.aparc.stats', 'rh.curv.stats'),
+            'surf': (
+                'lh.pial', 'rh.pial',
+                'lh.white', 'rh.white',
+                'lh.curv', 'rh.curv',
+                'lh.thickness', 'rh.thickness'),
+        }
+        # fmt:on
+        for d, fls in fs_files.items():
+            for fl in fls:
+                if not (fs_dir / d / fl).exists():
+                    if error:
+                        raise FileNotFoundError(f"FreeSurfer directory missing: {fl}")
+                    return False
+        return True
