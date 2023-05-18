@@ -217,8 +217,6 @@ as target template.
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
-        precomputed_mask=bool(precomp_mask),
-        precomputed_aseg=bool(precomp_aseg),
         name="t1w_template_wf",
     )
 
@@ -233,7 +231,11 @@ as target template.
 
     # Clean up each anatomical template
     # Denoise, INU, + Clipping
-    t1w_preproc_wf = init_anat_preproc_wf(name="t1w_preproc_wf")
+    t1w_preproc_wf = init_anat_preproc_wf(
+        precomputed_mask=bool(precomp_mask),
+        precomputed_aseg=bool(precomp_aseg),
+        name="t1w_preproc_wf",
+    )
     t2w_preproc_wf = init_anat_preproc_wf(name="t2w_preproc_wf")
 
     if skull_strip_mode != "force":
@@ -343,10 +345,10 @@ as target template.
 
     if precomp_mask:
         # Ensure the mask is conformed along with the T1w
-        t1w_template_wf.inputs.inputnode.anat_mask = precomp_mask
+        t1w_preproc_wf.inputs.inputnode.in_mask = precomp_mask
         # fmt:off
         wf.connect([
-            (t1w_template_wf, coregistration_wf, [("outputnode.anat_mask", "inputnode.in_mask")]),
+            (t1w_preproc_wf, coregistration_wf, [("outputnode.anat_mask", "inputnode.in_mask")]),
             (t2w_preproc_wf, coregistration_wf, [("outputnode.anat_preproc", "inputnode.in_t2w")])
         ])
         # fmt:on
@@ -376,8 +378,8 @@ as target template.
 
     if precomp_aseg:
         # Ensure the segmentation is conformed along with the T1w
-        t1w_template_wf.inputs.inputnode.anat_aseg = precomp_aseg
-        wf.connect(t1w_template_wf, "outputnode.anat_aseg", anat_seg_wf, "inputnode.anat_aseg")
+        t1w_preproc_wf.inputs.inputnode.in_aseg = precomp_aseg
+        wf.connect(t1w_preproc_wf, "outputnode.anat_aseg", anat_seg_wf, "inputnode.anat_aseg")
 
     if not freesurfer:
         return wf
@@ -395,13 +397,45 @@ as target template.
             age_months=age_months,
             use_aseg=use_aseg,
         )
+
     elif config.workflow.surface_recon_method == 'mcribs':
+        from nipype.interfaces.ants import DenoiseImage
+
         from .surfaces import init_mcribs_surface_recon_wf
 
+        # Denoise raw T2w, since using the template / preproc resulted in intersection errors
+        denoise_raw_t2w = pe.Node(
+            DenoiseImage(dimension=3, noise_model="Rician"), name='denoise_raw_t2w'
+        )
+
         surface_recon_wf = init_mcribs_surface_recon_wf(
+            omp_nthreads=omp_nthreads,
             use_aseg=bool(precomp_aseg),
+            use_mask=bool(precomp_mask),
             mcribs_dir=str(config.execution.mcribs_dir),  # Needed to preserve runs
         )
+
+        # Transformed gives
+        if precomp_aseg:
+            surface_recon_wf.inputs.inputnode.ants_segs = precomp_aseg
+        if precomp_mask:
+            surface_recon_wf.inputs.inputnode.anat_mask = precomp_mask
+        # fmt:off
+        wf.connect([
+            (inputnode, denoise_raw_t2w, [('t2w', 'input_image')]),
+            (denoise_raw_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')])
+        ])
+        # fmt:on
+
+    if config.workflow.surface_recon_method in ('freesurfer', 'infantfs'):
+        # fmt:off
+        wf.connect([
+            (t2w_preproc_wf, surface_recon_wf, [
+                ("outputnode.anat_preproc", "inputnode.t2w")]),
+            (anat_seg_wf, surface_recon_wf, [
+                ("outputnode.anat_aseg", "inputnode.ants_segs")]),
+        ])
+        # fmt:on
 
     # Anatomical ribbon file using HCP signed-distance volume method
     anat_ribbon_wf = init_anat_ribbon_wf()
@@ -411,11 +445,6 @@ as target template.
         (inputnode, surface_recon_wf, [
             ("subject_id", "inputnode.subject_id"),
             ("subjects_dir", "inputnode.subjects_dir")]),
-        (t2w_preproc_wf, surface_recon_wf, [
-            ("outputnode.anat_preproc", "inputnode.t2w")]),
-        (anat_seg_wf, surface_recon_wf, [
-            ("outputnode.anat_aseg", "inputnode.ants_segs"),
-        ]),
         (t1w_template_wf, surface_recon_wf, [
             ("outputnode.anat_ref", "inputnode.t1w"),
         ]),

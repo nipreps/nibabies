@@ -12,8 +12,6 @@ def init_anat_template_wf(
     longitudinal: bool = False,
     bspline_fitting_distance: int = 200,
     sloppy: bool = False,
-    precomputed_mask: bool = False,
-    precomputed_aseg: bool = False,
     name: str = "anat_template_wf",
 ) -> LiterateWorkflow:
     """
@@ -62,6 +60,7 @@ def init_anat_template_wf(
     from nipype.interfaces.image import Reorient
     from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
     from niworkflows.interfaces.freesurfer import StructuralReference
+    from niworkflows.interfaces.header import ValidateImage
     from niworkflows.interfaces.images import Conform, TemplateDimensions
     from niworkflows.interfaces.nibabel import IntensityClip
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
@@ -90,9 +89,6 @@ An anatomical {contrast}-reference map was computed after registration of
                 "anat_valid_list",
                 "anat_realign_xfm",
                 "out_report",
-                # only if precomputed inputs
-                "anat_mask",
-                "anat_aseg",
             ],
         ),
         name="outputnode",
@@ -115,28 +111,6 @@ An anatomical {contrast}-reference map was computed after registration of
     # fmt:on
 
     if num_files == 1:
-        if precomputed_mask:
-            anat_mask_conform = pe.Node(Conform(), name='anat_mask_conform')
-            # fmt:off
-            wf.connect([
-                (inputnode, anat_mask_conform, [('anat_mask', 'in_file')]),
-                (anat_ref_dimensions, anat_mask_conform, [
-                    ('target_zooms', 'target_zooms'),
-                    ('target_shape', 'target_shape')]),
-                (anat_mask_conform, outputnode, [('out_file', 'anat_mask')]),
-            ])
-            # fmt:on
-        if precomputed_aseg:
-            anat_aseg_conform = pe.Node(Conform(), name='anat_aseg_conform')
-            # fmt:off
-            wf.connect([
-                (inputnode, anat_aseg_conform, [('anat_aseg', 'in_file')]),
-                (anat_ref_dimensions, anat_aseg_conform, [
-                    ('target_zooms', 'target_zooms'),
-                    ('target_shape', 'target_shape')]),
-                (anat_aseg_conform, outputnode, [('out_file', 'anat_aseg')])
-            ])
-            # fmt:on
         get1st = pe.Node(niu.Select(index=[0]), name="get1st")
         outputnode.inputs.anat_realign_xfm = [
             get_file("smriprep", "data/itkIdentityTransform.txt")
