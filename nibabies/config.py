@@ -394,6 +394,8 @@ class execution(_Config):
     """Output verbosity."""
     low_mem = None
     """Utilize uncompressed NIfTIs and other tricks to minimize memory allocation."""
+    mcribs_dir = None
+    """M-CRIB-S processing and output directory."""
     md_only_boilerplate = False
     """Do not convert boilerplate from MarkDown to LaTex and HTML."""
     nibabies_dir = None
@@ -439,6 +441,7 @@ class execution(_Config):
         "fs_subjects_dir",
         "layout",
         "log_dir",
+        "mcribs_dir",
         "nibabies_dir",
         "output_dir",
         "segmentation_atlases_dir",
@@ -543,8 +546,6 @@ class workflow(_Config):
     """Remove the mean from fieldmaps."""
     force_syn = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation."""
-    force_reconall = False
-    """Force traditional FreeSurfer surface reconstruction instead of infant version."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     ignore = None
@@ -578,6 +579,8 @@ class workflow(_Config):
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
+    surface_recon_method = "infantfs"
+    """Method to use for surface reconstruction."""
     topup_max_vols = 5
     """Maximum number of volumes to use with TOPUP, per-series (EPI or BOLD)."""
     use_aroma = None

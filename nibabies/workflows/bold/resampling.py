@@ -22,11 +22,17 @@ from nipype.pipeline import engine as pe
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.freesurfer import MedialNaNs
 
-from ...config import DEFAULT_MEMORY_MIN_GB
+from nibabies.config import DEFAULT_MEMORY_MIN_GB
 
 
 def init_bold_surf_wf(
-    mem_gb, surface_spaces, medial_surface_nan, project_goodvoxels, name="bold_surf_wf"
+    *,
+    mem_gb: float,
+    surface_spaces: list,
+    medial_surface_nan: bool,
+    project_goodvoxels: bool,
+    surface_recon_method: str,
+    name: str = "bold_surf_wf",
 ):
     """
     Sample functional images to FreeSurfer surfaces.
@@ -184,6 +190,14 @@ surface projection.
         name="outputnode",
     )
 
+    # Some recon methods do not create T1
+    if surface_recon_method == 'freesurfer':
+        fsnative_file = 'T1'
+    elif surface_recon_method in ('infantfs', 'mcribs'):
+        fsnative_file = 'brain'
+    else:
+        raise NotImplementedError(f"Surface recon method: {surface_recon_method}")
+
     # fmt: off
     workflow.connect([
         (inputnode, get_fsnative, [
@@ -195,8 +209,7 @@ surface projection.
             ("source_file", "src_file"),
             ("t1w2fsnative_xfm", "in_file"),
         ]),
-        # TODO: Dynamically adjust based on MCRIBS/InfantFS/FS
-        (get_fsnative, itk2lta, [('brain', 'dst_file')]),  # InfantFS: Use brain instead of T1
+        (get_fsnative, itk2lta, [(fsnative_file, 'dst_file')]),
         (inputnode, sampler, [
             ("subjects_dir", "subjects_dir"),
             ("subject_id", "subject_id"),

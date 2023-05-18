@@ -664,6 +664,12 @@ discourage its usage."""
         action="store_true",
         help="Force traditional FreeSurfer surface reconstruction.",
     )
+    g_baby.add_argument(
+        "--surface-recon-method",
+        choices=("infantfs", "freesurfer", "mcribs"),
+        default="infantfs",
+        help="Method to use for surface reconstruction",
+    )
     return parser
 
 
@@ -673,6 +679,14 @@ def parse_args(args=None, namespace=None):
 
     parser = _build_parser()
     opts = parser.parse_args(args, namespace)
+
+    # Deprecations
+    if opts.force_reconall:
+        config.loggers.cli.warning(
+            "--force-reconall is deprecated and will be removed in a future release."
+            "To run traditional `recon-all`, use `--surface-recon-method freesurfer` instead."
+        )
+        opts.surface_recon_method = "freesurfer"
 
     if opts.config_file:
         skip = {} if opts.reports_only else {"execution": ("run_uuid",)}
@@ -745,14 +759,21 @@ applied."""
 
     if config.execution.fs_subjects_dir is None:
         if output_layout == "bids":
-            config.execution.fs_subjects_dir = output_dir / "sourcedata" / "infant-freesurfer"
+            config.execution.fs_subjects_dir = output_dir / "sourcedata" / "freesurfer"
         elif output_layout == "legacy":
-            config.execution.fs_subjects_dir = output_dir / "infant-freesurfer"
+            config.execution.fs_subjects_dir = output_dir / "freesurfer"
     if config.execution.nibabies_dir is None:
         if output_layout == "bids":
             config.execution.nibabies_dir = output_dir
         elif output_layout == "legacy":
             config.execution.nibabies_dir = output_dir / "nibabies"
+    if config.workflow.surface_recon_method == "mcribs":
+        if output_layout == "bids":
+            config.execution.mcribs_dir = output_dir / "sourcedata" / "mcribs"
+        elif output_layout == "legacy":
+            config.execution.mcribs_dir = output_dir / "mcribs"
+        # Ensure the directory is created
+        config.execution.mcribs_dir.mkdir(exist_ok=True, parents=True)
 
     # Wipe out existing work_dir
     if opts.clean_workdir and work_dir.exists():
