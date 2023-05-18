@@ -1,4 +1,6 @@
 """Anatomical surface projections"""
+from typing import Optional
+
 from nipype.interfaces import freesurfer as fs
 from nipype.interfaces import io as nio
 from nipype.interfaces import utility as niu
@@ -34,7 +36,12 @@ SURFACE_OUTPUTS = [
 
 
 def init_mcribs_surface_recon_wf(
-    *, use_aseg: bool, mcribs_dir: str = None, name: str = "mcribs_surface_recon_wf"
+    *,
+    omp_nthreads: int,
+    use_aseg: bool,
+    use_mask: bool,
+    mcribs_dir: Optional[str] = None,
+    name: str = "mcribs_surface_recon_wf",
 ):
     """
     Reconstruct cortical surfaces using the M-CRIB-S pipeline.
@@ -51,7 +58,9 @@ def init_mcribs_surface_recon_wf(
             "A previously computed segmentation is required for the M-CRIB-S workflow."
         )
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_INPUTS), name='inputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=SURFACE_INPUTS + ['anat_mask']), name='inputnode'
+    )
     outputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_OUTPUTS), name='outputnode')
 
     wf = LiterateWorkflow(name=name)
@@ -103,10 +112,39 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
     seg_las = t2w_las.clone(name="seg_las")
 
     mcribs_recon = pe.Node(
-        MCRIBReconAll(surfrecon=True, autorecon_after_surf=True), name="mcribs_recon"
+        MCRIBReconAll(
+            surfrecon=True,
+            surfrecon_method='Deformable',
+            join_thresh=1.0,
+            fast_collision=True,
+            nthreads=omp_nthreads,
+        ),
+        name="mcribs_recon",
+        mem_gb=5,
     )
     if mcribs_dir:
         mcribs_recon.inputs.outdir = mcribs_dir
+        mcribs_recon.config = {'execution': {'remove_unnecessary_outputs': False}}
+
+    if use_mask:
+        # If available, dilated mask and use in recon-neonatal-cortex
+        from niworkflows.interfaces.morphology import BinaryDilation
+
+        mask_dil = pe.Node(BinaryDilation(radius=3), name="mask_dil")
+        mask_las = t2w_las.clone(name="mask_las")
+        # fmt:off
+        wf.connect([
+            (inputnode, mask_dil, [("anat_mask", "in_mask")]),
+            (mask_dil, mask_las, [("out_mask", "in_file")]),
+            (mask_las, mcribs_recon, [("out_file", "mask_file")]),
+        ])
+        # fmt:on
+
+    mcribs_postrecon = pe.Node(
+        MCRIBReconAll(autorecon_after_surf=True, nthreads=omp_nthreads),
+        name="mcribs_postrecon",
+        mem_gb=5,
+    )
 
     fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
     norm2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="norm2nii")
@@ -134,9 +172,13 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
             ("subject_id", "subject_id")]),
         (t2w_las, mcribs_recon, [("out_file", "t2w_file")]),
         (seg_las, mcribs_recon, [("out_file", "segmentation_file")]),
+        (inputnode, mcribs_postrecon, [
+            ("subjects_dir", "subjects_dir"),
+            ("subject_id", "subject_id")]),
+        (mcribs_recon, mcribs_postrecon, [("mcribs_dir", "outdir")]),
         (inputnode, fssource, [("subject_id", "subject_id")]),
-        (mcribs_recon, fssource, [("subjects_dir", "subjects_dir")]),
-        (mcribs_recon, outputnode, [("subjects_dir", "subjects_dir")]),
+        (mcribs_postrecon, fssource, [("subjects_dir", "subjects_dir")]),
+        (mcribs_postrecon, outputnode, [("subjects_dir", "subjects_dir")]),
         (inputnode, outputnode, [("subject_id", "subject_id")]),
 
         (inputnode, fsnative2t1w_xfm, [('skullstripped_t1', 'target_file')]),
@@ -146,7 +188,7 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
         (norm2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
         (fsnative2t1w_xfm, t1w2fsnative_xfm, [('out_reg_file', 'in_lta')]),
         (inputnode, gifti_surface_wf, [("subject_id", "inputnode.subject_id")]),
-        (mcribs_recon, gifti_surface_wf, [("subjects_dir", "inputnode.subjects_dir")]),
+        (mcribs_postrecon, gifti_surface_wf, [("subjects_dir", "inputnode.subjects_dir")]),
         (fsnative2t1w_xfm, gifti_surface_wf, [
             ('out_reg_file', 'inputnode.fsnative2t1w_xfm')]),
         (fsnative2t1w_xfm, outputnode, [('out_reg_file', 'fsnative2t1w_xfm')]),
