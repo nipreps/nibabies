@@ -4,9 +4,10 @@
 import json
 import os
 import sys
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, List, Union
+from typing import IO, List, Literal, Optional, Union
 
 
 @dataclass
@@ -262,3 +263,72 @@ def collect_precomputed_derivatives(layout, subject_id, derivatives_filters=None
             )
         derivatives[deriv] = res[0]
     return derivatives
+
+
+def parse_bids_for_age_months(
+    bids_root: Union[str, Path],
+    subject_id: str,
+    session_id: Optional[str] = None,
+) -> Optional[int]:
+    """
+    Given a BIDS root, query the BIDS metadata files for participant age, in months.
+
+    The heuristic followed is:
+    1) Check `sub-<subject_id>/sub-<subject_id>_sessions.tsv`
+    2) Check `<root>/participants.tsv`
+    """
+    age = None
+    if subject_id.startswith('sub-'):
+        subject_id = subject_id[4:]
+    if session_id and session_id.startswith('ses-'):
+        session_id = session_id[4:]
+
+    sessions_tsv = Path(bids_root) / f'sub-{subject_id}' / f'sub-{subject_id}_sessions.tsv'
+    if sessions_tsv.exists() and session_id is not None:
+        age = _get_age_from_tsv(sessions_tsv, level='session', key=f'ses-{session_id}')
+
+    participants_tsv = Path(bids_root) / 'participants.tsv'
+    if participants_tsv.exists():
+        age = _get_age_from_tsv(participants_tsv, level='participant', key=f'sub-{subject_id}')
+
+    return age
+
+
+def _get_age_from_tsv(bids_tsv: Path, level: Literal['session', 'participant'], key: str):
+    import pandas as pd
+
+    df = pd.read_csv(str(bids_tsv), sep='\t')
+    age_col = None
+    # prefer explicit "age_months" over "age"
+    for c in ('age_months', 'age'):
+        if c in df.columns:
+            age_col = c
+            break
+
+    if age_col == 'age':
+        # verify age is in months
+        bids_json = bids_tsv.with_suffix('.json')
+        if not _verify_age_json(bids_json):
+            warnings.warn(f'Could not verify age column is in months for file: {bids_tsv}')
+
+    # find the relevant row
+    if level == 'session':
+        mask = df.session_id == key
+    elif level == 'participant':
+        mask = df.participant_id == key
+
+    try:
+        # extract age value from row
+        age = int(df.loc[mask, age_col].values[0])
+    except Exception:
+        age = None
+    return age
+
+
+def _verify_age_json(bids_json: Path) -> bool:
+    try:
+        data = json.loads(bids_json.read_text())
+        assert data['age']['Units'] == 'months'
+    except Exception:
+        return False
+    return True
