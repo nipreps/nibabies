@@ -66,9 +66,8 @@ def test_config_spaces():
             section.load(configs, init=False)
     config.nipype.init()
     config.loggers.init()
-    config.init_spaces()
-
-    spaces = config.workflow.spaces
+    age = 8
+    spaces = _load_spaces(age)
     assert "MNI152NLin6Asym:res-2" not in [str(s) for s in spaces.get_standard(full_spec=True)]
 
     assert "MNI152NLin6Asym_res-2" not in [
@@ -78,8 +77,7 @@ def test_config_spaces():
     ]
 
     config.workflow.use_aroma = True
-    config.init_spaces()
-    spaces = config.workflow.spaces
+    spaces = _load_spaces(age)
 
     assert "MNI152NLin6Asym:res-2" in [str(s) for s in spaces.get_standard(full_spec=True)]
 
@@ -91,25 +89,17 @@ def test_config_spaces():
 
     config.execution.output_spaces = None
     config.workflow.use_aroma = False
-    config.workflow.age_months = None
-    config.init_spaces()
-    spaces = config.workflow.spaces
 
-    assert [str(s) for s in spaces.get_standard(full_spec=True)] == []
-    assert [
-        format_reference((s.fullname, s.spec))
-        for s in spaces.references
-        if s.standard and s.dim == 3
-    ] == []
+    with pytest.raises(RuntimeError):
+        spaces = _load_spaces(None)
 
     config.execution.output_spaces = None
     config.workflow.cifti_output = "91k"
     config.workflow.use_aroma = False
-    config.workflow.age_months = 1
-    config.init_spaces()
-    spaces = config.workflow.spaces
+    spaces = _load_spaces(1)
 
     assert [str(s) for s in spaces.get_standard(full_spec=True)] == [
+        'MNIInfant:cohort-1:res-native',  # Default output space
         'fsaverage:den-164k',
         'MNI152NLin6Asym:res-2',
     ]
@@ -118,7 +108,7 @@ def test_config_spaces():
         format_reference((s.fullname, s.spec))
         for s in spaces.references
         if s.standard and s.dim == 3
-    ] == ['MNI152NLin6Asym_res-2', 'MNIInfant_cohort-1']
+    ] == ['MNIInfant_cohort-1_res-native', 'MNI152NLin6Asym_res-2', 'MNIInfant_cohort-1']
     _reset_config()
 
 
@@ -138,3 +128,11 @@ def test_prng_seed(master_seed, ants_seed, numpy_seed):
     _reset_config()
     for seed in ('_random_seed', 'master', 'ants', 'numpy'):
         assert getattr(config.seeds, seed) is None
+
+
+def _load_spaces(age):
+    from nibabies.workflows.base import init_execution_spaces, init_workflow_spaces
+
+    # Conditional based on workflow necessities
+    spaces = init_workflow_spaces(init_execution_spaces(), age)
+    return spaces

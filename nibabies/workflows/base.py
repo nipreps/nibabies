@@ -554,7 +554,7 @@ def _prefix(subid):
     return subid if subid.startswith("sub-") else f"sub-{subid}"
 
 
-def init_workflow_spaces(execution_spaces, age):
+def init_workflow_spaces(execution_spaces, age_months):
     """
     Create output spaces at a per-subworkflow level.
 
@@ -566,9 +566,12 @@ def init_workflow_spaces(execution_spaces, age):
 
     spaces = deepcopy(execution_spaces)
 
+    if age_months is None:
+        raise RuntimeError("Participant age (in months) is required.")
+
     if not spaces.references:
         # Ensure age specific template is added if nothing is present
-        cohort = cohort_by_months("MNIInfant", age)
+        cohort = cohort_by_months("MNIInfant", age_months)
         spaces.add(("MNIInfant", {"res": "native", "cohort": cohort}))
 
     if not spaces.is_cached():
@@ -587,7 +590,7 @@ def init_workflow_spaces(execution_spaces, age):
         spaces.add(Reference("fsaverage", {"den": "164k"}))
         spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
         # Ensure a non-native version of MNIInfant is added as a target
-        cohort = cohort_by_months("MNIInfant", age)
+        cohort = cohort_by_months("MNIInfant", age_months)
         spaces.add(Reference("MNIInfant", {"cohort": cohort}))
 
     return spaces
