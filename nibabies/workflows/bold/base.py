@@ -73,7 +73,7 @@ from .stc import init_bold_stc_wf
 from .t2s import init_bold_t2s_wf, init_t2s_reporting_wf
 
 
-def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=None):
+def init_func_preproc_wf(bold_file, spaces, has_fieldmap=False, existing_derivatives=None):
     """
     This workflow controls the functional preprocessing stages of *NiBabies*.
 
@@ -191,7 +191,6 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False, existing_derivatives=Non
     # Have some options handy
     omp_nthreads = config.nipype.omp_nthreads
     freesurfer = config.workflow.run_reconall
-    spaces = config.workflow.spaces
     nibabies_dir = str(config.execution.nibabies_dir)
     freesurfer_spaces = spaces.get_fs_spaces()
     project_goodvoxels = config.workflow.project_goodvoxels
