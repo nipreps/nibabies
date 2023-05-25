@@ -696,20 +696,6 @@ def parse_args(args=None, namespace=None):
     config.execution.log_level = int(max(25 - 5 * opts.verbose_count, logging.DEBUG))
     config.from_dict(vars(opts))
 
-    # Initialize --output-spaces if not defined
-    if config.execution.output_spaces is None:
-        from niworkflows.utils.spaces import Reference, SpatialReferences
-
-        from ..utils.misc import cohort_by_months
-
-        if config.workflow.age_months is None:
-            parser.error("--age-months must be provided if --output-spaces is not set.")
-
-        cohort = cohort_by_months("MNIInfant", config.workflow.age_months)
-        config.execution.output_spaces = SpatialReferences(
-            [Reference("MNIInfant", {"res": "native", "cohort": cohort})]
-        )
-
     # Retrieve logging level
     build_log = config.loggers.cli
 
@@ -831,8 +817,41 @@ applied."""
 
     config.execution.participant_label = sorted(participant_label)
     config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
+    config.execution.unique_labels = compute_subworkflows()
 
     # finally, write config to file
     config_file = config.execution.work_dir / config.execution.run_uuid / "config.toml"
     config_file.parent.mkdir(exist_ok=True, parents=True)
     config.to_filename(config_file)
+
+
+def compute_subworkflows() -> list:
+    """
+    Query all available participants and sessions, and construct the combinations of the
+    subworkflows needed.
+    """
+    from niworkflows.utils.bids import collect_participants
+
+    from nibabies import config
+
+    # consists of (subject_id, session_id) tuples
+    subworkflows = []
+
+    subject_list = collect_participants(
+        config.execution.layout,
+        participant_label=config.execution.participant_label,
+        strict=True,
+    )
+
+    for subject in subject_list:
+        # Due to rapidly changing morphometry of the population
+        # Ensure each subject session is processed individually
+        sessions = (
+            config.execution.session_id
+            or config.execution.layout.get_sessions(scope='raw', subject=subject)
+            or [None]
+        )
+        # grab participant age per session
+        for session in sessions:
+            subworkflows.append((subject, session))
+    return subworkflows
