@@ -87,8 +87,7 @@ def run_reports(
 
 
 def generate_reports(
-    subject_list,
-    sessions_list,
+    sub_ses_list,
     output_dir,
     run_uuid,
     config=None,
@@ -100,15 +99,11 @@ def generate_reports(
     if work_dir is not None:
         reportlets_dir = Path(work_dir) / "reportlets"
 
-    if sessions_list is None:
-        sessions_list = [None]
-
     report_errors = []
-    for subject_label, session in product(subject_list, sessions_list):
-        html_report = f"sub-{subject_label}"
-        if session:
-            html_report += f"_ses-{session}"
-        html_report += ".html"
+    for subject_label, session in sub_ses_list:
+        html_report = ''.join(
+            [f"sub-{subject_label}", f"_ses-{session}" if session else "", ".html"]
+        )
         report_errors.append(
             run_reports(
                 output_dir,
@@ -127,7 +122,7 @@ def generate_reports(
 
         logger = logging.getLogger("cli")
         error_list = ", ".join(
-            "%s (%d)" % (subid, err) for subid, err in zip(subject_list, report_errors) if err
+            "%s (%d)" % (subid, err) for subid, err in zip(sub_ses_list, report_errors) if err
         )
         logger.error(
             "Preprocessing did not finish successfully. Errors occurred while processing "

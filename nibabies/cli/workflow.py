@@ -12,7 +12,7 @@ a hard-limited memory-scope.
 
 def build_workflow(config_file):
     """Create the Nipype Workflow that supports the whole execution graph."""
-    from niworkflows.utils.bids import check_pipeline_version, collect_participants
+    from niworkflows.utils.bids import check_pipeline_version
     from niworkflows.utils.misc import check_valid_fs_license
 
     from .. import config
@@ -42,24 +42,17 @@ def build_workflow(config_file):
         desc_content = dset_desc_path.read_bytes()
         config.execution.bids_description_hash = sha256(desc_content).hexdigest()
 
-    # First check that bids_dir looks like a BIDS folder
-    subject_list = collect_participants(
-        config.execution.layout, participant_label=config.execution.participant_label
-    )
-    subjects_sessions = {
-        subject: config.execution.session_id
-        or config.execution.layout.get_sessions(scope='raw', subject=subject)
-        or [None]
-        for subject in subject_list
-    }
-
     # Called with reports only
     if config.execution.reports_only:
         from pkg_resources import resource_filename as pkgrf
 
-        build_logger.log(25, "Running --reports-only on participants %s", ", ".join(subject_list))
+        build_logger.log(
+            25,
+            "Running --reports-only on participants %s",
+            ", ".join(config.execution.unique_labels),
+        )
         retval["return_code"] = generate_reports(
-            subject_list,
+            config.execution.unique_labels,
             nibabies_dir,
             config.execution.run_uuid,
             config=pkgrf("nibabies", "data/reports-spec.yml"),
@@ -71,9 +64,9 @@ def build_workflow(config_file):
     init_msg = f"""
     Running nibabies version {config.environment.version}:
       * BIDS dataset path: {config.execution.bids_dir}.
-      * Participant list: {subject_list}.
+      * Participant list: {config.execution.unique_labels}.
       * Run identifier: {config.execution.run_uuid}.
-      * Output spaces: {config.execution.output_spaces}."""
+      * Output spaces: {config.execution.output_spaces or 'MNIInfant'}."""
 
     if config.execution.anat_derivatives:
         init_msg += f"""
@@ -84,7 +77,7 @@ def build_workflow(config_file):
       * Pre-run FreeSurfer's SUBJECTS_DIR: {config.execution.fs_subjects_dir}."""
     build_logger.log(25, init_msg)
 
-    retval["workflow"] = init_nibabies_wf(subjects_sessions)
+    retval["workflow"] = init_nibabies_wf(config.execution.unique_labels)
 
     # Check for FS license after building the workflow
     if not check_valid_fs_license():
