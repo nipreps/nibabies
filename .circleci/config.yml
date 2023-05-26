@@ -157,7 +157,7 @@ jobs:
             # Build docker image
             e=1 && for i in {1..3}; do
               docker build --rm \
-                --cache-from=nipreps/nibabies \
+                --cache-from=nipreps/nibabies:dev \
                 -t nipreps/nibabies:dev \
                 --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
                 --build-arg VCS_REF=`git rev-parse --short HEAD` \
@@ -469,7 +469,7 @@ jobs:
           name: Deploy to Docker Hub
           no_output_timeout: 40m
           command: |
-            docker tag nipreps/nibabies nipreps/nibabies:${CIRCLE_BRANCH#docker/}
+            docker tag nipreps/nibabies:dev nipreps/nibabies:${CIRCLE_BRANCH#docker/}
             docker push nipreps/nibabies:${CIRCLE_BRANCH#docker/}
 
 
