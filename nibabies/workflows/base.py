@@ -43,18 +43,20 @@ NiBabies base processing workflows
 import os
 import sys
 from copy import deepcopy
+from typing import Optional
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from packaging.version import Version
 
-from .. import config
-from ..interfaces import DerivativesDataSink
-from ..interfaces.reports import AboutSummary, SubjectSummary
-from .bold import init_func_preproc_wf
+from nibabies import config
+from nibabies.interfaces import DerivativesDataSink
+from nibabies.interfaces.reports import AboutSummary, SubjectSummary
+from nibabies.utils.bids import parse_bids_for_age_months
+from nibabies.workflows.bold import init_func_preproc_wf
 
 
-def init_nibabies_wf(participants_table):
+def init_nibabies_wf(subworkflows_list):
     """
     Build *NiBabies*'s pipeline.
 
@@ -76,8 +78,9 @@ def init_nibabies_wf(participants_table):
 
     Parameters
     ----------
-    participants_table: :obj:`dict`
-        Keys of participant labels and values of the sessions to process.
+    subworkflows_list: :obj:`list` of :obj:`tuple`
+        A list of the subworkflows to create.
+        Each subject session is run as an individual workflow.
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.bids import BIDSFreeSurferDir
@@ -86,13 +89,15 @@ def init_nibabies_wf(participants_table):
     nibabies_wf = Workflow(name=f"nibabies_{ver.major}_{ver.minor}_wf")
     nibabies_wf.base_dir = config.execution.work_dir
 
+    execution_spaces = init_execution_spaces()
+
     freesurfer = config.workflow.run_reconall
     if freesurfer:
         fsdir = pe.Node(
             BIDSFreeSurferDir(
                 derivatives=config.execution.output_dir,
                 freesurfer_home=os.getenv("FREESURFER_HOME"),
-                spaces=config.workflow.spaces.get_fs_spaces(),
+                spaces=execution_spaces.get_fs_spaces(),
             ),
             name=f"fsdir_run_{config.execution.run_uuid.replace('-', '_')}",
             run_without_submitting=True,
@@ -100,38 +105,60 @@ def init_nibabies_wf(participants_table):
         if config.execution.fs_subjects_dir is not None:
             fsdir.inputs.subjects_dir = str(config.execution.fs_subjects_dir.absolute())
 
-    for subject_id, sessions in participants_table.items():
-        for session_id in sessions:
-            single_subject_wf = init_single_subject_wf(subject_id, session_id=session_id)
-
-            bids_level = [f"sub-{subject_id}"]
-            if session_id:
-                bids_level.append(f"ses-{session_id}")
-
-            log_dir = (
-                config.execution.nibabies_dir.joinpath(*bids_level)
-                / "log"
-                / config.execution.run_uuid
+    for subject_id, session_id in subworkflows_list:
+        # Calculate the age and age-specific spaces
+        age = parse_bids_for_age_months(config.execution.bids_dir, subject_id, session_id)
+        if config.workflow.age_months:
+            config.loggers.cli.warning(
+                "`--age-months` is deprecated and will be removed in a future release."
+                "Please use a `sessions.tsv` or `participants.tsv` file to track participants age."
             )
-
-            single_subject_wf.config["execution"]["crashdump_dir"] = str(log_dir)
-            for node in single_subject_wf._get_all_nodes():
-                node.config = deepcopy(single_subject_wf.config)
-            if freesurfer:
-                nibabies_wf.connect(
-                    fsdir, "subjects_dir", single_subject_wf, "inputnode.subjects_dir"
+            age = config.workflow.age_months
+        if age is None:
+            raise RuntimeError(
+                "Could not find age for sub-{subject}{session}".format(
+                    subject=subject_id, session=f'_ses-{session_id}' if session_id else ''
                 )
-            else:
-                nibabies_wf.add_nodes([single_subject_wf])
+            )
+        output_spaces = init_workflow_spaces(execution_spaces, age)
 
-            # Dump a copy of the config file into the log directory
-            log_dir.mkdir(exist_ok=True, parents=True)
-            config.to_filename(log_dir / "nibabies.toml")
+        # skull strip template cohort
+        single_subject_wf = init_single_subject_wf(
+            subject_id,
+            session_id=session_id,
+            age=age,
+            spaces=output_spaces,
+        )
+
+        bids_level = [f"sub-{subject_id}"]
+        if session_id:
+            bids_level.append(f"ses-{session_id}")
+
+        log_dir = (
+            config.execution.nibabies_dir.joinpath(*bids_level) / "log" / config.execution.run_uuid
+        )
+
+        single_subject_wf.config["execution"]["crashdump_dir"] = str(log_dir)
+        for node in single_subject_wf._get_all_nodes():
+            node.config = deepcopy(single_subject_wf.config)
+        if freesurfer:
+            nibabies_wf.connect(fsdir, "subjects_dir", single_subject_wf, "inputnode.subjects_dir")
+        else:
+            nibabies_wf.add_nodes([single_subject_wf])
+
+        # Dump a copy of the config file into the log directory
+        log_dir.mkdir(exist_ok=True, parents=True)
+        config.to_filename(log_dir / "nibabies.toml")
 
     return nibabies_wf
 
 
-def init_single_subject_wf(subject_id, session_id=None):
+def init_single_subject_wf(
+    subject_id: str,
+    session_id: Optional[str] = None,
+    age: Optional[int] = None,
+    spaces=None,
+):
     """
     Organize the preprocessing pipeline for a single subject, at a single session.
 
@@ -158,6 +185,8 @@ def init_single_subject_wf(subject_id, session_id=None):
         Subject label for this single-subject workflow.
     session_id : :obj:`str` or None
         Session identifier.
+    age: :obj:`int` or None
+        Age (in months) of subject.
 
     Inputs
     ------
@@ -196,7 +225,6 @@ def init_single_subject_wf(subject_id, session_id=None):
     anat_only = config.workflow.anat_only
     derivatives = config.execution.derivatives or {}
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
-    spaces = config.workflow.spaces
     # Make sure we always go through these two checks
     if not anat_only and not subject_data["bold"]:
         task_id = config.execution.task_id
@@ -315,7 +343,7 @@ It is released under the [CC0]\
     # Preprocessing of anatomical (includes registration to UNCInfant)
     anat_preproc_wf = init_infant_anat_wf(
         ants_affine_init=True,
-        age_months=config.workflow.age_months,
+        age_months=age,
         anat_modality=anat_modality,
         t1w=subject_data["t1w"],
         t2w=subject_data["t2w"],
@@ -419,7 +447,7 @@ tasks and sessions), the following preprocessing was performed."""
     func_preproc_wfs = []
     has_fieldmap = bool(fmap_estimators)
     for bold_file in subject_data['bold']:
-        func_preproc_wf = init_func_preproc_wf(bold_file, has_fieldmap=has_fieldmap)
+        func_preproc_wf = init_func_preproc_wf(bold_file, spaces, has_fieldmap=has_fieldmap)
         if func_preproc_wf is None:
             continue
 
@@ -526,8 +554,54 @@ def _prefix(subid):
     return subid if subid.startswith("sub-") else f"sub-{subid}"
 
 
-def _select_iter_idx(in_list, idx):
-    """Returns a specific index of a list/tuple"""
-    if isinstance(in_list, (tuple, list)):
-        return in_list[idx]
-    raise AttributeError(f"Input {in_list} is incompatible type: {type(in_list)}")
+def init_workflow_spaces(execution_spaces, age_months):
+    """
+    Create output spaces at a per-subworkflow level.
+
+    This address the case where a multi-session subject is run, and requires separate template cohorts.
+    """
+    from niworkflows.utils.spaces import Reference
+
+    from nibabies.utils.misc import cohort_by_months
+
+    spaces = deepcopy(execution_spaces)
+
+    if age_months is None:
+        raise RuntimeError("Participant age (in months) is required.")
+
+    if not spaces.references:
+        # Ensure age specific template is added if nothing is present
+        cohort = cohort_by_months("MNIInfant", age_months)
+        spaces.add(("MNIInfant", {"res": "native", "cohort": cohort}))
+
+    if not spaces.is_cached():
+        spaces.checkpoint()
+
+    # Ensure user-defined spatial references for outputs are correctly parsed.
+    # Certain options require normalization to a space not explicitly defined by users.
+    # These spaces will not be included in the final outputs.
+    if config.workflow.use_aroma:
+        # Make sure there's a normalization to FSL for AROMA to use.
+        spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
+
+    if config.workflow.cifti_output:
+        # CIFTI grayordinates to corresponding FSL-MNI resolutions.
+        vol_res = "2" if config.workflow.cifti_output == "91k" else "1"
+        spaces.add(Reference("fsaverage", {"den": "164k"}))
+        spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
+        # Ensure a non-native version of MNIInfant is added as a target
+        cohort = cohort_by_months("MNIInfant", age_months)
+        spaces.add(Reference("MNIInfant", {"cohort": cohort}))
+
+    return spaces
+
+
+def init_execution_spaces():
+    from niworkflows.utils.spaces import Reference, SpatialReferences
+
+    spaces = config.execution.output_spaces or SpatialReferences()
+    if not isinstance(spaces, SpatialReferences):
+        spaces = SpatialReferences(
+            [ref for s in spaces.split(" ") for ref in Reference.from_string(s)]
+        )
+    return spaces

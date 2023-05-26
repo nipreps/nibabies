@@ -425,6 +425,8 @@ class execution(_Config):
     """Select a particular task from all available in the dataset."""
     templateflow_home = _templateflow_home
     """The root folder of the TemplateFlow client."""
+    unique_labels = None
+    """Combinations of subject + session identifiers to be preprocessed."""
     work_dir = Path("work").absolute()
     """Path to a working directory where intermediate results will be available."""
     write_graph = False
@@ -581,8 +583,6 @@ class workflow(_Config):
     instance keeping standard and nonstandard spaces."""
     surface_recon_method = "infantfs"
     """Method to use for surface reconstruction."""
-    topup_max_vols = 5
-    """Maximum number of volumes to use with TOPUP, per-series (EPI or BOLD)."""
     use_aroma = None
     """Run ICA-:abbr:`AROMA (automatic removal of motion artifacts)`."""
     use_bbr = False
@@ -694,7 +694,6 @@ def load(filename, skip=None):
             section = getattr(sys.modules[__name__], sectionname)
             ignore = skip.get(sectionname)
             section.load(configs, ignore=ignore)
-    init_spaces()
 
 
 def get(flat=False):
@@ -727,42 +726,6 @@ def to_filename(filename):
     """Write settings to file."""
     filename = Path(filename)
     filename.write_text(dumps())
-
-
-def init_spaces(checkpoint=True):
-    """Initialize the :attr:`~workflow.spaces` setting."""
-    from niworkflows.utils.spaces import Reference, SpatialReferences
-
-    spaces = execution.output_spaces or SpatialReferences()
-    if not isinstance(spaces, SpatialReferences):
-        spaces = SpatialReferences(
-            [ref for s in spaces.split(" ") for ref in Reference.from_string(s)]
-        )
-
-    if checkpoint and not spaces.is_cached():
-        spaces.checkpoint()
-
-    # Ensure user-defined spatial references for outputs are correctly parsed.
-    # Certain options require normalization to a space not explicitly defined by users.
-    # These spaces will not be included in the final outputs.
-    if workflow.use_aroma:
-        # Make sure there's a normalization to FSL for AROMA to use.
-        spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
-
-    if workflow.cifti_output:
-        # CIFTI grayordinates to corresponding FSL-MNI resolutions.
-        vol_res = "2" if workflow.cifti_output == "91k" else "1"
-        spaces.add(Reference("fsaverage", {"den": "164k"}))
-        spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
-        # Ensure a non-native version of MNIInfant is added as a target
-        if workflow.age_months is not None:
-            from .utils.misc import cohort_by_months
-
-            cohort = cohort_by_months("MNIInfant", workflow.age_months)
-            spaces.add(Reference("MNIInfant", {"cohort": cohort}))
-
-    # Make the SpatialReferences object available
-    workflow.spaces = spaces
 
 
 def _process_initializer(cwd, omp_nthreads):
