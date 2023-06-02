@@ -123,8 +123,6 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
         _rpt_masks,
     )
 
-    from ...utils.patches import set_tf_resolution
-
     workflow = Workflow(name=name)
 
     inputfields = [
@@ -177,10 +175,11 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
     # fmt: on
 
     # Generate reportlets showing spatial normalization
-    tf_select = pe.Node(TemplateFlowSelect(), name="tf_select", run_without_submitting=True)
-
-    set_tf_res = pe.Node(niu.Function(function=set_tf_resolution), name="set_tf_res")
-    set_tf_res.inputs.sloppy = sloppy
+    tf_select = pe.Node(
+        TemplateFlowSelect(resolution=1),
+        name="tf_select",
+        run_without_submitting=True,
+    )
 
     norm_msk = pe.Node(
         niu.Function(
@@ -201,8 +200,6 @@ def init_anat_reports_wf(*, freesurfer, output_dir, sloppy, name="anat_reports_w
 
     # fmt: off
     workflow.connect([
-        (inputnode, set_tf_res, [(('template', _drop_cohort), 'template')]),
-        (set_tf_res, tf_select, [('out', 'resolution')]),
         (inputnode, tf_select, [(('template', _drop_cohort), 'template'),
                                 (('template', _pick_cohort), 'cohort')]),
         (inputnode, norm_rpt, [('template', 'before_label')]),
