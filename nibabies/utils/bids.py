@@ -288,13 +288,15 @@ def parse_bids_for_age_months(
         age = _get_age_from_tsv(sessions_tsv, level='session', key=f'ses-{session_id}')
 
     participants_tsv = Path(bids_root) / 'participants.tsv'
-    if participants_tsv.exists():
+    if participants_tsv.exists() and age is None:
         age = _get_age_from_tsv(participants_tsv, level='participant', key=f'sub-{subject_id}')
 
     return age
 
 
-def _get_age_from_tsv(bids_tsv: Path, level: Literal['session', 'participant'], key: str):
+def _get_age_from_tsv(
+    bids_tsv: Path, level: Literal['session', 'participant'], key: str
+) -> Optional[int]:
     import pandas as pd
 
     df = pd.read_csv(str(bids_tsv), sep='\t')
@@ -328,7 +330,6 @@ def _get_age_from_tsv(bids_tsv: Path, level: Literal['session', 'participant'], 
 def _verify_age_json(bids_json: Path) -> bool:
     try:
         data = json.loads(bids_json.read_text())
-        assert data['age']['Units'] == 'months'
+        return data['age']['Units'].lower() == 'months'
     except Exception:
         return False
-    return True
