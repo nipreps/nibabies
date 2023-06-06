@@ -454,6 +454,12 @@ class execution(_Config):
     @classmethod
     def init(cls):
         """Create a new BIDS Layout accessible with :attr:`~execution.layout`."""
+        # Convert string literal None to NoneType
+        if cls.unique_labels:
+            cls.unique_labels = [
+                [sub, ses] if ses != 'None' else [sub, None] for sub, ses in cls.unique_labels
+            ]
+
         if cls.fs_license_file and Path(cls.fs_license_file).is_file():
             os.environ["FS_LICENSE"] = str(cls.fs_license_file)
 
