@@ -203,8 +203,6 @@ def init_coregistration_wf(
                 ("reverse_invert_flags", "invert_transform_flags")]),
             (map_mask, thr_mask, [("output_image", "in_file")]),
             (map_mask, final_n4, [("output_image", "weight_image")]),
-            (final_n4, apply_mask, [("output_image", "in_file")]),
-            (final_n4, outputnode, [("output_image", "t1w_preproc")]),
             (thr_mask, outputnode, [("out_mask", "t1w_mask")]),
             (thr_mask, apply_mask, [("out_mask", "in_mask")]),
         ])
