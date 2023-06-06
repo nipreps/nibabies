@@ -107,7 +107,7 @@ def init_infant_brain_extraction_wf(
 
     inputnode = pe.Node(niu.IdentityInterface(fields=["t2w_preproc"]), name="inputnode")
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["t2w_brain", "out_mask", "out_probmap"]),
+        niu.IdentityInterface(fields=["t2w_preproc", "t2w_brain", "out_mask", "out_probmap"]),
         name="outputnode",
     )
 
@@ -182,9 +182,9 @@ def init_infant_brain_extraction_wf(
     workflow.connect([
         (inputnode, final_n4, [("t2w_preproc", "input_image")]),
         # 1. Massage T2w
-        (inputnode, mrg_t2w, [("in_t2w", "in1")]),
-        (inputnode, lap_t2w, [("in_t2w", "op1")]),
-        (inputnode, map_mask_t2w, [("in_t2w", "reference_image")]),
+        (inputnode, mrg_t2w, [("t2w_preproc", "in1")]),
+        (inputnode, lap_t2w, [("t2w_preproc", "op1")]),
+        (inputnode, map_mask_t2w, [("t2w_preproc", "reference_image")]),
         (bin_regmask, refine_mask, [("out_file", "in_file")]),
         (refine_mask, fixed_masks, [("out_file", "in4")]),
         (lap_t2w, norm_lap_t2w, [("output_image", "in_file")]),
@@ -241,7 +241,7 @@ def init_infant_brain_extraction_wf(
         # fmt:off
         workflow.connect([
             (clip_tmpl, init_aff, [("out_file", "fixed_image")]),
-            (inputnode, init_aff, [("in_t2w", "moving_image")]),
+            (inputnode, init_aff, [("t2w_preproc", "moving_image")]),
             (init_aff, norm, [("output_transform", "initial_moving_transform")]),
         ])
         # fmt:on

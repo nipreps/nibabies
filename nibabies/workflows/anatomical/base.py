@@ -365,10 +365,8 @@ as target template.
         )
         # fmt:off
         wf.connect([
-            (t1w_preproc_wf, brain_extraction_wf, [
-                ("outputnode.anat_preproc", "inputnode.in_t1w")]),
             (t2w_preproc_wf, brain_extraction_wf, [
-                ("outputnode.anat_preproc", "inputnode.in_t2w")]),
+                ("outputnode.anat_preproc", "inputnode.t2w_preproc")]),
             (brain_extraction_wf, coregistration_wf, [
                 ("outputnode.t2w_preproc", "inputnode.in_t2w"),
                 ("outputnode.out_mask", "inputnode.in_mask"),
