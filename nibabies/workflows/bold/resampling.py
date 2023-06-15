@@ -1051,6 +1051,7 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
     import templateflow as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.utility import KeySelect
+    from ...interfaces.nibabel import ReorientImage
 
     from ...interfaces.workbench import CiftiCreateDenseTimeseries
 
@@ -1137,9 +1138,16 @@ surface space.
         niu.Function(function=_split_surfaces, output_names=["left_surface", "right_surface"]),
         name="split_surfaces",
     )
+
+    reorient_data = pe.Node(ReorientImage(target_orientation="LAS"), name="reorient_data")
+    reorient_labels = reorient_data.clone(name="reorient_labels")
+
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
-    gen_cifti.inputs.volume_structure_labels = str(
-        tf.api.get("MNI152NLin6Asym", resolution=2, atlas="HCP", suffix="dseg")
+    gen_cifti.inputs.roi_left = tf.api.get(
+        "fsLR", density=fslr_density, hemi="L", desc="nomedialwall", suffix="dparc"
+    )
+    gen_cifti.inputs.roi_right = tf.api.get(
+        "fsLR", density=fslr_density, hemi="R", desc="nomedialwall", suffix="dparc"
     )
     gen_cifti_metadata = pe.Node(
         niu.Function(function=_gen_metadata, output_names=["out_metadata"]),
@@ -1149,9 +1157,10 @@ surface space.
 
     # fmt: off
     workflow.connect([
-        (inputnode, gen_cifti, [
-            ('subcortical_volume', 'volume_data'),
-            ('subcortical_labels', 'volume_structure_labels')]),
+        (inputnode, reorient_data, [("subcortical_volume", "in_file")]),
+        (inputnode, reorient_labels, [("subcortical_labels", "in_file")]),
+        (reorient_data, gen_cifti, [("out_file", "volume_data")]),
+        (reorient_labels, gen_cifti, [("out_file", "volume_structure_labels")]),
         (inputnode, select_fs_surf, [('surf_files', 'surf_files'),
                                      ('surf_refs', 'keys')]),
         (select_fs_surf, resample, [('surf_files', 'in_file')]),
