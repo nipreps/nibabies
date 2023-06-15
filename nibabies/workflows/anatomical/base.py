@@ -162,6 +162,9 @@ BIDS dataset."""
                 "anat_aparc",
                 "anat_ribbon",
                 "template",
+                # registration sphere space is dependent on surface recon method
+                "sphere_reg",
+                "sphere_reg_fsLR",
             ]
         ),
         name="outputnode",
@@ -413,6 +416,9 @@ as target template.
             mcribs_dir=str(config.execution.mcribs_dir),  # Needed to preserve runs
         )
 
+        # M-CRIB-S to dHCP42week (32k)
+        sphere_reg_wf = init_mcribs_sphere_reg_wf()
+
         # Transformed gives
         if precomp_aseg:
             surface_recon_wf.inputs.inputnode.ants_segs = precomp_aseg
@@ -421,11 +427,18 @@ as target template.
         # fmt:off
         wf.connect([
             (inputnode, denoise_raw_t2w, [('t2w', 'input_image')]),
-            (denoise_raw_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')])
+            (denoise_raw_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')]),
         ])
         # fmt:on
+    else:
+        raise NotImplementedError
 
     if config.workflow.surface_recon_method in ('freesurfer', 'infantfs'):
+        from smriprep.workflows.surfaces import init_sphere_reg_wf
+
+        # fsaverage to fsLR
+        sphere_reg_wf = init_sphere_reg_wf()
+
         # fmt:off
         wf.connect([
             (t2w_preproc_wf, surface_recon_wf, [
@@ -472,6 +485,10 @@ as target template.
         (anat_ribbon_wf, anat_derivatives_wf, [
             ("outputnode.anat_ribbon", "inputnode.anat_ribbon"),
         ]),
+        (surface_recon_wf, sphere_reg_wf, [
+            ('outputnode.subject_id', 'inputnode.subject_id'),
+            ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+        ]),
         (surface_recon_wf, anat_reports_wf, [
             ("outputnode.subject_id", "inputnode.subject_id"),
             ("outputnode.subjects_dir", "inputnode.subjects_dir"),
@@ -484,6 +501,12 @@ as target template.
             ("outputnode.surfaces", "inputnode.surfaces"),
             ("outputnode.morphometrics", "inputnode.morphometrics"),
         ]),
+        (sphere_reg_wf, outputnode, [
+            ('outputnode.sphere_reg', 'sphere_reg'),
+            ('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+        (sphere_reg_wf, anat_derivatives_wf, [
+            ('outputnode.sphere_reg', 'inputnode.sphere_reg'),
+            ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')]),
     ])
     # fmt: on
 
