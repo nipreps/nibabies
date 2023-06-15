@@ -9,11 +9,11 @@ Resampling workflows
 .. autofunction:: init_bold_preproc_trans_wf
 
 """
+from __future__ import annotations
 
+import typing as ty
 
-from os.path import basename
-
-import nipype.interfaces.workbench as wb
+import templateflow.api as tf
 from nipype import Function
 from nipype.interfaces import freesurfer as fs
 from nipype.interfaces import fsl
@@ -21,8 +21,13 @@ from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.freesurfer import MedialNaNs
+from niworkflows.interfaces.workbench import MetricDilate, MetricMask, MetricResample
 
 from nibabies.config import DEFAULT_MEMORY_MIN_GB
+from nibabies.data import load_resource
+
+if ty.TYPE_CHECKING:
+    from niworkflows.utils.spaces import SpatialReferences
 
 
 def init_bold_surf_wf(
@@ -81,8 +86,6 @@ def init_bold_surf_wf(
     from nipype.interfaces.io import FreeSurferSource
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.surf import GiftiSetAnatomicalStructure
-
-    from ...interfaces.metric import MetricDilate
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
@@ -422,47 +425,6 @@ def init_goodvoxels_bold_mask_wf(mem_gb, name="goodvoxels_bold_mask_wf"):
         mem_gb=mem_gb,
     )
 
-    # make HCP-style "goodvoxels" mask in t1w space for filtering outlier voxels
-    # in bold timeseries, based on modulated normalized covariance
-    workflow.connect(
-        [
-            (inputnode, ribbon_boldsrc_xfm, [("anat_ribbon", "input_image")]),
-            (inputnode, stdev_volume, [("bold_file", "in_file")]),
-            (inputnode, mean_volume, [("bold_file", "in_file")]),
-            (mean_volume, ribbon_boldsrc_xfm, [("out_file", "reference_image")]),
-            (stdev_volume, cov_volume, [("out_file", "in_file")]),
-            (mean_volume, cov_volume, [("out_file", "operand_file")]),
-            (cov_volume, cov_ribbon, [("out_file", "in_file")]),
-            (ribbon_boldsrc_xfm, cov_ribbon, [("output_image", "mask_file")]),
-            (cov_ribbon, cov_ribbon_mean, [("out_file", "in_file")]),
-            (cov_ribbon, cov_ribbon_std, [("out_file", "in_file")]),
-            (cov_ribbon, cov_ribbon_norm, [("out_file", "in_file")]),
-            (cov_ribbon_mean, cov_ribbon_norm, [("out_stat", "operand_value")]),
-            (cov_ribbon_norm, smooth_norm, [("out_file", "in_file")]),
-            (smooth_norm, merge_smooth_norm, [("out_file", "in1")]),
-            (cov_ribbon_norm, cov_ribbon_norm_smooth, [("out_file", "in_file")]),
-            (merge_smooth_norm, cov_ribbon_norm_smooth, [("out", "operand_files")]),
-            (cov_ribbon_mean, cov_norm, [("out_stat", "operand_value")]),
-            (cov_volume, cov_norm, [("out_file", "in_file")]),
-            (cov_norm, cov_norm_modulate, [("out_file", "in_file")]),
-            (cov_ribbon_norm_smooth, cov_norm_modulate, [("out_file", "operand_file")]),
-            (cov_norm_modulate, cov_norm_modulate_ribbon, [("out_file", "in_file")]),
-            (ribbon_boldsrc_xfm, cov_norm_modulate_ribbon, [("output_image", "mask_file")]),
-            (cov_norm_modulate_ribbon, mod_ribbon_mean, [("out_file", "in_file")]),
-            (cov_norm_modulate_ribbon, mod_ribbon_std, [("out_file", "in_file")]),
-            (mod_ribbon_mean, merge_mod_ribbon_stats, [("out_stat", "in1")]),
-            (mod_ribbon_std, merge_mod_ribbon_stats, [("out_stat", "in2")]),
-            (merge_mod_ribbon_stats, upper_thr_val, [("out", "in_stats")]),
-            (merge_mod_ribbon_stats, lower_thr_val, [("out", "in_stats")]),
-            (mean_volume, bin_mean_volume, [("out_file", "in_file")]),
-            (upper_thr_val, goodvoxels_thr, [("upper_thresh", "thresh")]),
-            (cov_norm_modulate, goodvoxels_thr, [("out_file", "in_file")]),
-            (bin_mean_volume, merge_goodvoxels_operands, [("out_file", "in1")]),
-            (goodvoxels_thr, goodvoxels_mask, [("out_file", "in_file")]),
-            (merge_goodvoxels_operands, goodvoxels_mask, [("out", "operand_files")]),
-        ]
-    )
-
     goodvoxels_ribbon_mask = pe.Node(
         fsl.ApplyMask(),
         name_source=['in_file'],
@@ -471,8 +433,44 @@ def init_goodvoxels_bold_mask_wf(mem_gb, name="goodvoxels_bold_mask_wf"):
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
+    # make HCP-style "goodvoxels" mask in t1w space for filtering outlier voxels
+    # in bold timeseries, based on modulated normalized covariance
     # fmt:off
     workflow.connect([
+        (inputnode, ribbon_boldsrc_xfm, [("anat_ribbon", "input_image")]),
+        (inputnode, stdev_volume, [("bold_file", "in_file")]),
+        (inputnode, mean_volume, [("bold_file", "in_file")]),
+        (mean_volume, ribbon_boldsrc_xfm, [("out_file", "reference_image")]),
+        (stdev_volume, cov_volume, [("out_file", "in_file")]),
+        (mean_volume, cov_volume, [("out_file", "operand_file")]),
+        (cov_volume, cov_ribbon, [("out_file", "in_file")]),
+        (ribbon_boldsrc_xfm, cov_ribbon, [("output_image", "mask_file")]),
+        (cov_ribbon, cov_ribbon_mean, [("out_file", "in_file")]),
+        (cov_ribbon, cov_ribbon_std, [("out_file", "in_file")]),
+        (cov_ribbon, cov_ribbon_norm, [("out_file", "in_file")]),
+        (cov_ribbon_mean, cov_ribbon_norm, [("out_stat", "operand_value")]),
+        (cov_ribbon_norm, smooth_norm, [("out_file", "in_file")]),
+        (smooth_norm, merge_smooth_norm, [("out_file", "in1")]),
+        (cov_ribbon_norm, cov_ribbon_norm_smooth, [("out_file", "in_file")]),
+        (merge_smooth_norm, cov_ribbon_norm_smooth, [("out", "operand_files")]),
+        (cov_ribbon_mean, cov_norm, [("out_stat", "operand_value")]),
+        (cov_volume, cov_norm, [("out_file", "in_file")]),
+        (cov_norm, cov_norm_modulate, [("out_file", "in_file")]),
+        (cov_ribbon_norm_smooth, cov_norm_modulate, [("out_file", "operand_file")]),
+        (cov_norm_modulate, cov_norm_modulate_ribbon, [("out_file", "in_file")]),
+        (ribbon_boldsrc_xfm, cov_norm_modulate_ribbon, [("output_image", "mask_file")]),
+        (cov_norm_modulate_ribbon, mod_ribbon_mean, [("out_file", "in_file")]),
+        (cov_norm_modulate_ribbon, mod_ribbon_std, [("out_file", "in_file")]),
+        (mod_ribbon_mean, merge_mod_ribbon_stats, [("out_stat", "in1")]),
+        (mod_ribbon_std, merge_mod_ribbon_stats, [("out_stat", "in2")]),
+        (merge_mod_ribbon_stats, upper_thr_val, [("out", "in_stats")]),
+        (merge_mod_ribbon_stats, lower_thr_val, [("out", "in_stats")]),
+        (mean_volume, bin_mean_volume, [("out_file", "in_file")]),
+        (upper_thr_val, goodvoxels_thr, [("upper_thresh", "thresh")]),
+        (cov_norm_modulate, goodvoxels_thr, [("out_file", "in_file")]),
+        (bin_mean_volume, merge_goodvoxels_operands, [("out_file", "in1")]),
+        (goodvoxels_thr, goodvoxels_mask, [("out_file", "in_file")]),
+        (merge_goodvoxels_operands, goodvoxels_mask, [("out", "operand_files")]),
         (goodvoxels_mask, goodvoxels_ribbon_mask, [("out_file", "in_file")]),
         (ribbon_boldsrc_xfm, goodvoxels_ribbon_mask, [("output_image", "mask_file")]),
         (goodvoxels_mask, outputnode, [("out_file", "goodvoxels_mask")]),
@@ -603,20 +601,31 @@ The BOLD time-series were resampled onto the left/right-symmetric template
         ),
         name='select_surfaces',
     )
-    select_surfaces.inputs.template_spheres = [
-        str(sphere)
-        for sphere in tf.get(
-            template='fsLR',
-            density=fslr_density,
-            suffix='sphere',
-            space=None,
-            extension='.surf.gii',
-        )
-    ]
-    atlases = smriprep_data.load_resource('atlases')
+    if mcribs:
+        atlases = load_resource('atlases')
+        # use dHCP 32k fsLR instead
+        select_surfaces.inputs.template_spheres = [
+            str(atlases / 'dHCP' / 'dHCP.week42.L.sphere.surf.gii'),
+            str(atlases / 'dHCP' / 'dHCP.week42.R.sphere.surf.gii'),
+        ]
+
+        # TODO: different template ROIs?
+    else:
+        select_surfaces.inputs.template_spheres = [
+            str(sphere)
+            for sphere in tf.get(
+                template='fsLR',
+                density=fslr_density,
+                suffix='sphere',
+                space=None,
+                extension='.surf.gii',
+            )
+        ]
+
+    smriprep_atlases = smriprep_data.load_resource('atlases')
     select_surfaces.inputs.template_rois = [
-        str(atlases / 'L.atlasroi.32k_fs_LR.shape.gii'),
-        str(atlases / 'R.atlasroi.32k_fs_LR.shape.gii'),
+        str(smriprep_atlases / 'L.atlasroi.32k_fs_LR.shape.gii'),
+        str(smriprep_atlases / 'R.atlasroi.32k_fs_LR.shape.gii'),
     ]
 
     # Reimplements lines 282-290 of FreeSurfer2CaretConvertAndRegisterNonlinear.sh
@@ -1208,7 +1217,6 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
         BIDS metadata file corresponding to ``cifti_bold``.
 
     """
-    import templateflow as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.utility import KeySelect
 
@@ -1248,7 +1256,7 @@ surface space.
     )
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
     gen_cifti.inputs.volume_structure_labels = str(
-        tf.api.get("MNI152NLin6Asym", resolution=mni_density, atlas="HCP", suffix="dseg")
+        tf.get("MNI152NLin6Asym", resolution=mni_density, atlas="HCP", suffix="dseg")
     )
     gen_cifti_metadata = pe.Node(
         niu.Function(function=_gen_metadata, output_names=["out_metadata"]),
@@ -1266,10 +1274,6 @@ surface space.
         (split_surfaces, gen_cifti, [
             ('left_surface', 'left_metric'),
             ('right_surface', 'right_metric')]),
-        # (resample, split_surfaces, [('out_file', 'in_surfaces')]),
-        # (split_surfaces, gen_cifti, [
-        #     ('left_surface', 'left_metric'),
-        #     ('right_surface', 'right_metric')]),
         (gen_cifti, outputnode, [('out_file', 'cifti_bold')]),
         (gen_cifti_metadata, outputnode, [('out_metadata', 'cifti_metadata')]),
     ])
