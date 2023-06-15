@@ -1051,8 +1051,8 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
     import templateflow as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.utility import KeySelect
-    from ...interfaces.nibabel import ReorientImage
 
+    from ...interfaces.nibabel import ReorientImage
     from ...interfaces.workbench import CiftiCreateDenseTimeseries
 
     workflow = Workflow(name=name)
