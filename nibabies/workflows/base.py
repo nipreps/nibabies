@@ -470,7 +470,9 @@ tasks and sessions), the following preprocessing was performed."""
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
                 ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
-                ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
+                ('outputnode.surfaces', 'inputnode.surfaces'),
+                ('outputnode.morphometrics', 'inputnode.morphometrics'),
+                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR'),
             ]),
         ])
         # fmt:on
@@ -587,7 +589,6 @@ def init_workflow_spaces(execution_spaces, age_months):
     if config.workflow.cifti_output:
         # CIFTI grayordinates to corresponding FSL-MNI resolutions.
         vol_res = "2" if config.workflow.cifti_output == "91k" else "1"
-        spaces.add(Reference("fsaverage", {"den": "164k"}))
         spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
         # Ensure a non-native version of MNIInfant is added as a target
         cohort = cohort_by_months("MNIInfant", age_months)

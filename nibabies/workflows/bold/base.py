@@ -193,14 +193,7 @@ def init_func_preproc_wf(bold_file, spaces, has_fieldmap=False, existing_derivat
     freesurfer = config.workflow.run_reconall
     nibabies_dir = str(config.execution.nibabies_dir)
     freesurfer_spaces = spaces.get_fs_spaces()
-    project_goodvoxels = config.workflow.project_goodvoxels
-
-    if project_goodvoxels and freesurfer_spaces != ["fsaverage"]:
-        config.loggers.workflow.critical(
-            f"--project-goodvoxels only works with fsaverage (requested: {freesurfer_spaces})"
-        )
-        config.loggers.workflow.warn("Disabling --project-goodvoxels")
-        project_goodvoxels = False
+    project_goodvoxels = config.workflow.project_goodvoxels and config.workflow.cifti_output
 
     # Extract BIDS entities and metadata from BOLD file(s)
     entities = extract_entities(bold_file)
@@ -344,6 +337,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 "fsnative2t1w_xfm",
                 "subject_id",
                 "subjects_dir",
+                "surfaces",
+                "morphometrics",
+                "sphere_reg_fsLR",
             ]
         ),
         name="inputnode",
@@ -929,7 +925,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             mem_gb=mem_gb["resampled"],
             surface_spaces=freesurfer_spaces,
             medial_surface_nan=config.workflow.medial_surface_nan,
-            project_goodvoxels=project_goodvoxels,
             surface_recon_method=config.workflow.surface_recon_method,
             name="bold_surf_wf",
         )
@@ -938,67 +933,83 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             (inputnode, bold_surf_wf, [
                 ('subjects_dir', 'inputnode.subjects_dir'),
                 ('subject_id', 'inputnode.subject_id'),
-                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
-                ("anat_ribbon", "inputnode.anat_ribbon"),
-                ("anat_mask", "inputnode.t1w_mask")]),
+                ('t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm')]),
             (bold_t1_trans_wf, bold_surf_wf, [('outputnode.bold_t1', 'inputnode.source_file')]),
             (bold_surf_wf, outputnode, [('outputnode.surfaces', 'surfaces')]),
             (bold_surf_wf, func_derivatives_wf, [
                 ('outputnode.target', 'inputnode.surf_refs')]),
-            (bold_surf_wf, func_derivatives_wf, [("outputnode.goodvoxels_ribbon",
-                                                  "inputnode.goodvoxels_ribbon")]),
         ])
         # fmt:on
 
-        # CIFTI output
-        if config.workflow.cifti_output:
-            from .alignment import (
-                init_subcortical_mni_alignment_wf,
-                init_subcortical_rois_wf,
-            )
-            from .resampling import init_bold_grayords_wf
+    # CIFTI output
+    if config.workflow.cifti_output:
+        from .alignment import (
+            init_subcortical_mni_alignment_wf,
+            init_subcortical_rois_wf,
+        )
+        from .resampling import init_bold_fsLR_resampling_wf, init_bold_grayords_wf
 
-            key = get_MNIInfant_key(spaces)
+        # key = get_MNIInfant_key(spaces)
+        # # BOLD/ROIs should be in MNIInfant space
+        # cifti_select_std = pe.Node(
+        #     KeySelect(fields=["bold_std", "bold_aseg_std"], key=key),
+        #     name="cifti_select_std",
+        #     run_without_submitting=True,
+        # )
 
-            # BOLD/ROIs should be in MNIInfant space
-            cifti_select_std = pe.Node(
-                KeySelect(fields=["bold_std", "bold_aseg_std"], key=key),
-                name="cifti_select_std",
-                run_without_submitting=True,
-            )
+        subcortical_rois_wf = init_subcortical_rois_wf()
+        subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf()
+        bold_grayords_wf = init_bold_grayords_wf(
+            grayord_density=config.workflow.cifti_output,
+            mem_gb=mem_gb["resampled"],
+            repetition_time=metadata["RepetitionTime"],
+        )
 
-            subcortical_rois_wf = init_subcortical_rois_wf()
-            subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf()
-            bold_grayords_wf = init_bold_grayords_wf(
-                grayord_density=config.workflow.cifti_output,
-                mem_gb=mem_gb["resampled"],
-                repetition_time=metadata["RepetitionTime"],
-            )
-
-            # fmt:off
-            workflow.connect([
-                (bold_std_trans_wf, cifti_select_std, [
-                    ("outputnode.bold_std", "bold_std"),
-                    ("outputnode.bold_aseg_std", "bold_aseg_std"),
-                    ("outputnode.spatial_reference", "keys")]),
-                (cifti_select_std, subcortical_rois_wf, [
-                    ("bold_aseg_std", "inputnode.MNIInfant_aseg")]),
-                (cifti_select_std, subcortical_mni_alignment_wf, [
-                    ("bold_std", "inputnode.MNIInfant_bold")]),
-                (subcortical_rois_wf, subcortical_mni_alignment_wf, [
-                    ("outputnode.MNIInfant_rois", "inputnode.MNIInfant_rois"),
-                    ("outputnode.MNI152_rois", "inputnode.MNI152_rois")]),
-                (subcortical_mni_alignment_wf, bold_grayords_wf, [
-                    ("outputnode.subcortical_volume", "inputnode.subcortical_volume"),
-                    ("outputnode.subcortical_labels", "inputnode.subcortical_labels")]),
-                (bold_surf_wf, bold_grayords_wf, [
-                    ('outputnode.surfaces', 'inputnode.surf_files'),
-                    ('outputnode.target', 'inputnode.surf_refs')]),
-                (bold_grayords_wf, outputnode, [
-                    ('outputnode.cifti_bold', 'bold_cifti'),
-                    ('outputnode.cifti_metadata', 'cifti_metadata')]),
-            ])
-            # fmt:on
+        # fmt:off
+        workflow.connect([
+            (inputnode, bold_fsLR_resampling_wf, [
+                ("surfaces", "inputnode.surfaces"),
+                ("morphometrics", "inputnode.morphometrics"),
+                ("sphere_reg_fsLR", "inputnode.sphere_reg_fsLR"),
+                ("anat_ribbon", "inputnode.anat_ribbon")]),
+            # (bold_std_trans_wf, cifti_select_std, [
+            #     ("outputnode.bold_std", "bold_std"),
+            #     ("outputnode.bold_aseg_std", "bold_aseg_std"),
+            #     ("outputnode.spatial_reference", "keys")]),
+            # (cifti_select_std, subcortical_rois_wf, [
+            #     ("bold_aseg_std", "inputnode.MNIInfant_aseg")]),
+            # (cifti_select_std, subcortical_mni_alignment_wf, [
+            #     ("bold_std", "inputnode.MNIInfant_bold")]),
+            # (subcortical_rois_wf, subcortical_mni_alignment_wf, [
+            #     ("outputnode.MNIInfant_rois", "inputnode.MNIInfant_rois"),
+            #     ("outputnode.MNI152_rois", "inputnode.MNI152_rois")]),
+            # (subcortical_mni_alignment_wf, bold_grayords_wf, [
+            #     ("outputnode.subcortical_volume", "inputnode.subcortical_volume"),
+            #     ("outputnode.subcortical_labels", "inputnode.subcortical_labels")]),
+            # (bold_surf_wf, bold_grayords_wf, [
+            #     ('outputnode.surfaces', 'inputnode.surf_files'),
+            #     ('outputnode.target', 'inputnode.surf_refs')]),
+            (bold_t1_trans_wf, bold_fsLR_resampling_wf, [
+                ("outputnode.bold_t1", "inputnode.bold_file")]),
+            (bold_std_trans_wf, bold_grayords_wf, [
+                ("outputnode.bold_std", "inputnode.bold_std"),
+                ("outputnode.spatial_reference", "inputnode.spatial_reference"),
+            ]),
+            (bold_fsLR_resampling_wf, bold_grayords_wf, [
+                ("outputnode.bold_fsLR", "inputnode.bold_fsLR"),
+            ]),
+            (bold_fsLR_resampling_wf, func_derivatives_wf, [
+                ("outputnode.goodvoxels_mask", "inputnode.goodvoxels_mask"),
+            ]),
+            (bold_grayords_wf, outputnode, [
+                ("outputnode.cifti_bold", "bold_cifti"),
+                ("outputnode.cifti_metadata", "cifti_metadata"),
+            ]),
+            (bold_grayords_wf, outputnode, [
+                ('outputnode.cifti_bold', 'bold_cifti'),
+                ('outputnode.cifti_metadata', 'cifti_metadata')]),
+        ])
+        # fmt:on
 
     if spaces.get_spaces(nonstandard=False, dim=(3,)):
         if not config.workflow.cifti_output:
