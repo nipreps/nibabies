@@ -196,7 +196,15 @@ surface space.
     fslr_density = "32k" if grayord_density == "91k" else "59k"
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["subject_id", "subjects_dir", "fsLR_midthickness"]),
+        niu.IdentityInterface(
+            fields=[
+                "subject_id",
+                "subjects_dir",
+                "surfaces",
+                "morphometrics",
+                "fsLR_midthickness",
+            ]
+        ),
         name="inputnode",
     )
 
@@ -212,6 +220,9 @@ surface space.
         name="surfmorph_list",
         run_without_submitting=True,
     )
+
+    # TODO: Extract L/R midthickness from surfaces
+    # TODO: Coerce morphometrics into curv-L, curv-R, sulc-L, sulc-R, thickness-L, thickness-R
 
     # Setup Workbench command. LR ordering for hemi can be assumed, as it is imposed
     # by the iterfield of the MapNode in the surface sampling workflow above.
@@ -233,13 +244,11 @@ surface space.
         str(atlases / 'mcribs' / 'lh.sphere.reg.dHCP42.surf.gii'),
         str(atlases / 'mcribs' / 'rh.sphere.reg.dHCP42.surf.gii'),
     ] * 3
-    # current area: FreeSurfer directory midthickness
+    # current area: FreeSurfer (M-CRIB-S) midthickness
     resample.inputs.new_sphere = [
         str(atlases / 'dHCP' / 'dHCP.week42.L.sphere.surf.gii'),
         str(atlases / 'dHCP' / 'dHCP.week42.R.sphere.surf.gii'),
     ] * 3
-    # new area: dHCP midthickness
-
     resample.inputs.out_file = [
         f"space-fsLR_hemi-{h}_den-{grayord_density}_{morph}.shape.gii"
         # Order: curv-L, curv-R, sulc-L, sulc-R, thickness-L, thickness-R
@@ -269,6 +278,7 @@ surface space.
         ]),
         # (surfmorph_list, surf2surf, [('out', 'source_file')]),
         # (surf2surf, resample, [('out_file', 'in_file')]),
+        (inputnode, resample, [("fsLR_midthickness", "new_area")]),
         (resample, gen_cifti, [
             (("out_file", _collate), "scalar_surfs")]),
         (gen_cifti, outputnode, [("out_file", "cifti_morph"),
