@@ -50,7 +50,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     outputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
-                'fsLR_midthickness',
+                'midthickness_fsLR',
                 'cifti_morph',
                 'cifti_metadata',
             ]
@@ -88,7 +88,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     )
 
     joinnode = pe.JoinNode(
-        niu.IdentityInterface(fields=['fsLR_midthickness']),
+        niu.IdentityInterface(fields=['midthickness_fsLR']),
         name='joinnode',
         joinsource='itersource',
     )
@@ -116,8 +116,8 @@ The BOLD time-series were resampled onto the left/right-symmetric template
             ("midthickness", "surface_in"),
             ("sphere_reg", "current_sphere"),
             ("template_sphere", "new_sphere")]),
-        (downsampled_midthickness, joinnode, [("surface_out", "fsLR_midthickness")]),
-        (joinnode, outputnode, [("surface_out", "fsLR_midthickness")]),
+        (downsampled_midthickness, joinnode, [("surface_out", "midthickness_fsLR")]),
+        (joinnode, outputnode, [("surface_out", "midthickness_fsLR")]),
         # resample morphometrics to fsLR 32k
         (inputnode, morph_grayords_wf, [
             ("subject_id", "inputnode.subject_id"),

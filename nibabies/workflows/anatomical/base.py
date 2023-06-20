@@ -165,6 +165,7 @@ BIDS dataset."""
                 # registration sphere space is dependent on surface recon method
                 "sphere_reg",
                 "sphere_reg_fsLR",
+                "midthickness_fsLR",
             ]
         ),
         name="outputnode",
@@ -528,7 +529,7 @@ as target template.
                 ("outputnode.cifti_morph", "inputnode.cifti_morph"),
                 ("outputnode.cifti_metadata", "inputnode.cifti_metadata")]),
             (anat_fsLR_resampling_wf, outputnode, [
-                ("outputnode.fsLR_midthickness", "fsLR_midthickness")])
+                ("outputnode.midthickness_fsLR", "midthickness_fsLR")])
         ])
         # fmt:on
 
