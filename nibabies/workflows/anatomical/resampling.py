@@ -47,7 +47,16 @@ The BOLD time-series were resampled onto the left/right-symmetric template
         iterables=[('hemi', ['L', 'R'])],
     )
 
-    outputnode = pe.Node(niu.IdentityInterface(fields=['fsLR_midthickness']), name='outputnode')
+    outputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                'fsLR_midthickness',
+                'cifti_morph',
+                'cifti_metadata',
+            ]
+        ),
+        name='outputnode',
+    )
 
     # select white, midthickness and pial surfaces based on hemi
     select_surfaces = pe.Node(CiftiSelect(), name='select_surfaces')
@@ -96,50 +105,33 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     else:
         morph_grayords_wf = init_morph_grayords_wf(grayord_density)
 
-    workflow.connect(
-        [
-            (
-                inputnode,
-                select_surfaces,
-                [("surfaces", "surfaces"), ("sphere_reg_fsLR", "spherical_registrations")],
-            ),
-            (itersource, select_surfaces, [("hemi", "hemi")]),
-            # Downsample midthickness to fsLR density
-            (
-                select_surfaces,
-                downsampled_midthickness,
-                [
-                    ("midthickness", "surface_in"),
-                    ("sphere_reg", "current_sphere"),
-                    ("template_sphere", "new_sphere"),
-                ],
-            ),
-            (downsampled_midthickness, joinnode, [("surface_out", "fsLR_midthickness")]),
-            (joinnode, outputnode, [("surface_out", "fsLR_midthickness")]),
-            # resample surfaces
-            (
-                inputnode,
-                morph_grayords_wf,
-                [
-                    ("subject_id", "inputnode.subject_id"),
-                    ("subjects_dir", "inputnode.subjects_dir"),
-                ],
-            ),
-            (
-                morph_grayords_wf,
-                outputnode,
-                [
-                    ("outputnode.cifti_morph", "cifti_morph"),
-                    ("outputnode.cifti_metadata", "cifti_metadata"),
-                ],
-            ),
-        ]
-    )
+    # fmt:off
+    workflow.connect([
+        (inputnode, select_surfaces, [
+            ("surfaces", "surfaces"),
+            ("sphere_reg_fsLR", "spherical_registrations")]),
+        (itersource, select_surfaces, [("hemi", "hemi")]),
+        # Downsample midthickness to fsLR density
+        (select_surfaces, downsampled_midthickness, [
+            ("midthickness", "surface_in"),
+            ("sphere_reg", "current_sphere"),
+            ("template_sphere", "new_sphere")]),
+        (downsampled_midthickness, joinnode, [("surface_out", "fsLR_midthickness")]),
+        (joinnode, outputnode, [("surface_out", "fsLR_midthickness")]),
+        # resample morphometrics to fsLR 32k
+        (inputnode, morph_grayords_wf, [
+            ("subject_id", "inputnode.subject_id"),
+            ("subjects_dir", "inputnode.subjects_dir")]),
+        (morph_grayords_wf, outputnode, [
+            ("outputnode.cifti_morph", "cifti_morph"),
+            ("outputnode.cifti_metadata", "cifti_metadata")]),
+    ])
+    # fmt:on
     return workflow
 
 
 def init_mcribs_morph_grayords_wf(
-    grayord_density: ty.Literal['91k', '170k'],
+    grayord_density: ty.Literal['91k'],  # Only 91k supported ATM
     name: str = "morph_grayords_wf",
 ):
     """
@@ -180,8 +172,6 @@ def init_mcribs_morph_grayords_wf(
         Paths to JSON files containing metadata corresponding to ``cifti_morph``
 
     """
-    import templateflow.api as tf
-    from nipype.interfaces.io import FreeSurferSource
     from nipype.interfaces.workbench import MetricResample
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from smriprep.interfaces.cifti import GenerateDScalar
@@ -189,11 +179,9 @@ def init_mcribs_morph_grayords_wf(
     workflow = Workflow(name=name)
     workflow.__desc__ = f"""\
 *Grayordinate* "dscalar" files [@hcppipelines] containing {grayord_density} samples were
-also generated using the highest-resolution ``fsaverage`` as an intermediate standardized
+also generated using `M-CRIB-S` as an intermediate standardized
 surface space.
 """
-
-    fslr_density = "32k" if grayord_density == "91k" else "59k"
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -213,16 +201,11 @@ surface space.
         name="outputnode",
     )
 
-    get_surfaces = pe.Node(FreeSurferSource(), name="get_surfaces")
-
     surfmorph_list = pe.Node(
         niu.Merge(3, ravel_inputs=True),
         name="surfmorph_list",
         run_without_submitting=True,
     )
-
-    # TODO: Extract L/R midthickness from surfaces
-    # TODO: Coerce morphometrics into curv-L, curv-R, sulc-L, sulc-R, thickness-L, thickness-R
 
     # Setup Workbench command. LR ordering for hemi can be assumed, as it is imposed
     # by the iterfield of the MapNode in the surface sampling workflow above.
@@ -244,7 +227,6 @@ surface space.
         str(atlases / 'mcribs' / 'lh.sphere.reg.dHCP42.surf.gii'),
         str(atlases / 'mcribs' / 'rh.sphere.reg.dHCP42.surf.gii'),
     ] * 3
-    # current area: FreeSurfer (M-CRIB-S) midthickness
     resample.inputs.new_sphere = [
         str(atlases / 'dHCP' / 'dHCP.week42.L.sphere.surf.gii'),
         str(atlases / 'dHCP' / 'dHCP.week42.R.sphere.surf.gii'),
@@ -267,23 +249,23 @@ surface space.
 
     # fmt: off
     workflow.connect([
-        (inputnode, get_surfaces, [
-            ('subject_id', 'subject_id'),
-            ('subjects_dir', 'subjects_dir'),
+        (inputnode, resample, [
+            ("fsLR_midthickness", "new_area"),
+            (('surfaces', _get_surf, "midthickness", 3), "current_area")]),
+        (inputnode, surfmorph_list, [
+            (('morphometrics', _get_surf, "curv"), "in1"),
+            (('morphometrics', _get_surf, "sulc"), "in2"),
+            (('morphometrics', _get_surf, "thickness"), "in3"),
         ]),
-        (get_surfaces, surfmorph_list, [
-            (('curv', _sorted_by_basename), 'in1'),
-            (('sulc', _sorted_by_basename), 'in2'),
-            (('thickness', _sorted_by_basename), 'in3'),
-        ]),
-        # (surfmorph_list, surf2surf, [('out', 'source_file')]),
-        # (surf2surf, resample, [('out_file', 'in_file')]),
-        (inputnode, resample, [("fsLR_midthickness", "new_area")]),
         (resample, gen_cifti, [
             (("out_file", _collate), "scalar_surfs")]),
         (gen_cifti, outputnode, [("out_file", "cifti_morph"),
                                  ("out_metadata", "cifti_metadata")]),
     ])
     # fmt: on
-
     return workflow
+
+
+def _get_surf(surfaces, name, mult=1):
+    "Select a specific surface by name, and optionally multiple it."
+    return [surf for surf in _sorted_by_basename(surfaces) if name in surf] * mult
