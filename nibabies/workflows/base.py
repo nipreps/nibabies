@@ -473,6 +473,7 @@ tasks and sessions), the following preprocessing was performed."""
                 ('outputnode.surfaces', 'inputnode.surfaces'),
                 ('outputnode.morphometrics', 'inputnode.morphometrics'),
                 ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR'),
+                ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
             ]),
         ])
         # fmt:on

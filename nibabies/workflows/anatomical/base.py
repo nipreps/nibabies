@@ -522,9 +522,13 @@ as target template.
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
         # fmt:off
         wf.connect([
+            (sphere_reg_wf, anat_fsLR_resampling_wf, [
+                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')]),
             (surface_recon_wf, anat_fsLR_resampling_wf, [
                 ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.subjects_dir', 'inputnode.subjects_dir')]),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.surfaces', 'inputnode.surfaces'),
+                ('outputnode.morphometrics', 'inputnode.morphometrics')]),
             (anat_fsLR_resampling_wf, anat_derivatives_wf, [
                 ("outputnode.cifti_morph", "inputnode.cifti_morph"),
                 ("outputnode.cifti_metadata", "inputnode.cifti_metadata")]),

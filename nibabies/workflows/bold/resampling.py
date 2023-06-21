@@ -485,7 +485,7 @@ def init_bold_fsLR_resampling_wf(
     estimate_goodvoxels: bool,
     omp_nthreads: int,
     mem_gb: float,
-    mcribs: bool,
+    mcribs: bool = False,
     name: str = "bold_fsLR_resampling_wf",
 ):
     """Resample BOLD time series to fsLR surface.
@@ -535,7 +535,6 @@ def init_bold_fsLR_resampling_wf(
     goodvoxels_mask : :class:`str`
         Path to mask of voxels, excluding those with locally high coefficients of variation
     """
-    import templateflow.api as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.surf import CreateSurfaceROI
     from niworkflows.interfaces.workbench import (
@@ -544,7 +543,8 @@ def init_bold_fsLR_resampling_wf(
         VolumeToSurfaceMapping,
     )
     from smriprep import data as smriprep_data
-    from smriprep.interfaces.workbench import SurfaceResample
+
+    from nibabies.interfaces.utils import CiftiSelect
 
     fslr_density = "32k" if grayord_density == "91k" else "59k"
 
@@ -562,6 +562,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
                 'surfaces',
                 'morphometrics',
                 'sphere_reg_fsLR',
+                'midthickness_fsLR',
                 'anat_ribbon',
             ]
         ),
@@ -586,21 +587,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     )
 
     # select white, midthickness and pial surfaces based on hemi
-    select_surfaces = pe.Node(
-        niu.Function(
-            function=_select_surfaces,
-            output_names=[
-                'white',
-                'pial',
-                'midthickness',
-                'thickness',
-                'sphere_reg',
-                'template_sphere',
-                'template_roi',
-            ],
-        ),
-        name='select_surfaces',
-    )
+    select_surfaces = pe.Node(CiftiSelect(), name='select_surfaces')
     if mcribs:
         atlases = load_resource('atlases')
         # use dHCP 32k fsLR instead
@@ -608,8 +595,6 @@ The BOLD time-series were resampled onto the left/right-symmetric template
             str(atlases / 'dHCP' / 'dHCP.week42.L.sphere.surf.gii'),
             str(atlases / 'dHCP' / 'dHCP.week42.R.sphere.surf.gii'),
         ]
-
-        # TODO: different template ROIs?
     else:
         select_surfaces.inputs.template_spheres = [
             str(sphere)
@@ -634,13 +619,6 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     # Lines 291-292
     fill_holes = pe.Node(MetricFillHoles(), name="fill_holes", mem_gb=DEFAULT_MEMORY_MIN_GB)
     native_roi = pe.Node(MetricRemoveIslands(), name="native_roi", mem_gb=DEFAULT_MEMORY_MIN_GB)
-
-    # Line 393 of FreeSurfer2CaretConvertAndRegisterNonlinear.sh
-    downsampled_midthickness = pe.Node(
-        SurfaceResample(method='BARYCENTRIC'),
-        name="downsampled_midthickness",
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
 
     # RibbonVolumeToSurfaceMapping.sh
     # Line 85 thru ...
@@ -670,6 +648,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
             ('surfaces', 'surfaces'),
             ('morphometrics', 'morphometrics'),
             ('sphere_reg_fsLR', 'spherical_registrations'),
+            ('midthickness_fsLR', 'template_surfaces'),
         ]),
         (itersource, select_surfaces, [('hemi', 'hemi')]),
         # Native ROI file from thickness
@@ -679,16 +658,8 @@ The BOLD time-series were resampled onto the left/right-symmetric template
         (select_surfaces, native_roi, [('midthickness', 'surface_file')]),
         (initial_roi, fill_holes, [('roi_file', 'metric_file')]),
         (fill_holes, native_roi, [('out_file', 'metric_file')]),
-        # Downsample midthickness to fsLR density
-        (select_surfaces, downsampled_midthickness, [
-            ('midthickness', 'surface_in'),
-            ('sphere_reg', 'current_sphere'),
-            ('template_sphere', 'new_sphere'),
-        ]),
         # Resample BOLD to native surface, dilate and mask
-        (inputnode, volume_to_surface, [
-            ('bold_file', 'volume_file'),
-        ]),
+        (inputnode, volume_to_surface, [('bold_file', 'volume_file')]),
         (select_surfaces, volume_to_surface, [
             ('midthickness', 'surface_file'),
             ('white', 'inner_surface'),
@@ -703,8 +674,8 @@ The BOLD time-series were resampled onto the left/right-symmetric template
             ('sphere_reg', 'current_sphere'),
             ('template_sphere', 'new_sphere'),
             ('midthickness', 'current_area'),
+            ('template_surface', 'new_area'),
         ]),
-        (downsampled_midthickness, resample_to_fsLR, [('surface_out', 'new_area')]),
         (native_roi, resample_to_fsLR, [('out_file', 'roi_metric')]),
         (mask_native, resample_to_fsLR, [('out_file', 'in_file')]),
         (select_surfaces, mask_fsLR, [('template_roi', 'mask')]),
@@ -1239,7 +1210,6 @@ surface space.
                 "subcortical_volume",
                 "subcortical_labels",
                 "bold_fsLR",
-                "spatial_reference",
             ]
         ),
         name="inputnode",
@@ -1366,34 +1336,3 @@ def _itk2lta(in_file, src_file, dst_file):
         in_file, fmt="fs" if in_file.endswith(".lta") else "itk", reference=src_file
     ).to_filename(out_file, moving=dst_file, fmt="fs")
     return str(out_file)
-
-
-def _select_surfaces(
-    hemi,
-    surfaces,
-    morphometrics,
-    spherical_registrations,
-    template_spheres,
-    template_rois,
-):
-    # This function relies on the basenames of the files to differ by L/R or l/r
-    # so that the sorting correctly identifies left or right.
-    import os
-    import re
-
-    idx = 0 if hemi == "L" else 1
-    container = {
-        'white': [],
-        'pial': [],
-        'midthickness': [],
-        'thickness': [],
-        'sphere': sorted(spherical_registrations),
-        'template_sphere': sorted(template_spheres),
-        'template_roi': sorted(template_rois),
-    }
-    find_name = re.compile(r'(?:^|[^d])(?P<name>white|pial|midthickness|thickness)')
-    for surface in surfaces + morphometrics:
-        match = find_name.search(os.path.basename(surface))
-        if match:
-            container[match.group('name')].append(surface)
-    return tuple(sorted(surflist, key=os.path.basename)[idx] for surflist in container.values())

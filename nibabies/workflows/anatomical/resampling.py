@@ -1,15 +1,11 @@
 import typing as ty
 
-import nipype.interfaces.utils as niu
+import nipype.interfaces.utility as niu
 import nipype.pipeline.engine as pe
 import templateflow.api as tf
 from niworkflows.engine.workflows import LiterateWorkflow
 from smriprep.interfaces.workbench import SurfaceResample
-from smriprep.workflows.surfaces import (
-    _collate,
-    _sorted_by_basename,
-    init_morph_grayords_wf,
-)
+from smriprep.workflows.surfaces import _collate, init_morph_grayords_wf
 
 from nibabies.config import DEFAULT_MEMORY_MIN_GB
 from nibabies.data import load_resource
@@ -96,12 +92,15 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     # resample surfaces / morphometrics to 32k
     if mcribs:
         morph_grayords_wf = init_mcribs_morph_grayords_wf(grayord_density)
-        workflow.connect(
-            joinnode,
-            "fsLR_midthickness",
-            morph_grayords_wf,
-            "inputnode.fsLR_midthickness",
-        )
+        # fmt:off
+        workflow.connect([
+            (inputnode, morph_grayords_wf, [
+                ("morphometrics", "inputnode.morphometrics"),
+                ("surfaces", "inputnode.surfaces")]),
+            (joinnode, morph_grayords_wf, [
+                ("midthickness_fsLR", "inputnode.midthickness_fsLR")]),
+        ])
+        # fmt:on
     else:
         morph_grayords_wf = init_morph_grayords_wf(grayord_density)
 
@@ -117,7 +116,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
             ("sphere_reg", "current_sphere"),
             ("template_sphere", "new_sphere")]),
         (downsampled_midthickness, joinnode, [("surface_out", "midthickness_fsLR")]),
-        (joinnode, outputnode, [("surface_out", "midthickness_fsLR")]),
+        (joinnode, outputnode, [("midthickness_fsLR", "midthickness_fsLR")]),
         # resample morphometrics to fsLR 32k
         (inputnode, morph_grayords_wf, [
             ("subject_id", "inputnode.subject_id"),
@@ -190,7 +189,7 @@ surface space.
                 "subjects_dir",
                 "surfaces",
                 "morphometrics",
-                "fsLR_midthickness",
+                "midthickness_fsLR",
             ]
         ),
         name="inputnode",
@@ -206,6 +205,16 @@ surface space.
         name="surfmorph_list",
         run_without_submitting=True,
     )
+
+    get_current_midthickness = pe.Node(
+        niu.Function(function=_get_surf),
+        name="get_midthickness",
+        run_without_submitting=True,
+    )
+    get_current_midthickness.inputs.name = "midthickness"
+    get_current_midthickness.inputs.mult = 3
+
+    get_new_midthickness = get_current_midthickness.clone("get_new_midthickness")
 
     # Setup Workbench command. LR ordering for hemi can be assumed, as it is imposed
     # by the iterfield of the MapNode in the surface sampling workflow above.
@@ -249,14 +258,16 @@ surface space.
 
     # fmt: off
     workflow.connect([
-        (inputnode, resample, [
-            ("fsLR_midthickness", "new_area"),
-            (('surfaces', _get_surf, "midthickness", 3), "current_area")]),
+        (inputnode, get_current_midthickness, [("surfaces", "surfaces")]),
+        (inputnode, get_new_midthickness, [("midthickness_fsLR", "surfaces")]),
+        (get_current_midthickness, resample, [("out", "current_area")]),
+        (get_new_midthickness, resample, [("out", "new_area")]),
         (inputnode, surfmorph_list, [
             (('morphometrics', _get_surf, "curv"), "in1"),
             (('morphometrics', _get_surf, "sulc"), "in2"),
             (('morphometrics', _get_surf, "thickness"), "in3"),
         ]),
+        (surfmorph_list, resample, [('out', 'in_file')]),
         (resample, gen_cifti, [
             (("out_file", _collate), "scalar_surfs")]),
         (gen_cifti, outputnode, [("out_file", "cifti_morph"),
@@ -267,5 +278,9 @@ surface space.
 
 
 def _get_surf(surfaces, name, mult=1):
+    from smriprep.workflows.surfaces import _sorted_by_basename
+
     "Select a specific surface by name, and optionally multiple it."
+    if not surfaces:
+        return surfaces
     return [surf for surf in _sorted_by_basename(surfaces) if name in surf] * mult
