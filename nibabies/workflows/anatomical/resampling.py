@@ -31,6 +31,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
                 'subjects_dir',
                 'surfaces',
                 'morphometrics',
+                'sphere_reg',
                 'sphere_reg_fsLR',
             ]
         ),
@@ -96,7 +97,8 @@ The BOLD time-series were resampled onto the left/right-symmetric template
         workflow.connect([
             (inputnode, morph_grayords_wf, [
                 ("morphometrics", "inputnode.morphometrics"),
-                ("surfaces", "inputnode.surfaces")]),
+                ("surfaces", "inputnode.surfaces"),
+                ("sphere_reg", "inputnode.sphere_reg")]),
             (joinnode, morph_grayords_wf, [
                 ("midthickness_fsLR", "inputnode.midthickness_fsLR")]),
         ])
@@ -191,6 +193,7 @@ surface space.
                 "subjects_dir",
                 "surfaces",
                 "morphometrics",
+                "sphere_reg",
                 "midthickness_fsLR",
             ]
         ),
@@ -238,11 +241,7 @@ surface space.
     )
 
     atlases = load_resource('atlases')
-    resample.inputs.current_sphere = [
-        str(atlases / 'mcribs' / 'lh.sphere.reg.dHCP42.surf.gii'),
-        str(atlases / 'mcribs' / 'rh.sphere.reg.dHCP42.surf.gii'),
-    ] * 3
-    resample.inputs.new_sphere = [
+    resample.inputs.new_sphere = [  # 32k
         str(atlases / 'dHCP' / 'dHCP.week42.L.sphere.surf.gii'),
         str(atlases / 'dHCP' / 'dHCP.week42.R.sphere.surf.gii'),
     ] * 3
@@ -264,6 +263,7 @@ surface space.
 
     # fmt: off
     workflow.connect([
+        (inputnode, resample, [(("sphere_reg", _triple), "current_sphere")]),
         (inputnode, subject_midthickness, [("surfaces", "surfaces")]),
         (inputnode, template_midthickness, [("midthickness_fsLR", "surfaces")]),
         (subject_midthickness, subject_va, [("out", "in_file")]),
@@ -292,3 +292,7 @@ def _get_surf(surfaces, name, mult=1):
     if not surfaces:
         return surfaces
     return [surf for surf in _sorted_by_basename(surfaces) if name in surf] * mult
+
+
+def _triple(in_list):
+    return in_list * 3

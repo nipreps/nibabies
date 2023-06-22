@@ -523,6 +523,7 @@ as target template.
         # fmt:off
         wf.connect([
             (sphere_reg_wf, anat_fsLR_resampling_wf, [
+                ('outputnode.sphere_reg', 'inputnode.sphere_reg'),
                 ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')]),
             (surface_recon_wf, anat_fsLR_resampling_wf, [
                 ('outputnode.subject_id', 'inputnode.subject_id'),

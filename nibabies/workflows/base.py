@@ -472,6 +472,7 @@ tasks and sessions), the following preprocessing was performed."""
                 ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
                 ('outputnode.surfaces', 'inputnode.surfaces'),
                 ('outputnode.morphometrics', 'inputnode.morphometrics'),
+                ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
                 ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR'),
                 ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
             ]),
