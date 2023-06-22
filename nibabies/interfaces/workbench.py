@@ -1654,9 +1654,8 @@ class SurfaceVertexAreasInputSpec(CommandLineInputSpec):
         desc="Input surface",
     )
     out_file = File(
-        name_template="%s_va.shape",
+        name_template="%s.shape.gii",
         name_source="in_file",
-        keep_extension=True,
         position=1,
         argstr="%s",
         desc="Output vertex areas",
