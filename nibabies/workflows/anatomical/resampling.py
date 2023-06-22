@@ -175,6 +175,8 @@ def init_mcribs_morph_grayords_wf(
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from smriprep.interfaces.cifti import GenerateDScalar
 
+    from nibabies.interfaces.workbench import SurfaceVertexAreas
+
     workflow = Workflow(name=name)
     workflow.__desc__ = f"""\
 *Grayordinate* "dscalar" files [@hcppipelines] containing {grayord_density} samples were
@@ -206,15 +208,19 @@ surface space.
         run_without_submitting=True,
     )
 
-    get_current_midthickness = pe.Node(
+    subject_midthickness = pe.Node(
         niu.Function(function=_get_surf),
         name="get_midthickness",
         run_without_submitting=True,
     )
-    get_current_midthickness.inputs.name = "midthickness"
-    get_current_midthickness.inputs.mult = 3
+    subject_midthickness.inputs.name = "midthickness"
+    subject_midthickness.inputs.mult = 3
 
-    get_new_midthickness = get_current_midthickness.clone("get_new_midthickness")
+    template_midthickness = subject_midthickness.clone("get_new_midthickness")
+
+    # Create Vertex Areas from midthickness surfaces
+    subject_va = pe.MapNode(SurfaceVertexAreas(), iterfield="in_file", name="subject_va")
+    template_va = subject_va.clone("template_va")
 
     # Setup Workbench command. LR ordering for hemi can be assumed, as it is imposed
     # by the iterfield of the MapNode in the surface sampling workflow above.
@@ -258,10 +264,12 @@ surface space.
 
     # fmt: off
     workflow.connect([
-        (inputnode, get_current_midthickness, [("surfaces", "surfaces")]),
-        (inputnode, get_new_midthickness, [("midthickness_fsLR", "surfaces")]),
-        (get_current_midthickness, resample, [("out", "current_area")]),
-        (get_new_midthickness, resample, [("out", "new_area")]),
+        (inputnode, subject_midthickness, [("surfaces", "surfaces")]),
+        (inputnode, template_midthickness, [("midthickness_fsLR", "surfaces")]),
+        (subject_midthickness, subject_va, [("out", "in_file")]),
+        (template_midthickness, template_va, [("out", "in_file")]),
+        (subject_va, resample, [("out_file", "current_area")]),
+        (template_va, resample, [("out_file", "new_area")]),
         (inputnode, surfmorph_list, [
             (('morphometrics', _get_surf, "curv"), "in1"),
             (('morphometrics', _get_surf, "sulc"), "in2"),
