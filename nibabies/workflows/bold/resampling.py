@@ -496,10 +496,10 @@ def init_bold_fsLR_resampling_wf(
         .. workflow::
             :graph2use: colored
             :simple_form: yes
-            from fmriprep.workflows.bold.resampling import init_bold_fsLR_resampling_wf
+            from nibabies.workflows.bold.resampling import init_bold_fsLR_resampling_wf
             wf = init_bold_fsLR_resampling_wf(
                 estimate_goodvoxels=True,
-                grayord_density='92k',
+                grayord_density='91k',
                 omp_nthreads=1,
                 mem_gb=1,
             )
@@ -571,14 +571,14 @@ The BOLD time-series were resampled onto the left/right-symmetric template
 
     itersource = pe.Node(
         niu.IdentityInterface(fields=['hemi']),
-        name='itersource',
+        name='bold_fslr_itersource',
         iterables=[('hemi', ['L', 'R'])],
     )
 
     joinnode = pe.JoinNode(
         niu.IdentityInterface(fields=['bold_fsLR']),
-        name='joinnode',
-        joinsource='itersource',
+        name='bold_fslr_joinnode',
+        joinsource='bold_fslr_itersource',
     )
 
     outputnode = pe.Node(
