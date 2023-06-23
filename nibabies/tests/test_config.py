@@ -100,7 +100,6 @@ def test_config_spaces():
 
     assert [str(s) for s in spaces.get_standard(full_spec=True)] == [
         'MNIInfant:cohort-1:res-native',  # Default output space
-        'fsaverage:den-164k',
         'MNI152NLin6Asym:res-2',
     ]
 

@@ -340,6 +340,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 "surfaces",
                 "morphometrics",
                 "sphere_reg_fsLR",
+                "midthickness_fsLR",
             ]
         ),
         name="inputnode",
@@ -949,13 +950,15 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
         )
         from .resampling import init_bold_fsLR_resampling_wf, init_bold_grayords_wf
 
-        # key = get_MNIInfant_key(spaces)
-        # # BOLD/ROIs should be in MNIInfant space
-        # cifti_select_std = pe.Node(
-        #     KeySelect(fields=["bold_std", "bold_aseg_std"], key=key),
-        #     name="cifti_select_std",
-        #     run_without_submitting=True,
-        # )
+        # Anatomical -> fsLR surfaces
+
+        bold_fsLR_resampling_wf = init_bold_fsLR_resampling_wf(
+            estimate_goodvoxels=project_goodvoxels,
+            grayord_density=config.workflow.cifti_output,
+            omp_nthreads=omp_nthreads,
+            mcribs=config.workflow.surface_recon_method == "mcribs",
+            mem_gb=mem_gb["resampled"],
+        )
 
         subcortical_rois_wf = init_subcortical_rois_wf()
         subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf()
@@ -965,49 +968,54 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             repetition_time=metadata["RepetitionTime"],
         )
 
+        key = get_MNIInfant_key(spaces)
+        # BOLD/ROIs should be in MNIInfant space
+        cifti_select_std = pe.Node(
+            KeySelect(fields=["bold_std", "bold_aseg_std"], key=key),
+            name="cifti_select_std",
+            run_without_submitting=True,
+        )
+
         # fmt:off
         workflow.connect([
+            # select the MNIInfant standard
+            # CIFTI subcortical volumetric re
+            (bold_std_trans_wf, cifti_select_std, [
+                ("outputnode.bold_std", "bold_std"),
+                ("outputnode.bold_aseg_std", "bold_aseg_std"),
+                ("outputnode.spatial_reference", "keys")]),
+            (cifti_select_std, subcortical_rois_wf, [
+                ("bold_aseg_std", "inputnode.MNIInfant_aseg")]),
+            (cifti_select_std, subcortical_mni_alignment_wf, [
+                ("bold_std", "inputnode.MNIInfant_bold")]),
+            (subcortical_rois_wf, subcortical_mni_alignment_wf, [
+                ("outputnode.MNIInfant_rois", "inputnode.MNIInfant_rois"),
+                ("outputnode.MNI152_rois", "inputnode.MNI152_rois")]),
+
+            # CIFTI surface sampling
             (inputnode, bold_fsLR_resampling_wf, [
                 ("surfaces", "inputnode.surfaces"),
                 ("morphometrics", "inputnode.morphometrics"),
                 ("sphere_reg_fsLR", "inputnode.sphere_reg_fsLR"),
+                ("midthickness_fsLR", "inputnode.midthickness_fsLR"),
                 ("anat_ribbon", "inputnode.anat_ribbon")]),
-            # (bold_std_trans_wf, cifti_select_std, [
-            #     ("outputnode.bold_std", "bold_std"),
-            #     ("outputnode.bold_aseg_std", "bold_aseg_std"),
-            #     ("outputnode.spatial_reference", "keys")]),
-            # (cifti_select_std, subcortical_rois_wf, [
-            #     ("bold_aseg_std", "inputnode.MNIInfant_aseg")]),
-            # (cifti_select_std, subcortical_mni_alignment_wf, [
-            #     ("bold_std", "inputnode.MNIInfant_bold")]),
-            # (subcortical_rois_wf, subcortical_mni_alignment_wf, [
-            #     ("outputnode.MNIInfant_rois", "inputnode.MNIInfant_rois"),
-            #     ("outputnode.MNI152_rois", "inputnode.MNI152_rois")]),
-            # (subcortical_mni_alignment_wf, bold_grayords_wf, [
-            #     ("outputnode.subcortical_volume", "inputnode.subcortical_volume"),
-            #     ("outputnode.subcortical_labels", "inputnode.subcortical_labels")]),
-            # (bold_surf_wf, bold_grayords_wf, [
-            #     ('outputnode.surfaces', 'inputnode.surf_files'),
-            #     ('outputnode.target', 'inputnode.surf_refs')]),
             (bold_t1_trans_wf, bold_fsLR_resampling_wf, [
                 ("outputnode.bold_t1", "inputnode.bold_file")]),
-            (bold_std_trans_wf, bold_grayords_wf, [
-                ("outputnode.bold_std", "inputnode.bold_std"),
-                ("outputnode.spatial_reference", "inputnode.spatial_reference"),
-            ]),
-            (bold_fsLR_resampling_wf, bold_grayords_wf, [
-                ("outputnode.bold_fsLR", "inputnode.bold_fsLR"),
-            ]),
             (bold_fsLR_resampling_wf, func_derivatives_wf, [
                 ("outputnode.goodvoxels_mask", "inputnode.goodvoxels_mask"),
+            ]),
+
+            # combine surface + volume into dtseries
+            (subcortical_mni_alignment_wf, bold_grayords_wf, [
+                ("outputnode.subcortical_volume", "inputnode.subcortical_volume"),
+                ("outputnode.subcortical_labels", "inputnode.subcortical_labels")]),
+            (bold_fsLR_resampling_wf, bold_grayords_wf, [
+                ("outputnode.bold_fsLR", "inputnode.bold_fsLR"),
             ]),
             (bold_grayords_wf, outputnode, [
                 ("outputnode.cifti_bold", "bold_cifti"),
                 ("outputnode.cifti_metadata", "cifti_metadata"),
             ]),
-            (bold_grayords_wf, outputnode, [
-                ('outputnode.cifti_bold', 'bold_cifti'),
-                ('outputnode.cifti_metadata', 'cifti_metadata')]),
         ])
         # fmt:on
 
