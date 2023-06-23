@@ -1189,7 +1189,6 @@ def init_bold_grayords_wf(grayord_density, mem_gb, repetition_time, name="bold_g
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.utility import KeySelect
 
     from ...interfaces.nibabel import ReorientImage
     from ...interfaces.workbench import CiftiCreateDenseTimeseries
@@ -1230,12 +1229,12 @@ surface space.
     reorient_labels = reorient_data.clone(name="reorient_labels")
 
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
-#     gen_cifti.inputs.roi_left = tf.api.get(
-#         "fsLR", density=fslr_density, hemi="L", desc="nomedialwall", suffix="dparc"
-#     )
-#     gen_cifti.inputs.roi_right = tf.api.get(
-#         "fsLR", density=fslr_density, hemi="R", desc="nomedialwall", suffix="dparc"
-#     )
+    gen_cifti.inputs.roi_left = tf.api.get(
+        "fsLR", density=fslr_density, hemi="L", desc="nomedialwall", suffix="dparc"
+    )
+    gen_cifti.inputs.roi_right = tf.api.get(
+        "fsLR", density=fslr_density, hemi="R", desc="nomedialwall", suffix="dparc"
+    )
     gen_cifti_metadata = pe.Node(
         niu.Function(function=_gen_metadata, output_names=["out_metadata"]),
         name="gen_cifti_metadata",
@@ -1246,6 +1245,9 @@ surface space.
     workflow.connect([
         (inputnode, reorient_data, [("subcortical_volume", "in_file")]),
         (inputnode, reorient_labels, [("subcortical_labels", "in_file")]),
+        (reorient_data, gen_cifti, [("out_file", "volume_data")]),
+        (reorient_labels, gen_cifti, [("out_file", "volume_structure_labels")]),
+
         (inputnode, split_surfaces, [('bold_fsLR', 'in_surfaces')]),
         (split_surfaces, gen_cifti, [
             ('left_surface', 'left_metric'),
