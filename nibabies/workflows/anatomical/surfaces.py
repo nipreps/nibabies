@@ -148,7 +148,7 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
     )
 
     fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
-    norm2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="norm2nii")
+    brainmask2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="brainmask2nii")
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     fsnative2t1w_xfm = pe.Node(
@@ -183,10 +183,10 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
         (inputnode, outputnode, [("subject_id", "subject_id")]),
 
         (inputnode, fsnative2t1w_xfm, [('skullstripped_t1', 'target_file')]),
-        (fssource, norm2nii, [('norm', 'in_file')]),
+        (fssource, brainmask2nii, [('brainmask', 'in_file')]),
         (fssource, aparc2nii, [(('aparc_aseg', pop_file), 'in_file')]),
         (aparc2nii, outputnode, [('out_file', 'out_aparc')]),
-        (norm2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
+        (brainmask2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
         (fsnative2t1w_xfm, t1w2fsnative_xfm, [('out_reg_file', 'in_lta')]),
         (inputnode, gifti_surface_wf, [("subject_id", "inputnode.subject_id")]),
         (mcribs_postrecon, gifti_surface_wf, [("subjects_dir", "inputnode.subjects_dir")]),
