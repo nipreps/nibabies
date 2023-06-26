@@ -12,6 +12,7 @@ from niworkflows.utils.connections import pop_file
 from smriprep.workflows.surfaces import init_gifti_surface_wf
 
 from ...config import DEFAULT_MEMORY_MIN_GB
+from ...data import load_resource
 
 SURFACE_INPUTS = [
     "subjects_dir",
@@ -147,7 +148,7 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
     )
 
     fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
-    norm2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="norm2nii")
+    brainmask2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="brainmask2nii")
     aparc2nii = pe.Node(fs.MRIConvert(out_type="niigz"), name="aparc2nii")
 
     fsnative2t1w_xfm = pe.Node(
@@ -182,10 +183,10 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
         (inputnode, outputnode, [("subject_id", "subject_id")]),
 
         (inputnode, fsnative2t1w_xfm, [('skullstripped_t1', 'target_file')]),
-        (fssource, norm2nii, [('norm', 'in_file')]),
+        (fssource, brainmask2nii, [('brainmask', 'in_file')]),
         (fssource, aparc2nii, [(('aparc_aseg', pop_file), 'in_file')]),
         (aparc2nii, outputnode, [('out_file', 'out_aparc')]),
-        (norm2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
+        (brainmask2nii, fsnative2t1w_xfm, [('out_file', 'source_file')]),
         (fsnative2t1w_xfm, t1w2fsnative_xfm, [('out_reg_file', 'in_lta')]),
         (inputnode, gifti_surface_wf, [("subject_id", "inputnode.subject_id")]),
         (mcribs_postrecon, gifti_surface_wf, [("subjects_dir", "inputnode.subjects_dir")]),
@@ -199,6 +200,81 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
     ])
     # fmt:on
     return wf
+
+
+def init_mcribs_sphere_reg_wf(*, name="mcribs_sphere_reg_wf"):
+    """
+    Generate GIFTI registration sphere files from MCRIBS template to dHCP42 (32k).
+
+    TODO: Clarify any distinction with fsLR
+    """
+    from smriprep.interfaces.surf import FixGiftiMetadata
+    from smriprep.interfaces.workbench import SurfaceSphereProjectUnproject
+
+    workflow = LiterateWorkflow(name=name)
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(["subjects_dir", "subject_id"]),
+        name="inputnode",
+    )
+    outputnode = pe.Node(
+        niu.IdentityInterface(["sphere_reg", "sphere_reg_fsLR"]),
+        name="outputnode",
+    )
+
+    get_spheres = pe.Node(
+        niu.Function(function=_get_dhcp_spheres),
+        name='get_spheres',
+        run_without_submitting=True,
+    )
+
+    # Via FreeSurfer2CaretConvertAndRegisterNonlinear.sh#L270-L273
+    #
+    # See https://github.com/DCAN-Labs/DCAN-HCP/tree/9291324
+    sphere_gii = pe.MapNode(
+        fs.MRIsConvert(out_datatype="gii"), iterfield="in_file", name="sphere_gii"
+    )
+
+    fix_meta = pe.MapNode(FixGiftiMetadata(), iterfield="in_file", name="fix_meta")
+
+    # load template files
+    atlases = load_resource('atlases')
+
+    # SurfaceSphereProjectUnProject
+    # project to 41k dHCP atlas sphere
+    #   - sphere-in: Individual native sphere in surf directory registered to 41k atlas sphere
+    #   - sphere-to: the 41k atlas sphere, in the fsaverage directory
+    #   - sphere-unproject-from: 41k atlas sphere registered to dHCP 42wk sphere, in the fsaverage directory
+    #   - sphere-out: lh.sphere.reg2.dHCP42.native.surf.gii
+    project_unproject = pe.MapNode(
+        SurfaceSphereProjectUnproject(),
+        iterfield=["sphere_in", "sphere_project_to", "sphere_unproject_from"],
+        name="project_unproject",
+    )
+    project_unproject.inputs.sphere_project_to = [
+        atlases / 'mcribs' / 'lh.sphere.reg2.surf.gii',
+        atlases / 'mcribs' / 'rh.sphere.reg2.surf.gii',
+    ]
+    project_unproject.inputs.sphere_unproject_from = [
+        atlases / 'mcribs' / 'lh.sphere.reg.dHCP42.surf.gii',
+        atlases / 'mcribs' / 'rh.sphere.reg.dHCP42.surf.gii',
+    ]
+
+    # fmt:off
+    workflow.connect([
+        (inputnode, get_spheres, [
+            ('subjects_dir', 'subjects_dir'),
+            ('subject_id', 'subject_id'),
+        ]),
+        (get_spheres, sphere_gii, [(('out', _sorted_by_basename), 'in_file')]),
+        (sphere_gii, fix_meta, [('converted', 'in_file')]),
+        (fix_meta, project_unproject, [('out_file', 'sphere_in')]),
+        (sphere_gii, outputnode, [('converted', 'sphere_reg')]),
+        (project_unproject, outputnode, [('sphere_out', 'sphere_reg_fsLR')]),
+    ])
+    # fmt:on
+
+    return workflow
 
 
 def init_infantfs_surface_recon_wf(
@@ -483,3 +559,15 @@ def _sorted_by_basename(inlist):
     from os.path import basename
 
     return sorted(inlist, key=lambda x: str(basename(x)))
+
+
+def _get_dhcp_spheres(subject_id: str, subjects_dir: str) -> list:
+    from pathlib import Path
+
+    out = []
+    for hemi in 'lr':
+        sphere = Path(subjects_dir) / subject_id / 'surf' / f'{hemi}h.sphere.reg2'
+        if not sphere.exists():
+            raise OSError("MCRIBS spherical registration not found.")
+        out.append(str(sphere))
+    return out

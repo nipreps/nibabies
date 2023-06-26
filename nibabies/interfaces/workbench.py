@@ -1570,3 +1570,113 @@ class CreateSignedDistanceVolume(WBCommand):
     input_spec = CreateSignedDistanceVolumeInputSpec
     output_spec = CreateSignedDistanceVolumeOutputSpec
     _cmd = "wb_command -create-signed-distance-volume"
+
+
+class SurfaceAverageInputSpec(CommandLineInputSpec):
+    out_file = File(
+        name_template="averaged.surf.gii",
+        position=0,
+        desc="output file",
+    )
+    surfaces = InputMultiObject(
+        traits.Either(
+            File(exists=True),
+            traits.Tuple(File(exists=True), traits.Float),
+        ),
+        argstr="%s",
+        position=3,
+        desc="Surface, or surface and weighted average tuple, to include in the average",
+    )
+
+
+class SurfaceAverageOutputSpec(TraitedSpec):
+    out_file = File(desc="The output averaged surface")
+    # stddev_metric = File(desc="The output metric for 3D sample standard deviation")
+    # uncert_metric = File(desc="The output metric for uncertainty")
+
+
+class SurfaceAverage(WBCommand):
+    """
+    AVERAGE SURFACE FILES TOGETHER
+    wb_command -surface-average
+      <surface-out> - output - the output averaged surface
+
+      [-stddev] - compute 3D sample standard deviation
+         <stddev-metric-out> - output - the output metric for 3D sample
+            standard deviation
+
+      [-uncertainty] - compute caret5 'uncertainty'
+         <uncert-metric-out> - output - the output metric for uncertainty
+
+      [-surf] - repeatable - specify a surface to include in the average
+         <surface> - a surface file to average
+
+         [-weight] - specify a weighted average
+            <weight> - the weight to use (default 1)
+
+      The 3D sample standard deviation is computed as
+      'sqrt(sum(squaredlength(xyz - mean(xyz)))/(n - 1))'.
+
+      Uncertainty is a legacy measure used in caret5, and is computed as
+      'sum(length(xyz - mean(xyz)))/n'.
+
+      When weights are used, the 3D sample standard deviation treats them as
+      reliability weights.
+    """
+
+    input_spec = SurfaceAverageInputSpec
+    output_spec = SurfaceAverageOutputSpec
+    _cmd = "wb_command -surface-average"
+
+    def _format_arg(self, name, trait_spec, value):
+        if name == 'surfaces':
+            cmd = []
+            for val in value:
+                if len(val) == 2:
+                    cmd.append(f"{val[0]} -weight {val[-1]}")
+                else:
+                    cmd.append(val)
+            return '-surf ' + ' -surf '.join(cmd)
+        return super()._format_arg(name, trait_spec, value)
+
+    def _list_output(self):
+        outputs = self.output_spec().get()
+        outputs["out_file"] = os.path.abspath(self.inputs.out_file)
+        return outputs
+
+
+class SurfaceVertexAreasInputSpec(CommandLineInputSpec):
+    in_file = File(
+        exists=True,
+        mandatory=True,
+        position=0,
+        argstr="%s",
+        desc="Input surface",
+    )
+    out_file = File(
+        name_template="%s.shape.gii",
+        name_source="in_file",
+        position=1,
+        argstr="%s",
+        desc="Output vertex areas",
+    )
+
+
+class SurfaceVertexAreasOutputSpec(TraitedSpec):
+    out_file = File(desc="Output vertex areas")
+
+
+class SurfaceVertexAreas(WBCommand):
+    """
+    MEASURE SURFACE AREA EACH VERTEX IS RESPONSIBLE FOR
+    wb_command -surface-vertex-areas
+      <surface> - the surface to measure
+      <metric> - output - the output metric
+
+      Each vertex gets one third of the area of each triangle it is a part of.
+      Units are mm^2.
+    """
+
+    input_spec = SurfaceVertexAreasInputSpec
+    output_spec = SurfaceVertexAreasOutputSpec
+    _cmd = "wb_command -surface-vertex-areas"

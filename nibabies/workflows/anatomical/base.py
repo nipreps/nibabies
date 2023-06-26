@@ -162,6 +162,10 @@ BIDS dataset."""
                 "anat_aparc",
                 "anat_ribbon",
                 "template",
+                # registration sphere space is dependent on surface recon method
+                "sphere_reg",
+                "sphere_reg_fsLR",
+                "midthickness_fsLR",
             ]
         ),
         name="outputnode",
@@ -399,7 +403,7 @@ as target template.
     elif config.workflow.surface_recon_method == 'mcribs':
         from nipype.interfaces.ants import DenoiseImage
 
-        from .surfaces import init_mcribs_surface_recon_wf
+        from .surfaces import init_mcribs_sphere_reg_wf, init_mcribs_surface_recon_wf
 
         # Denoise raw T2w, since using the template / preproc resulted in intersection errors
         denoise_raw_t2w = pe.Node(
@@ -413,6 +417,9 @@ as target template.
             mcribs_dir=str(config.execution.mcribs_dir),  # Needed to preserve runs
         )
 
+        # M-CRIB-S to dHCP42week (32k)
+        sphere_reg_wf = init_mcribs_sphere_reg_wf()
+
         # Transformed gives
         if precomp_aseg:
             surface_recon_wf.inputs.inputnode.ants_segs = precomp_aseg
@@ -421,11 +428,18 @@ as target template.
         # fmt:off
         wf.connect([
             (inputnode, denoise_raw_t2w, [('t2w', 'input_image')]),
-            (denoise_raw_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')])
+            (denoise_raw_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')]),
         ])
         # fmt:on
+    else:
+        raise NotImplementedError
 
     if config.workflow.surface_recon_method in ('freesurfer', 'infantfs'):
+        from smriprep.workflows.surfaces import init_sphere_reg_wf
+
+        # fsaverage to fsLR
+        sphere_reg_wf = init_sphere_reg_wf()
+
         # fmt:off
         wf.connect([
             (t2w_preproc_wf, surface_recon_wf, [
@@ -472,6 +486,10 @@ as target template.
         (anat_ribbon_wf, anat_derivatives_wf, [
             ("outputnode.anat_ribbon", "inputnode.anat_ribbon"),
         ]),
+        (surface_recon_wf, sphere_reg_wf, [
+            ('outputnode.subject_id', 'inputnode.subject_id'),
+            ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+        ]),
         (surface_recon_wf, anat_reports_wf, [
             ("outputnode.subject_id", "inputnode.subject_id"),
             ("outputnode.subjects_dir", "inputnode.subjects_dir"),
@@ -484,24 +502,39 @@ as target template.
             ("outputnode.surfaces", "inputnode.surfaces"),
             ("outputnode.morphometrics", "inputnode.morphometrics"),
         ]),
+        (sphere_reg_wf, outputnode, [
+            ('outputnode.sphere_reg', 'sphere_reg'),
+            ('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+        (sphere_reg_wf, anat_derivatives_wf, [
+            ('outputnode.sphere_reg', 'inputnode.sphere_reg'),
+            ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')]),
     ])
     # fmt: on
 
     if cifti_output:
-        from smriprep.workflows.surfaces import init_morph_grayords_wf
+        from nibabies.workflows.anatomical.resampling import (
+            init_anat_fsLR_resampling_wf,
+        )
 
-        morph_grayords_wf = init_morph_grayords_wf(grayord_density=cifti_output)
+        is_mcribs = config.workflow.surface_recon_method == "mcribs"
+        # handles morph_grayords_wf
+        anat_fsLR_resampling_wf = init_anat_fsLR_resampling_wf(cifti_output, mcribs=is_mcribs)
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
         # fmt:off
         wf.connect([
-            (surface_recon_wf, morph_grayords_wf, [
+            (sphere_reg_wf, anat_fsLR_resampling_wf, [
+                ('outputnode.sphere_reg', 'inputnode.sphere_reg'),
+                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')]),
+            (surface_recon_wf, anat_fsLR_resampling_wf, [
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-            ]),
-            (morph_grayords_wf, anat_derivatives_wf, [
+                ('outputnode.surfaces', 'inputnode.surfaces'),
+                ('outputnode.morphometrics', 'inputnode.morphometrics')]),
+            (anat_fsLR_resampling_wf, anat_derivatives_wf, [
                 ("outputnode.cifti_morph", "inputnode.cifti_morph"),
-                ("outputnode.cifti_metadata", "inputnode.cifti_metadata"),
-            ]),
+                ("outputnode.cifti_metadata", "inputnode.cifti_metadata")]),
+            (anat_fsLR_resampling_wf, outputnode, [
+                ("outputnode.midthickness_fsLR", "midthickness_fsLR")])
         ])
         # fmt:on
 
