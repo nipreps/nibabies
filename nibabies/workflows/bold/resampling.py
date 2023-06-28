@@ -1203,6 +1203,7 @@ surface space.
     )
 
     mni_density = "2" if grayord_density == "91k" else "1"
+    fslr_density = "32k" if grayord_density == "91k" else "59k"
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -1229,10 +1230,10 @@ surface space.
     reorient_labels = reorient_data.clone(name="reorient_labels")
 
     gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name="gen_cifti")
-    gen_cifti.inputs.roi_left = tf.api.get(
+    gen_cifti.inputs.roi_left = tf.get(
         "fsLR", density=fslr_density, hemi="L", desc="nomedialwall", suffix="dparc"
     )
-    gen_cifti.inputs.roi_right = tf.api.get(
+    gen_cifti.inputs.roi_right = tf.get(
         "fsLR", density=fslr_density, hemi="R", desc="nomedialwall", suffix="dparc"
     )
     gen_cifti_metadata = pe.Node(
