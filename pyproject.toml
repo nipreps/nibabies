@@ -19,23 +19,23 @@ classifiers = [
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
 dependencies = [
-    "migas >= 0.3.0",
+    'importlib_resources; python_version < "3.9"',
     "nibabel >= 5.0.0",
-    "nipype >= 1.8.1",
+    "nipype >= 1.8.5",
     "nitime",
     "nitransforms >= 21.0.0",
-#    "niworkflows ~= 1.7.9",
-    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@master",
+    "niworkflows >= 1.8.1",
+#    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@master",
     "numpy >= 1.21.0",
     "packaging",
     "pandas",
     "psutil >= 5.4",
     "pybids >= 0.15.0",
     "requests",
-#    "sdcflows ~= 2.4.3",
-    "sdcflows @ git+https://github.com/nipreps/sdcflows.git@master",
-#    "smriprep ~= 0.11.0",
-    "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
+    "sdcflows >= 2.5.1",
+#    "sdcflows @ git+https://github.com/nipreps/sdcflows.git@master",
+    "smriprep >= 0.12.1",
+#    "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
     "tedana ~= 0.0.12",
     "templateflow >= 0.6",
     "toml",
@@ -72,6 +72,7 @@ test = [
     "pytest-cov",
     "pytest-env",
 ]
+telemetry = ["migas"]
 # Aliases
 docs = ["nibabies[doc]"]
 tests = ["nibabies[test]"]
