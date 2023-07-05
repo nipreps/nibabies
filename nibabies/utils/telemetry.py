@@ -1,6 +1,8 @@
-import migas
+from nibabel.optpkg import optional_package
 
 from .. import __version__, config
+
+migas = optional_package("migas")[0]
 
 
 def setup_migas(init: bool = True) -> None:
