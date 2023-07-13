@@ -1,3 +1,37 @@
+23.1.0 (TBD)
+============
+The next minor release of *NiBabies*, this release includes a number of new goodies, including:
+
+### New surface reconstruction option
+M-CRIB-S (Adamson et al., https://www.nature.com/articles/s41598-020-61326-2), has shown to improve performance in participants under 9 months. If you would like to try this method, add the following to your command: `--surface-recon-method mcribs`.
+
+Note: Currently, a pre-computed segmentation derivative must be provided to run mcribs.
+
+### Improved batch processing
+*NiBabies* now automatically parses the BIDS directory for participant ages, first searching in the
+participant's `session.tsv`, and falling back to `participants.tsv`. This simplifies batch submissions including multiple subjects & sessions. As a result, the `--age-months` flag has been deprecated, and will be removed in a later release.
+
+### Goodvoxels projection
+An option to determine and exclude high-variance voxels from being projected to the surface when creating CIFTI files. To enable this, add `--project-goodvoxels` to your command.
+
+
+## Full Changelog
+  * CI: Purge codecov python package (#282)
+  * DKR: Upgrade Docker base, c3d (#275)
+  * DKR: Add M-CRIB-S to Docker container (#283)
+  * DKR: Update dependencies, split into multi-stage build
+  * ENH: Add option to exclude projecting high variance voxels to surface (#278)
+  * ENH: Resample morphometrics to fsLR CIFTI-2 files when outputing CIFTIs (#279)
+  * ENH: Add MCRIBReconAll as alternative surface reconstruction method (#283)
+  * ENH: Reorder anatomical processsing, run ANTs DenoiseImage on anatomicals (#286)
+  * ENH: Extract participant ages from BIDS sources, deprecate `--age-months` (#287)
+  * ENH: Dilate BOLD mask by 2 voxels to prevent over-aggressive masking degrading T2star map estimation (#296)
+  * FIX: Improve free memory estimation (#284)
+  * FIX: Ensure age is extracted from sessions file (#291)
+  * FIX: Restore CIFTI medial wall masking, subcortical volume LAS reorientation (#298)
+  * FIX: Recify "goodvoxels" surface projection (#301)
+  * MAINT: Drop TemplateFlowSelect patches (#290)
+
 23.0.0 (January 23, 2023)
 =========================
 New year, new *NiBabies* minor series!
