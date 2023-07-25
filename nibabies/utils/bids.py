@@ -10,24 +10,6 @@ from pathlib import Path
 from typing import IO, List, Literal, Optional, Union
 
 
-@dataclass
-class BOLDGrouping:
-    """This class is used to facilitate the grouping of BOLD series."""
-
-    session: Union[str, None]
-    pe_dir: str
-    readout: float
-    multiecho_id: str = None
-    files: List[IO] = field(default_factory=list)
-
-    @property
-    def name(self) -> str:
-        return f"{self.session}-{self.pe_dir}-{self.readout}-{self.multiecho_id}"
-
-    def add_file(self, fl) -> None:
-        self.files.append(fl)
-
-
 def write_bidsignore(deriv_dir):
     # TODO: Port to niworkflows
     bids_ignore = (
