@@ -1,13 +1,89 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Utilities to handle BIDS inputs."""
+from __future__ import annotations
+
 import json
 import os
 import sys
 import warnings
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, List, Literal, Optional, Union
+from typing import Literal, Optional, Union
+
+from bids.layout import BIDSLayout, Query
+
+_spec: dict = {
+    't1w_mask': {
+        'datatype': 'anat',
+        'desc': 'brain',
+        'space': 'T1w',
+        'suffix': 'mask',
+    },
+    't1w_aseg': {'datatype': 'anat', 'desc': 'aseg', 'space': 'T1w', 'suffix': 'dseg'},
+    't2w_mask': {
+        'datatype': 'anat',
+        'desc': 'brain',
+        'space': 'T2w',
+        'suffix': 'mask',
+    },
+    't2w_aseg': {
+        'datatype': 'anat',
+        'desc': 'aseg',
+        'space': 'T2w',
+        'suffix': 'dseg',
+    },
+}
+
+
+class Derivatives:
+    """A container class for storing precomputed derivatives."""
+
+    def __init__(self, spec: dict | Path | str | None = None, **args):
+        self.spec = _spec
+        if spec is not None:
+            if not isinstance(spec, dict):
+                spec: dict = json.loads(Path(spec).read_text())
+            self.spec = spec
+
+        self.names = set(self.spec.keys())
+        self.references = {name: None for name in self.names}
+        for name in self.names:
+            setattr(self, name, None)
+
+    def __repr__(self):
+        return '\n'.join([name for name in self.names if getattr(self, name)])
+
+    def __contains__(self, val: str):
+        return val in self.names
+
+    def populate(
+        self, deriv_path, subject_id: str, session_id: str | Query | None = Query.OPTIONAL
+    ):
+        layout = BIDSLayout(deriv_path, validate=False)
+        for name, query in self.spec.items():
+            items = layout.get(
+                subject=subject_id,
+                session=session_id,
+                extension=['.nii', '.nii.gz'],
+                **query,
+            )
+            if not items or len(items) > 1:
+                continue
+            item = items[0]
+
+            # Skip if derivative does not have valid metadata
+            metadata = item.get_metadata()
+            if not metadata or not (reference := metadata.get('SpatialReference')):
+                # raise warning
+                continue
+            if isinstance(reference, list):
+                if len(reference) > 1:
+                    # raise warning
+                    continue
+                reference = reference[0]
+
+            setattr(self, name, Path(item.path))
+            self.references[name] = (Path(deriv_path) / reference).absolute()
 
 
 def write_bidsignore(deriv_dir):
@@ -201,50 +277,6 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
             subprocess.check_call(["bids-validator", str(bids_dir), "-c", temp.name])
         except FileNotFoundError:
             print("bids-validator does not appear to be installed", file=sys.stderr)
-
-
-def collect_precomputed_derivatives(layout, subject_id, derivatives_filters=None):
-    """
-    Query and collect precomputed derivatives.
-
-    This function is used to determine which workflow steps can be skipped,
-    based on the files found.
-    """
-
-    deriv_queries = {
-        'anat_mask': {
-            'datatype': 'anat',
-            'desc': 'brain',
-            'space': 'orig',
-            'suffix': 'mask',
-        },
-        'anat_aseg': {
-            'datatype': 'anat',
-            'desc': 'aseg',
-            'space': 'orig',
-            'suffix': 'dseg',
-        },
-    }
-    if derivatives_filters is not None:
-        deriv_queries.update(derivatives_filters)
-
-    derivatives = {}
-    for deriv, query in deriv_queries.items():
-        res = layout.get(
-            scope='derivatives',
-            subject=subject_id,
-            extension=['.nii', '.nii.gz'],
-            return_type="filename",
-            **query,
-        )
-        if not res:
-            continue
-        if len(res) > 1:  # Some queries may want multiple results
-            raise Exception(
-                f"When searching for <{deriv}>, found multiple results: {[f.path for f in res]}"
-            )
-        derivatives[deriv] = res[0]
-    return derivatives
 
 
 def parse_bids_for_age_months(
