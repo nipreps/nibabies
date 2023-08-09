@@ -42,8 +42,8 @@ NiBabies base processing workflows
 
 import os
 import sys
+import typing as ty
 from copy import deepcopy
-from typing import Optional
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -54,6 +54,9 @@ from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.reports import AboutSummary, SubjectSummary
 from nibabies.utils.bids import parse_bids_for_age_months
 from nibabies.workflows.bold import init_func_preproc_wf
+
+if ty.TYPE_CHECKING:
+    from niworkflows.utils.spaces import SpatialReferences
 
 
 def init_nibabies_wf(subworkflows_list):
@@ -155,9 +158,9 @@ def init_nibabies_wf(subworkflows_list):
 
 def init_single_subject_wf(
     subject_id: str,
-    session_id: Optional[str] = None,
-    age: Optional[int] = None,
-    spaces=None,
+    session_id: str | None = None,
+    age: int | None = None,
+    spaces: SpatialReferences | None = None,
 ):
     """
     Organize the preprocessing pipeline for a single subject, at a single session.
@@ -200,6 +203,7 @@ def init_single_subject_wf(
     from niworkflows.utils.bids import collect_data
     from niworkflows.utils.spaces import Reference
 
+    from ..utils.bids import Derivatives
     from ..utils.misc import fix_multi_source_name
     from .anatomical import init_infant_anat_wf
 
@@ -223,7 +227,7 @@ def init_single_subject_wf(
         subject_data["t2w"] = []
 
     anat_only = config.workflow.anat_only
-    derivatives = config.execution.derivatives or {}
+    derivatives = Derivatives()
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     # Make sure we always go through these two checks
     if not anat_only and not subject_data["bold"]:
@@ -235,15 +239,14 @@ def init_single_subject_wf(
             )
         )
 
-    if derivatives:
-        from ..utils.bids import collect_precomputed_derivatives
-
-        derivatives = collect_precomputed_derivatives(
-            config.execution.layout,
-            subject_id,
-            derivatives_filters=config.execution.derivatives_filters,
-            # session_id=None,  # TODO: Ensure session is visible at workflow level
-        )
+    if config.execution.derivatives:
+        for deriv_path in config.execution.derivatives:
+            config.loggers.workflow.debug("Searching for derivatives in %s", deriv_path)
+            derivatives.populate(
+                deriv_path,
+                subject_id,
+                session_id=session_id,
+            )
         config.loggers.workflow.info(f"Found precomputed derivatives: {derivatives}")
 
     workflow = Workflow(name=name)
@@ -348,7 +351,7 @@ It is released under the [CC0]\
         t1w=subject_data["t1w"],
         t2w=subject_data["t2w"],
         bids_root=config.execution.bids_dir,
-        existing_derivatives=derivatives,
+        derivatives=derivatives,
         freesurfer=config.workflow.run_reconall,
         hires=config.workflow.hires,
         longitudinal=config.workflow.longitudinal,
@@ -558,7 +561,7 @@ def _prefix(subid):
     return subid if subid.startswith("sub-") else f"sub-{subid}"
 
 
-def init_workflow_spaces(execution_spaces, age_months):
+def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
     """
     Create output spaces at a per-subworkflow level.
 
