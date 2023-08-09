@@ -1,21 +1,22 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Within-baby registration of a T1w into a T2w image."""
-from typing import Optional
+from __future__ import annotations
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
-from pkg_resources import resource_filename as pkgr_fn
+from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 
 
 def init_coregistration_wf(
     *,
     bspline_fitting_distance: int = 200,
     mem_gb: float = 3.0,
-    omp_nthreads: Optional[int] = None,
+    omp_nthreads: int | None = None,
     sloppy: bool = False,
     debug: bool = False,
-    precomputed_mask: bool = False,
+    t1w_mask: bool = False,
+    probmap: bool = False,
     name: str = "coregistration_wf",
 ):
     """
@@ -52,11 +53,12 @@ def init_coregistration_wf(
         Run in *sloppy* mode.
     debug : :obj:`bool`
         Produce intermediate registration files
-    precomputed_mask : :obj:`bool`
+    t1w_mask : :obj:`bool`
         A precomputed mask for the T1w is available. In this case, generate a
         quick mask to assist in coregistration, but use the precomputed mask
         as the final output.
-
+    probmap: :obj:`bool`
+        A probabilistic brainmask is present in T2w space.
 
     Inputs
     ------
@@ -66,8 +68,8 @@ def init_coregistration_wf(
         The preprocessed input T2w image (Denoising/INU/Clipping)
     in_mask : :obj:`str`
         The brainmask.
-        If `precomputed_mask` is False, will be in T2w space.
-        If `precomputed_mask` is True, will be in T1w space.
+        If `t1w_mask` is False, will be in T2w space.
+        If `t1w_mask` is True, will be in T1w space.
     in_probmap : :obj:`str`
         The probabilistic brainmask, as obtained in T2w space.
 
@@ -172,7 +174,7 @@ def init_coregistration_wf(
     ])
     # fmt: on
 
-    if precomputed_mask:
+    if t1w_mask:
         # The input mask is already in T1w space.
         # Generate a quick, rough mask of the T2w to be used to facilitate co-registration.
         from sdcflows.interfaces.brainmask import BrainExtraction
@@ -187,7 +189,9 @@ def init_coregistration_wf(
             (inputnode, outputnode, [("in_mask", "t1w_mask")]),
         ])
         # fmt:on
-    else:
+        return workflow
+
+    if probmap:
         # The T2w mask from the brain extraction workflow will be mapped to T1w space
         map_mask = pe.Node(ApplyTransforms(interpolation="Gaussian"), name="map_mask", mem_gb=1)
         thr_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_mask")
@@ -205,6 +209,74 @@ def init_coregistration_wf(
             (map_mask, final_n4, [("output_image", "weight_image")]),
             (thr_mask, outputnode, [("out_mask", "t1w_mask")]),
             (thr_mask, apply_mask, [("out_mask", "in_mask")]),
+        ])
+        # fmt:on
+        return workflow
+
+    # A precomputed T2w mask was provided
+    map_precomp_mask = pe.Node(
+        ApplyTransforms(interpolation="MultiLabel"), name='map_precomp_mask'
+    )
+    # fmt:off
+    workflow.connect([
+        (inputnode, map_precomp_mask, [
+            ('in_t1w', 'reference_image'),
+            ('in_mask', 'input_image')]),
+        (coreg, map_precomp_mask, [
+            ("reverse_transforms", "transforms"),
+            ("reverse_invert_flags", "invert_transform_flags")]),
+        (map_precomp_mask, final_n4, [('output_image', 'weight_image')]),
+        (map_precomp_mask, outputnode, [('output_image', 't1w_mask')]),
+        (map_precomp_mask, apply_mask, [('output_image', 'in_mask')]),
+    ])
+    # fmt:on
+    return workflow
+
+
+def init_coregister_derivatives_wf(
+    *, t1w_mask: bool, t1w_aseg: bool, t2w_aseg: bool, name: str = 'coregister_derivatives_wf'
+):
+    """Move derivatives from T1w / T2w space."""
+    workflow = pe.Workflow(name=name)
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=['t1w_ref', 't2w_ref', 't1w_mask', 't1w_aseg', 't2w_aseg', 't1w2t2w_xfm']
+        ),
+        name='inputnode',
+    )
+    outputnode = pe.Node(niu.IdentityInterface(fields=['t2w_mask', 't1w_aseg']), name='outputnode')
+
+    if t1w_mask:
+        t1wmask2t2w = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name='t1wmask2t2w')
+        # fmt:off
+        workflow.connect([
+            (inputnode, t1wmask2t2w, [
+                ('t1w_mask', 'input_image'),
+                ('t1w2t2w_xfm', 'transforms'),
+                ('t2w_ref', 'reference_image')]),
+            (t1wmask2t2w, outputnode, [('output_image', 't2w_mask')])
+        ])
+        # fmt:on
+    if t1w_aseg:
+        # fmt:off
+        t1waseg2t2w = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name='t2wmask2t1w')
+        workflow.connect([
+            (inputnode, t1waseg2t2w, [
+                ('t2w_aseg', 'input_image'),
+                ('t1w2t2w_xfm', 'transforms'),
+                ('t1w_ref', 'reference_image')]),
+            (t1waseg2t2w, outputnode, [('output_image', 't1w_aseg')])
+        ])
+        # fmt:on
+    if t2w_aseg:
+        # fmt:off
+        t2waseg2t1w = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name='t2wmask2t1w')
+        workflow.connect([
+            (inputnode, t2waseg2t1w, [
+                ('t2w_aseg', 'input_image'),
+                ('t1w2t2w_xfm', 'reverse_transforms'),
+                ('t1w_ref', 'reference_image')]),
+            (t2waseg2t1w, outputnode, [('output_image', 't1w_aseg')])
         ])
         # fmt:on
     return workflow
