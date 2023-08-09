@@ -6,8 +6,6 @@ from niworkflows.engine.workflows import LiterateWorkflow
 def init_anat_preproc_wf(
     *,
     bspline_fitting_distance: int = 200,
-    precomputed_mask: bool = False,
-    precomputed_aseg: bool = False,
     name: str = "anat_preproc_wf",
 ) -> LiterateWorkflow:
     """Polish up raw anatomical data.
@@ -32,15 +30,15 @@ def init_anat_preproc_wf(
     """
     from nipype.interfaces.ants import DenoiseImage, N4BiasFieldCorrection
     from niworkflows.interfaces.header import ValidateImage
-    from niworkflows.interfaces.nibabel import IntensityClip, RegridToZooms
+    from niworkflows.interfaces.nibabel import IntensityClip
 
     wf = LiterateWorkflow(name=name)
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_anat", "in_mask", "in_aseg"]),
+        niu.IdentityInterface(fields=["in_anat"]),
         name="inputnode",
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_preproc", "anat_mask", "anat_aseg"]),
+        niu.IdentityInterface(fields=["anat_preproc"]),
         name="outputnode",
     )
 
@@ -61,31 +59,7 @@ def init_anat_preproc_wf(
         ),
         name="n4_correct",
     )
-
     final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=99.5), name="final_clip")
-
-    if precomputed_mask:
-        validate_mask = pe.Node(ValidateImage(), name="validate_mask")
-        regrid_mask = pe.Node(RegridToZooms(), name="regrid_mask")
-        # fmt:off
-        wf.connect([
-            (inputnode, validate_mask, [("in_mask", "in_file")]),
-            (validate_mask, regrid_mask, [("out_file", "in_file")]),
-            (final_clip, regrid_mask, [(("out_file", _get_zooms), "zooms")]),
-            (regrid_mask, outputnode, [("out_file", "anat_mask")]),
-        ])
-        # fmt:on
-    if precomputed_aseg:
-        validate_aseg = pe.Node(ValidateImage(), name="validate_aseg")
-        regrid_aseg = pe.Node(RegridToZooms(), name="regrid_aseg")
-        # fmt:off
-        wf.connect([
-            (inputnode, validate_aseg, [("in_aseg", "in_file")]),
-            (validate_aseg, regrid_aseg, [("out_file", "in_file")]),
-            (final_clip, regrid_aseg, [(("out_file", _get_zooms), "zooms")]),
-            (regrid_aseg, outputnode, [("out_file", "anat_aseg")]),
-        ])
-        # fmt:on
 
     # fmt:off
     wf.connect([
@@ -98,9 +72,3 @@ def init_anat_preproc_wf(
     ])
     # fmt:on
     return wf
-
-
-def _get_zooms(in_file):
-    import nibabel as nb
-
-    return tuple(nb.load(in_file).header.get_zooms()[:3])
