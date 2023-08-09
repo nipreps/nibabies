@@ -6,10 +6,12 @@ from __future__ import annotations
 import json
 import os
 import sys
+import typing as ty
 import warnings
 from pathlib import Path
-from typing import Literal, Optional, Union
 
+import nibabel as nb
+import numpy as np
 from bids.layout import BIDSLayout, Query
 
 _spec: dict = {
@@ -38,6 +40,13 @@ _spec: dict = {
 class Derivatives:
     """A container class for storing precomputed derivatives."""
 
+    def __getattribute__(self, attr):
+        """In cases where the spec may change, avoid errors."""
+        try:
+            return object.__getattribute__(self, attr)
+        except AttributeError:
+            return None
+
     def __init__(self, spec: dict | Path | str | None = None, **args):
         self.spec = _spec
         if spec is not None:
@@ -56,9 +65,13 @@ class Derivatives:
     def __contains__(self, val: str):
         return val in self.names
 
+    def __bool__(self):
+        return any(getattr(self, name) for name in self.names)
+
     def populate(
         self, deriv_path, subject_id: str, session_id: str | Query | None = Query.OPTIONAL
-    ):
+    ) -> None:
+        """Query a derivatives directory and populate values and references based on the spec."""
         layout = BIDSLayout(deriv_path, validate=False)
         for name, query in self.spec.items():
             items = layout.get(
@@ -82,8 +95,32 @@ class Derivatives:
                     continue
                 reference = reference[0]
 
+            reference = (Path(deriv_path) / reference).absolute()
+            if not self.validate(item.path, str(reference)):
+                # raise warning
+                continue
+
             setattr(self, name, Path(item.path))
-            self.references[name] = (Path(deriv_path) / reference).absolute()
+            self.references[name] = reference
+
+    @property
+    def mask(self) -> str | None:
+        return self.t1w_mask or self.t2w_mask
+
+    @property
+    def aseg(self) -> str | None:
+        return self.t1w_aseg or self.t2w_aseg
+
+    @staticmethod
+    def validate(derivative: str, reference: str, atol: float = 1e-5) -> bool:
+        anat = nb.load(reference)
+        expected_ort = nb.aff2axcodes(anat.affine)
+        img = nb.load(derivative)
+        if nb.aff2axcodes(img.affine) != expected_ort:
+            return False
+        if img.shape != anat.shape or not np.allclose(anat.affine, img.affine, atol=atol):
+            return False
+        return True
 
 
 def write_bidsignore(deriv_dir):
@@ -280,10 +317,10 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
 
 
 def parse_bids_for_age_months(
-    bids_root: Union[str, Path],
+    bids_root: str | Path,
     subject_id: str,
-    session_id: Optional[str] = None,
-) -> Optional[int]:
+    session_id: str | None = None,
+) -> int | None:
     """
     Given a BIDS root, query the BIDS metadata files for participant age, in months.
 
@@ -309,8 +346,8 @@ def parse_bids_for_age_months(
 
 
 def _get_age_from_tsv(
-    bids_tsv: Path, level: Literal['session', 'participant'], key: str
-) -> Optional[int]:
+    bids_tsv: Path, level: ty.Literal['session', 'participant'], key: str
+) -> int | None:
     import pandas as pd
 
     df = pd.read_csv(str(bids_tsv), sep='\t')
