@@ -273,10 +273,11 @@ def init_coregister_derivatives_wf(
     if t2w_aseg:
         # fmt:off
         t2waseg2t1w = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name='t2waseg2t1w')
+        t2waseg2t1w.inputs.invert_transform_flags = [True, False]
         workflow.connect([
             (inputnode, t2waseg2t1w, [
                 ('t2w_aseg', 'input_image'),
-                ('t1w2t2w_xfm', 'reverse_transforms'),
+                ('t1w2t2w_xfm', 'transforms'),
                 ('t1w_ref', 'reference_image')]),
             (t2waseg2t1w, outputnode, [('output_image', 't1w_aseg')])
         ])
