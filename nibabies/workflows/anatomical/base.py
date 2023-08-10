@@ -348,9 +348,11 @@ as target template.
         name='deriv_buffer',
     )
     if derivatives:
-        wf.connect(
-            coregistration_wf, 'outputnode.t1w2t2w_xfm', coreg_deriv_wf, 'inputnode.t1w2t2w_xfm'
-        )
+        wf.connect([
+            (coregistration_wf, coreg_deriv_wf, [('outputnode.t1w2t2w_xfm', 'inputnode.t1w2t2w_xfm')]),
+            (t1w_preproc_wf, coreg_deriv_wf, [('outputnode.anat_preproc', 'inputnode.t1w_ref')]),
+            (t2w_preproc_wf, coreg_deriv_wf, [('outputnode.anat_preproc', 'inputnode.t2w_ref')]),
+        ])
 
     # Derivative mask is present
     if derivatives.mask:
