@@ -47,7 +47,8 @@ class Derivatives:
         except AttributeError:
             return None
 
-    def __init__(self, spec: dict | Path | str | None = None, **args):
+    def __init__(self, bids_root: Path | str, spec: dict | Path | str | None = None, **args):
+        self.bids_root = Path(bids_root)
         self.spec = _spec
         if spec is not None:
             if not isinstance(spec, dict):
@@ -81,23 +82,24 @@ class Derivatives:
                 **query,
             )
             if not items or len(items) > 1:
+                warnings.warn(f"Could not find {name}")
                 continue
             item = items[0]
 
             # Skip if derivative does not have valid metadata
             metadata = item.get_metadata()
             if not metadata or not (reference := metadata.get('SpatialReference')):
-                # raise warning
+                warnings.warn(f"No metadata found for {item}")
                 continue
             if isinstance(reference, list):
                 if len(reference) > 1:
-                    # raise warning
+                    warnings.warn(f"Multiple reference found: {reference}")
                     continue
                 reference = reference[0]
 
-            reference = (Path(deriv_path) / reference).absolute()
+            reference = self.bids_root / reference
             if not self.validate(item.path, str(reference)):
-                # raise warning
+                warnings.warn(f"Validation failed between: {item.path} and {reference}")
                 continue
 
             setattr(self, name, Path(item.path))

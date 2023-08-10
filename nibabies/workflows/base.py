@@ -39,6 +39,7 @@ NiBabies base processing workflows
 .. autofunction:: init_single_subject_wf
 
 """
+from __future__ import annotations
 
 import os
 import sys
@@ -227,7 +228,7 @@ def init_single_subject_wf(
         subject_data["t2w"] = []
 
     anat_only = config.workflow.anat_only
-    derivatives = Derivatives()
+    derivatives = Derivatives(bids_root=config.execution.layout.root)
     anat_modality = "t1w" if subject_data["t1w"] else "t2w"
     # Make sure we always go through these two checks
     if not anat_only and not subject_data["bold"]:
@@ -241,13 +242,13 @@ def init_single_subject_wf(
 
     if config.execution.derivatives:
         for deriv_path in config.execution.derivatives:
-            config.loggers.workflow.debug("Searching for derivatives in %s", deriv_path)
+            config.loggers.workflow.info("Searching for derivatives in %s", deriv_path)
             derivatives.populate(
                 deriv_path,
                 subject_id,
                 session_id=session_id,
             )
-        config.loggers.workflow.info(f"Found precomputed derivatives: {derivatives}")
+        config.loggers.workflow.info("Found precomputed derivatives %s", derivatives)
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """
