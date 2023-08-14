@@ -199,11 +199,40 @@ as target template.
         cifti_output=cifti_output,
     )
 
-    # Multiple anatomical files -> generate average reference
+    # Derivatives used based on the following truth table:
+    # |--------|--------|---------------------------------|------------------|
+    # | Has T1 | Has T2 | M-CRIB-S surface reconstruction | Derivatives Used |
+    # |--------|--------|---------------------------------|------------------|
+    # |   Yes  |   No   |             No                  |         T1       |
+    # |   Yes  |   Yes  |             No                  |         T1       |
+    # |   No   |   Yes  |             No                  |         T2       |
+    # |   Yes  |   Yes  |             Yes                 |         T2       |
+
+    recon_method = config.workflow.surface_recon_method
     t1w_mask = bool(derivatives.t1w_mask)
     t1w_aseg = bool(derivatives.t1w_aseg)
     t2w_mask = bool(derivatives.t2w_mask)
     t2w_aseg = bool(derivatives.t2w_aseg)
+
+    # The T2 derivatives are only prioritized first if MCRIBS reconstruction is to be used.
+    if recon_method == "mcribs":
+        if t2w_aseg:
+            t1w_aseg = False
+        if t2w_mask:
+            t1w_mask = False
+
+    if t1w_mask:
+        t2w_mask = False
+    if t1w_aseg:
+        t2w_aseg = False
+
+    config.loggers.workflow.debug(
+        "Derivatives used:\n<T1 mask %s>\n<T1 aseg %s>\n<T2 mask %s>\n<T2 aseg %s>",
+        t1w_mask,
+        t1w_aseg,
+        t2w_mask,
+        t2w_aseg,
+    )
 
     t1w_template_wf = init_anat_template_wf(
         contrast="T1w",
@@ -425,11 +454,11 @@ as target template.
     if not freesurfer:
         return wf
 
-    if config.workflow.surface_recon_method == 'freesurfer':
+    if recon_method == 'freesurfer':
         from smriprep.workflows.surfaces import init_surface_recon_wf
 
         surface_recon_wf = init_surface_recon_wf(omp_nthreads=omp_nthreads, hires=hires)
-    elif config.workflow.surface_recon_method == 'infantfs':
+    elif recon_method == 'infantfs':
         from .surfaces import init_infantfs_surface_recon_wf
 
         # if running with precomputed aseg, or JLF, pass the aseg along to FreeSurfer
@@ -439,7 +468,7 @@ as target template.
             use_aseg=use_aseg,
         )
 
-    elif config.workflow.surface_recon_method == 'mcribs':
+    elif recon_method == 'mcribs':
         from nipype.interfaces.ants import DenoiseImage
 
         from .surfaces import init_mcribs_sphere_reg_wf, init_mcribs_surface_recon_wf
@@ -471,7 +500,7 @@ as target template.
     else:
         raise NotImplementedError
 
-    if config.workflow.surface_recon_method in ('freesurfer', 'infantfs'):
+    if recon_method in ('freesurfer', 'infantfs'):
         from smriprep.workflows.surfaces import init_sphere_reg_wf
 
         # fsaverage to fsLR
@@ -553,7 +582,7 @@ as target template.
             init_anat_fsLR_resampling_wf,
         )
 
-        is_mcribs = config.workflow.surface_recon_method == "mcribs"
+        is_mcribs = recon_method == "mcribs"
         # handles morph_grayords_wf
         anat_fsLR_resampling_wf = init_anat_fsLR_resampling_wf(cifti_output, mcribs=is_mcribs)
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
