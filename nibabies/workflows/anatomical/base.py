@@ -226,8 +226,8 @@ as target template.
     if t1w_aseg:
         t2w_aseg = False
 
-    config.loggers.workflow.debug(
-        "Derivatives used:\n<T1 mask %s>\n<T1 aseg %s>\n<T2 mask %s>\n<T2 aseg %s>",
+    config.loggers.workflow.info(
+        "Derivatives used:\n\t<T1 mask %s>\n\t<T1 aseg %s>\n\t<T2 mask %s>\n\t<T2 aseg %s>",
         t1w_mask,
         t1w_aseg,
         t2w_mask,
