@@ -38,7 +38,13 @@ _spec: dict = {
 
 
 class Derivatives:
-    """A container class for storing precomputed derivatives."""
+    """
+    A container class for collecting and storing derivatives.
+
+    A specification (either dictionary or JSON file) can be used to customize derivatives and
+    queries.
+    To populate this class with derivatives, the `populate()` method must first be called.
+    """
 
     def __getattribute__(self, attr):
         """In cases where the spec may change, avoid errors."""
