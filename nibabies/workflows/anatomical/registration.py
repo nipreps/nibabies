@@ -16,7 +16,7 @@ def init_coregistration_wf(
     sloppy: bool = False,
     debug: bool = False,
     t1w_mask: bool = False,
-    probmap: bool = False,
+    probmap: bool = True,
     name: str = "coregistration_wf",
 ):
     """
