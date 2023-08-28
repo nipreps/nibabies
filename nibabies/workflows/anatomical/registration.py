@@ -197,11 +197,11 @@ def init_coregistration_wf(
         thr_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_mask")
         # fmt:off
         workflow.connect([
+            (inputnode, reg_mask, [("in_mask", "in_file")]),
+            (inputnode, refine_mask, [("in_mask", "in_file")]),
             (inputnode, map_mask, [
                 ("in_t1w", "reference_image"),
                 ("in_probmap", "input_image")]),
-            (inputnode, reg_mask, [("in_mask", "in_file")]),
-            (inputnode, refine_mask, [("in_mask", "in_file")]),
             (coreg, map_mask, [
                 ("reverse_transforms", "transforms"),
                 ("reverse_invert_flags", "invert_transform_flags")]),
@@ -219,6 +219,8 @@ def init_coregistration_wf(
     )
     # fmt:off
     workflow.connect([
+        (inputnode, reg_mask, [("in_mask", "in_file")]),
+        (inputnode, refine_mask, [("in_mask", "in_file")]),
         (inputnode, map_precomp_mask, [
             ('in_t1w', 'reference_image'),
             ('in_mask', 'input_image')]),
