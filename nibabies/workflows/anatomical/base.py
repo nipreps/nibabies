@@ -220,7 +220,7 @@ as target template.
             t1w_aseg = False
         if t2w_mask:
             t1w_mask = False
-
+    # Otherwise, prioritize T1 derivatives
     if t1w_mask:
         t2w_mask = False
     if t1w_aseg:
@@ -384,26 +384,27 @@ as target template.
         ])
 
     # Derivative mask is present
-    if derivatives.mask:
-        if t1w_mask:
-            t1w_template_wf.inputs.inputnode.anat_mask = derivatives.t1w_mask
-            t1w_template_wf.inputs.inputnode.mask_reference = derivatives.references['t1w_mask']
-            # fmt:off
-            wf.connect([
-                (t1w_template_wf, coregistration_wf, [('outputnode.anat_mask', 'inputnode.in_mask')]),
-                (t2w_preproc_wf, coregistration_wf, [('outputnode.anat_preproc', 'inputnode.in_t2w')]),
-                (t1w_template_wf, coreg_deriv_wf, [('outputnode.anat_mask', 'inputnode.t1w_mask')]),
-                (coreg_deriv_wf, deriv_buffer, [('outputnode.t2w_mask', 't2w_mask')])
-            ])
-            # fmt:on
-        elif t2w_mask:
-            t2w_template_wf.inputs.inputnode.anat_mask = derivatives.t2w_mask
-            t2w_template_wf.inputs.inputnode.mask_reference = derivatives.references['t2w_mask']
-
-            wf.connect([
-                (t2w_template_wf, coregistration_wf, [('outputnode.anat_mask', 'inputnode.in_mask')]),
-                (t2w_template_wf, deriv_buffer, [('outputnode.anat_mask', 't2w_mask')]),
-            ])
+    if t1w_mask:
+        t1w_template_wf.inputs.inputnode.anat_mask = derivatives.t1w_mask
+        t1w_template_wf.inputs.inputnode.mask_reference = derivatives.references['t1w_mask']
+        # fmt:off
+        wf.connect([
+            (t1w_template_wf, coregistration_wf, [('outputnode.anat_mask', 'inputnode.in_mask')]),
+            (t2w_preproc_wf, coregistration_wf, [('outputnode.anat_preproc', 'inputnode.in_t2w')]),
+            (t1w_template_wf, coreg_deriv_wf, [('outputnode.anat_mask', 'inputnode.t1w_mask')]),
+            (coreg_deriv_wf, deriv_buffer, [('outputnode.t2w_mask', 't2w_mask')])
+        ])
+        # fmt:on
+    elif t2w_mask:
+        t2w_template_wf.inputs.inputnode.anat_mask = derivatives.t2w_mask
+        t2w_template_wf.inputs.inputnode.mask_reference = derivatives.references['t2w_mask']
+        # fmt:on
+        wf.connect([
+            (t2w_template_wf, coregistration_wf, [('outputnode.anat_mask', 'inputnode.in_mask')]),
+            (t2w_preproc_wf, coregistration_wf, [('outputnode.anat_preproc', 'inputnode.in_t2w')]),
+            (t2w_template_wf, deriv_buffer, [('outputnode.anat_mask', 't2w_mask')]),
+        ])
+        # fmt:off
     else:
         # Run brain extraction on the T2w
         brain_extraction_wf = init_infant_brain_extraction_wf(
