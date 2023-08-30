@@ -1,7 +1,8 @@
 """Base anatomical preprocessing."""
-import warnings
+from __future__ import annotations
+
+import typing as ty
 from pathlib import Path
-from typing import Literal, Optional, Union
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -10,27 +11,30 @@ from niworkflows.utils.spaces import Reference, SpatialReferences
 
 from ... import config
 
+if ty.TYPE_CHECKING:
+    from nibabies.utils.bids import Derivatives
+
 
 def init_infant_anat_wf(
     *,
-    age_months: Optional[int],
+    age_months: int,
     ants_affine_init: bool,
     t1w: list,
     t2w: list,
     anat_modality: str,
-    bids_root: Optional[Union[str, Path]],
-    existing_derivatives: dict,
+    bids_root: str | Path,
+    derivatives: Derivatives,
     freesurfer: bool,
-    hires: Optional[bool],
+    hires: bool | None,
     longitudinal: bool,
     omp_nthreads: int,
-    output_dir: Union[str, Path],
-    segmentation_atlases: Optional[Union[str, Path]],
+    output_dir: str | Path,
+    segmentation_atlases: str | Path | None,
     skull_strip_mode: str,
     skull_strip_template: Reference,
     sloppy: bool,
-    spaces: Optional[SpatialReferences],
-    cifti_output: Optional[Literal['91k', '170k']],
+    spaces: SpatialReferences | None,
+    cifti_output: ty.Literal['91k', '170k'] | None,
     name: str = "infant_anat_wf",
 ) -> LiterateWorkflow:
     """
@@ -93,7 +97,7 @@ def init_infant_anat_wf(
         init_coreg_report_wf,
     )
     from .preproc import init_anat_preproc_wf
-    from .registration import init_coregistration_wf
+    from .registration import init_coregister_derivatives_wf, init_coregistration_wf
     from .segmentation import init_anat_segmentations_wf
     from .surfaces import init_anat_ribbon_wf
     from .template import init_anat_template_wf
@@ -102,28 +106,9 @@ def init_infant_anat_wf(
     num_t1w = len(t1w) if t1w else 0
     num_t2w = len(t2w) if t2w else 0
 
-    precomp_mask = existing_derivatives.get("anat_mask")
-    precomp_aseg = existing_derivatives.get("anat_aseg")
-
-    # verify derivatives are relatively similar to T1w
-    if precomp_mask or precomp_aseg:
-        if num_t1w > 1:
-            precomp_mask = None
-            precomp_aseg = None
-            warnings.warn(
-                "Multiple T1w files were found; precomputed derivatives will not be used."
-            )
-
-        else:
-            from ...utils.validation import validate_t1w_derivatives
-
-            validated_derivatives = (
-                validate_t1w_derivatives(  # compare derivatives to the first T1w
-                    t1w[0], anat_mask=precomp_mask, anat_aseg=precomp_aseg
-                )
-            )
-            precomp_mask = validated_derivatives.get("anat_mask")
-            precomp_aseg = validated_derivatives.get("anat_aseg")
+    # Expected derivatives: Prioritize T1w space if available, otherwise fall back to T2w
+    deriv_mask = derivatives.mask
+    deriv_aseg = derivatives.aseg
 
     wf = LiterateWorkflow(name=name)
     desc = f"""\n
@@ -186,7 +171,7 @@ with `N4BiasFieldCorrection` [@n4], distributed with ANTs {ants_ver} \
 
     desc += (
         "A previously computed mask was used to skull-strip the anatomical image."
-        if precomp_mask
+        if deriv_mask
         else """\
 The T1w-reference was then skull-stripped with a modified implementation of
 the `antsBrainExtraction.sh` workflow (from ANTs), using {skullstrip_tpl}
@@ -214,13 +199,49 @@ as target template.
         cifti_output=cifti_output,
     )
 
-    # Multiple anatomical files -> generate average reference
+    # Derivatives used based on the following truth table:
+    # |--------|--------|---------------------------------|------------------|
+    # | Has T1 | Has T2 | M-CRIB-S surface reconstruction | Derivatives Used |
+    # |--------|--------|---------------------------------|------------------|
+    # |   Yes  |   No   |             No                  |         T1       |
+    # |   Yes  |   Yes  |             No                  |         T1       |
+    # |   No   |   Yes  |             No                  |         T2       |
+    # |   Yes  |   Yes  |             Yes                 |         T2       |
+
+    recon_method = config.workflow.surface_recon_method
+    t1w_mask = bool(derivatives.t1w_mask)
+    t1w_aseg = bool(derivatives.t1w_aseg)
+    t2w_mask = bool(derivatives.t2w_mask)
+    t2w_aseg = bool(derivatives.t2w_aseg)
+
+    # The T2 derivatives are only prioritized first if MCRIBS reconstruction is to be used.
+    if recon_method == "mcribs":
+        if t2w_aseg:
+            t1w_aseg = False
+        if t2w_mask:
+            t1w_mask = False
+    # Otherwise, prioritize T1 derivatives
+    if t1w_mask:
+        t2w_mask = False
+    if t1w_aseg:
+        t2w_aseg = False
+
+    config.loggers.workflow.info(
+        "Derivatives used:\n\t<T1 mask %s>\n\t<T1 aseg %s>\n\t<T2 mask %s>\n\t<T2 aseg %s>",
+        t1w_mask,
+        t1w_aseg,
+        t2w_mask,
+        t2w_aseg,
+    )
+
     t1w_template_wf = init_anat_template_wf(
         contrast="T1w",
         num_files=num_t1w,
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
+        has_mask=t1w_mask,
+        has_aseg=t1w_aseg,
         name="t1w_template_wf",
     )
 
@@ -230,16 +251,14 @@ as target template.
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
+        has_mask=t2w_mask,
+        has_aseg=t2w_aseg,
         name="t2w_template_wf",
     )
 
     # Clean up each anatomical template
     # Denoise, INU, + Clipping
-    t1w_preproc_wf = init_anat_preproc_wf(
-        precomputed_mask=bool(precomp_mask),
-        precomputed_aseg=bool(precomp_aseg),
-        name="t1w_preproc_wf",
-    )
+    t1w_preproc_wf = init_anat_preproc_wf(name="t1w_preproc_wf")
     t2w_preproc_wf = init_anat_preproc_wf(name="t2w_preproc_wf")
 
     if skull_strip_mode != "force":
@@ -249,7 +268,8 @@ as target template.
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
         debug="registration" in config.execution.debug,
-        precomputed_mask=bool(precomp_mask),
+        t1w_mask=t1w_mask,
+        probmap=not t2w_mask,
     )
     coreg_report_wf = init_coreg_report_wf(
         output_dir=output_dir,
@@ -261,7 +281,7 @@ as target template.
         template_dir=segmentation_atlases,
         sloppy=sloppy,
         omp_nthreads=omp_nthreads,
-        precomp_aseg=precomp_aseg,
+        precomp_aseg=bool(derivatives.aseg),
     )
 
     # Spatial normalization (requires segmentation)
@@ -347,15 +367,44 @@ as target template.
         ]),
     ])
 
-    if precomp_mask:
-        # Ensure the mask is conformed along with the T1w
-        t1w_preproc_wf.inputs.inputnode.in_mask = precomp_mask
+    # Workflow to move derivatives between T1w/T2w spaces
+    # May not be used, but define in case necessary.
+    coreg_deriv_wf = init_coregister_derivatives_wf(
+        t1w_mask=t1w_mask, t1w_aseg=t1w_aseg, t2w_aseg=t2w_aseg
+    )
+    deriv_buffer = pe.Node(
+        niu.IdentityInterface(fields=['t2w_mask', 't1w_aseg', 't2w_aseg']),
+        name='deriv_buffer',
+    )
+    if derivatives:
+        wf.connect([
+            (coregistration_wf, coreg_deriv_wf, [('outputnode.t1w2t2w_xfm', 'inputnode.t1w2t2w_xfm')]),
+            (t1w_preproc_wf, coreg_deriv_wf, [('outputnode.anat_preproc', 'inputnode.t1w_ref')]),
+            (t2w_preproc_wf, coreg_deriv_wf, [('outputnode.anat_preproc', 'inputnode.t2w_ref')]),
+        ])
+
+    # Derivative mask is present
+    if t1w_mask:
+        t1w_template_wf.inputs.inputnode.anat_mask = derivatives.t1w_mask
+        t1w_template_wf.inputs.inputnode.mask_reference = derivatives.references['t1w_mask']
         # fmt:off
         wf.connect([
-            (t1w_preproc_wf, coregistration_wf, [("outputnode.anat_mask", "inputnode.in_mask")]),
-            (t2w_preproc_wf, coregistration_wf, [("outputnode.anat_preproc", "inputnode.in_t2w")])
+            (t1w_template_wf, coregistration_wf, [('outputnode.anat_mask', 'inputnode.in_mask')]),
+            (t2w_preproc_wf, coregistration_wf, [('outputnode.anat_preproc', 'inputnode.in_t2w')]),
+            (t1w_template_wf, coreg_deriv_wf, [('outputnode.anat_mask', 'inputnode.t1w_mask')]),
+            (coreg_deriv_wf, deriv_buffer, [('outputnode.t2w_mask', 't2w_mask')])
         ])
         # fmt:on
+    elif t2w_mask:
+        t2w_template_wf.inputs.inputnode.anat_mask = derivatives.t2w_mask
+        t2w_template_wf.inputs.inputnode.mask_reference = derivatives.references['t2w_mask']
+        # fmt:on
+        wf.connect([
+            (t2w_template_wf, coregistration_wf, [('outputnode.anat_mask', 'inputnode.in_mask')]),
+            (t2w_preproc_wf, coregistration_wf, [('outputnode.anat_preproc', 'inputnode.in_t2w')]),
+            (t2w_template_wf, deriv_buffer, [('outputnode.anat_mask', 't2w_mask')]),
+        ])
+        # fmt:off
     else:
         # Run brain extraction on the T2w
         brain_extraction_wf = init_infant_brain_extraction_wf(
@@ -378,63 +427,81 @@ as target template.
         ])
         # fmt:on
 
-    if precomp_aseg:
-        # Ensure the segmentation is conformed along with the T1w
-        t1w_preproc_wf.inputs.inputnode.in_aseg = precomp_aseg
-        wf.connect(t1w_preproc_wf, "outputnode.anat_aseg", anat_seg_wf, "inputnode.anat_aseg")
+    # Derivative segmentation is present
+    if derivatives.aseg:
+        wf.connect(deriv_buffer, 't1w_aseg', anat_seg_wf, 'inputnode.anat_aseg')
+
+        if t1w_aseg:
+            t1w_template_wf.inputs.inputnode.anat_aseg = derivatives.t1w_aseg
+            t1w_template_wf.inputs.inputnode.aseg_reference = derivatives.references['t1w_aseg']
+            # fmt:off
+            wf.connect([
+                (t1w_template_wf, deriv_buffer, [('outputnode.anat_aseg', 't1w_aseg')]),
+                (t1w_template_wf, coreg_deriv_wf, [('outputnode.anat_aseg', 'inputnode.t1w_aseg')]),
+                (coreg_deriv_wf, deriv_buffer, [('outputnode.t2w_aseg', 't2w_aseg')]),
+            ])
+            # fmt:on
+        elif t2w_aseg:
+            t2w_template_wf.inputs.inputnode.anat_aseg = derivatives.t2w_aseg
+            t2w_template_wf.inputs.inputnode.aseg_reference = derivatives.references['t2w_aseg']
+            # fmt:off
+            wf.connect([
+                (t2w_template_wf, deriv_buffer, [('outputnode.anat_aseg', 't2w_aseg')]),
+                (t2w_template_wf, coreg_deriv_wf, [('outputnode.anat_aseg', 'inputnode.t2w_aseg')]),
+                (coreg_deriv_wf, deriv_buffer, [('outputnode.t1w_aseg', 't1w_aseg')]),
+            ])
+            # fmt:on
 
     if not freesurfer:
         return wf
 
-    if config.workflow.surface_recon_method == 'freesurfer':
+    if recon_method == 'freesurfer':
         from smriprep.workflows.surfaces import init_surface_recon_wf
 
         surface_recon_wf = init_surface_recon_wf(omp_nthreads=omp_nthreads, hires=hires)
-    elif config.workflow.surface_recon_method == 'infantfs':
+    elif recon_method == 'infantfs':
         from .surfaces import init_infantfs_surface_recon_wf
 
         # if running with precomputed aseg, or JLF, pass the aseg along to FreeSurfer
-        use_aseg = bool(precomp_aseg or segmentation_atlases)
+        use_aseg = bool(derivatives.aseg or segmentation_atlases)
         surface_recon_wf = init_infantfs_surface_recon_wf(
             age_months=age_months,
             use_aseg=use_aseg,
         )
 
-    elif config.workflow.surface_recon_method == 'mcribs':
+    elif recon_method == 'mcribs':
         from nipype.interfaces.ants import DenoiseImage
 
         from .surfaces import init_mcribs_sphere_reg_wf, init_mcribs_surface_recon_wf
 
-        # Denoise raw T2w, since using the template / preproc resulted in intersection errors
-        denoise_raw_t2w = pe.Node(
-            DenoiseImage(dimension=3, noise_model="Rician"), name='denoise_raw_t2w'
+        # Denoise template T2w, since using the template / preproc resulted in intersection errors
+        denoise_t2w = pe.Node(
+            DenoiseImage(dimension=3, noise_model="Rician"), name='denoise_t2w'
         )
-
+        # t2w mask, t2w aseg
         surface_recon_wf = init_mcribs_surface_recon_wf(
             omp_nthreads=omp_nthreads,
-            use_aseg=bool(precomp_aseg),
-            use_mask=bool(precomp_mask),
+            use_aseg=bool(derivatives.aseg),  # TODO: Incorporate mcribs segmentation
+            use_mask=bool(derivatives.mask),  # TODO: Pass in mask regardless of derivatives
             mcribs_dir=str(config.execution.mcribs_dir),  # Needed to preserve runs
         )
-
         # M-CRIB-S to dHCP42week (32k)
         sphere_reg_wf = init_mcribs_sphere_reg_wf()
 
-        # Transformed gives
-        if precomp_aseg:
-            surface_recon_wf.inputs.inputnode.ants_segs = precomp_aseg
-        if precomp_mask:
-            surface_recon_wf.inputs.inputnode.anat_mask = precomp_mask
         # fmt:off
         wf.connect([
-            (inputnode, denoise_raw_t2w, [('t2w', 'input_image')]),
-            (denoise_raw_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')]),
+            (t2w_template_wf, denoise_t2w, [('outputnode.anat_ref', 'input_image')]),
+            (denoise_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')]),
         ])
         # fmt:on
+        if derivatives.aseg:
+            wf.connect(deriv_buffer, 't2w_aseg', surface_recon_wf, 'inputnode.ants_segs')
+        if derivatives.mask:
+            wf.connect(deriv_buffer, 't2w_mask', surface_recon_wf, 'inputnode.anat_mask')
     else:
         raise NotImplementedError
 
-    if config.workflow.surface_recon_method in ('freesurfer', 'infantfs'):
+    if recon_method in ('freesurfer', 'infantfs'):
         from smriprep.workflows.surfaces import init_sphere_reg_wf
 
         # fsaverage to fsLR
@@ -516,7 +583,7 @@ as target template.
             init_anat_fsLR_resampling_wf,
         )
 
-        is_mcribs = config.workflow.surface_recon_method == "mcribs"
+        is_mcribs = recon_method == "mcribs"
         # handles morph_grayords_wf
         anat_fsLR_resampling_wf = init_anat_fsLR_resampling_wf(cifti_output, mcribs=is_mcribs)
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output

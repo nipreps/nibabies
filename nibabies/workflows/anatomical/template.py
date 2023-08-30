@@ -1,7 +1,10 @@
 """Prepare anatomical images for processing."""
+from __future__ import annotations
+
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow
+from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 
 
 def init_anat_template_wf(
@@ -12,6 +15,8 @@ def init_anat_template_wf(
     longitudinal: bool = False,
     bspline_fitting_distance: int = 200,
     sloppy: bool = False,
+    has_mask: bool = False,
+    has_aseg: bool = False,
     name: str = "anat_template_wf",
 ) -> LiterateWorkflow:
     """
@@ -45,6 +50,11 @@ def init_anat_template_wf(
     ------
     anat_files
         List of structural images
+    anat_mask
+    mask_reference
+    anat_aseg
+    aseg_reference
+
     Outputs
     -------
     anat_ref
@@ -55,12 +65,15 @@ def init_anat_template_wf(
         List of affine transforms to realign input images to final reference
     out_report
         Conformation report
+    anat_mask
+        Mask (if provided), resampled to the anatomical reference
+    anat_aseg
+        Aseg (if provided), resampled to the anatomical reference
     """
     from nipype.interfaces.ants import N4BiasFieldCorrection
     from nipype.interfaces.image import Reorient
     from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
     from niworkflows.interfaces.freesurfer import StructuralReference
-    from niworkflows.interfaces.header import ValidateImage
     from niworkflows.interfaces.images import Conform, TemplateDimensions
     from niworkflows.interfaces.nibabel import IntensityClip
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
@@ -80,7 +93,18 @@ An anatomical {contrast}-reference map was computed after registration of
 """
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_files", "anat_mask", "anat_aseg"]), name="inputnode"
+        niu.IdentityInterface(
+            fields=[
+                "anat_files",
+                # Each derivative requires a reference file, which will be used to find which
+                # transform to apply in the case when multiple runs are present
+                "anat_mask",
+                "mask_reference",
+                "anat_aseg",
+                "aseg_reference",
+            ]
+        ),
+        name="inputnode",
     )
     outputnode = pe.Node(
         niu.IdentityInterface(
@@ -89,6 +113,8 @@ An anatomical {contrast}-reference map was computed after registration of
                 "anat_valid_list",
                 "anat_realign_xfm",
                 "out_report",
+                "anat_mask",
+                "anat_aseg",
             ],
         ),
         name="outputnode",
@@ -110,6 +136,28 @@ An anatomical {contrast}-reference map was computed after registration of
     ])
     # fmt:on
 
+    if has_mask:
+        mask_conform = pe.Node(Conform(), name='mask_conform')
+        # fmt:off
+        wf.connect([
+            (inputnode, mask_conform, [('anat_mask', 'in_file')]),
+            (anat_ref_dimensions, mask_conform, [
+                ('target_zooms', 'target_zooms'),
+                ('target_shape', 'target_shape')]),
+        ])
+        # fmt:on
+
+    if has_aseg:
+        aseg_conform = pe.Node(Conform(), name='aseg_conform')
+        # fmt:off
+        wf.connect([
+            (inputnode, aseg_conform, [('anat_aseg', 'in_file')]),
+            (anat_ref_dimensions, aseg_conform, [
+                ('target_zooms', 'target_zooms'),
+                ('target_shape', 'target_shape')]),
+        ])
+        # fmt:on
+
     if num_files == 1:
         get1st = pe.Node(niu.Select(index=[0]), name="get1st")
         outputnode.inputs.anat_realign_xfm = [
@@ -122,6 +170,10 @@ An anatomical {contrast}-reference map was computed after registration of
             (get1st, outputnode, [('out', 'anat_ref')]),
         ])
         # fmt:on
+        if has_mask:
+            wf.connect(mask_conform, 'out_file', outputnode, 'anat_mask')
+        if has_aseg:
+            wf.connect(aseg_conform, 'out_file', outputnode, 'anat_aseg')
         return wf
 
     anat_conform_xfm = pe.MapNode(
@@ -180,6 +232,52 @@ An anatomical {contrast}-reference map was computed after registration of
         run_without_submitting=True,
     )
 
+    if has_mask:
+        mask_ref_idx = pe.Node(
+            niu.Function(function=get_reference), name='mask_ref_idx', run_without_submitting=True
+        )
+        mask_xfm = pe.Node(niu.Select(), name='mask_xfm', run_without_submitting=True)
+        applyxfm_mask = pe.Node(
+            ApplyTransforms(interpolation='MultiLabel'), name='applyxfm_mask', mem_gb=1
+        )
+        mask_reorient = pe.Node(Reorient(), name="mask_reorient")
+        # fmt:off
+        wf.connect([
+            (inputnode, mask_ref_idx, [('mask_reference', 'anat_reference')]),
+            (anat_ref_dimensions, mask_ref_idx, [('t1w_valid_list', 'anatomicals')]),
+            (concat_xfms, mask_xfm, [('out_xfm', 'inlist')]),
+            (mask_ref_idx, mask_xfm, [('out', 'index')]),
+            (mask_conform, applyxfm_mask, [('out_file', 'input_image')]),
+            (anat_reorient, applyxfm_mask, [('out_file', 'reference_image')]),
+            (mask_xfm, applyxfm_mask, [('out', 'transforms')]),
+            (applyxfm_mask, mask_reorient, [('output_image', 'in_file')]),
+            (mask_reorient, outputnode, [('out_file', 'anat_mask')]),
+        ])
+        # fmt:on
+
+    if has_aseg:
+        aseg_ref_idx = pe.Node(
+            niu.Function(function=get_reference), name='aseg_ref_idx', run_without_submitting=True
+        )
+        aseg_xfm = pe.Node(niu.Select(), name='aseg_xfm', run_without_submitting=True)
+        applyxfm_aseg = pe.Node(
+            ApplyTransforms(interpolation='MultiLabel'), name='applyxfm_aseg', mem_gb=1
+        )
+        aseg_reorient = pe.Node(Reorient(), name="aseg_reorient")
+        # fmt:off
+        wf.connect([
+            (inputnode, aseg_ref_idx, [('aseg_reference', 'anat_reference')]),
+            (anat_ref_dimensions, aseg_ref_idx, [('t1w_valid_list', 'anatomicals')]),
+            (concat_xfms, aseg_xfm, [('out_xfm', 'inlist')]),
+            (aseg_ref_idx, aseg_xfm, [('out', 'index')]),
+            (aseg_conform, applyxfm_aseg, [('out_file', 'input_image')]),
+            (anat_reorient, applyxfm_aseg, [('out_file', 'reference_image')]),
+            (aseg_xfm, applyxfm_aseg, [('out', 'transforms')]),
+            (applyxfm_aseg, aseg_reorient, [('output_image', 'in_file')]),
+            (applyxfm_aseg, outputnode, [('out_file', 'anat_aseg')]),
+        ])
+        # fmt:on
+
     def _set_threads(in_list, maximum):
         return min(len(in_list), maximum)
 
@@ -204,3 +302,7 @@ An anatomical {contrast}-reference map was computed after registration of
     ])
     # fmt:on
     return wf
+
+
+def get_reference(anatomicals: list, anat_reference: str) -> int:
+    return anatomicals.index(anat_reference)
