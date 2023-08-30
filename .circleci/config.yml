@@ -173,11 +173,11 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - data-v3-{{ .Branch }}-{{ .Revision }}
-            - data-v3--{{ .Revision }}
-            - data-v3-{{ .Branch }}-
-            - data-v3-master-
-            - data-v3-
+            - data-v0-{{ .Branch }}-{{ .Revision }}
+            - data-v0--{{ .Revision }}
+            - data-v0-{{ .Branch }}-
+            - data-v0-master-
+            - data-v0-
       - run:
           name: Install datalad + git-annex
           command: |
@@ -203,7 +203,7 @@ jobs:
               echo "Reusing cached data"
             fi
       - save_cache:
-         key: data-v3-{{ .Branch }}-{{ .Revision }}
+         key: data-v0-{{ .Branch }}-{{ .Revision }}
          paths:
             - /tmp/data
       - run:
@@ -243,7 +243,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v3-{{ .Branch }}-{{ .Revision }}
+            - data-v0-{{ .Branch }}-{{ .Revision }}
       - docker/install-docker-credential-helper
       - run: *docker_auth
       - run: *setup_docker_registry
@@ -314,7 +314,7 @@ jobs:
             - /tmp/images
       - restore_cache:
           keys:
-            - data-v3-{{ .Branch }}-{{ .Revision }}
+            - data-v0-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
           keys:
             - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
