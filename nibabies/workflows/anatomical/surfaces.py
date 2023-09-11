@@ -202,7 +202,9 @@ leveraging the masked, preprocessed T2w and remapped anatomical segmentation.
     return wf
 
 
-def init_mcribs_sphere_reg_wf(*, name="mcribs_sphere_reg_wf"):
+def init_mcribs_sphere_reg_wf(
+    *, msm_sulc: bool = False, sloppy: bool = False, name="mcribs_sphere_reg_wf"
+):
     """
     Generate GIFTI registration sphere files from MCRIBS template to dHCP42 (32k).
 
@@ -210,11 +212,12 @@ def init_mcribs_sphere_reg_wf(*, name="mcribs_sphere_reg_wf"):
     """
     from smriprep.interfaces.surf import FixGiftiMetadata
     from smriprep.interfaces.workbench import SurfaceSphereProjectUnproject
+    from smriprep.workflows.surfaces import init_msm_sulc_wf
 
     workflow = LiterateWorkflow(name=name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(["subjects_dir", "subject_id"]),
+        niu.IdentityInterface(["subjects_dir", "subject_id", "sulc"]),
         name="inputnode",
     )
     outputnode = pe.Node(
@@ -228,14 +231,16 @@ def init_mcribs_sphere_reg_wf(*, name="mcribs_sphere_reg_wf"):
         run_without_submitting=True,
     )
 
+    get_surfaces = pe.Node(nio.FreeSurferSource(), name="get_surfaces")
+
     # Via FreeSurfer2CaretConvertAndRegisterNonlinear.sh#L270-L273
     #
     # See https://github.com/DCAN-Labs/DCAN-HCP/tree/9291324
-    sphere_gii = pe.MapNode(
-        fs.MRIsConvert(out_datatype="gii"), iterfield="in_file", name="sphere_gii"
+    sphere_reg_gii = pe.MapNode(
+        fs.MRIsConvert(out_datatype="gii"), iterfield="in_file", name="sphere_reg_gii"
     )
 
-    fix_meta = pe.MapNode(FixGiftiMetadata(), iterfield="in_file", name="fix_meta")
+    fix_reg_meta = pe.MapNode(FixGiftiMetadata(), iterfield="in_file", name="fix_reg_meta")
 
     # load template files
     atlases = load_resource('atlases')
@@ -266,14 +271,42 @@ def init_mcribs_sphere_reg_wf(*, name="mcribs_sphere_reg_wf"):
             ('subjects_dir', 'subjects_dir'),
             ('subject_id', 'subject_id'),
         ]),
-        (get_spheres, sphere_gii, [(('out', _sorted_by_basename), 'in_file')]),
-        (sphere_gii, fix_meta, [('converted', 'in_file')]),
-        (fix_meta, project_unproject, [('out_file', 'sphere_in')]),
-        (sphere_gii, outputnode, [('converted', 'sphere_reg')]),
-        (project_unproject, outputnode, [('sphere_out', 'sphere_reg_fsLR')]),
+        (inputnode, get_surfaces, [
+            ('subjects_dir', 'subjects_dir'),
+            ('subject_id', 'subject_id'),
+        ]),
+        (get_spheres, sphere_reg_gii, [(('out', _sorted_by_basename), 'in_file')]),
+        (sphere_reg_gii, fix_reg_meta, [('converted', 'in_file')]),
+        (fix_reg_meta, project_unproject, [('out_file', 'sphere_in')]),
+        (sphere_reg_gii, outputnode, [('converted', 'sphere_reg')]),
     ])
     # fmt:on
 
+    if not msm_sulc:
+        workflow.connect(project_unproject, 'sphere_out', outputnode, 'sphere_reg_fsLR')
+        return workflow
+
+    sphere_gii = pe.MapNode(
+        fs.MRIsConvert(out_datatype='gii'),
+        iterfield='in_file',
+        name='sphere_gii',
+    )
+    fix_sphere_meta = pe.MapNode(
+        FixGiftiMetadata(),
+        iterfield='in_file',
+        name='fix_sphere_meta',
+    )
+    msm_sulc_wf = init_msm_sulc_wf(sloppy=sloppy)
+    # fmt:off
+    workflow.connect([
+        (get_surfaces, sphere_gii, [(('sphere', _sorted_by_basename), 'in_file')]),
+        (sphere_gii, fix_sphere_meta, [('converted', 'in_file')]),
+        (fix_sphere_meta, msm_sulc_wf, [('out_file', 'inputnode.sphere')]),
+        (inputnode, msm_sulc_wf, [('sulc', 'inputnode.sulc')]),
+        (project_unproject, msm_sulc_wf, [('sphere_out', 'inputnode.sphere_reg_fsLR')]),
+        (msm_sulc_wf, outputnode, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+    ])
+    # fmt:on
     return workflow
 
 

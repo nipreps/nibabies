@@ -501,6 +501,12 @@ Useful for further Tedana processing post-NiBabies.""",
         dest="hires",
         help="disable sub-millimeter (hires) reconstruction",
     )
+    g_surfs.add_argument(
+        "--no-msm",
+        action="store_false",
+        dest="run_msmsulc",
+        help="Disable Multimodal Surface Matching surface registration.",
+    )
     g_surfs_xor = g_surfs.add_mutually_exclusive_group()
     g_surfs_xor.add_argument(
         "--cifti-output",
