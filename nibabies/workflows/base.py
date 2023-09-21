@@ -231,8 +231,8 @@ def init_single_subject_wf(
             subject_data["t1w"] = subject_data["t2w"][:]
             config.loggers.workflow.critical(
                 "No T1w files were found, but an experimental NiBabies feature"
-                "will treat the T2w file(s) as T1w. This is only intended as a hack"
-                "and will not be included in an official release."
+                " will treat the T2w file(s) as T1w. This is only intended as a hack"
+                " and will not be included in an official release."
             )
         else:
             raise IOError(
