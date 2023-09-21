@@ -224,8 +224,20 @@ def init_single_subject_wf(
 
     if "flair" in config.workflow.ignore:
         subject_data["flair"] = []
-    if "t2w" in config.workflow.ignore:
-        subject_data["t2w"] = []
+
+    if not subject_data["t1w"] or not subject_data["t2w"]:
+        if subject_data["t2w"] and config.workflow.not1:
+            # EXPERIMENTAL HACK: If no T1w data is present, copy T2w data
+            subject_data["t1w"] = subject_data["t2w"][:]
+            config.loggers.workflow.critical(
+                "No T1w files were found, but an experimental NiBabies feature"
+                "will treat the T2w file(s) as T1w. This is only intended as a hack"
+                "and will not be included in an official release."
+            )
+        else:
+            raise IOError(
+                f"Incomplete dataset:\nT1w: {subject_data['t1w']}\nT2w: {subject_data['t2w']}"
+            )
 
     anat_only = config.workflow.anat_only
     derivatives = Derivatives(bids_root=config.execution.layout.root)

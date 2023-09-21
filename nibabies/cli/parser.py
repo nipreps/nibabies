@@ -670,6 +670,13 @@ discourage its usage."""
         default="infantfs",
         help="Method to use for surface reconstruction",
     )
+    g_baby.add_argument(
+        "--missing-t1",
+        dest="not1",
+        action="store_true",
+        help="EXPERIMENTAL HACK, USE AT OWN RISK!"
+        "If no T1w files are found, replace with T2w files.",
+    )
     return parser
 
 
