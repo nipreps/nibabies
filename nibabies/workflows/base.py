@@ -206,7 +206,7 @@ def init_single_subject_wf(
 
     from ..utils.bids import Derivatives
     from ..utils.misc import fix_multi_source_name
-    from .anatomical import init_infant_anat_wf
+    from .anatomical import init_infant_anat_wf, init_infant_single_anat_wf
 
     name = (
         f"single_subject_{subject_id}_{session_id}_wf"
@@ -344,6 +344,33 @@ It is released under the [CC0]\
         run_without_submitting=True,
     )
 
+    wf_args = dict(
+        ants_affine_init=True,
+        age_months=age,
+        anat_modality=anat_modality,
+        t1w=subject_data["t1w"],
+        t2w=subject_data["t2w"],
+        bids_root=config.execution.bids_dir,
+        derivatives=derivatives,
+        freesurfer=config.workflow.run_reconall,
+        hires=config.workflow.hires,
+        longitudinal=config.workflow.longitudinal,
+        omp_nthreads=config.nipype.omp_nthreads,
+        output_dir=nibabies_dir,
+        segmentation_atlases=config.execution.segmentation_atlases_dir,
+        skull_strip_mode=config.workflow.skull_strip_t1w,
+        skull_strip_template=Reference.from_string(config.workflow.skull_strip_template)[0],
+        sloppy=config.execution.sloppy,
+        spaces=spaces,
+        cifti_output=config.workflow.cifti_output,
+    )
+
+    if subject_data['t1w'] and subject_data['t2w']:
+        anat_preproc_wf = init_infant_anat_wf(**wf_args)
+    else:
+        anat_preproc_wf = init_infant_single_anat_wf(
+            contrast='T1w' if subject_data['t1w'] else 'T2w', **wf_args
+        )
     # Preprocessing of anatomical (includes registration to UNCInfant)
     anat_preproc_wf = init_infant_anat_wf(
         ants_affine_init=True,
