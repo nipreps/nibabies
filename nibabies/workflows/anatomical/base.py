@@ -124,10 +124,10 @@ def init_infant_anat_wf(
         Inverse transform of the above.
     subject_id
         FreeSurfer subject ID
-    t1w2fsnative_xfm
+    anat2fsnative_xfm
         LTA-style affine matrix translating from T1w to
         FreeSurfer-conformed subject space
-    fsnative2t1w_xfm
+    fsnative2anat_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed
         subject space to T1w
     surfaces
@@ -180,7 +180,6 @@ def init_infant_anat_wf(
         t1w=t1w,
         t2w=t2w,
         mask=t1w_mask or t2w_mask,
-        aseg=t1w_aseg or t2w_aseg,
     )
 
     wf.__desc__ = desc.format(
@@ -197,13 +196,14 @@ def init_infant_anat_wf(
 
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(
-        freesurfer=freesurfer, output_dir=output_dir, sloppy=sloppy
+        surface_recon=freesurfer, output_dir=output_dir, sloppy=sloppy
     )
 
     anat_derivatives_wf = init_anat_derivatives_wf(
         bids_root=bids_root,
-        freesurfer=freesurfer,
+        surface_recon=freesurfer,
         num_t1w=num_t1w,
+        num_t2w=num_t2w,
         output_dir=output_dir,
         spaces=spaces,
         cifti_output=cifti_output,
@@ -278,10 +278,10 @@ def init_infant_anat_wf(
             ("outputnode.anat_realign_xfm", "anat_ref_xfms")]),
         (t1w_template_wf, t1w_preproc_wf, [("outputnode.anat_ref", "inputnode.in_anat")]),
         (t1w_template_wf, anat_derivatives_wf, [
-            ("outputnode.anat_valid_list", "inputnode.source_files"),
+            ("outputnode.anat_valid_list", "inputnode.t1w_source_files"),
             ("outputnode.anat_realign_xfm", "inputnode.t1w_ref_xfms")]),
         (t1w_template_wf, anat_reports_wf, [
-            ("outputnode.out_report", "inputnode.t1w_conform_report")]),
+            ("outputnode.out_report", "inputnode.anat_conform_report")]),
 
         (t2w_template_wf, t2w_preproc_wf, [("outputnode.anat_ref", "inputnode.in_anat")]),
         (t2w_template_wf, anat_derivatives_wf, [
@@ -298,7 +298,7 @@ def init_infant_anat_wf(
             ("outputnode.t1w_mask", "inputnode.moving_mask")]),
         (coregistration_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
         (coregistration_wf, anat_derivatives_wf, [
-            ("outputnode.t1w_mask", "inputnode.t1w_mask"),
+            ("outputnode.t1w_mask", "inputnode.anat_mask"),
             ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
             ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
          ]),
@@ -312,8 +312,8 @@ def init_infant_anat_wf(
             ("outputnode.anat_dseg", "anat_dseg"),
             ("outputnode.anat_tpms", "anat_tpms")]),
         (anat_seg_wf, anat_derivatives_wf, [
-            ("outputnode.anat_dseg", "inputnode.t1w_dseg"),
-            ("outputnode.anat_tpms", "inputnode.t1w_tpms"),
+            ("outputnode.anat_dseg", "inputnode.anat_dseg"),
+            ("outputnode.anat_tpms", "inputnode.anat_tpms"),
         ]),
         (anat_seg_wf, anat_norm_wf, [
             ("outputnode.anat_dseg", "inputnode.moving_segmentation"),
@@ -334,9 +334,9 @@ def init_infant_anat_wf(
             ("outputnode.std2anat_xfm", "inputnode.std2anat_xfm")]),
 
         (outputnode, anat_reports_wf, [
-            ("anat_preproc", "inputnode.t1w_preproc"),
-            ("anat_mask", "inputnode.t1w_mask"),
-            ("anat_dseg", "inputnode.t1w_dseg"),
+            ("anat_preproc", "inputnode.anat_preproc"),
+            ("anat_mask", "inputnode.anat_mask"),
+            ("anat_dseg", "inputnode.anat_dseg"),
             ("std_preproc", "inputnode.std_t1w"),
             ("std_mask", "inputnode.std_mask"),
         ]),
@@ -509,8 +509,8 @@ def init_infant_anat_wf(
         (surface_recon_wf, outputnode, [
             ("outputnode.subjects_dir", "subjects_dir"),
             ("outputnode.subject_id", "subject_id"),
-            ("outputnode.t1w2fsnative_xfm", "t1w2fsnative_xfm"),
-            ("outputnode.fsnative2t1w_xfm", "fsnative2t1w_xfm"),
+            ("outputnode.t1w2fsnative_xfm", "anat2fsnative_xfm"),
+            ("outputnode.fsnative2t1w_xfm", "fsnative2anat_xfm"),
             ("outputnode.surfaces", "surfaces"),
             ("outputnode.morphometrics", "morphometrics"),
             ("outputnode.out_aparc", "anat_aparc"),
@@ -537,10 +537,10 @@ def init_infant_anat_wf(
             ("outputnode.subjects_dir", "inputnode.subjects_dir"),
         ]),
         (surface_recon_wf, anat_derivatives_wf, [
-            ("outputnode.out_aseg", "inputnode.t1w_fs_aseg"),
-            ("outputnode.out_aparc", "inputnode.t1w_fs_aparc"),
-            ("outputnode.t1w2fsnative_xfm", "inputnode.t1w2fsnative_xfm"),
-            ("outputnode.fsnative2t1w_xfm", "inputnode.fsnative2t1w_xfm"),
+            ("outputnode.out_aseg", "inputnode.anat_fs_aseg"),
+            ("outputnode.out_aparc", "inputnode.anat_fs_aparc"),
+            ("outputnode.t1w2fsnative_xfm", "inputnode.anat2fsnative_xfm"),
+            ("outputnode.fsnative2t1w_xfm", "inputnode.fsnative2anat_xfm"),
             ("outputnode.surfaces", "inputnode.surfaces"),
             ("outputnode.morphometrics", "inputnode.morphometrics"),
         ]),
