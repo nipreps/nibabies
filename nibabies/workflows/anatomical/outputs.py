@@ -247,7 +247,7 @@ def init_anat_reports_wf(
     # fmt: off
     workflow.connect([
         (inputnode, recon_report, [('subjects_dir', 'subjects_dir'),
-                                    ('subject_id', 'subject_id')]),
+                                   ('subject_id', 'subject_id')]),
         (recon_report, ds_recon_report, [('out_report', 'in_file')]),
         (inputnode, ds_recon_report, [('source_file', 'source_file')])
     ])
@@ -654,7 +654,7 @@ def init_anat_derivatives_wf(
         # fmt: off
         workflow.connect([
             (inputnode, mask_anat, [(preproc_file, 'in_file'),
-                                   ('anat_mask', 'in_mask')]),
+                                    ('anat_mask', 'in_mask')]),
             (mask_anat, anat2std_t1w, [('out_file', 'input_image')]),
             (inputnode, anat2std_mask, [('anat_mask', 'input_image')]),
             (inputnode, anat2std_dseg, [('anat_dseg', 'input_image')]),
@@ -832,9 +832,9 @@ def init_anat_derivatives_wf(
         (name_morphs, ds_morphs, [('hemi', 'hemi'),
                                   ('suffix', 'suffix')]),
         (inputnode, ds_anat_fsaseg, [('anat_fs_aseg', 'in_file'),
-                                    (source_files, 'source_file')]),
+                                     (source_files, 'source_file')]),
         (inputnode, ds_anat_fsparc, [('anat_fs_aparc', 'in_file'),
-                                    (source_files, 'source_file')]),
+                                     (source_files, 'source_file')]),
     ])
     # fmt: on
     if cifti_output:
