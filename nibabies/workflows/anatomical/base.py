@@ -463,12 +463,10 @@ def init_infant_anat_wf(
         # M-CRIB-S to dHCP42week (32k)
         sphere_reg_wf = init_mcribs_sphere_reg_wf()
 
-        # fmt:off
         wf.connect([
             (t2w_template_wf, denoise_t2w, [('outputnode.anat_ref', 'input_image')]),
             (denoise_t2w, surface_recon_wf, [('output_image', 'inputnode.t2w')]),
-        ])
-        # fmt:on
+        ])  # fmt:skip
         if derivatives.aseg:
             wf.connect(deriv_buffer, 't2w_aseg', surface_recon_wf, 'inputnode.ants_segs')
         if derivatives.mask:
@@ -811,7 +809,7 @@ def init_infant_single_anat_wf(
     if not recon_method:
         return workflow
 
-    elif recon_method == 'freesurfer':
+    if recon_method == 'freesurfer':
         from smriprep.workflows.surfaces import init_surface_recon_wf
 
         surface_recon_wf = init_surface_recon_wf(omp_nthreads=omp_nthreads, hires=hires)
@@ -853,6 +851,12 @@ def init_infant_single_anat_wf(
     else:
         raise NotImplementedError
 
+    if recon_method in ('freesurfer', 'infantfs'):
+        from smriprep.workflows.surfaces import init_sphere_reg_wf
+
+        # fsaverage to fsLR
+        sphere_reg_wf = init_sphere_reg_wf()
+
     # Anatomical ribbon file using HCP signed-distance volume method
     anat_ribbon_wf = init_anat_ribbon_wf()
 
@@ -865,8 +869,7 @@ def init_infant_single_anat_wf(
             ("outputnode.anat_ref", "inputnode.t1w"),
         ]),
         (mask_buffer, surface_recon_wf, [
-            ("anat_brain", "inputnode.skullstripped_t1"),
-            ("anat_mask", "inputnode.anat_mask")]),
+            ("anat_brain", "inputnode.skullstripped_t1")]),
         (anat_preproc_wf, surface_recon_wf, [
             ("outputnode.anat_preproc", "inputnode.corrected_t1")]),
         (surface_recon_wf, outputnode, [

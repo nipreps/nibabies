@@ -424,7 +424,6 @@ def init_anat_derivatives_wf(
             # fmt:on
 
     if num_t2w:
-
         if not num_t1w:
             raw_sources = pe.Node(niu.Function(function=_bids_relative), name="t2w_raw_sources")
             raw_sources.inputs.bids_root = bids_root
