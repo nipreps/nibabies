@@ -405,6 +405,14 @@ jobs:
             cp -r /tmp/data/${DATASET}/sub-01 /tmp/data/${DATASET}-t2only/sub-01
             rm -f /tmp/data/${DATASET}-t2only/sub-01/ses-1mo/anat/*_T1w.*
             tree /tmp/data/${DATASET}-t2only
+            mkdir -p /tmp/data/${DATASET}-t2only/derivatives
+            cp -r /tmp/data/${DATASET}/derivatives/precomputed /tmp/data/${DATASET}-t2only/derivatives
+            # rename the derivatives for now - this is only possible since they share the same space
+            sudo apt install rename
+            rename 's/space-T1w/space-T2w/' /tmp/data/${DATASET}-t2only/derivatives/precomputed/sub-01/ses-1mo/anat/*
+            sed -i 's/_T1w./_T2w./g' /tmp/data/${DATASET}-t2only/derivatives/precomputed/sub-01/ses-1mo/anat/*json
+            tree /tmp/data/${DATASET}-t2only/derivatives/precomputed
+
       - run:
           name: Run nibabies single anatomical workflow
           no_output_timeout: 1h
@@ -420,7 +428,7 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
-                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --derivatives /tmp/data/${DATASET}-t2only/derivatives/precomputed \
                 --output-layout bids --anat-only
       - run:
           name: Checking outputs of T2-only nibabies anat
