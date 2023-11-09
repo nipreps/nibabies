@@ -404,16 +404,17 @@ jobs:
             cp /tmp/data/${DATASET}/dataset_description.json /tmp/data/${DATASET}-t2only
             cp -r /tmp/data/${DATASET}/sub-01 /tmp/data/${DATASET}-t2only/sub-01
             rm -f /tmp/data/${DATASET}-t2only/sub-01/ses-1mo/anat/*_T1w.*
+            tree /tmp/data/${DATASET}-t2only
       - run:
           name: Run nibabies single anatomical workflow
           no_output_timeout: 1h
           command: |
-            mkdir -p /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only
+            mkdir -p /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only /tmp/${DATASET}/work-t2only
             nibabies-wrapper docker /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only participant \
                 -i nipreps/nibabies:dev \
                 -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
                 --network none --notrack \
-                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work-t2only \
                 --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
                 --skull-strip-template UNCInfant:cohort-1 \
                 --output-spaces MNIInfant:cohort-1 func \
