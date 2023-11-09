@@ -397,6 +397,41 @@ jobs:
             pip install nibabel numpy nitransforms
             python /tmp/src/nibabies/scripts/check_outputs.py /tmp/${DATASET}/derivatives/nibabies
             exit $?
+      - run:
+          name: Create copy with only T2w data
+          command: |
+            mkdir -p /tmp/data/${DATASET}-t2only
+            cp /tmp/data/${DATASET}/dataset_description.json /tmp/data/${DATASET}-t2only
+            cp -r /tmp/data/${DATASET}/sub-01 /tmp/data/${DATASET}-t2only/sub-01
+            rm -f /tmp/data/${DATASET}-t2only/sub-01/ses-1mo/anat/*_T1w.*
+      - run:
+          name: Run nibabies single anatomical workflow
+          no_output_timeout: 1h
+          command: |
+            mkdir -p /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only
+            nibabies-wrapper docker /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only participant \
+                -i nipreps/nibabies:dev \
+                -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+                --network none --notrack \
+                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+                --skull-strip-template UNCInfant:cohort-1 \
+                --output-spaces MNIInfant:cohort-1 func \
+                --sloppy --write-graph --mem-mb 14000 \
+                --nthreads 4 -vv --age-months 2 --sloppy \
+                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --output-layout bids --anat-only
+      - run:
+          name: Checking outputs of T2-only nibabies anat
+          command: |
+            mkdir -p /tmp/${DATASET}/test
+            CHECK_OUTPUTS_FILE="${DATASET}_anat_t2only_outputs.txt"
+            cd /tmp/${DATASET}/derivatives/nibabies-t2only && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
+            cat /tmp/${DATASET}/test/outputs.out
+            sort -o /tmp/${DATASET}/test/expected.out /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE}
+            diff /tmp/${DATASET}/test/expected.out /tmp/${DATASET}/test/outputs.out
+            rm -rf /tmp/${DATASET}/test
+            exit $?
       - store_artifacts:
           path: /tmp/bcp/derivatives
 
