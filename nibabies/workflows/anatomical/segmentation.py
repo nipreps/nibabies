@@ -37,11 +37,6 @@ def init_anat_segmentations_wf(
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.utils.connections import listify
 
-    if anat_modality != "T1w":
-        raise NotImplementedError(
-            "Only T1w images are currently accepted for the segmentation workflow."
-        )
-
     if precomp_aseg and template_dir:
         print("Found precomputed aseg; skipping JointLabelFusion", file=sys.stderr)
         template_dir = None
@@ -67,7 +62,8 @@ white-matter (WM) and gray-matter (GM) was performed on """
         from nipype.interfaces.fsl.base import Info as FSLInfo
 
         wf.__desc__ += (
-            f"the brain-extracted T1w using FSL FAST {FSLInfo.version() or '(version unknown)'}."
+            f"the brain-extracted {anat_modality} using FSL FAST "
+            f"{FSLInfo.version() or '(version unknown)'}."
         )
 
         # Use FSL FAST for segmentations
@@ -99,7 +95,7 @@ white-matter (WM) and gray-matter (GM) was performed on """
         from nipype.interfaces.ants.base import Info as ANTsInfo
 
         wf.__desc__ += (
-            "the brain-extracted T1w using ANTs JointFusion, distributed with ANTs "
+            f"the brain-extracted {anat_modality} using ANTs JointFusion, distributed with ANTs "
             f"{ANTsInfo.version() or '(version unknown)'}."
         )
         tmpl_anats, tmpl_segs = _parse_segmentation_atlases(anat_modality, template_dir)

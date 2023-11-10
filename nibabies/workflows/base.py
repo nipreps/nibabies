@@ -206,7 +206,7 @@ def init_single_subject_wf(
 
     from ..utils.bids import Derivatives
     from ..utils.misc import fix_multi_source_name
-    from .anatomical import init_infant_anat_wf
+    from .anatomical import init_infant_anat_wf, init_infant_single_anat_wf
 
     name = (
         f"single_subject_{subject_id}_{session_id}_wf"
@@ -229,7 +229,8 @@ def init_single_subject_wf(
 
     anat_only = config.workflow.anat_only
     derivatives = Derivatives(bids_root=config.execution.layout.root)
-    anat_modality = "t1w" if subject_data["t1w"] else "t2w"
+    contrast = "T1w" if subject_data["t1w"] else "T2w"
+    single_modality = not (subject_data['t1w'] and subject_data['t2w'])
     # Make sure we always go through these two checks
     if not anat_only and not subject_data["bold"]:
         task_id = config.execution.task_id
@@ -344,11 +345,10 @@ It is released under the [CC0]\
         run_without_submitting=True,
     )
 
-    # Preprocessing of anatomical (includes registration to UNCInfant)
-    anat_preproc_wf = init_infant_anat_wf(
+    wf_args = dict(
         ants_affine_init=True,
         age_months=age,
-        anat_modality=anat_modality,
+        contrast=contrast,
         t1w=subject_data["t1w"],
         t2w=subject_data["t2w"],
         bids_root=config.execution.bids_dir,
@@ -364,6 +364,11 @@ It is released under the [CC0]\
         sloppy=config.execution.sloppy,
         spaces=spaces,
         cifti_output=config.workflow.cifti_output,
+    )
+    anat_preproc_wf = (
+        init_infant_anat_wf(**wf_args)
+        if not single_modality
+        else init_infant_single_anat_wf(**wf_args)
     )
 
     # fmt: off
@@ -397,17 +402,17 @@ It is released under the [CC0]\
 
     workflow.connect([
         (bidssrc, bids_info, [
-            (('t1w', fix_multi_source_name), 'in_file'),
+            ((contrast.lower(), fix_multi_source_name), 'in_file'),
         ]),
         (bidssrc, summary, [
             ('t1w', 't1w'),
             ('t2w', 't2w'),
         ]),
         (bidssrc, ds_report_summary, [
-            (('t1w', fix_multi_source_name), 'source_file'),
+            ((contrast.lower(), fix_multi_source_name), 'source_file'),
         ]),
         (bidssrc, ds_report_about, [
-            (('t1w', fix_multi_source_name), 'source_file'),
+            ((contrast.lower(), fix_multi_source_name), 'source_file'),
         ]),
     ])
     # fmt: on
@@ -472,8 +477,8 @@ tasks and sessions), the following preprocessing was performed."""
                 # Undefined if --fs-no-reconall, but this is safe
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.t1w2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
-                ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
+                ('outputnode.anat2fsnative_xfm', 'inputnode.t1w2fsnative_xfm'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
                 ('outputnode.surfaces', 'inputnode.surfaces'),
                 ('outputnode.morphometrics', 'inputnode.morphometrics'),
                 ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
