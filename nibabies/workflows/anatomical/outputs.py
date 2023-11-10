@@ -433,6 +433,8 @@ def init_anat_derivatives_wf(
             name="ds_t2w_preproc",
             run_without_submitting=True,
         )
+        ds_t2w_preproc.inputs.SkullStripped = False
+
         if num_t1w:
             ds_t2w_preproc.inputs.space = "T1w"
 
@@ -492,20 +494,16 @@ def init_anat_derivatives_wf(
     )
 
     if num_t1w:
-        # fmt:off
         workflow.connect([
             (inputnode, ds_t1w_preproc, [('t1w_preproc', 'in_file'),
                                          ('t1w_source_files', 'source_file')]),
-        ])
-        # fmt:on
+        ])  # fmt:skip
 
     if num_t2w:
-        # fmt:off
         workflow.connect([
             (inputnode, ds_t2w_preproc, [('t2w_preproc', 'in_file'),
                                          ('t2w_source_files', 'source_file')]),
-        ])
-        # fmt:on
+        ])  # fmt:skip
 
     # fmt:off
     workflow.connect([
