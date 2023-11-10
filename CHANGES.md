@@ -5,7 +5,7 @@ The next minor release of *NiBabies*, this release includes a number of new good
 ### New surface reconstruction option
 M-CRIB-S (Adamson et al., https://www.nature.com/articles/s41598-020-61326-2), has shown to improve performance in participants under 9 months. If you would like to try this method, add the following to your command: `--surface-recon-method mcribs`.
 
-Note: Currently, a pre-computed segmentation derivative must be provided to run mcribs.
+Note: Currently, a T2w image and pre-computed segmentation derivative must be provided to run mcribs.
 
 ### Improved batch processing
 *NiBabies* now automatically parses the BIDS directory for participant ages, first searching in the
@@ -13,6 +13,9 @@ participant's `session.tsv`, and falling back to `participants.tsv`. This simpli
 
 ### Goodvoxels projection
 An option to determine and exclude high-variance voxels from being projected to the surface when creating CIFTI files. To enable this, add `--project-goodvoxels` to your command.
+
+### Single anatomical processing
+Running *NiBabies* is now less restrictive, and will still process data missing either a T1w / T2w image. However, for best results, it is recommended to collect and include both for processing.
 
 
 ## Full Changelog
@@ -26,6 +29,8 @@ An option to determine and exclude high-variance voxels from being projected to 
   * ENH: Reorder anatomical processsing, run ANTs DenoiseImage on anatomicals (#286)
   * ENH: Extract participant ages from BIDS sources, deprecate `--age-months` (#287)
   * ENH: Dilate BOLD mask by 2 voxels to prevent over-aggressive masking degrading T2star map estimation (#296)
+  * ENH: Allow precomputed derivatives in T1w or T2w space (#305)
+  * ENH: Add separate workflow for single anatomical processing (#316)
   * FIX: Improve free memory estimation (#284)
   * FIX: Ensure age is extracted from sessions file (#291)
   * FIX: Restore CIFTI medial wall masking, subcortical volume LAS reorientation (#298)
