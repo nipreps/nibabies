@@ -2,14 +2,14 @@
 
 ## Leveraging precomputed results
 
-Whether to allow for manual intervention for tough cases, or simply to reduce processing time, *NiBabies* can allow the use of certain pre-computed files during processing.
-Initial support is limited to the following files:
-- Anatomical mask in T1w space
-- Antomical segmentation (aseg) in T1w space
+Whether manual intervention is required, or you want to reduce processing time, *NiBabies* allow the use of certain pre-computed files during processing, which can skip part of the workflow.
+Support is limited to the following files:
+- Anatomical mask in T1w or T2w space
+- Antomical segmentation (aseg) in T1w or T2w space
 
 To use pre-computed results, one or more [BIDS Derivatives](https://bids-specification.readthedocs.io/en/stable/05-derivatives/01-introduction.html#bids-derivatives) directories must be passed in to *NiBabies* using the `--derivatives` flag.
 Derivative directories must include a [`dataset_description.json` and the required fields](https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html#derived-dataset-and-pipeline-description).
-Additionally, files must include the `space-orig` key-value pair in the name.
+Additionally, files must include the `space-T1w` or `space-T2w` key-value pair in the filenames, and a matching sidecar JSON file with the `SpatialReference` field defined.
 
 A sample layout of a derivatives directory can be found below:
 
@@ -18,10 +18,18 @@ my_precomputed/
 ├── dataset_description.json
 └── sub-01
     └── anat
-        ├── sub-01_space-orig_desc-aseg_dseg.nii.gz
-        ├── sub-01_space-orig_desc-brain_mask.json
-        └── sub-01_space-orig_desc-brain_mask.nii.gz
+        ├── sub-01_space-T2w_desc-aseg_dseg.json
+        ├── sub-01_space-T2w_desc-aseg_dseg.nii.gz
+        ├── sub-01_space-T2w_desc-brain_mask.json
+        └── sub-01_space-T2w_desc-brain_mask.nii.gz
 ```
+
+and the contents of the JSON files:
+```
+{"SpatialReference": "sub-01/anat/sub-01_T2w.nii.gz"}
+```
+
+The `SpatialReference` file will be used to ensure the raw data and the derivatives are aligned and in the same space.
 
 ## Multi-atlas segmentation with joint label fusion
 
