@@ -848,6 +848,9 @@ def init_infant_single_anat_wf(
         else:
             # TODO: Use MCRIBS segmentation
             ...
+
+        if mask:
+            workflow.connect(mask_buffer, 'anat_mask', surface_recon_wf, 'inputnode.anat_mask')
     else:
         raise NotImplementedError
 
