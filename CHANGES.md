@@ -1,4 +1,4 @@
-23.1.0 (TBD)
+23.1.0 (November 21, 2023)
 ============
 The next minor release of *NiBabies*, this release includes a number of new goodies, including:
 
@@ -16,6 +16,9 @@ An option to determine and exclude high-variance voxels from being projected to 
 
 ### Single anatomical processing
 Running *NiBabies* is now less restrictive, and will still process data missing either a T1w / T2w image. However, for best results, it is recommended to collect and include both for processing.
+
+### Anat-specific derivatives inputs
+Previous, *NiBabies* expected input from the `--derivatives` flag to be in T1w space, using the entity `space-orig`. This has now been changed to support derivatives in either T1w or T2w space. For more information, please see https://nibabies.readthedocs.io/en/23.1.0/faqs.html#leveraging-precomputed-results
 
 
 ## Full Changelog
@@ -35,6 +38,7 @@ Running *NiBabies* is now less restrictive, and will still process data missing 
   * FIX: Ensure age is extracted from sessions file (#291)
   * FIX: Restore CIFTI medial wall masking, subcortical volume LAS reorientation (#298)
   * FIX: Recify "goodvoxels" surface projection (#301)
+  * FIX: Connect derivatives mask to mcribs recon (#323)
   * MAINT: Drop TemplateFlowSelect patches (#290)
 
 23.0.0 (January 23, 2023)
