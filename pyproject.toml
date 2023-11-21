@@ -12,12 +12,12 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Image Recognition",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     'importlib_resources; python_version < "3.9"',
     "nibabel >= 5.0.0",
@@ -34,7 +34,7 @@ dependencies = [
     "requests",
     "sdcflows >= 2.6.0",
 #    "sdcflows @ git+https://github.com/nipreps/sdcflows.git@master",
-    "smriprep >= 0.13.0",
+    "smriprep ~= 0.12.1",
 #    "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
     "tedana >= 0.0.12",
     "templateflow >= 0.6",
@@ -100,7 +100,6 @@ version-file = "nibabies/_version.py"
 
 [tool.black]
 line-length = 99
-target-version = ['py39']
 skip-string-normalization = true
 
 [tool.isort]

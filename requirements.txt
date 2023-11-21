@@ -272,7 +272,7 @@ six==1.16.0
     # via
     #   isodate
     #   python-dateutil
-smriprep==0.13.0
+smriprep==0.12.2
     # via nibabies (pyproject.toml)
 sqlalchemy==2.0.17
     # via pybids
