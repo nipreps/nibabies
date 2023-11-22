@@ -50,6 +50,8 @@ idna==3.4
     # via requests
 imageio==2.31.1
     # via scikit-image
+importlib-resources==6.1.1
+    # via niworkflows
 indexed-gzip==1.7.1
     # via smriprep
 interface-meta==1.3.0
@@ -126,12 +128,12 @@ nipype==1.8.6
     #   smriprep
 nitime==0.10.1
     # via nibabies (pyproject.toml)
-nitransforms==23.0.0
+nitransforms==23.0.1
     # via
     #   nibabies (pyproject.toml)
     #   niworkflows
     #   sdcflows
-niworkflows==1.8.1
+niworkflows==1.9.0
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
@@ -258,7 +260,7 @@ scipy==1.11.1
     #   scikit-learn
     #   sdcflows
     #   tedana
-sdcflows==2.5.1
+sdcflows==2.5.2
     # via nibabies (pyproject.toml)
 seaborn==0.12.2
     # via niworkflows
@@ -268,7 +270,7 @@ six==1.16.0
     # via
     #   isodate
     #   python-dateutil
-smriprep==0.12.1
+smriprep==0.12.2
     # via nibabies (pyproject.toml)
 sqlalchemy==2.0.17
     # via pybids
