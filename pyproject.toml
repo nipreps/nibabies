@@ -32,7 +32,7 @@ dependencies = [
     "psutil >= 5.4",
     "pybids >= 0.15.0",
     "requests",
-    "sdcflows >= 2.6.0",
+    "sdcflows ~= 2.5.2",
 #    "sdcflows @ git+https://github.com/nipreps/sdcflows.git@master",
     "smriprep ~= 0.12.1",
 #    "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
