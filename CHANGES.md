@@ -1,4 +1,4 @@
-23.1.0 (November 21, 2023)
+23.1.0 (November 22, 2023)
 ============
 The next minor release of *NiBabies*, this release includes a number of new goodies, including:
 
