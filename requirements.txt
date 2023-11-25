@@ -94,7 +94,7 @@ matplotlib==3.7.1
     #   seaborn
     #   smriprep
     #   tedana
-migas==0.3.0
+migas==0.4.0
     # via nibabies (pyproject.toml)
 networkx==3.1
     # via

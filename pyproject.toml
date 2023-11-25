@@ -72,7 +72,7 @@ test = [
     "pytest-cov",
     "pytest-env",
 ]
-telemetry = ["migas"]
+telemetry = ["migas >= 0.4.0"]
 # Aliases
 docs = ["nibabies[doc]"]
 tests = ["nibabies[test]"]
