@@ -3,8 +3,6 @@
 """NiBabies runner."""
 from .. import config
 
-EXITCODE: int = -1
-
 
 def main():
     """Entry point."""
@@ -26,12 +24,10 @@ def main():
 
     # collect and submit telemetry information
     # if `--notrack` is specified, nothing is done.
-    global EXITCODE
     if not config.execution.notrack:
         from nibabies.utils.telemetry import setup_migas
 
-        setup_migas(init=True)
-        atexit.register(migas_exit)
+        setup_migas()
 
     if "participant" in config.workflow.analysis_level:
         _pool = None
@@ -61,7 +57,7 @@ def main():
         # build the workflow within the same process
         # it still needs to be saved / loaded to be properly initialized
         retval = build_workflow(config_file)
-        EXITCODE = retval['return_code']
+        exitcode = retval['return_code']
         nibabies_wf = retval['workflow']
 
         # exit conditions:
@@ -70,18 +66,18 @@ def main():
         # - boilerplate only
 
         if nibabies_wf is None and not config.execution.reports_only:
-            sys.exit(EXITCODE)
+            sys.exit(exitcode)
 
         if config.execution.write_graph:
             nibabies_wf.write_graph(graph2use="colored", format="svg", simple_form=True)
 
-        if EXITCODE != 0:
-            sys.exit(EXITCODE)
+        if exitcode != 0:
+            sys.exit(exitcode)
 
         # generate boilerplate
         build_boilerplate(nibabies_wf)
         if config.execution.boilerplate_only:
-            sys.exit(EXITCODE)
+            sys.exit(exitcode)
 
         gc.collect()
 
@@ -105,7 +101,6 @@ def main():
             nibabies_wf.run(**_plugin)
         except Exception as e:
             config.loggers.workflow.critical("nibabies failed: %s", e)
-            EXITCODE = 1
             raise
         else:
             config.loggers.workflow.log(25, "nibabies finished successfully!")
@@ -149,38 +144,6 @@ def main():
             )
             write_derivative_description(config.execution.bids_dir, config.execution.nibabies_dir)
             write_bidsignore(config.execution.nibabies_dir)
-
-
-def migas_exit() -> None:
-    """
-    Send a final crumb to the migas server signaling if the run successfully completed
-    This function should be registered with `atexit` to run at termination.
-    """
-    import sys
-
-    from nibabies.utils.telemetry import send_breadcrumb
-
-    global EXITCODE
-    migas_kwargs = {'status': 'C'}
-    # `sys` will not have these attributes unless an error has been handled
-    if hasattr(sys, 'last_type'):
-        migas_kwargs = {
-            'status': 'F',
-            'status_desc': 'Finished with error(s)',
-            'error_type': sys.last_type,
-            'error_desc': sys.last_value,
-        }
-    elif EXITCODE != 0:
-        migas_kwargs.update(
-            {
-                'status': 'F',
-                'status_desc': f'Completed with exitcode {EXITCODE}',
-            }
-        )
-    else:
-        migas_kwargs['status_desc'] = 'Success'
-
-    send_breadcrumb(**migas_kwargs)
 
 
 if __name__ == "__main__":
