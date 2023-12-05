@@ -101,7 +101,6 @@ def main():
             nibabies_wf.run(**_plugin)
         except Exception as e:
             config.loggers.workflow.critical("nibabies failed: %s", e)
-            EXITCODE = 1
             raise
         else:
             config.loggers.workflow.log(25, "nibabies finished successfully!")
