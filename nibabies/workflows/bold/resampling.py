@@ -1013,7 +1013,7 @@ preprocessed BOLD runs*: {tpl}.
         # fmt:off
         workflow.connect([
             (inputnode, t2star_std_tfm, [("t2star", "input_image")]),
-            (select_std, t2star_std_tfm, [("anat2std_xfm", "transforms")]),
+            (mask_merge_tfms, t2star_std_tfm, [("out", "transforms")]),
             (gen_ref, t2star_std_tfm, [("out_file", "reference_image")]),
             (t2star_std_tfm, poutputnode, [("output_image", "t2star_std")]),
         ])
