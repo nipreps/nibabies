@@ -22,6 +22,7 @@ dependencies = [
     'importlib_resources; python_version < "3.9"',
     "nibabel >= 5.0.0",
     "nipype >= 1.8.5",
+    "nireports @ git+https://github.com/mgxd/nireports.git@enh/report-session",
     "nitime",
     "nitransforms >= 23.0.1",
     "niworkflows >= 1.9.0",
