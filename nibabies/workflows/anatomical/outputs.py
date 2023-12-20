@@ -233,25 +233,29 @@ def init_anat_reports_wf(
     if not surface_recon:
         return workflow
 
-    # TODO: Separate report for MCRIBS?
     from smriprep.interfaces.reports import FSSurfaceReport
 
     recon_report = pe.Node(FSSurfaceReport(), name="recon_report")
     recon_report.interface._always_run = True
 
+    if surface_recon == "freesurfer":
+        recon_desc = "reconall"
+    elif surface_recon == "infantfs":
+        recon_desc = "infantfs"
+    elif surface_recon == "mcribs":
+        recon_desc = "mcribs"
+
     ds_recon_report = pe.Node(
-        DerivativesDataSink(base_directory=output_dir, desc="reconall", datatype="figures"),
+        DerivativesDataSink(base_directory=output_dir, desc=recon_desc, datatype="figures"),
         name="ds_recon_report",
         run_without_submitting=True,
     )
-    # fmt: off
     workflow.connect([
         (inputnode, recon_report, [('subjects_dir', 'subjects_dir'),
                                    ('subject_id', 'subject_id')]),
         (recon_report, ds_recon_report, [('out_report', 'in_file')]),
         (inputnode, ds_recon_report, [('source_file', 'source_file')])
-    ])
-    # fmt: on
+    ])  # fmt: skip
 
     return workflow
 

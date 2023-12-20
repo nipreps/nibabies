@@ -55,8 +55,6 @@ def build_workflow(config_file):
             config.execution.unique_labels,
             nibabies_dir,
             config.execution.run_uuid,
-            config=pkgrf("nibabies", "data/reports-spec.yml"),
-            packagename="nibabies",
         )
         return retval
 

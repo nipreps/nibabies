@@ -139,8 +139,6 @@ def main():
                 config.execution.unique_labels,
                 config.execution.nibabies_dir,
                 config.execution.run_uuid,
-                config=pkgrf("nibabies", "data/reports-spec.yml"),
-                packagename="nibabies",
             )
             write_derivative_description(config.execution.bids_dir, config.execution.nibabies_dir)
             write_bidsignore(config.execution.nibabies_dir)
