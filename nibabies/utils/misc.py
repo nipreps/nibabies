@@ -2,10 +2,12 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Miscellaneous utilities."""
 
+import shutil
 from pathlib import Path
 from typing import Union
 
-from .. import __version__
+from nibabies import __version__
+from nibabies.data import load_resource
 
 
 def fix_multi_source_name(in_files):
@@ -135,3 +137,17 @@ def get_file(pkg: str, src_path: Union[str, Path]) -> str:
     ref = files(pkg) / str(src_path)
     fl = file_manager.enter_context(as_file(ref))
     return str(fl)
+
+
+def save_fsLR_mcribs(mcribs_dir: str | Path) -> None:
+    template_dir = Path(mcribs_dir) / 'templates_fsLR'
+    template_dir.mkdir(exist_ok=True)
+
+    for src in load_resource('atlases').glob('*sphere.surf.gii'):
+        if not (dst := (template_dir / src.name)).exists():
+            try:
+                shutil.copyfile(src, dst)
+            except Exception:
+                import warnings
+
+                warnings.warn(f"Could not save {src.name} to MCRIBS outputs")
