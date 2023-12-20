@@ -23,8 +23,16 @@ sections:
     static: false
     subtitle: Spatial normalization of the anatomical T1w reference
   - bids: {datatype: figures, desc: reconall, suffix: T1w}
+    caption: Surfaces (white and pial) reconstructed with FreeSurfer (<code>recon-all</code>)
+      overlaid on the participant's T1w template.
+    subtitle: Surface reconstruction
+  - bids: {datatype: figures, desc: infantfs, suffix: T1w}
     caption: Surfaces (white and pial) reconstructed with FreeSurfer (<code>infant_recon_all</code>)
       overlaid on the participant's T1w template.
+    subtitle: Surface reconstruction
+  - bids: {datatype: figures, desc: mcribs, suffix: T2w}
+    caption: Surfaces (white and pial) reconstructed with M-CRIB-S (<code>MCRIBReconAll</code>)
+      overlaid on the participant's T2w template.
     subtitle: Surface reconstruction
 
 - name: <em>B<sub>0</sub></em> field mapping
