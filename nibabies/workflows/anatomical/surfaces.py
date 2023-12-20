@@ -252,12 +252,12 @@ def init_mcribs_sphere_reg_wf(*, name="mcribs_sphere_reg_wf"):
         name="project_unproject",
     )
     project_unproject.inputs.sphere_project_to = [
-        atlases / 'mcribs' / 'lh.sphere.reg2.surf.gii',
-        atlases / 'mcribs' / 'rh.sphere.reg2.surf.gii',
+        atlases / 'tpl-fsaverage_hemi-L_den-41k_desc-reg_sphere.surf.gii',
+        atlases / 'tpl-fsaverage_hemi-R_den-41k_desc-reg_sphere.surf.gii',
     ]
     project_unproject.inputs.sphere_unproject_from = [
-        atlases / 'mcribs' / 'lh.sphere.reg.dHCP42.surf.gii',
-        atlases / 'mcribs' / 'rh.sphere.reg.dHCP42.surf.gii',
+        atlases / 'tpl-dHCP_space-fsaverage_hemi-L_den-41k_desc-reg_sphere.surf.gii',
+        atlases / 'tpl-dHCP_space-fsaverage_hemi-R_den-41k_desc-reg_sphere.surf.gii',
     ]
 
     # fmt:off

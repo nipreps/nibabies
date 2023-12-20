@@ -592,8 +592,8 @@ The BOLD time-series were resampled onto the left/right-symmetric template
         atlases = load_resource('atlases')
         # use dHCP 32k fsLR instead
         select_surfaces.inputs.template_spheres = [
-            str(atlases / 'dHCP' / 'dHCP.week42.L.sphere.surf.gii'),
-            str(atlases / 'dHCP' / 'dHCP.week42.R.sphere.surf.gii'),
+            str(atlases / 'tpl-dHCP_space-fsLR_hemi-L_den-32k_desc-week42_sphere.surf.gii'),
+            str(atlases / 'tpl-dHCP_space-fsLR_hemi-R_den-32k_desc-week42_sphere.surf.gii'),
         ]
     else:
         select_surfaces.inputs.template_spheres = [
