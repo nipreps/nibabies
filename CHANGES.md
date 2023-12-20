@@ -1,3 +1,12 @@
+24.0.0 (TBD)
+============
+
+## 24.0.0a1
+  * MAINT: Update to latest migas API (#326)
+  * FIX: T2star map MNI scaling (#320)
+  * ENH: Alter outputs when MCRIBS reconstruction is used (#329)
+  * ENH: Use nireports for Report generation + add reportlet per reconstruction (#328)
+
 23.1.0 (November 22, 2023)
 ============
 The next minor release of *NiBabies*, this release includes a number of new goodies, including:
