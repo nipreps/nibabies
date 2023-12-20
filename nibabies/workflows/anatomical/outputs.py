@@ -367,9 +367,9 @@ def init_anat_derivatives_wf(
                 "anat_tpms",
                 "anat2std_xfm",
                 "std2anat_xfm",
+                # FS
                 "anat2fsnative_xfm",
                 "fsnative2anat_xfm",
-                # FS
                 "anat_fs_aseg",
                 "anat_fs_aparc",
                 "anat_ribbon",
@@ -766,7 +766,7 @@ def init_anat_derivatives_wf(
     ds_reg_fsLR = pe.MapNode(
         DerivativesDataSink(
             base_directory=output_dir,
-            space="fsLR",
+            space="dHCP" if surface_recon == "mcribs" else "fsLR",
             desc="reg",
             suffix="sphere",
             extension=".surf.gii",

@@ -761,6 +761,12 @@ applied."""
         # Ensure the directory is created
         config.execution.mcribs_dir.mkdir(exist_ok=True, parents=True)
 
+        # While waiting to confirm licensing for TemplateFlow distribution,
+        # include templates used to bring data to fsLR space
+        from nibabies.utils.misc import save_fsLR_mcribs
+
+        save_fsLR_mcribs(config.execution.mcribs_dir)
+
     # Wipe out existing work_dir
     if opts.clean_workdir and work_dir.exists():
         from niworkflows.utils.misc import clean_directory

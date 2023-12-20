@@ -196,12 +196,12 @@ def init_infant_anat_wf(
 
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(
-        surface_recon=freesurfer, output_dir=output_dir, sloppy=sloppy
+        surface_recon=recon_method, output_dir=output_dir, sloppy=sloppy
     )
 
     anat_derivatives_wf = init_anat_derivatives_wf(
         bids_root=bids_root,
-        surface_recon=freesurfer,
+        surface_recon=recon_method,
         num_t1w=num_t1w,
         num_t2w=num_t2w,
         output_dir=output_dir,
@@ -427,7 +427,7 @@ def init_infant_anat_wf(
             ])
             # fmt:on
 
-    if not freesurfer:
+    if not recon_method:
         return wf
 
     if recon_method == 'freesurfer':
