@@ -274,7 +274,7 @@ An anatomical {contrast}-reference map was computed after registration of
             (anat_reorient, applyxfm_aseg, [('out_file', 'reference_image')]),
             (aseg_xfm, applyxfm_aseg, [('out', 'transforms')]),
             (applyxfm_aseg, aseg_reorient, [('output_image', 'in_file')]),
-            (applyxfm_aseg, outputnode, [('out_file', 'anat_aseg')]),
+            (aseg_reorient, outputnode, [('out_file', 'anat_aseg')]),
         ])
         # fmt:on
 
@@ -305,4 +305,4 @@ An anatomical {contrast}-reference map was computed after registration of
 
 
 def get_reference(anatomicals: list, anat_reference: str) -> int:
-    return anatomicals.index(anat_reference)
+    return anatomicals.index(str(anat_reference))

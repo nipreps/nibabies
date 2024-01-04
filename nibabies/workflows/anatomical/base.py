@@ -285,7 +285,8 @@ def init_infant_anat_wf(
 
         (t2w_template_wf, t2w_preproc_wf, [("outputnode.anat_ref", "inputnode.in_anat")]),
         (t2w_template_wf, anat_derivatives_wf, [
-            ("outputnode.anat_valid_list", "inputnode.t2w_source_files")]),
+            ("outputnode.anat_valid_list", "inputnode.t2w_source_files"),
+            ("outputnode.anat_realign_xfm", "inputnode.t2w_ref_xfms")]),
 
         (t1w_preproc_wf, coregistration_wf, [("outputnode.anat_preproc", "inputnode.in_t1w")]),
         (t1w_preproc_wf, coreg_report_wf, [("outputnode.anat_preproc", "inputnode.t1w_preproc")]),
