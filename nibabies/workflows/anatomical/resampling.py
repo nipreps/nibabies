@@ -98,7 +98,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
             (inputnode, morph_grayords_wf, [
                 ("morphometrics", "inputnode.morphometrics"),
                 ("surfaces", "inputnode.surfaces"),
-                ("sphere_reg", "inputnode.sphere_reg")]),
+                ("sphere_reg_fsLR", "inputnode.sphere_reg")]),
             (joinnode, morph_grayords_wf, [
                 ("midthickness_fsLR", "inputnode.midthickness_fsLR")]),
         ])
