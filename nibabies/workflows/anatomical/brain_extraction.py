@@ -3,7 +3,6 @@
 """Baby brain extraction from T2w images."""
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
-from pkg_resources import resource_filename as pkgr_fn
 
 
 def init_infant_brain_extraction_wf(
@@ -79,8 +78,6 @@ def init_infant_brain_extraction_wf(
     from nipype.interfaces.ants import ImageMath, N4BiasFieldCorrection
     from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
     from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
-
-    # niworkflows
     from niworkflows.interfaces.nibabel import (
         ApplyMask,
         Binarize,
@@ -88,7 +85,8 @@ def init_infant_brain_extraction_wf(
         IntensityClip,
     )
 
-    from ...utils.misc import cohort_by_months
+    from nibabies.data import load as load_data
+    from nibabies.utils.misc import cohort_by_months
 
     # handle template specifics
     template_specs = template_specs or {}
@@ -138,9 +136,7 @@ def init_infant_brain_extraction_wf(
     # Set up initial spatial normalization
     ants_params = "testing" if sloppy else "precise"
     norm = pe.Node(
-        Registration(
-            from_file=pkgr_fn("nibabies.data", f"antsBrainExtraction_{ants_params}.json")
-        ),
+        Registration(from_file=load_data(f"antsBrainExtraction_{ants_params}.json")),
         name="norm",
         n_procs=omp_nthreads,
         mem_gb=mem_gb,

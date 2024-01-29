@@ -13,12 +13,12 @@ Registration workflows
 import logging
 import os
 
-import pkg_resources as pkgr
 from nipype.interfaces import c3, fsl
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
-from ...config import DEFAULT_MEMORY_MIN_GB
+from nibabies.config import DEFAULT_MEMORY_MIN_GB
+from nibabies.data import load as load_data
 
 LOGGER = logging.getLogger("nipype.workflow")
 
@@ -793,7 +793,7 @@ for distortions remaining in the BOLD reference.
     else:
         # Should mostly be hit while building docs
         LOGGER.warning("FSLDIR unset - using packaged BBR schedule")
-        flt_bbr.inputs.schedule = pkgr.resource_filename("fmriprep", "data/flirtsch/bbr.sch")
+        flt_bbr.inputs.schedule = load_data("flirtsch/bbr.sch")
 
     # fmt: off
     workflow.connect([

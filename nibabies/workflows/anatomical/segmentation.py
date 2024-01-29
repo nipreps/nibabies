@@ -4,10 +4,9 @@ from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.interfaces.ants.segmentation import JointFusion
 from nipype.pipeline import engine as pe
+from niworkflows.data import load as load_nwf
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
-from niworkflows.interfaces.nibabel import MapLabels
-from pkg_resources import resource_filename as pkgr_fn
 from smriprep.utils.misc import apply_lut as _apply_bids_lut
 from smriprep.workflows.anatomical import (
     _aseg_to_three,
@@ -15,7 +14,7 @@ from smriprep.workflows.anatomical import (
     _split_segments,
 )
 
-from ...config import DEFAULT_MEMORY_MIN_GB
+from nibabies.config import DEFAULT_MEMORY_MIN_GB
 
 
 def init_anat_segmentations_wf(
@@ -104,9 +103,7 @@ white-matter (WM) and gray-matter (GM) was performed on """
         ants_params = "testing" if sloppy else "precise"
         # Register to each subject space
         norm = pe.MapNode(
-            Registration(
-                from_file=pkgr_fn("niworkflows.data", f"antsBrainExtraction_{ants_params}.json")
-            ),
+            Registration(from_file=load_nwf(f"antsBrainExtraction_{ants_params}.json")),
             name="norm",
             iterfield=["moving_image"],
             n_procs=omp_nthreads,
