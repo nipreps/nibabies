@@ -1,9 +1,15 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Parser."""
+from __future__ import annotations
+
 import sys
+import typing as ty
 
 from .. import config
+
+if ty.TYPE_CHECKING:
+    from bids.layout import BIDSLayout
 
 
 def _build_parser():
@@ -19,9 +25,20 @@ def _build_parser():
 
     def _path_exists(path, parser):
         """Ensure a given path exists."""
-        if path is None or not Path(path).exists():
+        if path is None:
+            raise parser.error("No value provided!")
+        path = Path(path).absolute()
+        if not path.exists():
             raise parser.error(f"Path does not exist: <{path}>.")
-        return Path(path).absolute()
+        return path
+
+    def _dir_not_empty(path, parser):
+        path = _path_exists(path, parser)
+        if not path.is_dir():
+            raise parser.error(f"Path is not a directory <{path}>.")
+        for f in path.iterdir():
+            return path
+        raise parser.error(f"Directory found with no contents <{path}>.")
 
     def _is_file(path, parser):
         """Ensure a given path exists and it is a file."""
@@ -87,6 +104,7 @@ def _build_parser():
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
     PathExists = partial(_path_exists, parser=parser)
+    DirNotEmpty = partial(_dir_not_empty, parser=parser)
     IsFile = partial(_is_file, parser=parser)
     PositiveInt = partial(_min_one, parser=parser)
     SliceTimeRef = partial(_slice_time_ref, parser=parser)
@@ -635,7 +653,7 @@ discourage its usage."""
     )
     g_baby.add_argument(
         "--segmentation-atlases-dir",
-        type=PathExists,
+        type=DirNotEmpty,
         help="Directory containing precalculated segmentations to use for JointLabelFusion.",
     )
     g_baby.add_argument(
@@ -647,7 +665,7 @@ discourage its usage."""
     g_baby.add_argument(
         "-d",
         "--derivatives",
-        type=PathExists,
+        type=DirNotEmpty,
         nargs="+",
         help="One or more directory containing pre-computed derivatives.",
     )
@@ -822,8 +840,13 @@ applied."""
         )
 
     config.execution.participant_label = sorted(participant_label)
+
+    config.execution.unique_labels = compute_subworkflows(
+        layout=config.execution.layout,
+        participant_ids=config.execution.participant_label,
+        session_ids=config.execution.session_id,
+    )
     config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
-    config.execution.unique_labels = compute_subworkflows()
 
     # finally, write config to file
     config_file = config.execution.work_dir / config.execution.run_uuid / "config.toml"
@@ -831,33 +854,26 @@ applied."""
     config.to_filename(config_file)
 
 
-def compute_subworkflows() -> list:
+def compute_subworkflows(
+    *,
+    layout: 'BIDSLayout',
+    participant_ids: list,
+    session_ids: list | None = None,
+) -> list:
     """
     Query all available participants and sessions, and construct the combinations of the
     subworkflows needed.
     """
     from niworkflows.utils.bids import collect_participants
 
-    from nibabies import config
-
     # consists of (subject_id, session_id) tuples
     subworkflows = []
 
-    subject_list = collect_participants(
-        config.execution.layout,
-        participant_label=config.execution.participant_label,
-        strict=True,
-    )
-
+    subject_list = collect_participants(layout, participant_ids, strict=True)
     for subject in subject_list:
         # Due to rapidly changing morphometry of the population
         # Ensure each subject session is processed individually
-        sessions = (
-            config.execution.session_id
-            or config.execution.layout.get_sessions(scope='raw', subject=subject)
-            or [None]
-        )
-        # grab participant age per session
+        sessions = session_ids or layout.get_sessions(scope='raw', subject=subject) or [None]
         for session in sessions:
             subworkflows.append((subject, session))
     return subworkflows
