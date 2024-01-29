@@ -24,7 +24,7 @@ from niworkflows.interfaces.freesurfer import MedialNaNs
 from niworkflows.interfaces.workbench import MetricDilate, MetricMask, MetricResample
 
 from nibabies.config import DEFAULT_MEMORY_MIN_GB
-from nibabies.data import load_resource
+from nibabies.data import load as load_data
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import SpatialReferences
@@ -589,7 +589,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     # select white, midthickness and pial surfaces based on hemi
     select_surfaces = pe.Node(CiftiSelect(), name='select_surfaces')
     if mcribs:
-        atlases = load_resource('atlases')
+        atlases = load_data.cached('atlases')
         # use dHCP 32k fsLR instead
         select_surfaces.inputs.template_spheres = [
             str(atlases / 'tpl-dHCP_space-fsLR_hemi-L_den-32k_desc-week42_sphere.surf.gii'),

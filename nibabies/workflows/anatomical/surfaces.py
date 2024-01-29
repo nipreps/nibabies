@@ -12,8 +12,8 @@ from niworkflows.interfaces.freesurfer import PatchedRobustRegister as RobustReg
 from niworkflows.utils.connections import pop_file
 from smriprep.workflows.surfaces import init_gifti_surface_wf
 
-from ...config import DEFAULT_MEMORY_MIN_GB
-from ...data import load_resource
+from nibabies.config import DEFAULT_MEMORY_MIN_GB
+from nibabies.data import load as load_data
 
 SURFACE_INPUTS = [
     "subjects_dir",
@@ -239,7 +239,7 @@ def init_mcribs_sphere_reg_wf(*, name="mcribs_sphere_reg_wf"):
     fix_meta = pe.MapNode(FixGiftiMetadata(), iterfield="in_file", name="fix_meta")
 
     # load template files
-    atlases = load_resource('atlases')
+    atlases = load_data.cached('atlases')
 
     # SurfaceSphereProjectUnProject
     # project to 41k dHCP atlas sphere

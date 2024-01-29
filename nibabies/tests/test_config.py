@@ -27,10 +27,10 @@ from unittest.mock import patch
 
 import pytest
 from niworkflows.utils.spaces import format_reference
-from pkg_resources import resource_filename as pkgrf
 from toml import loads
 
-from .. import config
+from nibabies import config
+from nibabies.data import load as load_data
 
 
 def _reset_config():
@@ -58,8 +58,7 @@ def test_reset_config():
 
 def test_config_spaces():
     """Check that all necessary spaces are recorded in the config."""
-    filename = Path(pkgrf('nibabies', 'data/tests/config.toml'))
-    settings = loads(filename.read_text())
+    settings = loads(load_data.readable('tests/config.toml').read_text())
     for sectionname, configs in settings.items():
         if sectionname != 'environment':
             section = getattr(config, sectionname)

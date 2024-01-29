@@ -130,8 +130,6 @@ def main():
                 _copy_any(dseg_tsv, str(config.execution.nibabies_dir / "desc-aparcaseg_dseg.tsv"))
         # errno = 0
         finally:
-            from pkg_resources import resource_filename as pkgrf
-
             from ..reports.core import generate_reports
 
             # Generate reports phase

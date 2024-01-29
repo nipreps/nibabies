@@ -44,8 +44,6 @@ def build_workflow(config_file):
 
     # Called with reports only
     if config.execution.reports_only:
-        from pkg_resources import resource_filename as pkgrf
-
         build_logger.log(
             25,
             "Running --reports-only on participants %s",
@@ -132,14 +130,16 @@ def build_boilerplate(workflow):
         from shutil import copyfile
         from subprocess import CalledProcessError, TimeoutExpired, check_call
 
-        from pkg_resources import resource_filename as pkgrf
+        from nibabies.data import load as load_data
+
+        bib = load_data.readable("boilerplate.bib").read_text()
 
         # Generate HTML file resolving citations
         cmd = [
             "pandoc",
             "-s",
             "--bibliography",
-            pkgrf("nibabies", "data/boilerplate.bib"),
+            bib,
             "--citeproc",
             "--metadata",
             'pagetitle="nibabies citation boilerplate"',
@@ -159,7 +159,7 @@ def build_boilerplate(workflow):
             "pandoc",
             "-s",
             "--bibliography",
-            pkgrf("nibabies", "data/boilerplate.bib"),
+            bib,
             "--natbib",
             str(citation_files["md"]),
             "-o",
@@ -171,4 +171,4 @@ def build_boilerplate(workflow):
         except (FileNotFoundError, CalledProcessError, TimeoutExpired):
             config.loggers.cli.warning("Could not generate CITATION.tex file:\n%s", " ".join(cmd))
         else:
-            copyfile(pkgrf("nibabies", "data/boilerplate.bib"), citation_files["bib"])
+            copyfile(bib, citation_files["bib"])

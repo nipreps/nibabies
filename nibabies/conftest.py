@@ -4,7 +4,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
-from pkg_resources import resource_filename
+
+from nibabies.data import load as load_data
 
 FILES = (
     "functional.nii",
@@ -34,5 +35,5 @@ def data_dir():
 @pytest.fixture(autouse=True)
 def set_namespace(doctest_namespace, data_dir):
     doctest_namespace["data_dir"] = data_dir
-    doctest_namespace["test_data"] = Path(resource_filename("nibabies", "tests/data"))
+    doctest_namespace["test_data"] = load_data.cached('../tests/data')
     doctest_namespace["Path"] = Path
