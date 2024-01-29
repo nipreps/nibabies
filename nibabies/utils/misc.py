@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Union
 
 from nibabies import __version__
-from nibabies.data import load_resource
+from nibabies.data import load as load_data
 
 
 def fix_multi_source_name(in_files):
@@ -144,7 +144,9 @@ def save_fsLR_mcribs(mcribs_dir: str | Path) -> None:
     template_dir = Path(mcribs_dir) / 'templates_fsLR'
     template_dir.mkdir(exist_ok=True)
 
-    for src in load_resource('atlases').glob('*sphere.surf.gii'):
+    atlases = load_data.cached('atlases')
+
+    for src in atlases.glob('*sphere.surf.gii'):
         if not (dst := (template_dir / src.name)).exists():
             try:
                 shutil.copyfile(src, dst)

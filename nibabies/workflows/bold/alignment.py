@@ -6,9 +6,9 @@ from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-from pkg_resources import resource_filename
 
-from ...interfaces.workbench import VolumeLabelImport
+from nibabies.data import load as load_data
+from nibabies.interfaces.workbench import VolumeLabelImport
 
 
 def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
@@ -70,17 +70,15 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     # )
 
     map_labels = pe.Node(
-        MapLabels(
-            mappings_file=resource_filename("nibabies", "data/FreeSurferLabelRemappings.json")
-        ),
+        MapLabels(mappings_file=load_data("FreeSurferLabelRemappings.json")),
         name='map_labels',
     )
 
-    subcortical_labels = resource_filename(
-        "nibabies", "data/FreeSurferSubcorticalLabelTableLut.txt"
-    )
     refine_bold_rois = pe.Node(
-        VolumeLabelImport(label_list_file=subcortical_labels, discard_others=True),
+        VolumeLabelImport(
+            label_list_file=load_data("FreeSurferSubcorticalLabelTableLut.txt"),
+            discard_others=True,
+        ),
         name="refine_bold_rois",
     )
 

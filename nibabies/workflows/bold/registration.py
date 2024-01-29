@@ -13,12 +13,12 @@ Registration workflows
 import logging
 import os
 
-import pkg_resources as pkgr
 from nipype.interfaces import c3, fsl
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
-from ...config import DEFAULT_MEMORY_MIN_GB
+from nibabies.config import DEFAULT_MEMORY_MIN_GB
+from nibabies.data import load as load_data
 
 LOGGER = logging.getLogger("nipype.workflow")
 
@@ -476,9 +476,11 @@ The BOLD reference was then co-registered to the T1w reference using
 Co-registration was configured with {dof} degrees of freedom{reason}.
 """.format(
         dof={6: "six", 9: "nine", 12: "twelve"}[bold2t1w_dof],
-        reason=""
-        if bold2t1w_dof == 6
-        else "to account for distortions remaining in the BOLD reference",
+        reason=(
+            ""
+            if bold2t1w_dof == 6
+            else "to account for distortions remaining in the BOLD reference"
+        ),
     )
 
     inputnode = pe.Node(
@@ -791,7 +793,7 @@ for distortions remaining in the BOLD reference.
     else:
         # Should mostly be hit while building docs
         LOGGER.warning("FSLDIR unset - using packaged BBR schedule")
-        flt_bbr.inputs.schedule = pkgr.resource_filename("fmriprep", "data/flirtsch/bbr.sch")
+        flt_bbr.inputs.schedule = load_data("flirtsch/bbr.sch")
 
     # fmt: off
     workflow.connect([

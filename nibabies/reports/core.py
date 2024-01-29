@@ -2,7 +2,7 @@ from pathlib import Path
 
 from nireports.assembler.report import Report
 
-from nibabies.data import load_resource
+from nibabies.data import load as load_data
 
 
 def run_reports(
@@ -22,7 +22,7 @@ def run_reports(
         run_uuid,
         subject=subject,
         session=session,
-        bootstrap_file=load_resource('reports-spec.yml'),
+        bootstrap_file=load_data.readable('reports-spec.yml'),
         reportlets_dir=reportlets_dir,
     ).generate_report()
 
