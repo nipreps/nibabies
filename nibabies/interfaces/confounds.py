@@ -114,6 +114,7 @@ class GatherConfounds(SimpleInterface):
     >>> tmpdir.cleanup()
 
     """
+
     input_spec = GatherConfoundsInputSpec
     output_spec = GatherConfoundsOutputSpec
 

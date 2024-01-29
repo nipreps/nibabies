@@ -1,4 +1,5 @@
 """py.test configuration"""
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 

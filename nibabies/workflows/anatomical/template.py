@@ -1,4 +1,5 @@
 """Prepare anatomical images for processing."""
+
 from __future__ import annotations
 
 from nipype.interfaces import utility as niu

@@ -1099,12 +1099,14 @@ were resampled onto their original, native space by applying
 These resampled BOLD time-series will be referred to as *preprocessed
 BOLD in original space*, or just *preprocessed BOLD*.
 """.format(
-        transforms="""\
+        transforms=(
+            """\
 a single, composite transform to correct for head-motion and
 susceptibility distortions"""
-        if use_fieldwarp
-        else """\
+            if use_fieldwarp
+            else """\
 the transforms to correct for head-motion"""
+        )
     )
 
     inputnode = pe.Node(
