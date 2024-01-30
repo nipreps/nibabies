@@ -40,7 +40,7 @@ The common parts of the command follow the
 Example:
 
 ```Shell
-$ nibabies data/bids_root/ out/ participant -w work/ --participant-id 01
+$ nibabies data/bids_root/ out/ participant -w work/ --participant-label 01
 ```
 
 Further information about BIDS and BIDS-Apps can be found at the
@@ -63,7 +63,7 @@ At minimum, the following *positional* arguments are required.
 
 However, as infant brains can vastly differ depending on age, providing the following arguments is highly recommended:
 
-- **`--participant-id`** - participant ID
+- **`--participant-label`** - participant ID
 
 - **`--session-id`** - session ID
 
