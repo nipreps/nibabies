@@ -187,7 +187,7 @@ pandas==2.0.3
     #   pybids
     #   seaborn
     #   tedana
-pillow==9.5.0
+pillow==10.0.1
     # via
     #   bokeh
     #   imageio
