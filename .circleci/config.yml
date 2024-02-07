@@ -10,7 +10,7 @@ _machine_defaults: &machine_defaults
 
 _python_defaults: &python_defaults
   docker:
-    - image: cimg/python:3.10.9
+    - image: cimg/python:3.12.1
       auth:
         username: $DOCKER_USER
         password: $DOCKER_PAT
@@ -105,10 +105,7 @@ jobs:
           name: Build Docker image
           no_output_timeout: 60m
           command: |
-            export PY3=$(pyenv versions | grep '3\.' |
-                         sed -e 's/.* 3\./3./' -e 's/ .*//')
-            pyenv local $PY3
-            # Get version, update files.
+            pyenv local 3
             python -m pip install -U pip hatch
             THISVERSION=$( python -m hatch version )
             if [[ ${THISVERSION:0:1} == "0" ]] ; then
@@ -131,10 +128,6 @@ jobs:
       - run:
           name: Check Docker image
           command: |
-            export PY3=$(pyenv versions | grep '3\.' |
-                         sed -e 's/.* 3\./3./' -e 's/ .*//')
-            pyenv local $PY3
-            # Get version, update files.
             python -m pip install -U pip hatch
             THISVERSION=$( python -m hatch version )
             BUILT_VERSION=$( docker run --rm nipreps/nibabies:dev --version )
@@ -168,7 +161,7 @@ jobs:
 
   get_data:
     docker:
-      - image: cimg/python:3.10.9
+      - image: cimg/python:3.12.1
     working_directory: /home/circleci/data
     steps:
       - restore_cache:
@@ -259,33 +252,25 @@ jobs:
       - run:
           name: Build nibabies-wrapper wheel
           command: |
-            export PY3=$(pyenv versions | grep '3\.' |
-                         sed -e 's/.* 3\./3./' -e 's/ .*//')
-            pyenv local $PY3
+            pyenv local 3
+            python --version
             pip install --upgrade pip build
             python -m build wrapper/
       - run:
-          name: Test nibabies-wrapper (Python 2)
+          name: Test nibabies-wrapper (Python 3)
           command: |
-            export PY2=$(pyenv versions | grep '2\.' |
-                         sed -e 's/.* 2\./2./' -e 's/ .*//')
-            pyenv local $PY2
-            echo -n "Python version: "
             python --version
-            pip install --upgrade "pip<21"
+            pip install --upgrade pip
             pip install wrapper/dist/*.whl
             which nibabies-wrapper
             nibabies-wrapper --help
             nibabies-wrapper --version
       - run:
-          name: Test nibabies-wrapper (Python 3)
+          name: Test nibabies-wrapper (Python 2)
           command: |
-            export PY3=$(pyenv versions | grep '3\.' |
-                         sed -e 's/.* 3\./3./' -e 's/ .*//')
-            pyenv local $PY3
-            echo -n "Python version: "
+            pyenv local 2.7
             python --version
-            pip install --upgrade pip
+            pip install --upgrade "pip<21"
             pip install wrapper/dist/*.whl
             which nibabies-wrapper
             nibabies-wrapper --help
@@ -329,9 +314,8 @@ jobs:
       - run:
           name: Setting up test
           command: |
-            export PY3=$(pyenv versions | grep '3\.' |
-                         sed -e 's/.* 3\./3./' -e 's/ .*//')
-            pyenv local $PY3
+            pyenv local 3
+            python --version
             mkdir -p /tmp/${DATASET}/derivatives
             pip install --upgrade pip
             pip install --upgrade wrapper/
