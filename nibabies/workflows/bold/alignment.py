@@ -141,7 +141,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name="subcortical_mni_al
     )
 
     # reuse saved atlas to atlas transform
-    atlas_xfm = resource_filename("nibabies", "data/MNIInfant_to_MNI1526NLinAsym.mat")
+    atlas_xfm = load_data("MNIInfant_to_MNI1526NLinAsym.mat")
     inputnode = pe.Node(
         niu.IdentityInterface(fields=["MNIInfant_bold", "MNIInfant_rois", "MNI152_rois"]),
         name="inputnode",
