@@ -61,9 +61,7 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     # For now, define it and don't run it
     # TODO: Move to TemplateFlow
 
-    # tpl_avgwmparc = resource_filename(
-    #     'nibabies', 'data/tpl-MNI152NLin6Asym_res-01_desc-avgwmparc_dseg.nii.gz'
-    # )
+    # tpl_avgwmparc = load_data("tpl-MNI152NLin6Asym_res-01_desc-avgwmparc_dseg.nii.gz")
     # applywarp_tpl = pe.Node(
     #     fsl.ApplyWarp(in_file=tpl_avgwmparc, ref_file=tpl_rois, interp="nn"),
     #     name="applywarp_std"
@@ -141,7 +139,7 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name="subcortical_mni_al
     )
 
     # reuse saved atlas to atlas transform
-    atlas_xfm = resource_filename("nibabies", "data/MNIInfant_to_MNI1526NLinAsym.mat")
+    atlas_xfm = load_data("MNIInfant_to_MNI1526NLinAsym.mat")
     inputnode = pe.Node(
         niu.IdentityInterface(fields=["MNIInfant_bold", "MNIInfant_rois", "MNI152_rois"]),
         name="inputnode",
