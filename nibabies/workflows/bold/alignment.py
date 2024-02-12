@@ -61,9 +61,7 @@ def init_subcortical_rois_wf(*, name="subcortical_rois_wf"):
     # For now, define it and don't run it
     # TODO: Move to TemplateFlow
 
-    # tpl_avgwmparc = resource_filename(
-    #     'nibabies', 'data/tpl-MNI152NLin6Asym_res-01_desc-avgwmparc_dseg.nii.gz'
-    # )
+    # tpl_avgwmparc = load_data("tpl-MNI152NLin6Asym_res-01_desc-avgwmparc_dseg.nii.gz")
     # applywarp_tpl = pe.Node(
     #     fsl.ApplyWarp(in_file=tpl_avgwmparc, ref_file=tpl_rois, interp="nn"),
     #     name="applywarp_std"
