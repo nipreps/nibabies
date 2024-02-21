@@ -612,6 +612,9 @@ def init_infant_single_anat_wf(
             "This workflow uses only T1w or T2w inputs, but both contrasts are available."
         )
 
+    if not (t1w or t2w):
+        raise RuntimeError("This workflow requires either a T1w or T2w, but none were found.")
+
     anat_files = t1w or t2w
     num_files = len(anat_files)
     workflow = LiterateWorkflow(name=name)
