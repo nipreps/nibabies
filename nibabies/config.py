@@ -570,6 +570,8 @@ class workflow(_Config):
     """Threshold for DVARS."""
     regressors_fd_th = None
     """Threshold for :abbr:`FD (frame-wise displacement)`."""
+    run_msmsulc = False
+    """Run Multimodal Surface Matching surface registration."""
     run_reconall = True
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
@@ -596,6 +598,12 @@ class workflow(_Config):
     use_syn_sdc = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation
     in the absence of any alternatives."""
+
+    @classmethod
+    def init(cls):
+        # Avoid additional runtime if not required
+        if not cls.cifti_output:
+            cls.run_msmsulc = False
 
 
 class loggers:

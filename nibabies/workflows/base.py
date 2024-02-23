@@ -356,6 +356,7 @@ It is released under the [CC0]\
         freesurfer=config.workflow.run_reconall,
         hires=config.workflow.hires,
         longitudinal=config.workflow.longitudinal,
+        msm_sulc=config.workflow.run_msmsulc,
         omp_nthreads=config.nipype.omp_nthreads,
         output_dir=nibabies_dir,
         segmentation_atlases=config.execution.segmentation_atlases_dir,
