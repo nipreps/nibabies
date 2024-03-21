@@ -70,7 +70,6 @@ class Derivatives:
         output = ["Derivatives |"]
         output.extend([f"  {attr}: {getattr(self, attr)}" for attr in self.names])
         return '\n'.join(output)
-        #return '\n'.join(f"{name}: {getattr(self, name)}" for name in self.names)
 
     def __contains__(self, val: str):
         return val in self.names
