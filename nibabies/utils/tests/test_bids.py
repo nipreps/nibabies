@@ -99,6 +99,7 @@ def test_derivatives(
     assert derivatives.aseg is None
     assert derivatives.t1w_aseg is None
     assert derivatives.t2w_aseg is None
+    assert "t1w_mask" in repr(derivatives)
 
     derivatives.populate(deriv_dir, subject_id='01')
     if mask:
@@ -111,3 +112,5 @@ def test_derivatives(
         assert derivatives.references[aseg]
     else:
         assert derivatives.aseg == None
+    if t1w_mask:
+        assert "sub-01_space-T1w_desc-brain_mask.nii.gz" in repr(derivatives)
