@@ -67,7 +67,9 @@ class Derivatives:
             setattr(self, name, None)
 
     def __repr__(self):
-        return '\n'.join([name for name in self.names if getattr(self, name)])
+        output = ["Derivatives |"]
+        output.extend([f"  {attr}: {getattr(self, attr)}" for attr in self.names])
+        return '\n'.join(output)
 
     def __contains__(self, val: str):
         return val in self.names
