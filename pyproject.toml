@@ -14,6 +14,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 license = {file = "LICENSE"}
 requires-python = ">=3.10"
@@ -23,19 +24,16 @@ dependencies = [
     "nireports >= 23.2.0",
     "nitime",
     "nitransforms >= 23.0.1",
-    "niworkflows >= 1.9.0",
-#    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@master",
+    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@master",
     "numpy >= 1.21.0",
     "packaging",
     "pandas",
     "psutil >= 5.4",
     "pybids >= 0.15.0",
     "requests",
-    "sdcflows ~= 2.5.2",
-#    "sdcflows @ git+https://github.com/nipreps/sdcflows.git@master",
-    "smriprep ~= 0.12.1",
-#    "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
-    "tedana >= 0.0.12",
+    "sdcflows @ git+https://github.com/nipreps/sdcflows.git@master",
+    "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
+    "tedana >= 23.0.2",
     "templateflow >= 24.2.0",
     "toml",
 ]
@@ -97,6 +95,10 @@ raw-options = { version_scheme = "nipreps-calver" }
 [tool.hatch.build.hooks.vcs]
 version-file = "nibabies/_version.py"
 
+#
+# Developer tool configurations
+#
+
 [tool.black]
 line-length = 99
 skip-string-normalization = true
@@ -121,3 +123,48 @@ doctest_optionflags = "ALLOW_UNICODE NORMALIZE_WHITESPACE ELLIPSIS"
 env = "PYTHONHASHSEED=0"
 filterwarnings = ["ignore::DeprecationWarning"]
 junit_family = "xunit2"
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+extend-select = [
+  "F",
+  "E",
+  "W",
+  "I",
+  "UP",
+  "YTT",
+  "S",
+  "BLE",
+  "B",
+  "A",
+  # "CPY",
+  "C4",
+  "DTZ",
+  "T10",
+  # "EM",
+  "EXE",
+  "FA",
+  "ISC",
+  "ICN",
+  "PT",
+  "Q",
+]
+extend-ignore = [
+  "S311",  # We are not using random for cryptographic purposes
+  "ISC001",
+  "S603",
+]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.lint.extend-per-file-ignores]
+"*/test_*.py" = ["S101"]
+"fmriprep/utils/debug.py" = ["A002", "T100"]
+"docs/conf.py" = ["A001"]
+"docs/sphinxext/github_link.py" = ["BLE001"]
+
+[tool.ruff.format]
+quote-style = "single"
