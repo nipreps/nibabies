@@ -57,6 +57,7 @@ from nibabies.utils.bids import parse_bids_for_age_months
 from nibabies.workflows.bold import init_func_preproc_wf
 
 if ty.TYPE_CHECKING:
+    from bids.layout import BIDSLayout
     from niworkflows.utils.spaces import SpatialReferences
 
 
@@ -90,7 +91,7 @@ def init_nibabies_wf(subworkflows_list):
     from niworkflows.interfaces.bids import BIDSFreeSurferDir
 
     ver = Version(config.environment.version)
-    nibabies_wf = Workflow(name=f"nibabies_{ver.major}_{ver.minor}_wf")
+    nibabies_wf = Workflow(name=f'nibabies_{ver.major}_{ver.minor}_wf')
     nibabies_wf.base_dir = config.execution.work_dir
 
     execution_spaces = init_execution_spaces()
@@ -100,7 +101,7 @@ def init_nibabies_wf(subworkflows_list):
         fsdir = pe.Node(
             BIDSFreeSurferDir(
                 derivatives=config.execution.output_dir,
-                freesurfer_home=os.getenv("FREESURFER_HOME"),
+                freesurfer_home=os.getenv('FREESURFER_HOME'),
                 spaces=execution_spaces.get_fs_spaces(),
             ),
             name=f"fsdir_run_{config.execution.run_uuid.replace('-', '_')}",
@@ -114,13 +115,13 @@ def init_nibabies_wf(subworkflows_list):
         age = parse_bids_for_age_months(config.execution.bids_dir, subject_id, session_id)
         if config.workflow.age_months:
             config.loggers.cli.warning(
-                "`--age-months` is deprecated and will be removed in a future release."
-                "Please use a `sessions.tsv` or `participants.tsv` file to track participants age."
+                '`--age-months` is deprecated and will be removed in a future release.'
+                'Please use a `sessions.tsv` or `participants.tsv` file to track participants age.'
             )
             age = config.workflow.age_months
         if age is None:
             raise RuntimeError(
-                "Could not find age for sub-{subject}{session}".format(
+                'Could not find age for sub-{subject}{session}'.format(
                     subject=subject_id, session=f'_ses-{session_id}' if session_id else ''
                 )
             )
@@ -134,25 +135,25 @@ def init_nibabies_wf(subworkflows_list):
             spaces=output_spaces,
         )
 
-        bids_level = [f"sub-{subject_id}"]
+        bids_level = [f'sub-{subject_id}']
         if session_id:
-            bids_level.append(f"ses-{session_id}")
+            bids_level.append(f'ses-{session_id}')
 
         log_dir = (
-            config.execution.nibabies_dir.joinpath(*bids_level) / "log" / config.execution.run_uuid
+            config.execution.nibabies_dir.joinpath(*bids_level) / 'log' / config.execution.run_uuid
         )
 
-        single_subject_wf.config["execution"]["crashdump_dir"] = str(log_dir)
+        single_subject_wf.config['execution']['crashdump_dir'] = str(log_dir)
         for node in single_subject_wf._get_all_nodes():
             node.config = deepcopy(single_subject_wf.config)
         if freesurfer:
-            nibabies_wf.connect(fsdir, "subjects_dir", single_subject_wf, "inputnode.subjects_dir")
+            nibabies_wf.connect(fsdir, 'subjects_dir', single_subject_wf, 'inputnode.subjects_dir')
         else:
             nibabies_wf.add_nodes([single_subject_wf])
 
         # Dump a copy of the config file into the log directory
         log_dir.mkdir(exist_ok=True, parents=True)
-        config.to_filename(log_dir / "nibabies.toml")
+        config.to_filename(log_dir / 'nibabies.toml')
 
     return nibabies_wf
 
@@ -209,9 +210,9 @@ def init_single_subject_wf(
     from .anatomical import init_infant_anat_wf, init_infant_single_anat_wf
 
     name = (
-        f"single_subject_{subject_id}_{session_id}_wf"
+        f'single_subject_{subject_id}_{session_id}_wf'
         if session_id
-        else f"single_subject_{subject_id}_wf"
+        else f'single_subject_{subject_id}_wf'
     )
     subject_data = collect_data(
         config.execution.layout,
@@ -222,51 +223,56 @@ def init_single_subject_wf(
         bids_filters=config.execution.bids_filters,
     )[0]
 
-    if "flair" in config.workflow.ignore:
-        subject_data["flair"] = []
-    if "t2w" in config.workflow.ignore:
-        subject_data["t2w"] = []
+    if 'flair' in config.workflow.ignore:
+        subject_data['flair'] = []
+    if 't2w' in config.workflow.ignore:
+        subject_data['t2w'] = []
 
     anat_only = config.workflow.anat_only
     derivatives = Derivatives(bids_root=config.execution.layout.root)
-    contrast = "T1w" if subject_data["t1w"] else "T2w"
+    contrast = 'T1w' if subject_data['t1w'] else 'T2w'
     single_modality = not (subject_data['t1w'] and subject_data['t2w'])
     # Make sure we always go through these two checks
-    if not anat_only and not subject_data["bold"]:
+    if not anat_only and not subject_data['bold']:
         task_id = config.execution.task_id
         raise RuntimeError(
-            "No BOLD images found for participant {} and task {}. "
-            "All workflows require BOLD images.".format(
-                subject_id, task_id if task_id else "<all>"
+            'No BOLD images found for participant {} and task {}. '
+            'All workflows require BOLD images.'.format(
+                subject_id, task_id if task_id else '<all>'
             )
         )
 
+    # bold_runs = [
+    #     sorted(
+    #         listify(run),
+    #         key=lambda fl: config.execution.layout.get_metadata(fl).get('EchoTime', 0),
+    #     )
+    #     for run in subject_data['bold']
+    # ]
+
     if config.execution.derivatives:
         for deriv_path in config.execution.derivatives:
-            config.loggers.workflow.info("Searching for derivatives in %s", deriv_path)
+            config.loggers.workflow.info('Searching for derivatives in %s', deriv_path)
             derivatives.populate(
                 deriv_path,
                 subject_id,
                 session_id=session_id,
             )
-        config.loggers.workflow.info("Found precomputed derivatives %s", derivatives)
+        config.loggers.workflow.info('Found precomputed derivatives %s', derivatives)
 
     workflow = Workflow(name=name)
-    workflow.__desc__ = """
+    workflow.__desc__ = f"""
 Results included in this manuscript come from preprocessing
-performed using *NiBabies* {nibabies_ver},
+performed using *NiBabies* {config.environment.version},
 derived from fMRIPrep (@fmriprep1; @fmriprep2; RRID:SCR_016216).
-The underlying workflow engine used is *Nipype* {nipype_ver}
+The underlying workflow engine used is *Nipype* {config.environment.nipype_version}
 (@nipype1; @nipype2; RRID:SCR_002502).
 
-""".format(
-        nibabies_ver=config.environment.version,
-        nipype_ver=config.environment.nipype_version,
-    )
-    workflow.__postdesc__ = """
+"""
+    workflow.__postdesc__ = f"""
 
 Many internal operations of *NiBabies* use
-*Nilearn* {nilearn_ver} [@nilearn, RRID:SCR_001362],
+*Nilearn* {NILEARN_VERSION} [@nilearn, RRID:SCR_001362],
 mostly within the functional processing workflow.
 For more details of the pipeline, see [the section corresponding
 to workflows in *nibabies*'s documentation]\
@@ -284,13 +290,11 @@ It is released under the [CC0]\
 
 ### References
 
-""".format(
-        nilearn_ver=NILEARN_VERSION
-    )
+"""
 
     nibabies_dir = str(config.execution.nibabies_dir)
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=["subjects_dir"]), name="inputnode")
+    inputnode = pe.Node(niu.IdentityInterface(fields=['subjects_dir']), name='inputnode')
 
     # TODO: Revisit T1w/T2w restrictions for BIDSDataGrabber
     bidssrc = pe.Node(
@@ -300,12 +304,12 @@ It is released under the [CC0]\
             anat_derivatives=False,
             subject_id=subject_id,
         ),
-        name="bidssrc",
+        name='bidssrc',
     )
 
     bids_info = pe.Node(
         BIDSInfo(bids_dir=config.execution.bids_dir, bids_validate=False),
-        name="bids_info",
+        name='bids_info',
     )
 
     summary = pe.Node(
@@ -313,58 +317,58 @@ It is released under the [CC0]\
             std_spaces=spaces.get_spaces(nonstandard=False),
             nstd_spaces=spaces.get_spaces(standard=False),
         ),
-        name="summary",
+        name='summary',
         run_without_submitting=True,
     )
 
     about = pe.Node(
-        AboutSummary(version=config.environment.version, command=" ".join(sys.argv)),
-        name="about",
+        AboutSummary(version=config.environment.version, command=' '.join(sys.argv)),
+        name='about',
         run_without_submitting=True,
     )
 
     ds_report_summary = pe.Node(
         DerivativesDataSink(
             base_directory=nibabies_dir,
-            desc="summary",
-            datatype="figures",
-            dismiss_entities=("echo",),
+            desc='summary',
+            datatype='figures',
+            dismiss_entities=('echo',),
         ),
-        name="ds_report_summary",
+        name='ds_report_summary',
         run_without_submitting=True,
     )
 
     ds_report_about = pe.Node(
         DerivativesDataSink(
             base_directory=nibabies_dir,
-            desc="about",
-            datatype="figures",
-            dismiss_entities=("echo",),
+            desc='about',
+            datatype='figures',
+            dismiss_entities=('echo',),
         ),
-        name="ds_report_about",
+        name='ds_report_about',
         run_without_submitting=True,
     )
 
-    wf_args = dict(
-        ants_affine_init=True,
-        age_months=age,
-        contrast=contrast,
-        t1w=subject_data["t1w"],
-        t2w=subject_data["t2w"],
-        bids_root=config.execution.bids_dir,
-        derivatives=derivatives,
-        freesurfer=config.workflow.run_reconall,
-        hires=config.workflow.hires,
-        longitudinal=config.workflow.longitudinal,
-        omp_nthreads=config.nipype.omp_nthreads,
-        output_dir=nibabies_dir,
-        segmentation_atlases=config.execution.segmentation_atlases_dir,
-        skull_strip_mode=config.workflow.skull_strip_t1w,
-        skull_strip_template=Reference.from_string(config.workflow.skull_strip_template)[0],
-        sloppy=config.execution.sloppy,
-        spaces=spaces,
-        cifti_output=config.workflow.cifti_output,
-    )
+    wf_args = {
+        'ants_affine_init': True,
+        'age_months': age,
+        'contrast': contrast,
+        't1w': subject_data['t1w'],
+        't2w': subject_data['t2w'],
+        'bids_root': config.execution.bids_dir,
+        'derivatives': derivatives,
+        'freesurfer': config.workflow.run_reconall,
+        'hires': config.workflow.hires,
+        'longitudinal': config.workflow.longitudinal,
+        'omp_nthreads': config.nipype.omp_nthreads,
+        'output_dir': nibabies_dir,
+        'segmentation_atlases': config.execution.segmentation_atlases_dir,
+        'skull_strip_mode': config.workflow.skull_strip_t1w,
+        'skull_strip_template': Reference.from_string(config.workflow.skull_strip_template)[0],
+        'sloppy': config.execution.sloppy,
+        'spaces': spaces,
+        'cifti_output': config.workflow.cifti_output,
+    }
     anat_preproc_wf = (
         init_infant_anat_wf(**wf_args)
         if not single_modality
@@ -419,8 +423,8 @@ It is released under the [CC0]\
 
     # Overwrite ``out_path_base`` of smriprep's DataSinks
     for node in workflow.list_node_names():
-        if node.split(".")[-1].startswith("ds_"):
-            workflow.get_node(node).interface.out_path_base = ""
+        if node.split('.')[-1].startswith('ds_'):
+            workflow.get_node(node).interface.out_path_base = ''
 
     if anat_only:
         return workflow
@@ -428,9 +432,9 @@ It is released under the [CC0]\
     # Susceptibility distortion correction
     fmap_estimators = None
     if any((config.workflow.use_syn_sdc, config.workflow.force_syn)):
-        config.loggers.workflow.critical("SyN processing is not yet implemented.")
+        config.loggers.workflow.critical('SyN processing is not yet implemented.')
 
-    if "fieldmaps" not in config.workflow.ignore:
+    if 'fieldmaps' not in config.workflow.ignore:
         from sdcflows.utils.wrangler import find_estimators
 
         # SDC Step 1: Run basic heuristics to identify available data for fieldmap estimation
@@ -445,7 +449,7 @@ It is released under the [CC0]\
 
     # Append the functional section to the existing anatomical exerpt
     # That way we do not need to stream down the number of bold datasets
-    anat_preproc_wf.__postdesc__ = getattr(anat_preproc_wf, '__postdesc__') or ''
+    anat_preproc_wf.__postdesc__ = anat_preproc_wf.__postdesc__ or ''
     func_pre_desc = f"""
 
 Functional data preprocessing
@@ -460,7 +464,7 @@ tasks and sessions), the following preprocessing was performed."""
         if func_preproc_wf is None:
             continue
 
-        func_preproc_wf.__desc__ = func_pre_desc + (getattr(func_preproc_wf, '__desc__') or '')
+        func_preproc_wf.__desc__ = func_pre_desc + (func_preproc_wf.__desc__ or '')
         # fmt:off
         workflow.connect([
             (anat_preproc_wf, func_preproc_wf, [
@@ -491,13 +495,13 @@ tasks and sessions), the following preprocessing was performed."""
 
     if not has_fieldmap:
         config.loggers.workflow.warning(
-            "Data for fieldmap estimation not present. Please note that these data "
-            "will not be corrected for susceptibility distortions."
+            'Data for fieldmap estimation not present. Please note that these data '
+            'will not be corrected for susceptibility distortions.'
         )
         return workflow
 
     config.loggers.workflow.info(
-        f"Fieldmap estimators found: {[e.method for e in fmap_estimators]}"
+        f'Fieldmap estimators found: {[e.method for e in fmap_estimators]}'
     )
 
     from sdcflows import fieldmaps as fm
@@ -505,7 +509,7 @@ tasks and sessions), the following preprocessing was performed."""
 
     fmap_wf = init_fmap_preproc_wf(
         sloppy=bool(config.execution.sloppy),
-        debug="fieldmaps" in config.execution.debug,
+        debug='fieldmaps' in config.execution.debug,
         estimators=fmap_estimators,
         omp_nthreads=config.nipype.omp_nthreads,
         output_dir=nibabies_dir,
@@ -523,20 +527,20 @@ BIDS structure for this particular subject.
         # fmt: off
         workflow.connect([
             (fmap_wf, func_preproc_wf, [
-                ("outputnode.fmap", "inputnode.fmap"),
-                ("outputnode.fmap_ref", "inputnode.fmap_ref"),
-                ("outputnode.fmap_coeff", "inputnode.fmap_coeff"),
-                ("outputnode.fmap_mask", "inputnode.fmap_mask"),
-                ("outputnode.fmap_id", "inputnode.fmap_id"),
-                ("outputnode.method", "inputnode.sdc_method"),
+                ('outputnode.fmap', 'inputnode.fmap'),
+                ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
+                ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
+                ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
+                ('outputnode.fmap_id', 'inputnode.fmap_id'),
+                ('outputnode.method', 'inputnode.sdc_method'),
             ]),
         ])
         # fmt: on
 
     # Overwrite ``out_path_base`` of sdcflows's DataSinks
     for node in fmap_wf.list_node_names():
-        if node.split(".")[-1].startswith("ds_"):
-            fmap_wf.get_node(node).interface.out_path_base = ""
+        if node.split('.')[-1].startswith('ds_'):
+            fmap_wf.get_node(node).interface.out_path_base = ''
 
     # Step 3: Manually connect PEPOLAR
     for estimator in fmap_estimators:
@@ -551,27 +555,28 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
         suffices = [s.suffix for s in estimator.sources]
 
         if estimator.method == fm.EstimatorType.PEPOLAR:
-            if set(suffices) == {"epi"} or sorted(suffices) == ["bold", "epi"]:
-                fmap_wf_inputs = getattr(fmap_wf.inputs, f"in_{estimator.bids_id}")
+            if set(suffices) == {'epi'} or sorted(suffices) == ['bold', 'epi']:
+                fmap_wf_inputs = getattr(fmap_wf.inputs, f'in_{estimator.bids_id}')
                 fmap_wf_inputs.in_data = [str(s.path) for s in estimator.sources]
                 fmap_wf_inputs.metadata = [s.metadata for s in estimator.sources]
             else:
                 raise NotImplementedError(
-                    "Sophisticated PEPOLAR schemes (e.g., using DWI+EPI) are unsupported."
+                    'Sophisticated PEPOLAR schemes (e.g., using DWI+EPI) are unsupported.'
                 )
 
     return workflow
 
 
 def _prefix(subid):
-    return subid if subid.startswith("sub-") else f"sub-{subid}"
+    return subid if subid.startswith('sub-') else f'sub-{subid}'
 
 
 def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
     """
     Create output spaces at a per-subworkflow level.
 
-    This address the case where a multi-session subject is run, and requires separate template cohorts.
+    This address the case where a multi-session subject is run,
+    and requires separate template cohorts.
     """
     from niworkflows.utils.spaces import Reference
 
@@ -580,12 +585,12 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
     spaces = deepcopy(execution_spaces)
 
     if age_months is None:
-        raise RuntimeError("Participant age (in months) is required.")
+        raise RuntimeError('Participant age (in months) is required.')
 
     if not spaces.references:
         # Ensure age specific template is added if nothing is present
-        cohort = cohort_by_months("MNIInfant", age_months)
-        spaces.add(("MNIInfant", {"res": "native", "cohort": cohort}))
+        cohort = cohort_by_months('MNIInfant', age_months)
+        spaces.add(('MNIInfant', {'res': 'native', 'cohort': cohort}))
 
     if not spaces.is_cached():
         spaces.checkpoint()
@@ -595,15 +600,15 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
     # These spaces will not be included in the final outputs.
     if config.workflow.use_aroma:
         # Make sure there's a normalization to FSL for AROMA to use.
-        spaces.add(Reference("MNI152NLin6Asym", {"res": "2"}))
+        spaces.add(Reference('MNI152NLin6Asym', {'res': '2'}))
 
     if config.workflow.cifti_output:
         # CIFTI grayordinates to corresponding FSL-MNI resolutions.
-        vol_res = "2" if config.workflow.cifti_output == "91k" else "1"
-        spaces.add(Reference("MNI152NLin6Asym", {"res": vol_res}))
+        vol_res = '2' if config.workflow.cifti_output == '91k' else '1'
+        spaces.add(Reference('MNI152NLin6Asym', {'res': vol_res}))
         # Ensure a non-native version of MNIInfant is added as a target
-        cohort = cohort_by_months("MNIInfant", age_months)
-        spaces.add(Reference("MNIInfant", {"cohort": cohort}))
+        cohort = cohort_by_months('MNIInfant', age_months)
+        spaces.add(Reference('MNIInfant', {'cohort': cohort}))
 
     return spaces
 
@@ -614,6 +619,100 @@ def init_execution_spaces():
     spaces = config.execution.output_spaces or SpatialReferences()
     if not isinstance(spaces, SpatialReferences):
         spaces = SpatialReferences(
-            [ref for s in spaces.split(" ") for ref in Reference.from_string(s)]
+            [ref for s in spaces.split(' ') for ref in Reference.from_string(s)]
         )
     return spaces
+
+
+def map_fieldmap_estimation(
+    layout: BIDSLayout,
+    subject_id: str,
+    bold_data: list[list[str]],
+    ignore_fieldmaps: bool,
+    use_syn: bool | str,
+    force_syn: bool,
+    filters: dict | None,
+) -> tuple[list, dict]:
+    if not any((not ignore_fieldmaps, use_syn, force_syn)):
+        return [], {}
+
+    from sdcflows import fieldmaps as fm
+    from sdcflows.utils.wrangler import find_estimators
+
+    # In the case where fieldmaps are ignored and `--use-syn-sdc` is requested,
+    # SDCFlows `find_estimators` still receives a full layout (which includes the fmap modality)
+    # and will not calculate fmapless schemes.
+    # Similarly, if fieldmaps are ignored and `--force-syn` is requested,
+    # `fmapless` should be set to True to ensure BOLD targets are found to be corrected.
+    fmap_estimators = find_estimators(
+        layout=layout,
+        subject=subject_id,
+        fmapless=bool(use_syn) or ignore_fieldmaps and force_syn,
+        force_fmapless=force_syn or ignore_fieldmaps and use_syn,
+        bids_filters=filters,
+    )
+
+    if not fmap_estimators:
+        if use_syn:
+            message = (
+                'Fieldmap-less (SyN) estimation was requested, but PhaseEncodingDirection '
+                'information appears to be absent.'
+            )
+            config.loggers.workflow.error(message)
+            if use_syn == 'error':
+                raise ValueError(message)
+        return [], {}
+
+    if ignore_fieldmaps and any(f.method == fm.EstimatorType.ANAT for f in fmap_estimators):
+        config.loggers.workflow.info(
+            'Option "--ignore fieldmaps" was set, but either "--use-syn-sdc" '
+            'or "--force-syn" were given, so fieldmap-less estimation will be executed.'
+        )
+        fmap_estimators = [f for f in fmap_estimators if f.method == fm.EstimatorType.ANAT]
+
+    # Pare down estimators to those that are actually used
+    # If fmap_estimators == [], all loops/comprehensions terminate immediately
+    all_ids = {fmap.bids_id for fmap in fmap_estimators}
+    bold_files = (bold_series[0] for bold_series in bold_data)
+
+    all_estimators = {
+        bold_file: [fmap_id for fmap_id in get_estimator(layout, bold_file) if fmap_id in all_ids]
+        for bold_file in bold_files
+    }
+
+    for bold_file, estimator_key in all_estimators.items():
+        if len(estimator_key) > 1:
+            config.loggers.workflow.warning(
+                f"Several fieldmaps <{', '.join(estimator_key)}> are "
+                f"'IntendedFor' <{bold_file}>, using {estimator_key[0]}"
+            )
+            estimator_key[1:] = []
+
+    # Final, 1-1 map, dropping uncorrected BOLD
+    estimator_map = {
+        bold_file: estimator_key[0]
+        for bold_file, estimator_key in all_estimators.items()
+        if estimator_key
+    }
+
+    fmap_estimators = [f for f in fmap_estimators if f.bids_id in estimator_map.values()]
+
+    return fmap_estimators, estimator_map
+
+
+def get_estimator(layout, fname):
+    field_source = layout.get_metadata(fname).get('B0FieldSource')
+    if isinstance(field_source, str):
+        field_source = (field_source,)
+
+    if field_source is None:
+        import re
+        from pathlib import Path
+
+        from sdcflows.fieldmaps import get_identifier
+
+        # Fallback to IntendedFor
+        intended_rel = re.sub(r'^sub-[a-zA-Z0-9]*/', '', str(Path(fname).relative_to(layout.root)))
+        field_source = get_identifier(intended_rel)
+
+    return field_source
