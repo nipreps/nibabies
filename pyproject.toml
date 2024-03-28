@@ -36,7 +36,7 @@ dependencies = [
     "smriprep ~= 0.12.1",
 #    "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
     "tedana >= 0.0.12",
-    "templateflow >= 0.6",
+    "templateflow >= 24.2.0",
     "toml",
 ]
 dynamic = ["version"]
