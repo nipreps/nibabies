@@ -9,11 +9,14 @@ from niworkflows.interfaces.nibabel import ApplyMask
 from niworkflows.utils.connections import pop_file
 from smriprep.workflows.anatomical import init_anat_template_wf
 from smriprep.workflows.outputs import (
+    init_ds_dseg_wf,
     init_ds_mask_wf,
     init_ds_template_wf,
+    init_ds_tpms_wf,
 )
 
 from nibabies import config
+from nibabies.workflows.anatomical.registration import init_coregistration_wf
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
 
 LOGGER = logging.getLogger('nipype.workflow')
@@ -149,17 +152,17 @@ def init_infant_anat_fit_wf(
             ]
         )
     )
-    # t1w_buffer = pe.Node(
-    #     niu.IdentityInterface(fields=['t1w_preproc', 't1w_mask', 't1w_brain']),
-    #     name='t1w_buffer',
-    # )
-    # t2w_buffer = pe.Node(
-    #     niu.IdentityInterface(fields=['t2w_preproc', 't2w_mask', 't2w_brain'])
-    # )
 
-    # Stage 3 - Coregistration
-    t1w2t2w_buffer = pe.Node(niu.Merge(2), name='t1w2t2w_buffer')
-    t2w2t1w_buffer = pe.Node(niu.Merge(2), name='t2w2t1w_buffer')
+    # At this point, we should decide which anatomical we will be using going forward:
+    # This will depend on the age of the participant, as myelination should be somewhat complete
+    # by 9+ months
+    image_type = 't2w' if age_months >= 9 else 't1w'
+
+    # Stage 3 - Coregistration transforms
+    coreg_buffer = pe.Node(
+        niu.IdentityInterface(fields=['t1w2t2w_xfm', 't2w2t1w_xfm']),
+        name='coreg_buffer',
+    )
 
     # Stage 4 - Segmentation
     seg_buffer = pe.Node(
@@ -386,7 +389,7 @@ def init_infant_anat_fit_wf(
             workflow.connect([
                 (refined_buffer, transform_t2w_mask, [('t2w_mask', 'input_image')]),
                 (anat_buffer, transform_t2w_mask, [('t2w_preproc', 'reference_image')]),
-                (t2w2t1w_buffer, transform_t2w_mask, [('t2w2t1w_xfm', 'transforms')]),
+                (coreg_buffer, transform_t2w_mask, [('t2w2t1w_xfm', 'transforms')]),
                 (transform_t2w_mask, apply_t1w_mask, [('output_image', 'in_file')]),
             ])  # fmt:skip
 
@@ -449,7 +452,7 @@ def init_infant_anat_fit_wf(
             workflow.connect([
                 (refined_buffer, transform_t2w_mask, [('t1w_mask', 'input_image')]),
                 (anat_buffer, transform_t2w_mask, [('t2w_preproc', 'reference_image')]),
-                (t2w2t1w_buffer, transform_t2w_mask, [('t2w2t1w_xfm', 'transforms')]),
+                (coreg_buffer, transform_t2w_mask, [('t2w2t1w_xfm', 'transforms')]),
                 (transform_t2w_mask, apply_t2w_mask, [('output_image', 'in_file')]),
                 (apply_t2w_mask, refined_buffer, [('out_file', 't2w_mask')]),
             ])  # fmt:skip
@@ -525,17 +528,13 @@ def init_infant_anat_fit_wf(
             ]),
         ])  # fmt:skip
 
-    # At this point, we should decide which anatomical we will be using going forward:
-    # This will depend on the age of the participant, as myelination should be somewhat complete
-    # by 9+ months
-    image_type = 't2w' if age_months >= 9 else 't1w'
+    # Stage 4: Segmentation
+    anat_dseg = getattr(precomputed, f'{image_type}_dseg', None)
+    anat_tpms = getattr(precomputed, f'{image_type}_tpms', None)
     anat_aseg = getattr(precomputed, f'{image_type}_aseg', False)
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
 
-    # Stage 4: Segmentation
-    have_dseg = precomputed.t1w_dseg or precomputed.t2w_dseg
-    have_tpms = precomputed.t1w_tpms or precomputed.t2w_tpms
-    if not (have_dseg and have_tpms):
+    if not (anat_dseg and anat_tpms):
         LOGGER.info('ANAT Stage 4: Tissue segmentation')
         segmentation_wf = init_segmentation_wf(
             sloppy=sloppy,
@@ -555,9 +554,43 @@ def init_infant_anat_fit_wf(
         if anat_aseg or seg_method == 'jlf':
             workflow.connect(segmentation_wf, 'outputnode.anat_aseg', seg_buffer, 'anat_aseg')
             if anat_aseg:
+                LOGGER.info('ANAT Found precomputed anatomical segmentation')
                 segmentation_wf.inputs.inputnode.anat_aseg = anat_aseg
 
         # TODO: datasink
+        if not anat_dseg:
+            ds_dseg_wf = init_ds_dseg_wf(output_dir=output_dir)
+            workflow.connect([
+                (sourcefile_buffer, ds_dseg_wf, [
+                    ('anat_source_files', 'inputnode.source_files'),
+                ]),
+                (segmentation_wf, ds_dseg_wf, [
+                    ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ]),
+                (ds_dseg_wf, seg_buffer, [('outputnode.anat_dseg', 'anat_dseg')]),
+            ])  # fmt:skip
+
+        if not anat_tpms:
+            ds_tpms_wf = init_ds_tpms_wf(output_dir=output_dir)
+            workflow.connect([
+                (sourcefile_buffer, ds_dseg_wf, [
+                    ('anat_source_files', 'inputnode.source_files'),
+                ]),
+                (segmentation_wf, ds_tpms_wf, [
+                    ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                ]),
+                (ds_tpms_wf, seg_buffer, [('outputnode.anat_tpms', 'anat_tpms')]),
+            ])  # fmt:skip
+    else:
+        LOGGER.info('ANAT Skipping segmentation workflow')
+    if anat_dseg:
+        LOGGER.info('ANAT Found discrete segmentation')
+        desc += 'Precomputed discrete tissue segmentations were provided as inputs.\n'
+        seg_buffer.inputs.anat_dseg = anat_dseg
+    if anat_tpms:
+        LOGGER.info('ANAT Found tissue probability maps')
+        desc += 'Precomputed tissue probabiilty maps were provided as inputs.\n'
+        seg_buffer.inputs.anat_tpms = anat_tpms
 
     workflow.__desc__ = desc
     return workflow
