@@ -75,11 +75,8 @@ def init_segmentation_wf(
 
     # Otherwise, segment tissue based on subcortical segmentation
     if has_aseg:
-        workflow.connect(
-            [
-                (inputnode, aseg_buffer, [('anat_aseg', 'anat_aseg')]),
-            ]
-        )
+        LOGGER.info('ANAT Segmentation: Using existing segmentation')
+        workflow.connect(inputnode, 'anat_aseg', aseg_buffer, 'anat_aseg')
 
     elif method == 'jlf':
         if not jlf_template_dir or not Path(jlf_template_dir).exists():
