@@ -482,14 +482,23 @@ def init_infant_anat_wf(
         # fsaverage to fsLR
         sphere_reg_wf = init_sphere_reg_wf()
 
-        # fmt:off
         wf.connect([
             (t2w_preproc_wf, surface_recon_wf, [
                 ("outputnode.anat_preproc", "inputnode.t2w")]),
-            (anat_seg_wf, surface_recon_wf, [
-                ("outputnode.anat_aseg", "inputnode.ants_segs")]),
         ])
-        # fmt:on
+
+        if recon_method == 'infantfs':
+            wf.connect([
+                (anat_seg_wf, surface_recon_wf, [
+                    ("outputnode.anat_aseg", "inputnode.ants_segs"),
+                ]),
+            ])  # fmt:skip
+        if recon_method == 'freesurfer':
+            wf.connect([
+                (anat_seg_wf, surface_recon_wf, [
+                    ("outputnode.anat_dseg", "inputnode.ants_segs"),
+                ])
+            ])  # fmt:skip
 
     # Anatomical ribbon file using HCP signed-distance volume method
     anat_ribbon_wf = init_anat_ribbon_wf()
