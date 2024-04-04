@@ -1,4 +1,6 @@
 import logging
+import typing as ty
+from pathlib import Path
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -8,37 +10,44 @@ from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask
 from niworkflows.utils.connections import pop_file
 from smriprep.workflows.anatomical import init_anat_template_wf
+from smriprep.workflows.fit.registration import init_register_template_wf
 from smriprep.workflows.outputs import (
     init_ds_dseg_wf,
     init_ds_mask_wf,
     init_ds_template_wf,
+    init_ds_template_registration_wf,
     init_ds_tpms_wf,
 )
-
 from nibabies import config
 from nibabies.workflows.anatomical.registration import init_coregistration_wf
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
+
+
+if ty.TYPE_CHECKING:
+    from nibabies.utils.bids import Derivatives
+    from niworkflows.utils.spaces import Reference, SpatialReferences
 
 LOGGER = logging.getLogger('nipype.workflow')
 
 
 def init_infant_anat_fit_wf(
-    age_months,
-    t1w,
-    t2w,
-    bids_root,
-    precomputed,
-    hires,
-    longitudinal,
-    omp_nthreads,
-    output_dir,
-    segmentation_atlases,
-    skull_strip_mode,
-    skull_strip_template,
-    sloppy,
-    spaces,
-    cifti_output,
-    name='infant_anat_fit_wf',
+    age_months: int,
+    t1w: list,
+    t2w: list,
+    bids_root: Path,
+    precomputed: Derivatives,
+    hires: bool,
+    longitudinal: bool,
+    omp_nthreads: int,
+    output_dir: Path,
+    segmentation_atlases: Path | None,
+    skull_strip_mode: ty.Literal['auto', 'skip', 'force'],
+    skull_strip_template: 'Reference',
+    sloppy: bool,
+    spaces: 'SpatialReferences',
+    recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs'] | None,
+    cifti_output: ty.Literal['91k', '170k'] | None,
+    name: str = 'infant_anat_fit_wf',
 ):
     """
     Stage the anatomical preprocessing steps:
@@ -218,7 +227,6 @@ def init_infant_anat_fit_wf(
     ])  # fmt:skip
 
     # Reporting
-    recon_method = config.workflow.surface_recon_method
     anat_reports_wf = init_anat_reports_wf(
         surface_recon=recon_method,
         output_dir=output_dir,
@@ -239,9 +247,9 @@ def init_infant_anat_fit_wf(
     ])  # fmt:skip
 
     desc = (
-        '\nAnatomical data preprocessing\n\n: ',
+        '\nAnatomical data preprocessing\n\n: '
         f'A total of {len(t1w)} T1w and {len(t2w)} T2w images '
-        'were found within the input BIDS dataset.',
+        'were found within the input BIDS dataset.'
     )
 
     # Stage 1: Conform & valid T1w/T2w images
@@ -582,7 +590,7 @@ def init_infant_anat_fit_wf(
                 (ds_tpms_wf, seg_buffer, [('outputnode.anat_tpms', 'anat_tpms')]),
             ])  # fmt:skip
     else:
-        LOGGER.info('ANAT Skipping segmentation workflow')
+        LOGGER.info('ANAT Stage 4: Skipping segmentation workflow')
     if anat_dseg:
         LOGGER.info('ANAT Found discrete segmentation')
         desc += 'Precomputed discrete tissue segmentations were provided as inputs.\n'
@@ -592,7 +600,67 @@ def init_infant_anat_fit_wf(
         desc += 'Precomputed tissue probabiilty maps were provided as inputs.\n'
         seg_buffer.inputs.anat_tpms = anat_tpms
 
+    # Stage 5: Normalization
+    templates = []
+    found_xfms = {}
+    for template in spaces.get_spaces(nonstandard=False, dim=(3,)):
+        xfms = precomputed.get('transforms', {}).get(template, {})
+        if set(xfms) != {'forward', 'reverse'}:
+            templates.append(template)
+        else:
+            found_xfms[template] = xfms
+
+    template_buffer.inputs.in1 = list(found_xfms)
+    anat2std_buffer.inputs.in1 = [xfm['forward'] for xfm in found_xfms.values()]
+    std2anat_buffer.inputs.in1 = [xfm['reverse'] for xfm in found_xfms.values()]
+
+    if templates:
+        LOGGER.info(f'ANAT Stage 5: Preparing normalization workflow for {templates}')
+        register_template_wf = init_register_template_wf(
+            sloppy=sloppy,
+            omp_nthreads=omp_nthreads,
+            templates=templates,
+        )
+        ds_template_registration_wf = init_ds_template_registration_wf(
+            output_dir=output_dir,
+            image_type=image_type.capitalize(),
+        )
+
+        workflow.connect([
+            (inputnode, register_template_wf, [('roi', 'inputnode.lesion_mask')]),
+            (anat_buffer, register_template_wf, [(f'{image_type}_preproc', 'inputnode.moving_image')]),
+            (refined_buffer, register_template_wf, [(f'{image_type}_mask', 'inputnode.moving_mask')]),
+            (sourcefile_buffer, ds_template_registration_wf, [
+                (f'{image_type}_source_files', 'inputnode.source_files')
+            ]),
+            (register_template_wf, ds_template_registration_wf, [
+                ('outputnode.template', 'inputnode.template'),
+                ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
+            ]),
+            (register_template_wf, template_buffer, [('outputnode.template', 'in2')]),
+            (ds_template_registration_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
+            (ds_template_registration_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
+        ])  # fmt:skip
+    if found_xfms:
+        LOGGER.info(f'ANAT Stage 5: Found pre-computed registrations for {found_xfms}')
+
+    # Only refine mask if necessary
+    if anat_mask or recon_method == None:
+        workflow.connect([
+            (anat_buffer, refined_buffer, [
+                (f'{image_type}_mask', 'anat_mask'),
+                (f'{image_type}_brain', 'anat_brain'),
+            ]),
+        ])  # fmt:skip
+
     workflow.__desc__ = desc
+
+    if recon_method == None:
+        LOGGER.info('ANAT Skipping Stages 6+')
+        return workflow
+
+    # Stage 6: Surface reconstruction
     return workflow
 
 
