@@ -366,6 +366,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
                 "bold_mask_native",
                 "bold_echos_native",
                 "bold_cifti",
+                "bold_rois",
                 "bold2anat_xfm",
                 "cifti_metadata",
                 "surfaces",
@@ -456,6 +457,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             ('nonaggr_denoised_file', 'inputnode.nonaggr_denoised_file'),
             ('bold_cifti', 'inputnode.bold_cifti'),
             ('cifti_metadata', 'inputnode.cifti_metadata'),
+            ('bold_rois', 'inputnode.bold_rois'),
             ('t2star_bold', 'inputnode.t2star_bold'),
             ('t2star_t1', 'inputnode.t2star_t1'),
             ('t2star_std', 'inputnode.t2star_std'),
@@ -991,6 +993,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf` (FreeSurfe
             (subcortical_rois_wf, subcortical_mni_alignment_wf, [
                 ("outputnode.MNIInfant_rois", "inputnode.MNIInfant_rois"),
                 ("outputnode.MNI152_rois", "inputnode.MNI152_rois")]),
+            (subcortical_mni_alignment_wf, outputnode, [
+                ("outputnode.subcortical_volume", "bold_rois")]),
 
             # CIFTI surface sampling
             (inputnode, bold_fsLR_resampling_wf, [
