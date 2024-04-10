@@ -13,19 +13,21 @@ from smriprep.workflows.anatomical import init_anat_template_wf
 from smriprep.workflows.fit.registration import init_register_template_wf
 from smriprep.workflows.outputs import (
     init_ds_dseg_wf,
+    init_ds_fs_registration_wf,
     init_ds_mask_wf,
-    init_ds_template_wf,
     init_ds_template_registration_wf,
+    init_ds_template_wf,
     init_ds_tpms_wf,
 )
+
 from nibabies import config
 from nibabies.workflows.anatomical.registration import init_coregistration_wf
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
 
-
 if ty.TYPE_CHECKING:
-    from nibabies.utils.bids import Derivatives
     from niworkflows.utils.spaces import Reference, SpatialReferences
+
+    from nibabies.utils.bids import Derivatives
 
 LOGGER = logging.getLogger('nipype.workflow')
 
@@ -34,6 +36,7 @@ def init_infant_anat_fit_wf(
     age_months: int,
     t1w: list,
     t2w: list,
+    flair: list,
     bids_root: Path,
     precomputed: Derivatives,
     hires: bool,
@@ -101,7 +104,9 @@ def init_infant_anat_fit_wf(
     # All outputnode components should therefore point to files in the input or
     # output directories.
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['t1w', 't2w', 'roi', 'flair', 'subjects_dir', 'subject_id']),
+        niu.IdentityInterface(
+            fields=['t1w', 't2w', 'roi', 'flair', 'subjects_dir', 'subject_id'],
+        ),
         name='inputnode',
     )
     outputnode = pe.Node(
@@ -142,30 +147,61 @@ def init_infant_anat_fit_wf(
     # If all derivatives exist, inputnode could go unconnected, so add explicitly
     workflow.add_nodes([inputnode])
 
+    # Duplicates will be added to the sourcefile / anat buffers as `anat_...` to facilitate
+    # usage of the preferred anatomical
+
     # Stage 1 inputs (filtered)
     sourcefile_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t1w_source_files', 't2w_source_files']),
+        niu.IdentityInterface(
+            fields=['t1w_source_files', 't2w_source_files', 'anat_source_files'],
+        ),
         name='sourcefile_buffer',
     )
 
     # Stage 2 - Anatomicals
+    t1w_buffer = pe.Node(
+        niu.IdentityInterface(fields=['t1w_preproc', 't1w_mask' 't1w_brain']),
+        name='t1w_buffer',
+    )
+    t2w_buffer = pe.Node(
+        niu.IdentityInterface(fields=['t2w_preproc', 't2w_mask' 't2w_brain']),
+        name='t2w_buffer',
+    )
     anat_buffer = pe.Node(
         niu.IdentityInterface(
             fields=[
-                't1w_preproc',
-                't1w_mask',
-                't1w_brain',
-                't2w_preproc',
-                't2w_mask',
-                't2w_brain',
+                'anat_preproc',
+                'anat_mask',
+                'anat_brain',
             ]
-        )
+        ),
+        name='anat_buffer',
     )
 
-    # At this point, we should decide which anatomical we will be using going forward:
+    # At this point, we should decide which anatomical we will use as the reference space.
     # This will depend on the age of the participant, as myelination should be somewhat complete
     # by 9+ months
-    image_type = 't2w' if age_months >= 9 else 't1w'
+    reference_anat = 't2w' if age_months <= 8 else 't1w'
+    image_type = reference_anat.capitalize()
+
+    if reference_anat == 't1w':
+        LOGGER.info('ANAT: Using T1w as the reference anatomical')
+        workflow.connect([
+            (t1w_buffer, anat_buffer, [
+                ('t1w_preproc', 'anat_preproc'),
+                ('t1w_mask', 'anat_mask'),
+                ('t1w_brain', 'anat_brain'),
+            ]),
+        ])  # fmt:skip
+    elif reference_anat == 't2w':
+        LOGGER.info('ANAT: Using T2w as the reference anatomical')
+        workflow.connect([
+            (t2w_buffer, anat_buffer, [
+                ('t2w_preproc', 'anat_preproc'),
+                ('t2w_mask', 'anat_mask'),
+                ('t2w_brain', 'anat_brain'),
+            ]),
+        ])  # fmt:skip
 
     # Stage 3 - Coregistration transforms
     coreg_buffer = pe.Node(
@@ -185,7 +221,7 @@ def init_infant_anat_fit_wf(
 
     # Stage 6 results: Refined stage 2 results; may be direct copy if no refinement
     refined_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t1w_mask', 't1w_brain', 't2w_mask', 't2w_brain']),
+        niu.IdentityInterface(fields=['anat_mask', 'anat_brain']),
         name='refined_buffer',
     )
 
@@ -203,8 +239,8 @@ def init_infant_anat_fit_wf(
 
     workflow.connect([
         (seg_buffer, outputnode, [
-            ('t1w_dseg', 't1w_dseg'),
-            ('t1w_tpms', 't1w_tpms'),
+            ('anat_dseg', 'anat_dseg'),
+            ('anat_tpms', 'anat_tpms'),
         ]),
         (anat2std_buffer, outputnode, [('out', 'anat2std_xfm')]),
         (std2anat_buffer, outputnode, [('out', 'std2anat_xfm')]),
@@ -235,10 +271,10 @@ def init_infant_anat_fit_wf(
 
     workflow.connect([
         (outputnode, anat_reports_wf, [
-            ('t1w_valid_list', 'inputnode.source_file'),
-            ('t1w_preproc', 'inputnode.t1w_preproc'),
-            ('t1w_mask', 'inputnode.t1w_mask'),
-            ('t1w_dseg', 'inputnode.t1w_dseg'),
+            ('anat_valid_list', 'inputnode.source_file'),
+            ('anat_preproc', 'inputnode.anat_preproc'),
+            ('anat_mask', 'inputnode.anat_mask'),
+            ('anat_dseg', 'inputnode.anat_dseg'),
             ('template', 'inputnode.template'),
             ('anat2std_xfm', 'inputnode.anat2std_xfm'),
             ('subjects_dir', 'inputnode.subjects_dir'),
@@ -278,6 +314,12 @@ def init_infant_anat_fit_wf(
             name='ds_t1w_template_wf',
         )
 
+        if reference_anat == 't1w':
+            workflow.connect(
+                t1w_template_wf, 'outputnode.anat_valid_list',
+                sourcefile_buffer, 'anat_source_files',
+            )  # fmt:skip
+
         workflow.connect([
             (inputnode, t1w_template_wf, [('t1w', 'inputnode.anat_files')]),
             (t1w_template_wf, t1w_validate, [('outputnode.anat_ref', 'in_file')]),
@@ -298,13 +340,12 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Found preprocessed T1w - skipping Stage 1')
-        desc += (
-            ' A preprocessed T1w image was provided as a precomputed input and used as '
-            'T1w-reference through the workflow.'
-        )
+        desc += ' A preprocessed T1w image was provided as input.'
 
         t1w_validate.inputs.in_file = precomputed.t1w_preproc
-        sourcefile_buffer.inputs.source_files = [precomputed.t1w_preproc]
+        sourcefile_buffer.inputs.t1w_source_files = [precomputed.t1w_preproc]
+        if reference_anat == 't1w':
+            sourcefile_buffer.inputs.anat_source_files = [precomputed.t1w_preproc]
 
         workflow.connect([
             (t1w_validate, anat_buffer, [('out_file', 't1w_preproc')]),
@@ -333,6 +374,12 @@ def init_infant_anat_fit_wf(
             name='ds_t2w_template_wf',
         )
 
+        if reference_anat == 't2w':
+            workflow.connect(
+                t2w_template_wf, 'outputnode.anat_valid_list',
+                sourcefile_buffer, 'anat_source_files',
+            )  # fmt:skip
+
         workflow.connect([
             (inputnode, t2w_template_wf, [('t2w', 'inputnode.anat_files')]),
             (t2w_template_wf, t2w_validate, [('outputnode.anat_ref', 'in_file')]),
@@ -353,13 +400,12 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Found preprocessed T2w - skipping Stage 1')
-        desc += (
-            ' A preprocessed T2w image was provided as a precomputed input and used as '
-            'T2w-reference through the workflow.'
-        )
+        desc += ' A preprocessed T2w image was provided as input.'
 
         t2w_validate.inputs.in_file = precomputed.t2w_preproc
         sourcefile_buffer.inputs.t2w_source_files = [precomputed.t2w_preproc]
+        if precomputed.t2w_preproc:
+            sourcefile_buffer.inputs.anat_source_files = [precomputed.t2w_preproc]
 
         workflow.connect([
             (t2w_validate, anat_buffer, [('out_file', 't2w_preproc')]),
@@ -371,6 +417,19 @@ def init_infant_anat_fit_wf(
     # just apply transform to get it in the other space
     only_t1w_mask = precomputed.t1w_mask and not precomputed.t2w_mask
     only_t2w_mask = precomputed.t2w_mask and not precomputed.t1w_mask
+
+    anat_mask = None
+    transform_mask = False
+    if reference_anat == 't1w':
+        anat_mask = precomputed.t1w_mask
+        if not anat_mask and precomputed.t2w_mask:
+            anat_mask = precomputed.t2w_mask
+            transform_mask = True
+    elif reference_anat == 't2w':
+        anat_mask = precomputed.t2w_mask
+        if not anat_mask and precomputed.t1w_mask:
+            anat_mask = precomputed.t1w_mask
+            transform_mask = True
 
     save_t1w_mask = True
     if precomputed.t1w_mask or only_t2w_mask:
@@ -649,18 +708,129 @@ def init_infant_anat_fit_wf(
     if anat_mask or recon_method == None:
         workflow.connect([
             (anat_buffer, refined_buffer, [
-                (f'{image_type}_mask', 'anat_mask'),
-                (f'{image_type}_brain', 'anat_brain'),
+                ('anat_mask', 'anat_mask'),
+                ('anat_brain', 'anat_brain'),
             ]),
         ])  # fmt:skip
 
     workflow.__desc__ = desc
 
-    if recon_method == None:
+    if not recon_method:
         LOGGER.info('ANAT Skipping Stages 6+')
         return workflow
 
     # Stage 6: Surface reconstruction
+
+    if recon_method == 'mcribs':
+        from nibabies.workflows.anatomical.surfaces import init_mcribs_surface_recon_wf
+
+        LOGGER.info('ANAT Stage 6: Preparing M-CRIB-S reconstruction workflow')
+        surface_recon_wf = init_mcribs_surface_recon_wf(
+            omp_nthreads=omp_nthreads,
+            use_aseg=bool(anat_aseg),
+            use_mask=True,
+            mcribs_dir=str(config.execution.mcribs_dir),
+        )
+
+        workflow.connect([
+            (t2w_buffer, surface_recon_wf, [
+                ('t2w_preproc', 'inputnode.t2w'),
+                ('t2w_mask', 'inputnode.t2w_mask'),
+            ]),
+            (anat_buffer, surface_recon_wf, [
+                ('anat_aseg', 'inputnode.t2w_aseg'),
+            ]),
+        ])  # fmt:skip
+
+    else:
+        from smriprep.utils.misc import fs_isRunning
+
+        fs_isrunning = pe.Node(
+            niu.Function(function=fs_isRunning), overwrite=True, name='fs_isrunning'
+        )
+        fs_isrunning.inputs.logger = LOGGER
+
+        if recon_method == 'freesurfer':
+            from smriprep.workflows.surfaces import init_surface_recon_wf
+
+            LOGGER.info('ANAT Stage 6: Preparing FreeSurfer recon-all workflow')
+            fs_isrunning = pe.Node(
+                niu.Function(function=fs_isRunning), overwrite=True, name='fs_isrunning'
+            )
+            fs_isrunning.inputs.logger = LOGGER
+
+            surface_recon_wf = init_surface_recon_wf(
+                name='surface_recon_wf',
+                omp_nthreads=omp_nthreads,
+                hires=hires,
+                fs_no_resume=fs_no_resume,
+                precomputed=precomputed,
+            )
+
+            if t2w or flair:
+                t2w_or_flair = 'T2-weighted' if t2w else 'FLAIR'
+                if surface_recon_wf.__desc__:
+                    surface_recon_wf.__desc__ += (
+                        f'A {t2w_or_flair} image was used to improve pial surface refinement.'
+                    )
+            workflow.connect([
+                (inputnode, surface_recon_wf, [
+                    ('t2w', 'inputnode.t2w'),
+                    ('flair', 'inputnode.flair'),
+                ]),
+            ])  # fmt:skip
+
+        elif recon_method == 'infantfs':
+            from nibabies.workflows.anatomical.surfaces import init_infantfs_surface_recon_wf
+
+            LOGGER.info('ANAT Stage 6: Preparing Infant FreeSurfer workflow')
+            surface_recon_wf = init_infantfs_surface_recon_wf(
+                age_months=age_months,
+                use_aseg=bool(anat_mask),
+            )
+
+        # Use the T1w image
+        workflow.connect([
+            (inputnode, fs_isrunning, [
+                ('subjects_dir', 'subjects_dir'),
+                ('subject_id', 'subject_id'),
+            ]),
+            (inputnode, surface_recon_wf, [
+                ('subject_id', 'inputnode.subject_id'),
+            ]),
+            (fs_isrunning, surface_recon_wf, [('out', 'inputnode.subjects_dir')]),
+            (t1w_validate, surface_recon_wf, [('out_file', 'inputnode.t1w')]),
+            (t1w_buffer, surface_recon_wf, [('t1w_brain', 'inputnode.skullstripped_t1')]),
+            (surface_recon_wf, outputnode, [
+                ('outputnode.subjects_dir', 'subjects_dir'),
+                ('outputnode.subject_id', 'subject_id'),
+            ]),
+        ])  # fmt:skip
+
+    fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
+    if not fsnative_xfms:
+        ds_fs_registration_wf = init_ds_fs_registration_wf(output_dir=output_dir)
+        # fmt:off
+        workflow.connect([
+            (sourcefile_buffer, ds_fs_registration_wf, [
+                ('anat_source_files', 'inputnode.source_files'),
+            ]),
+            (surface_recon_wf, ds_fs_registration_wf, [
+                ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2anat_xfm'),
+            ]),
+            (ds_fs_registration_wf, outputnode, [
+                ('outputnode.fsnative2anat_xfm', 'fsnative2anat_xfm'),
+            ]),
+        ])
+        # fmt:on
+    elif 'reverse' in fsnative_xfms:
+        LOGGER.info('ANAT Found fsnative-to-anatomical transform - skipping registration')
+        outputnode.inputs.fsnative2anat_xfm = fsnative_xfms['reverse']
+    else:
+        raise RuntimeError(
+            'Found an anatomical-to-fsnative transform without the reverse. Time to handle this.'
+        )
+
     return workflow
 
 
