@@ -10,7 +10,12 @@ from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
 from niworkflows.utils.connections import pop_file
 from smriprep.workflows.anatomical import init_anat_ribbon_wf, init_anat_template_wf
-from smriprep.workflows.surfaces import init_gifti_surfaces_wf, init_gifti_morphometrics_wf
+from smriprep.workflows.surfaces import (
+    init_fsLR_reg_wf,
+    init_gifti_surfaces_wf,
+    init_gifti_morphometrics_wf,
+    init_refinement_wf,
+)
 from smriprep.workflows.fit.registration import init_register_template_wf
 from smriprep.workflows.outputs import (
     init_ds_dseg_wf,
@@ -26,6 +31,7 @@ from smriprep.workflows.outputs import (
 from nibabies import config
 from nibabies.workflows.anatomical.registration import init_coregistration_wf
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
+from nibabies.workflows.anatomical.surfaces import init_mcribs_dhcp_wf
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import Reference, SpatialReferences
@@ -715,7 +721,7 @@ def init_infant_anat_fit_wf(
             templates=templates,
         )
         ds_template_registration_wf = init_ds_template_registration_wf(
-            output_dir=output_dir,
+            output_dir=str(output_dir),
             image_type=image_type.capitalize(),
         )
 
@@ -763,6 +769,7 @@ def init_infant_anat_fit_wf(
             omp_nthreads=omp_nthreads,
             use_aseg=bool(anat_aseg),
             use_mask=True,
+            precomputed=precomputed,
             mcribs_dir=str(config.execution.mcribs_dir),
         )
 
@@ -820,6 +827,7 @@ def init_infant_anat_fit_wf(
             LOGGER.info('ANAT Stage 6: Preparing Infant FreeSurfer workflow')
             surface_recon_wf = init_infantfs_surface_recon_wf(
                 age_months=age_months,
+                precomputed=precomputed,
                 use_aseg=bool(anat_mask),
             )
 
@@ -843,7 +851,10 @@ def init_infant_anat_fit_wf(
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
-        ds_fs_registration_wf = init_ds_fs_registration_wf(output_dir=output_dir)
+        ds_fs_registration_wf = init_ds_fs_registration_wf(
+            image_type=image_type,
+            output_dir=output_dir
+        )
         workflow.connect([
             (sourcefile_buffer, ds_fs_registration_wf, [
                 ('anat_source_files', 'inputnode.source_files'),
@@ -1020,7 +1031,7 @@ def init_infant_anat_fit_wf(
     if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
         LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
         if recon_method == 'mcribs':
-            fsLR_reg_wf = init_mcribs_fsLR_reg_wf()  # TODO
+            fsLR_reg_wf = init_mcribs_dhcp_wf()
         else:
             fsLR_reg_wf = init_fsLR_reg_wf()
 
