@@ -1,6 +1,7 @@
 """Anatomical surface projections"""
 
 
+import templateflow.api as tf
 from nipype.interfaces import freesurfer as fs
 from nipype.interfaces import io as nio
 from nipype.interfaces import utility as niu
@@ -10,9 +11,6 @@ from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
 from niworkflows.interfaces.freesurfer import PatchedRobustRegister as RobustRegister
 from smriprep.interfaces.freesurfer import MakeMidthickness
 from smriprep.workflows.surfaces import _extract_fs_fields
-
-from nibabies.config import DEFAULT_MEMORY_MIN_GB
-from nibabies.data import load as load_data
 
 SURFACE_INPUTS = [
     't1w',
@@ -206,43 +204,25 @@ def init_mcribs_surface_recon_wf(
     return workflow
 
 
-def init_mcribs_sphere_reg_wf(*, name='mcribs_sphere_reg_wf'):
+def init_mcribs_dhcp_wf(*, name='mcribs_dhcp_wf'):
     """
-    Generate GIFTI registration sphere files from MCRIBS template to dHCP42 (32k).
+    Generate GIFTI registration files to dhcp (42-week) space.
 
-    TODO: Clarify any distinction with fsLR
+    Note: The dhcp template was derived from the Conte69 atlas,
+    and maps reasonably well to fsLR.
     """
-    from smriprep.interfaces.surf import FixGiftiMetadata
     from smriprep.interfaces.workbench import SurfaceSphereProjectUnproject
 
     workflow = LiterateWorkflow(name=name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(['subjects_dir', 'subject_id']),
+        niu.IdentityInterface(['sphere_reg', 'sulc']),
         name='inputnode',
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(['sphere_reg', 'sphere_reg_fsLR']),
+        niu.IdentityInterface(['sphere_reg_fsLR']),
         name='outputnode',
     )
-
-    get_spheres = pe.Node(
-        niu.Function(function=_get_dhcp_spheres),
-        name='get_spheres',
-        run_without_submitting=True,
-    )
-
-    # Via FreeSurfer2CaretConvertAndRegisterNonlinear.sh#L270-L273
-    #
-    # See https://github.com/DCAN-Labs/DCAN-HCP/tree/9291324
-    sphere_gii = pe.MapNode(
-        fs.MRIsConvert(out_datatype='gii'), iterfield='in_file', name='sphere_gii'
-    )
-
-    fix_meta = pe.MapNode(FixGiftiMetadata(), iterfield='in_file', name='fix_meta')
-
-    # load template files
-    atlases = load_data.cached('atlases')
 
     # SurfaceSphereProjectUnProject
     # project to 41k dHCP atlas sphere
@@ -257,27 +237,39 @@ def init_mcribs_sphere_reg_wf(*, name='mcribs_sphere_reg_wf'):
         name='project_unproject',
     )
     project_unproject.inputs.sphere_project_to = [
-        atlases / 'tpl-fsaverage_hemi-L_den-41k_desc-reg_sphere.surf.gii',
-        atlases / 'tpl-fsaverage_hemi-R_den-41k_desc-reg_sphere.surf.gii',
-    ]
-    project_unproject.inputs.sphere_unproject_from = [
-        atlases / 'tpl-dHCP_space-fsaverage_hemi-L_den-41k_desc-reg_sphere.surf.gii',
-        atlases / 'tpl-dHCP_space-fsaverage_hemi-R_den-41k_desc-reg_sphere.surf.gii',
+        str(
+            tf.get(
+                'fsaverage',
+                density='41k',
+                hemi=hemi,
+                desc=None,
+                suffix='sphere',
+                extension='.surf.gii',
+            )
+        )
+        for hemi in 'LR'
     ]
 
-    # fmt:off
+    project_unproject.inputs.sphere_unproject_from = [  # TODO: Use symmetric template
+        str(
+            tf.get(
+                'dhcpAsym',
+                space='fsaverage',
+                hemi=hemi,
+                density='41k',
+                desc='reg',
+                suffix='sphere',
+                extension='.surf.gii',
+                raise_empty=True,
+            )
+        )
+        for hemi in 'LR'
+    ]
+
     workflow.connect([
-        (inputnode, get_spheres, [
-            ('subjects_dir', 'subjects_dir'),
-            ('subject_id', 'subject_id'),
-        ]),
-        (get_spheres, sphere_gii, [(('out', _sorted_by_basename), 'in_file')]),
-        (sphere_gii, fix_meta, [('converted', 'in_file')]),
-        (fix_meta, project_unproject, [('out_file', 'sphere_in')]),
-        (sphere_gii, outputnode, [('converted', 'sphere_reg')]),
+        (inputnode, project_unproject, [('sphere_reg', 'sphere_in')]),
         (project_unproject, outputnode, [('sphere_out', 'sphere_reg_fsLR')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
 
     return workflow
 
@@ -359,167 +351,6 @@ def init_infantfs_surface_recon_wf(
     return workflow
 
 
-def init_anat_ribbon_wf(name='anat_ribbon_wf'):
-    from nipype.interfaces import fsl
-
-    from nibabies.interfaces.workbench import CreateSignedDistanceVolume
-
-    # 0, 1 = wm; 2, 3 = pial; 6, 7 = mid
-    # note that order of lh / rh within each surf type is not guaranteed due to use
-    # of unsorted glob by FreeSurferSource prior, but we can do a sort
-    # to ensure consistent ordering
-    workflow = pe.Workflow(name=name)
-
-    inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                'surfaces',  # anat_giftis,
-                't1w_mask',
-            ]
-        ),
-        name='inputnode',
-    )
-    outputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                'anat_ribbon',
-            ]
-        ),
-        name='outputnode',
-    )
-
-    select_wm = pe.Node(
-        niu.Select(index=[0, 1]),
-        name='select_wm',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-
-    select_pial = pe.Node(
-        niu.Select(index=[2, 3]),
-        name='select_pial',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-
-    select_midthick = pe.Node(
-        niu.Select(index=[6, 7]),
-        name='select_midthick',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-
-    create_wm_distvol = pe.MapNode(
-        CreateSignedDistanceVolume(),
-        iterfield=['surf_file'],
-        name='create_wm_distvol',
-    )
-
-    create_pial_distvol = pe.MapNode(
-        CreateSignedDistanceVolume(),
-        iterfield=['surf_file'],
-        name='create_pial_distvol',
-    )
-
-    thresh_wm_distvol = pe.MapNode(
-        fsl.maths.MathsCommand(args='-thr 0 -bin -mul 255'),
-        iterfield=['in_file'],
-        name='thresh_wm_distvol',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    uthresh_pial_distvol = pe.MapNode(
-        fsl.maths.MathsCommand(args='-uthr 0 -abs -bin -mul 255'),
-        iterfield=['in_file'],
-        name='uthresh_pial_distvol',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    bin_wm_distvol = pe.MapNode(
-        fsl.maths.UnaryMaths(operation='bin'),
-        iterfield=['in_file'],
-        name='bin_wm_distvol',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    bin_pial_distvol = pe.MapNode(
-        fsl.maths.UnaryMaths(operation='bin'),
-        iterfield=['in_file'],
-        name='bin_pial_distvol',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    split_wm_distvol = pe.Node(
-        niu.Split(splits=[1, 1]),
-        name='split_wm_distvol',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-
-    merge_wm_distvol_no_flatten = pe.Node(
-        niu.Merge(2),
-        no_flatten=True,
-        name='merge_wm_distvol_no_flatten',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-
-    make_ribbon_vol = pe.MapNode(
-        fsl.maths.MultiImageMaths(op_string='-mas %s -mul 255'),
-        iterfield=['in_file', 'operand_files'],
-        name='make_ribbon_vol',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    bin_ribbon_vol = pe.MapNode(
-        fsl.maths.UnaryMaths(operation='bin'),
-        iterfield=['in_file'],
-        name='bin_ribbon_vol',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    split_squeeze_ribbon_vol = pe.Node(
-        niu.Split(splits=[1, 1], squeeze=True),
-        name='split_squeeze_ribbon',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-
-    combine_ribbon_vol_hemis = pe.Node(
-        fsl.maths.BinaryMaths(operation='add'),
-        name='combine_ribbon_vol_hemis',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-
-    # make HCP-style ribbon volume in T1w space
-    workflow.connect(
-        [
-            (inputnode, select_wm, [('surfaces', 'inlist')]),
-            (inputnode, select_pial, [('surfaces', 'inlist')]),
-            (inputnode, select_midthick, [('surfaces', 'inlist')]),
-            (select_wm, create_wm_distvol, [(('out', _sorted_by_basename), 'surf_file')]),
-            (inputnode, create_wm_distvol, [('t1w_mask', 'ref_file')]),
-            (select_pial, create_pial_distvol, [(('out', _sorted_by_basename), 'surf_file')]),
-            (inputnode, create_pial_distvol, [('t1w_mask', 'ref_file')]),
-            (create_wm_distvol, thresh_wm_distvol, [('out_file', 'in_file')]),
-            (create_pial_distvol, uthresh_pial_distvol, [('out_file', 'in_file')]),
-            (thresh_wm_distvol, bin_wm_distvol, [('out_file', 'in_file')]),
-            (uthresh_pial_distvol, bin_pial_distvol, [('out_file', 'in_file')]),
-            (bin_wm_distvol, split_wm_distvol, [('out_file', 'inlist')]),
-            (split_wm_distvol, merge_wm_distvol_no_flatten, [('out1', 'in1')]),
-            (split_wm_distvol, merge_wm_distvol_no_flatten, [('out2', 'in2')]),
-            (bin_pial_distvol, make_ribbon_vol, [('out_file', 'in_file')]),
-            (merge_wm_distvol_no_flatten, make_ribbon_vol, [('out', 'operand_files')]),
-            (make_ribbon_vol, bin_ribbon_vol, [('out_file', 'in_file')]),
-            (bin_ribbon_vol, split_squeeze_ribbon_vol, [('out_file', 'inlist')]),
-            (split_squeeze_ribbon_vol, combine_ribbon_vol_hemis, [('out1', 'in_file')]),
-            (split_squeeze_ribbon_vol, combine_ribbon_vol_hemis, [('out2', 'operand_file')]),
-            (combine_ribbon_vol_hemis, outputnode, [('out_file', 'anat_ribbon')]),
-        ]
-    )
-    return workflow
-
-
 def _parent(p):
     from pathlib import Path
 
@@ -536,21 +367,3 @@ def _gen_recon_dir(subjects_dir, subject_id):
 
 def _replace_mgz(in_file):
     return in_file.replace('.mgz', '.nii.gz')
-
-
-def _sorted_by_basename(inlist):
-    from os.path import basename
-
-    return sorted(inlist, key=lambda x: str(basename(x)))
-
-
-def _get_dhcp_spheres(subject_id: str, subjects_dir: str) -> list:
-    from pathlib import Path
-
-    out = []
-    for hemi in 'lr':
-        sphere = Path(subjects_dir) / subject_id / 'surf' / f'{hemi}h.sphere.reg2'
-        if not sphere.exists():
-            raise OSError('MCRIBS spherical registration not found.')
-        out.append(str(sphere))
-    return out
