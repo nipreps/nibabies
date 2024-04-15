@@ -10,12 +10,6 @@ from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
 from niworkflows.utils.connections import pop_file
 from smriprep.workflows.anatomical import init_anat_ribbon_wf, init_anat_template_wf
-from smriprep.workflows.surfaces import (
-    init_fsLR_reg_wf,
-    init_gifti_surfaces_wf,
-    init_gifti_morphometrics_wf,
-    init_refinement_wf,
-)
 from smriprep.workflows.fit.registration import init_register_template_wf
 from smriprep.workflows.outputs import (
     init_ds_dseg_wf,
@@ -26,6 +20,12 @@ from smriprep.workflows.outputs import (
     init_ds_template_registration_wf,
     init_ds_template_wf,
     init_ds_tpms_wf,
+)
+from smriprep.workflows.surfaces import (
+    init_fsLR_reg_wf,
+    init_gifti_morphometrics_wf,
+    init_gifti_surfaces_wf,
+    init_refinement_wf,
 )
 
 from nibabies import config
@@ -314,7 +314,7 @@ def init_infant_anat_fit_wf(
         )
 
         t1w_template_wf = init_anat_template_wf(
-            contrast='T1w',
+            image_type='T1w',
             num_files=num_t1w,
             longitudinal=longitudinal,
             omp_nthreads=omp_nthreads,
@@ -372,7 +372,7 @@ def init_infant_anat_fit_wf(
         )
 
         t2w_template_wf = init_anat_template_wf(
-            contrast='T2w',
+            image_type='T2w',
             num_files=num_t1w,
             longitudinal=longitudinal,
             omp_nthreads=omp_nthreads,
@@ -852,8 +852,7 @@ def init_infant_anat_fit_wf(
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
         ds_fs_registration_wf = init_ds_fs_registration_wf(
-            image_type=image_type,
-            output_dir=output_dir
+            image_type=image_type, output_dir=output_dir
         )
         workflow.connect([
             (sourcefile_buffer, ds_fs_registration_wf, [
