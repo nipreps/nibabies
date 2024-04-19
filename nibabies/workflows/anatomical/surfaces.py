@@ -7,8 +7,13 @@ from nipype.interfaces import io as nio
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow
-from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
-from niworkflows.interfaces.freesurfer import PatchedRobustRegister as RobustRegister
+from niworkflows.interfaces.freesurfer import (
+    PatchedLTAConvert as LTAConvert,
+)
+from niworkflows.interfaces.freesurfer import (
+    PatchedRobustRegister as RobustRegister,
+)
+from niworkflows.interfaces.patches import FreeSurferSource
 from smriprep.interfaces.freesurfer import MakeMidthickness
 from smriprep.workflows.surfaces import _extract_fs_fields
 
@@ -21,6 +26,7 @@ SURFACE_INPUTS = [
     'subject_id',
     # Customize aseg
     'in_aseg',
+    'in_mask',
 ]
 SURFACE_OUTPUTS = [
     'subjects_dir',
@@ -54,9 +60,7 @@ def init_mcribs_surface_recon_wf(
             'A previously computed segmentation is required for the M-CRIB-S workflow.'
         )
 
-    inputnode = pe.Node(
-        niu.IdentityInterface(fields=SURFACE_INPUTS + ['anat_mask']), name='inputnode'
-    )
+    inputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_INPUTS), name='inputnode')
     outputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_OUTPUTS), name='outputnode')
 
     workflow = LiterateWorkflow(name=name)
@@ -129,7 +133,7 @@ def init_mcribs_surface_recon_wf(
         mask_dil = pe.Node(BinaryDilation(radius=3), name='mask_dil')
         mask_las = t2w_las.clone(name='mask_las')
         workflow.connect([
-            (inputnode, mask_dil, [('anat_mask', 'in_mask')]),
+            (inputnode, mask_dil, [('in_mask', 'in_mask')]),
             (mask_dil, mask_las, [('out_mask', 'in_file')]),
             (mask_las, mcribs_recon, [('out_file', 'mask_file')]),
         ])  # fmt:skip
@@ -140,22 +144,8 @@ def init_mcribs_surface_recon_wf(
         mem_gb=5,
     )
 
-    fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
-    midthickness = pe.MapNode(
-        MakeMidthickness(thickness=True, distance=0.5, out_name='midthickness'),
-        iterfield='in_file',
-        name='midthickness',
-        n_procs=min(omp_nthreads, 12),
-    )
-    save_midthickness = pe.Node(nio.DataSink(parameterization=False), name='save_midthickness')
-
-    sync = pe.Node(
-        niu.Function(
-            function=_extract_fs_fields,
-            output_names=['subjects_dir', 'subject_id'],
-        ),
-        name='sync',
-    )
+    fssource = pe.Node(FreeSurferSource(), name='fssource', run_without_submitting=True)
+    midthickness_wf = init_midthickness_wf(omp_nthreads=omp_nthreads)
 
     workflow.connect([
         (inputnode, t2w_las, [('t2w', 'in_file')]),
@@ -171,16 +161,14 @@ def init_mcribs_surface_recon_wf(
             ('subject_id', 'subject_id')]),
         (mcribs_recon, mcribs_postrecon, [('mcribs_dir', 'outdir')]),
         (mcribs_postrecon, fssource, [('subjects_dir', 'subjects_dir')]),
-        (inputnode, fssource, [('subject_id', 'subject_id')]),
-        (fssource, midthickness, [
-            ('white', 'in_file'),
-            ('graymid', 'graymid'),
+        (inputnode, fssource, [('subject_id', 'inputnode.subject_id')]),
+        (fssource, midthickness_wf, [
+            ('white', 'inputnode.white'),
+            ('graymid', 'inputnode.graymid'),
         ]),
-        (midthickness, save_midthickness, [('out_file', 'surf.@graymid')]),
-        (save_midthickness, sync, [('out_file', 'filenames')]),
-        (sync, outputnode, [
-            ('subjects_dir', 'subjects_dir'),
-            ('subject_id', 'subject_id'),
+        (midthickness_wf, outputnode, [
+            ('outputnode.subjects_dir', 'subjects_dir'),
+            ('outputnode.subject_id', 'subject_id'),
         ]),
     ])  # fmt:skip
 
@@ -278,6 +266,7 @@ def init_infantfs_surface_recon_wf(
     *,
     age_months: int,
     precomputed: dict,
+    omp_nthreads: int,
     use_aseg: bool = False,
     name: str = 'infantfs_surface_recon_wf',
 ):
@@ -299,9 +288,11 @@ def init_infantfs_surface_recon_wf(
 
     # inject the intensity-normalized skull-stripped t1w from the brain extraction workflow
     recon = pe.Node(InfantReconAll(age=age_months), name='reconall')
-    fssource = pe.Node(nio.FreeSurferSource(), name='fssource', run_without_submitting=True)
     if use_aseg:
         workflow.connect(inputnode, 'in_aseg', recon, 'aseg_file')
+
+    fssource = pe.Node(FreeSurferSource(), name='fssource', run_without_submitting=True)
+    midthickness_wf = init_midthickness_wf(omp_nthreads=omp_nthreads)
 
     workflow.connect([
         (inputnode, gen_recon_outdir, [
@@ -315,14 +306,18 @@ def init_infantfs_surface_recon_wf(
         (gen_recon_outdir, recon, [
             ('out', 'outdir'),
         ]),
-        (recon, outputnode, [
-            ('subject_id', 'subject_id'),
-            (('outdir', _parent), 'subjects_dir'),
-        ]),
         (recon, fssource, [
             ('subject_id', 'subject_id'),
             (('outdir', _parent), 'subjects_dir'),
         ]),
+        (fssource, midthickness_wf, [
+            ('white', 'inputnode.white'),
+            ('graymid', 'inputnode.graymid'),
+        ]),
+        (midthickness_wf, outputnode, [
+            ('outputnode.subjects_dir', 'subjects_dir'),
+            ('outputnode.subject_id', 'subject_id'),
+        ])
     ])  # fmt:skip
 
     if 'fsnative' not in precomputed.get('transforms', {}):
@@ -348,6 +343,47 @@ def init_infantfs_surface_recon_wf(
             ]),
         ])  # fmt:skip
 
+    return workflow
+
+
+def init_midthickness_wf(*, omp_nthreads: int, name: str = 'make_midthickness_wf') -> pe.Workflow:
+    """
+    Standalone workflow to create and save cortical midthickness, derived from
+    the generated white / graymid surfaces.
+    """
+
+    workflow = pe.Workflow(name=name)
+    inputnode = niu.IdentityInterface(fields=['white', 'graymid'], name='inputnode')
+    outputnode = niu.IdentityInterface(fields=['subject_id', 'subjects_dir'], name='outputnode')
+
+    midthickness = pe.MapNode(
+        MakeMidthickness(thickness=True, distance=0.5, out_name='midthickness'),
+        iterfield='in_file',
+        name='midthickness',
+        n_procs=min(omp_nthreads, 12),
+    )
+    save_midthickness = pe.Node(nio.DataSink(parameterization=False), name='save_midthickness')
+
+    sync = pe.Node(
+        niu.Function(
+            function=_extract_fs_fields,
+            output_names=['subjects_dir', 'subject_id'],
+        ),
+        name='sync',
+    )
+
+    workflow.connect([
+        (inputnode, midthickness, [
+            ('white', 'in_file'),
+            ('graymid', 'graymid'),
+        ]),
+        (midthickness, save_midthickness, [('out_file', 'surf.@graymid')]),
+        (save_midthickness, sync, [('out_file', 'filenames')]),
+        (sync, outputnode, [
+            ('subjects_dir', 'subjects_dir'),
+            ('subject_id', 'subject_id'),
+        ]),
+    ])  # fmt:skip
     return workflow
 
 
