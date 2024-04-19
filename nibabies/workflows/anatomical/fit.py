@@ -4,6 +4,7 @@ from pathlib import Path
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
+from niworkflows.anat.ants import init_n4_only_wf
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.header import ValidateImage
@@ -42,6 +43,7 @@ from smriprep.workflows.surfaces import (
 
 from nibabies import config
 from nibabies.workflows.anatomical.brain_extraction import init_infant_brain_extraction_wf
+from nibabies.workflows.anatomical.outputs import init_anat_reports_wf
 from nibabies.workflows.anatomical.registration import init_coregistration_wf
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
 from nibabies.workflows.anatomical.surfaces import init_mcribs_dhcp_wf
@@ -135,14 +137,21 @@ def init_infant_anat_fit_wf(
         niu.IdentityInterface(
             fields=[
                 # Primary derivatives
+                # T1w
                 't1w_preproc',
-                't2w_preproc',
-                't1w2t2w_xfm',
                 't1w_mask',
-                't1w_dseg',
-                't1w_tpms',
+                't1w_valid_list',
+                # T2w
+                't2w_preproc',
+                't2w_mask',
+                't2w_valid_list',
+                # Anat specific
+                'anat_dseg',
+                'anat_tpms',
                 'anat2std_xfm',
-                'fsnative2t1w_xfm',
+                'fsnative2anat_xfm',
+                't1w2t2w_xfm',
+                't2w2t1w_xfm',
                 # Surface and metric derivatives for fsLR resampling
                 'white',
                 'pial',
@@ -160,7 +169,7 @@ def init_infant_anat_fit_wf(
                 'template',
                 'subjects_dir',
                 'subject_id',
-                't1w_valid_list',
+                'anat_valid_list',
             ]
         ),
         name='outputnode',
@@ -334,7 +343,6 @@ def init_infant_anat_fit_wf(
             num_files=num_t1w,
             longitudinal=longitudinal,
             omp_nthreads=omp_nthreads,
-            sloppy=sloppy,
             name='t1w_template_wf',
         )
         ds_t1w_template_wf = init_ds_template_wf(
@@ -392,7 +400,6 @@ def init_infant_anat_fit_wf(
             num_files=num_t1w,
             longitudinal=longitudinal,
             omp_nthreads=omp_nthreads,
-            sloppy=sloppy,
             name='t2w_template_wf',
         )
         ds_t2w_template_wf = init_ds_template_wf(
@@ -607,34 +614,24 @@ def init_infant_anat_fit_wf(
             else:
                 LOGGER.info('ANAT Brain mask will be calculated using T2w')
                 brain_extraction_wf = init_infant_brain_extraction_wf(
-                    age_months=age_months,
-                    ants_affine_init=ants_affine_init,
-                    skull_strip_template=skull_strip_template.space,
-                    template_specs=skull_strip_template.spec,
                     omp_nthreads=omp_nthreads,
                     sloppy=sloppy,
+                    age_months=age_months,
+                    ants_affine_init=True,
+                    skull_strip_template=skull_strip_template.space,
+                    template_specs=skull_strip_template.spec,
                     debug='registration' in config.execution.debug,
                 )
 
-                workflow.connect(
-                    [
-                        (
-                            t2w_validate,
-                            brain_extraction_wf,
-                            [
-                                ('out_file', 'inputnode.t2w_preproc'),
-                            ],
-                        ),
-                        (
-                            brain_extraction_wf,
-                            t2w_buffer,
-                            [
-                                ('outputnode.out_mask', 't2w_mask'),
-                                ('outputnode.t2w_brain', 't2w_brain'),
-                            ],
-                        ),
-                    ]
-                )
+                workflow.connect([
+                    (t2w_validate, brain_extraction_wf, [
+                        ('out_file', 'inputnode.t2w_preproc'),
+                    ]),
+                    (brain_extraction_wf, t2w_buffer, [
+                        ('outputnode.out_mask', 't2w_mask'),
+                        ('outputnode.t2w_brain', 't2w_brain'),
+                    ]),
+                ])  # fmt:skip
 
     else:
         LOGGER.info('ANAT Found T2w brain mask')
@@ -876,7 +873,8 @@ def init_infant_anat_fit_wf(
             surface_recon_wf = init_infantfs_surface_recon_wf(
                 age_months=age_months,
                 precomputed=precomputed,
-                use_aseg=bool(anat_mask),
+                omp_nthreads=omp_nthreads,
+                use_aseg=bool(anat_aseg),
             )
 
         # Force use of the T1w image
@@ -896,6 +894,9 @@ def init_infant_anat_fit_wf(
                 ('outputnode.subject_id', 'subject_id'),
             ]),
         ])  # fmt:skip
+
+        if anat_aseg:
+            workflow.conect(anat_buffer, 'anat_aseg', surface_recon_wf,'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
@@ -1142,6 +1143,46 @@ def init_infant_single_anat_fit_wf(
         '\nAnatomical data preprocessing\n\n: ',
         f'A total of {len(anatomicals)} {modality} images were found '
         'within the input BIDS dataset.\n',
+    )
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=['anat', 'roi', 'flair', 'subjects_dir', 'subject_id'],
+        ),
+        name='inputnode',
+    )
+
+    outputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                # Primary derivatives
+                'anat_preproc',
+                'anat_mask',
+                'anat_dseg',
+                'anat_tpms',
+                'anat2std_xfm',
+                'fsnative2anat_xfm',
+                # Surface and metric derivatives for fsLR resampling
+                'white',
+                'pial',
+                'midthickness',
+                'sphere',
+                'thickness',
+                'sulc',
+                'sphere_reg',
+                'sphere_reg_fsLR',
+                'sphere_reg_msm',
+                'anat_ribbon',
+                # Reverse transform; not computable from forward transform
+                'std2anat_xfm',
+                # Metadata
+                'template',
+                'subjects_dir',
+                'subject_id',
+                'anat_valid_list',
+            ]
+        ),
+        name='outputnode',
     )
 
 
