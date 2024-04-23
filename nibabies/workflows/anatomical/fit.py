@@ -17,10 +17,10 @@ from smriprep.workflows.anatomical import (
 )
 from smriprep.workflows.fit.registration import init_register_template_wf
 from smriprep.workflows.outputs import (
-    init_anat_second_derivatives_wf,
     init_ds_anat_volumes_wf,
     init_ds_dseg_wf,
     init_ds_fs_registration_wf,
+    init_ds_fs_segs_wf,
     init_ds_grayord_metrics_wf,
     init_ds_mask_wf,
     init_ds_surface_metrics_wf,
@@ -46,7 +46,10 @@ from nibabies.workflows.anatomical.brain_extraction import init_infant_brain_ext
 from nibabies.workflows.anatomical.outputs import init_anat_reports_wf
 from nibabies.workflows.anatomical.registration import init_coregistration_wf
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
-from nibabies.workflows.anatomical.surfaces import init_mcribs_dhcp_wf
+from nibabies.workflows.anatomical.surfaces import (
+    init_mcribs_dhcp_wf,
+    init_resample_midthickness_dhcp_wf,
+)
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import Reference, SpatialReferences
@@ -62,17 +65,17 @@ def init_infant_anat_fit_wf(
     flair: list,
     bids_root: str,
     precomputed: dict,
-    hires: bool,
     longitudinal: bool,
     omp_nthreads: int,
     output_dir: str,
-    segmentation_atlases: Path | None,
+    segmentation_atlases: str | Path | None,
     skull_strip_mode: ty.Literal['auto', 'skip', 'force'],
     skull_strip_template: 'Reference',
+    skull_strip_fixed_seed: bool,
     sloppy: bool,
     spaces: 'SpatialReferences',
     recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs'] | None,
-    cifti_output: ty.Literal['91k', '170k'] | None,
+    cifti_output: ty.Literal['91k', '170k', False],
     msm_sulc: bool = False,
     name: str = 'infant_anat_fit_wf',
 ):
@@ -94,22 +97,22 @@ def init_infant_anat_fit_wf(
         raise FileNotFoundError('No anatomical scans provided!')
 
     if not num_t1w or not num_t2w:
-        modality = 'T1w' if num_t1w else 'T2w'
+        image_type = 'T1w' if num_t1w else 'T2w'
         anatomicals = t1w or t2w
 
         workflow = init_infant_single_anat_fit_wf(
-            modality,
+            image_type,
             age_months=age_months,
             anatomicals=anatomicals,
             bids_root=bids_root,
             precomputed=precomputed,
-            hires=hires,
             longitudinal=longitudinal,
             omp_nthreads=omp_nthreads,
             output_dir=output_dir,
             segmentation_atlases=segmentation_atlases,
             skull_strip_mode=skull_strip_mode,
-            skull_strip_template=skull_strip_mode,
+            skull_strip_template=skull_strip_template,
+            skull_strip_fixed_seed=skull_strip_fixed_seed,
             sloppy=sloppy,
             spaces=spaces,
             cifti_output=cifti_output,
@@ -848,7 +851,7 @@ def init_infant_anat_fit_wf(
             surface_recon_wf = init_surface_recon_wf(
                 name='surface_recon_wf',
                 omp_nthreads=omp_nthreads,
-                hires=hires,
+                hires=True,
                 fs_no_resume=False,
                 precomputed=precomputed,
             )
@@ -896,7 +899,7 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
 
         if anat_aseg:
-            workflow.conect(anat_buffer, 'anat_aseg', surface_recon_wf,'inputnode.in_aseg')
+            workflow.conect(anat_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
@@ -1092,59 +1095,75 @@ def init_infant_anat_fit_wf(
         outputnode.inputs.anat_ribbon = precomputed['anat_ribbon']
 
     # Stage 9: Baseline fsLR registration
-    if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
-        LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
-        if recon_method == 'mcribs':
+    if recon_method == 'mcribs':
+        if len(precomputed.get('sphere_reg_dhcpAsym', [])) < 2:
+            LOGGER.info('ANAT Stage 9: Creating dhcp-fsLR registration sphere')
             fsLR_reg_wf = init_mcribs_dhcp_wf()
+
+            ds_fsLR_reg_wf = init_ds_surfaces_wf(
+                bids_root=bids_root,
+                output_dir=output_dir,
+                surfaces=['sphere_reg_dhcpAsym'],
+                name='ds_fsLR_reg_wf',
+            )
+
+            workflow.connect([
+                (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
+                (sourcefile_buffer, ds_fsLR_reg_wf, [('source_files', 'inputnode.source_files')]),
+                (fsLR_reg_wf, ds_fsLR_reg_wf, [
+                    ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
+                ]),
+                (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+            ])  # fmt:skip
         else:
+            LOGGER.info('ANAT Stage 9: Found pre-computed dhcp-fsLR registration sphere')
+            fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_dhcpAsym'])
+
+    else:
+        if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
+            LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
             fsLR_reg_wf = init_fsLR_reg_wf()
 
-        ds_fsLR_reg_wf = init_ds_surfaces_wf(
-            bids_root=bids_root,
-            output_dir=output_dir,
-            surfaces=['sphere_reg_fsLR'],
-            name='ds_fsLR_reg_wf',
-        )
+            ds_fsLR_reg_wf = init_ds_surfaces_wf(
+                bids_root=bids_root,
+                output_dir=output_dir,
+                surfaces=['sphere_reg_fsLR'],
+                name='ds_fsLR_reg_wf',
+            )
 
-        workflow.connect([
-            (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
-            (sourcefile_buffer, ds_fsLR_reg_wf, [('source_files', 'inputnode.source_files')]),
-            (fsLR_reg_wf, ds_fsLR_reg_wf, [
-                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
-            ]),
-            (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
-        ])  # fmt:skip
-    else:
-        LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
-        fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+            workflow.connect([
+                (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
+                (sourcefile_buffer, ds_fsLR_reg_wf, [('source_files', 'inputnode.source_files')]),
+                (fsLR_reg_wf, ds_fsLR_reg_wf, [
+                    ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
+                ]),
+                (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+            ])  # fmt:skip
+        else:
+            LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
+            fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
     return workflow
 
 
 def init_infant_single_anat_fit_wf(
-    modality,
+    image_type: ty.Literal['T1w', 'T2w'],
     *,
     age_months: int,
     anatomicals: list,
     bids_root: str | Path,
     precomputed: dict,
-    hires: bool,
     longitudinal: bool,
-    omp_nthreads: bool,
+    omp_nthreads: int,
     output_dir: str | Path,
     segmentation_atlases: str | Path | None,
     skull_strip_mode: ty.Literal['force', 'skip', 'auto'],
     skull_strip_template: 'Reference',
+    skull_strip_fixed_seed: bool,
     sloppy: bool,
     spaces: 'SpatialReferences',
-    cifti_output: ty.Literal['91k', '170k'],
+    cifti_output: ty.Literal['91k', '170k', False],
     name: str = 'infant_single_anat_fit_wf',
 ):
-    desc = (
-        '\nAnatomical data preprocessing\n\n: ',
-        f'A total of {len(anatomicals)} {modality} images were found '
-        'within the input BIDS dataset.\n',
-    )
-
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=['anat', 'roi', 'flair', 'subjects_dir', 'subject_id'],
@@ -1185,25 +1204,35 @@ def init_infant_single_anat_fit_wf(
         name='outputnode',
     )
 
+    workflow = Workflow(name=f'infant_single_{image_type}_fit_wf')
+    workflow.add_nodes([inputnode])
+
+    desc = (
+        '\nAnatomical data preprocessing\n\n: '
+        f'A total of {len(anatomicals)} {image_type} images were found '
+        'within the input BIDS dataset.\n'
+    )
+
 
 def init_anat_preproc_wf(
     *,
     age_months: int,
-    ants_affine_init: bool,
     t1w: list,
     t2w: list,
+    flair: list,
     bids_root: str,
     precomputed: dict,
-    hires: bool | None,
     longitudinal: bool,
     omp_nthreads: int,
     output_dir: str,
     segmentation_atlases: str | Path | None,
-    skull_strip_mode: str,
+    skull_strip_mode: ty.Literal['auto', 'skip', 'force'],
+    recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs', None],
     skull_strip_template: Reference,
     sloppy: bool,
     spaces: SpatialReferences,
     cifti_output: ty.Literal['91k', '170k', False],
+    skull_strip_fixed_seed: bool = False,
     name: str = 'infant_anat_wf',
 ) -> pe.Workflow:
     workflow = pe.Workflow(name=name)
@@ -1218,15 +1247,15 @@ def init_anat_preproc_wf(
                 'template',
                 'subjects_dir',
                 'subject_id',
-                't1w_preproc',
-                't1w_mask',
-                't1w_dseg',
-                't1w_tpms',
+                'anat_preproc',
+                'anat_mask',
+                'anat_dseg',
+                'anat_tpms',
                 'anat2std_xfm',
                 'std2anat_xfm',
-                'fsnative2t1w_xfm',
-                't1w_aparc',
-                't1w_aseg',
+                'fsnative2anat_xfm',
+                'anat_aparc',
+                'anat_aseg',
                 'sphere_reg',
                 'sphere_reg_fsLR',
             ]
@@ -1238,11 +1267,11 @@ def init_anat_preproc_wf(
         age_months=age_months,
         bids_root=bids_root,
         output_dir=output_dir,
-        hires=hires,
         longitudinal=longitudinal,
         msm_sulc=msm_sulc,
         skull_strip_mode=skull_strip_mode,
         skull_strip_template=skull_strip_template,
+        skull_strip_fixed_seed=skull_strip_fixed_seed,
         spaces=spaces,
         t1w=t1w,
         t2w=t2w,
@@ -1307,10 +1336,9 @@ def init_anat_preproc_wf(
     ])  # fmt:skip
 
     if recon_method is not None:
-        anat_second_derivatives_wf = init_anat_second_derivatives_wf(
+        ds_fs_segs_wf = init_ds_fs_segs_wf(
             bids_root=bids_root,
             output_dir=output_dir,
-            cifti_output=cifti_output,
         )
         surface_derivatives_wf = init_surface_derivatives_wf()
         ds_surfaces_wf = init_ds_surfaces_wf(
@@ -1325,7 +1353,7 @@ def init_anat_preproc_wf(
                 ('outputnode.t1w_preproc', 'inputnode.reference'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2t1w_xfm'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
             (anat_fit_wf, ds_surfaces_wf, [
                 ('outputnode.anat_valid_list', 'inputnode.source_files'),
@@ -1339,12 +1367,12 @@ def init_anat_preproc_wf(
             (surface_derivatives_wf, ds_curv_wf, [
                 ('outputnode.curv', 'inputnode.curv'),
             ]),
-            (anat_fit_wf, anat_second_derivatives_wf, [
+            (anat_fit_wf, ds_fs_segs_wf, [
                 ('outputnode.anat_valid_list', 'inputnode.source_files'),
             ]),
-            (surface_derivatives_wf, anat_second_derivatives_wf, [
-                ('outputnode.out_aseg', 'inputnode.t1w_fs_aseg'),
-                ('outputnode.out_aparc', 'inputnode.t1w_fs_aparc'),
+            (surface_derivatives_wf, ds_fs_segs_wf, [
+                ('outputnode.out_aseg', 'inputnode.anat_fs_aseg'),
+                ('outputnode.out_aparc', 'inputnode.anat_fs_aparc'),
             ]),
             (surface_derivatives_wf, outputnode, [
                 ('outputnode.out_aseg', 'anat_aseg'),
@@ -1354,7 +1382,14 @@ def init_anat_preproc_wf(
 
         if cifti_output:
             hcp_morphometrics_wf = init_hcp_morphometrics_wf(omp_nthreads=omp_nthreads)
-            resample_midthickness_wf = init_resample_midthickness_wf(grayord_density=cifti_output)
+            if recon_method == 'mcribs':
+                resample_midthickness_wf = init_resample_midthickness_dhcp_wf(
+                    grayord_density=cifti_output
+                )
+            else:
+                resample_midthickness_wf = init_resample_midthickness_wf(
+                    grayord_density=cifti_output
+                )
             morph_grayords_wf = init_morph_grayords_wf(
                 grayord_density=cifti_output, omp_nthreads=omp_nthreads
             )
