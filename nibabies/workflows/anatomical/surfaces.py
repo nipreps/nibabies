@@ -1,5 +1,6 @@
 """Anatomical surface projections"""
 
+import typing as ty
 
 import templateflow.api as tf
 from nipype.interfaces import freesurfer as fs
@@ -15,6 +16,7 @@ from niworkflows.interfaces.freesurfer import (
 )
 from niworkflows.interfaces.patches import FreeSurferSource
 from smriprep.interfaces.freesurfer import MakeMidthickness
+from smriprep.interfaces.workbench import SurfaceResample
 from smriprep.workflows.surfaces import _extract_fs_fields
 
 SURFACE_INPUTS = [
@@ -384,6 +386,82 @@ def init_midthickness_wf(*, omp_nthreads: int, name: str = 'make_midthickness_wf
             ('subject_id', 'subject_id'),
         ]),
     ])  # fmt:skip
+    return workflow
+
+
+def init_resample_midthickness_dhcp_wf(
+    grayord_density: ty.Literal['91k', '170k'],
+    name: str = 'resample_midthickness_wf',
+):
+    """
+    Resample subject midthickness surface to specified density.
+
+    Workflow Graph
+        .. workflow::
+            :graph2use: colored
+            :simple_form: yes
+
+            from nibabies.workflows.anatomical.surfaces import init_resample_midthickness_wf
+            wf = init_resample_midthickness_wf(grayord_density="91k")
+
+    Parameters
+    ----------
+    grayord_density : :obj:`str`
+        Either `91k` or `170k`, representing the total of vertices or *grayordinates*.
+    name : :obj:`str`
+        Unique name for the subworkflow (default: ``"resample_midthickness_wf"``)
+
+    Inputs
+    ------
+    midthickness
+        GIFTI surface mesh corresponding to the midthickness surface
+    sphere_reg_fsLR
+        GIFTI surface mesh corresponding to the subject's fsLR registration sphere
+
+    Outputs
+    -------
+    midthickness
+        GIFTI surface mesh corresponding to the midthickness surface, resampled to fsLR
+    """
+    workflow = LiterateWorkflow(name=name)
+
+    fslr_density = '32k' if grayord_density == '91k' else '59k'
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['midthickness', 'sphere_reg_fsLR']),
+        name='inputnode',
+    )
+
+    outputnode = pe.Node(niu.IdentityInterface(fields=['midthickness_fsLR']), name='outputnode')
+
+    resampler = pe.MapNode(
+        SurfaceResample(method='BARYCENTRIC'),
+        iterfield=['surface_in', 'current_sphere', 'new_sphere'],
+        name='resampler',
+    )
+    resampler.inputs.new_sphere = [
+        str(
+            tf.get(
+                template='dhcpAsym',
+                cohort='42',
+                density=fslr_density,
+                suffix='sphere',
+                hemi=hemi,
+                space=None,
+                extension='.surf.gii',
+            )
+        )
+        for hemi in ['L', 'R']
+    ]
+
+    workflow.connect([
+        (inputnode, resampler, [
+            ('midthickness', 'surface_in'),
+            ('sphere_reg_fsLR', 'current_sphere'),
+        ]),
+        (resampler, outputnode, [('surface_out', 'midthickness_fsLR')]),
+    ])  # fmt:skip
+
     return workflow
 
 
