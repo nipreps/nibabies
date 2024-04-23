@@ -75,6 +75,7 @@ def init_infant_anat_fit_wf(
     sloppy: bool,
     spaces: 'SpatialReferences',
     recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs'] | None,
+    reference_anat: ty.Literal['T1w', 'T2w'],
     cifti_output: ty.Literal['91k', '170k', False],
     msm_sulc: bool = False,
     name: str = 'infant_anat_fit_wf',
@@ -97,13 +98,10 @@ def init_infant_anat_fit_wf(
         raise FileNotFoundError('No anatomical scans provided!')
 
     if not num_t1w or not num_t2w:
-        image_type = 'T1w' if num_t1w else 'T2w'
-        anatomicals = t1w or t2w
-
         workflow = init_infant_single_anat_fit_wf(
-            image_type,
+            reference_anat='T1w' if num_t1w else 'T2w',
             age_months=age_months,
-            anatomicals=anatomicals,
+            anatomicals=t1w or t2w,
             bids_root=bids_root,
             precomputed=precomputed,
             longitudinal=longitudinal,
@@ -119,6 +117,8 @@ def init_infant_anat_fit_wf(
         )
 
         return workflow
+
+    anat = reference_anat.lower()
 
     # Organization
     # ------------
@@ -212,13 +212,7 @@ def init_infant_anat_fit_wf(
         name='anat_buffer',
     )
 
-    # At this point, we should decide which anatomical we will use as the reference space.
-    # This will depend on the age of the participant, as myelination should be somewhat complete
-    # by 9+ months
-    reference_anat = 't2w' if age_months <= 8 else 't1w'
-    image_type = reference_anat.capitalize()
-
-    if reference_anat == 't1w':
+    if reference_anat == 'T1w':
         LOGGER.info('ANAT: Using T1w as the reference anatomical')
         workflow.connect([
             (t1w_buffer, anat_buffer, [
@@ -227,7 +221,7 @@ def init_infant_anat_fit_wf(
                 ('t1w_brain', 'anat_brain'),
             ]),
         ])  # fmt:skip
-    elif reference_anat == 't2w':
+    elif reference_anat == 'T2w':
         LOGGER.info('ANAT: Using T2w as the reference anatomical')
         workflow.connect([
             (t2w_buffer, anat_buffer, [
@@ -355,7 +349,7 @@ def init_infant_anat_fit_wf(
             name='ds_t1w_template_wf',
         )
 
-        if reference_anat == 't1w':
+        if reference_anat == 'T1w':
             workflow.connect([
                 (t1w_template_wf, sourcefile_buffer, [('outputnode.anat_valid_list', 'anat_source_files')]),
             ])  # fmt:skip
@@ -384,7 +378,7 @@ def init_infant_anat_fit_wf(
 
         t1w_validate.inputs.in_file = t1w_preproc
         sourcefile_buffer.inputs.t1w_source_files = [t1w_preproc]
-        if reference_anat == 't1w':
+        if reference_anat == 'T1w':
             sourcefile_buffer.inputs.anat_source_files = [t1w_preproc]
 
         workflow.connect([
@@ -412,7 +406,7 @@ def init_infant_anat_fit_wf(
             name='ds_t2w_template_wf',
         )
 
-        if reference_anat == 't2w':
+        if reference_anat == 'T2w':
             workflow.connect(
                 t2w_template_wf, 'outputnode.anat_valid_list',
                 sourcefile_buffer, 'anat_source_files',
@@ -442,7 +436,7 @@ def init_infant_anat_fit_wf(
 
         t2w_validate.inputs.in_file = t2w_preproc
         sourcefile_buffer.inputs.t2w_source_files = [t2w_preproc]
-        if reference_anat == 't2w':
+        if reference_anat == 'T2w':
             sourcefile_buffer.inputs.anat_source_files = [t2w_preproc]
 
         workflow.connect([
@@ -521,7 +515,7 @@ def init_infant_anat_fit_wf(
             (sourcefile_buffer, ds_t1w_mask_wf, [('t1w_source_files', 'inputnode.source_files')]),
         ])  # fmt:skip
 
-        if reference_anat == 't1w':
+        if reference_anat == 'T1w':
             workflow.connect([
                 (refined_buffer, ds_t1w_mask_wf, [('anat_mask', 'inputnode.mask_file')]),
                 (ds_t1w_mask_wf, outputnode, [('outputnode.mask_file', 'anat_mask')]),
@@ -532,7 +526,7 @@ def init_infant_anat_fit_wf(
             ])  # fmt:skip
     else:
         LOGGER.info('ANAT Found T1w brain mask')
-        if reference_anat == 't1w':
+        if reference_anat == 'T1w':
             desc += (
                 'A pre-computed T1w brain mask was provided as input and used throughout the '
                 'workflow.'
@@ -577,7 +571,7 @@ def init_infant_anat_fit_wf(
 
                 t2w_n4_only_wf = init_n4_only_wf(
                     omp_nthreads=omp_nthreads,
-                    bids_suffix=image_type,
+                    bids_suffix=reference_anat,
                     atropos_use_random_seed=not skull_strip_fixed_seed,
                     name='t2w_n4_only_wf',
                 )
@@ -639,7 +633,7 @@ def init_infant_anat_fit_wf(
     else:
         LOGGER.info('ANAT Found T2w brain mask')
 
-        if reference_anat == 't2w':
+        if reference_anat == 'T2w':
             desc += (
                 'A pre-computed T1w brain mask was provided as input and used throughout the '
                 'workflow.'
@@ -685,9 +679,9 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
 
     # Stage 4: Segmentation
-    anat_dseg = getattr(precomputed, f'{image_type}_dseg', None)
-    anat_tpms = getattr(precomputed, f'{image_type}_tpms', None)
-    anat_aseg = getattr(precomputed, f'{image_type}_aseg', False)
+    anat_dseg = getattr(precomputed, f'{anat}_dseg', None)
+    anat_tpms = getattr(precomputed, f'{anat}_tpms', None)
+    anat_aseg = getattr(precomputed, f'{anat}_aseg', False)
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
 
     if not (anat_dseg and anat_tpms):
@@ -695,13 +689,13 @@ def init_infant_anat_fit_wf(
         segmentation_wf = init_segmentation_wf(
             sloppy=sloppy,
             method=seg_method,
-            image_type=image_type.capitalize(),
+            image_type=reference_anat,
             omp_nthreads=omp_nthreads,
             has_aseg=bool(anat_aseg),
         )
 
         workflow.connect([
-            (anat_buffer, segmentation_wf, [(f'{image_type}_brain', 'anat_brain')]),
+            (anat_buffer, segmentation_wf, [(f'{anat}_brain', 'anat_brain')]),
             (segmentation_wf, seg_buffer, [
                 ('outputnode.anat_dseg', 'anat_dseg'),
                 ('outputnode.anat_tpms', 'anat_tpms'),
@@ -771,15 +765,15 @@ def init_infant_anat_fit_wf(
         )
         ds_template_registration_wf = init_ds_template_registration_wf(
             output_dir=str(output_dir),
-            image_type=image_type.capitalize(),
+            image_type=reference_anat,
         )
 
         workflow.connect([
             (inputnode, register_template_wf, [('roi', 'inputnode.lesion_mask')]),
-            (anat_buffer, register_template_wf, [(f'{image_type}_preproc', 'inputnode.moving_image')]),
-            (refined_buffer, register_template_wf, [(f'{image_type}_mask', 'inputnode.moving_mask')]),
+            (anat_buffer, register_template_wf, [(f'{anat}_preproc', 'inputnode.moving_image')]),
+            (refined_buffer, register_template_wf, [(f'{anat}_mask', 'inputnode.moving_mask')]),
             (sourcefile_buffer, ds_template_registration_wf, [
-                (f'{image_type}_source_files', 'inputnode.source_files')
+                (f'{anat}_source_files', 'inputnode.source_files')
             ]),
             (register_template_wf, ds_template_registration_wf, [
                 ('outputnode.template', 'inputnode.template'),
@@ -904,7 +898,7 @@ def init_infant_anat_fit_wf(
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
         ds_fs_registration_wf = init_ds_fs_registration_wf(
-            image_type=image_type, output_dir=output_dir
+            image_type=reference_anat, output_dir=output_dir
         )
 
         if recon_method == 'freesurfer':
@@ -1146,7 +1140,7 @@ def init_infant_anat_fit_wf(
 
 
 def init_infant_single_anat_fit_wf(
-    image_type: ty.Literal['T1w', 'T2w'],
+    reference_anat: ty.Literal['T1w', 'T2w'],
     *,
     age_months: int,
     anatomicals: list,
@@ -1204,12 +1198,13 @@ def init_infant_single_anat_fit_wf(
         name='outputnode',
     )
 
-    workflow = Workflow(name=f'infant_single_{image_type}_fit_wf')
+    anat = reference_anat.lower()
+    workflow = Workflow(name=f'infant_single_{anat}_fit_wf')
     workflow.add_nodes([inputnode])
 
     desc = (
         '\nAnatomical data preprocessing\n\n: '
-        f'A total of {len(anatomicals)} {image_type} images were found '
+        f'A total of {len(anatomicals)} {anat} images were found '
         'within the input BIDS dataset.\n'
     )
 
