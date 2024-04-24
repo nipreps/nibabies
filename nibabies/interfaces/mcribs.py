@@ -219,13 +219,18 @@ class MCRIBReconAll(CommandLine):
             surfrecon_dir = self._mcribs_dir / sid / 'SurfReconDeformable' / sid
             self._verify_surfrecon_outputs(surfrecon_dir, error=True)
 
+        mcribs_fs = self._mcribs_dir / sid / 'freesurfer' / sid
+        if self.inputs.autorecon_after_surf:
+            self._verify_autorecon_outputs(mcribs_fs, error=True)
+
         outputs['mcribs_dir'] = str(self._mcribs_dir)
         if self.inputs.autorecon_after_surf and self.inputs.subjects_dir:
-            mcribs_fs = self._mcribs_dir / sid / 'freesurfer' / sid
-            self._verify_autorecon_outputs(mcribs_fs, error=True)
             dst = Path(self.inputs.subjects_dir) / self.inputs.subject_id
             if not dst.exists():
                 shutil.copytree(mcribs_fs, dst)
+                # Create a file to denote this SUBJECTS_DIR was derived from MCRIBS
+                logfile = self._mcribs_dir / sid / 'logs' / f'{sid}.log'
+                shutil.copyfile(logfile, (dst / 'scripts' / 'mcribs.log'))
             # Copy registration sphere to better match recon-all output
             for hemi in 'lr':
                 orig = dst / 'surf' / f'{hemi}h.sphere.reg2'
