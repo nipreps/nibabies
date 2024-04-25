@@ -17,7 +17,7 @@ def init_coregistration_wf(
     debug: bool = False,
     t1w_mask: bool = False,
     probmap: bool = True,
-    name: str = "coregistration_wf",
+    name: str = 'coregistration_wf',
 ):
     """
     Set-up a T2w-to-T1w within-baby co-registration framework.
@@ -97,37 +97,38 @@ def init_coregistration_wf(
     workflow = pe.Workflow(name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_t1w", "in_t2w", "in_mask", "in_probmap"]),
-        name="inputnode",
+        niu.IdentityInterface(fields=['in_t1w', 'in_t2w', 'in_mask', 'in_probmap']),
+        name='inputnode',
     )
     outputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
-                "t1w_preproc",
-                "t1w_brain",
-                "t1w_mask",
-                "t1w2t2w_xfm",
-                "t2w_preproc",
+                't1w_preproc',
+                't1w_brain',
+                't1w_mask',
+                't1w2t2w_xfm',
+                't2w2t1w_xfm',
+                't2w_preproc',
             ]
         ),
-        name="outputnode",
+        name='outputnode',
     )
 
     # Dilate t2w mask for easier t1->t2 registration
-    fixed_masks_arg = pe.Node(niu.Merge(3), name="fixed_masks_arg", run_without_submitting=True)
-    reg_mask = pe.Node(BinaryDilation(radius=8, iterations=3), name="reg_mask")
-    refine_mask = pe.Node(BinaryDilation(radius=8, iterations=1), name="refine_mask")
+    fixed_masks_arg = pe.Node(niu.Merge(3), name='fixed_masks_arg', run_without_submitting=True)
+    reg_mask = pe.Node(BinaryDilation(radius=8, iterations=3), name='reg_mask')
+    refine_mask = pe.Node(BinaryDilation(radius=8, iterations=1), name='refine_mask')
 
     # Set up T1w -> T2w within-subject registration
     coreg = pe.Node(
-        Registration(from_file=get_file("nibabies", "data/within_subject_t1t2.json")),
-        name="coreg",
+        Registration(from_file=get_file('nibabies', 'data/within_subject_t1t2.json')),
+        name='coreg',
         n_procs=omp_nthreads,
         mem_gb=mem_gb,
     )
     coreg.inputs.float = sloppy
     if debug:
-        coreg.inputs.args = "--write-interval-volumes 5"
+        coreg.inputs.args = '--write-interval-volumes 5'
         coreg.inputs.output_inverse_warped_image = sloppy
         coreg.inputs.output_warped_image = sloppy
 
@@ -143,34 +144,35 @@ def init_coregistration_wf(
             shrink_factor=4,
         ),
         n_procs=omp_nthreads,
-        name="final_n4",
+        name='final_n4',
     )
     # Move the T2w into T1w space, and apply the mask to the T1w
-    map_t2w = pe.Node(ApplyTransforms(interpolation="BSpline"), name="map_t2w", mem_gb=1)
-    apply_mask = pe.Node(ApplyMask(), name="apply_mask")
+    map_t2w = pe.Node(ApplyTransforms(interpolation='BSpline'), name='map_t2w', mem_gb=1)
+    apply_mask = pe.Node(ApplyMask(), name='apply_mask')
 
     # fmt: off
     workflow.connect([
-        (inputnode, final_n4, [("in_t1w", "input_image")]),
-        (inputnode, coreg, [("in_t1w", "moving_image"),
-                            ("in_t2w", "fixed_image")]),
+        (inputnode, final_n4, [('in_t1w', 'input_image')]),
+        (inputnode, coreg, [('in_t1w', 'moving_image'),
+                            ('in_t2w', 'fixed_image')]),
         (reg_mask, fixed_masks_arg, [
-            ("out_file", "in1"),
-            ("out_file", "in2")]),
-        (refine_mask, fixed_masks_arg, [("out_file", "in3")]),
+            ('out_file', 'in1'),
+            ('out_file', 'in2')]),
+        (refine_mask, fixed_masks_arg, [('out_file', 'in3')]),
         (inputnode, map_t2w, [
-            ("in_t1w", "reference_image"),
-            ("in_t2w", "input_image")]),
-        (fixed_masks_arg, coreg, [("out", "fixed_image_masks")]),
+            ('in_t1w', 'reference_image'),
+            ('in_t2w', 'input_image')]),
+        (fixed_masks_arg, coreg, [('out', 'fixed_image_masks')]),
         (coreg, map_t2w, [
-            ("reverse_transforms", "transforms"),
-            ("reverse_invert_flags", "invert_transform_flags"),
+            ('reverse_transforms', 'transforms'),
+            ('reverse_invert_flags', 'invert_transform_flags'),
         ]),
-        (final_n4, apply_mask, [("output_image", "in_file")]),
-        (final_n4, outputnode, [("output_image", "t1w_preproc")]),
-        (map_t2w, outputnode, [("output_image", "t2w_preproc")]),
-        (apply_mask, outputnode, [("out_file", "t1w_brain")]),
-        (coreg, outputnode, [("forward_transforms", "t1w2t2w_xfm")]),
+        (final_n4, apply_mask, [('output_image', 'in_file')]),
+        (final_n4, outputnode, [('output_image', 't1w_preproc')]),
+        (map_t2w, outputnode, [('output_image', 't2w_preproc')]),
+        (apply_mask, outputnode, [('out_file', 't1w_brain')]),
+        (coreg, outputnode, [('forward_transforms', 't1w2t2w_xfm')]),
+        (coreg, outputnode, [('reverse_transforms', 't2w2t1w_xfm')]),
     ])
     # fmt: on
 
@@ -179,54 +181,54 @@ def init_coregistration_wf(
         # Generate a quick, rough mask of the T2w to be used to facilitate co-registration.
         from sdcflows.interfaces.brainmask import BrainExtraction
 
-        masker = pe.Node(BrainExtraction(), name="t2w_masker")
+        masker = pe.Node(BrainExtraction(), name='t2w_masker')
         # fmt:off
         workflow.connect([
-            (inputnode, masker, [("in_t2w", "in_file")]),
-            (masker, reg_mask, [("out_mask", "in_file")]),
-            (masker, refine_mask, [("out_mask", "in_file")]),
-            (inputnode, apply_mask, [("in_mask", "in_mask")]),
-            (inputnode, outputnode, [("in_mask", "t1w_mask")]),
+            (inputnode, masker, [('in_t2w', 'in_file')]),
+            (masker, reg_mask, [('out_mask', 'in_file')]),
+            (masker, refine_mask, [('out_mask', 'in_file')]),
+            (inputnode, apply_mask, [('in_mask', 'in_mask')]),
+            (inputnode, outputnode, [('in_mask', 't1w_mask')]),
         ])
         # fmt:on
         return workflow
 
     if probmap:
         # The T2w mask from the brain extraction workflow will be mapped to T1w space
-        map_mask = pe.Node(ApplyTransforms(interpolation="Gaussian"), name="map_mask", mem_gb=1)
-        thr_mask = pe.Node(Binarize(thresh_low=0.80), name="thr_mask")
+        map_mask = pe.Node(ApplyTransforms(interpolation='Gaussian'), name='map_mask', mem_gb=1)
+        thr_mask = pe.Node(Binarize(thresh_low=0.80), name='thr_mask')
         # fmt:off
         workflow.connect([
-            (inputnode, reg_mask, [("in_mask", "in_file")]),
-            (inputnode, refine_mask, [("in_mask", "in_file")]),
+            (inputnode, reg_mask, [('in_mask', 'in_file')]),
+            (inputnode, refine_mask, [('in_mask', 'in_file')]),
             (inputnode, map_mask, [
-                ("in_t1w", "reference_image"),
-                ("in_probmap", "input_image")]),
+                ('in_t1w', 'reference_image'),
+                ('in_probmap', 'input_image')]),
             (coreg, map_mask, [
-                ("reverse_transforms", "transforms"),
-                ("reverse_invert_flags", "invert_transform_flags")]),
-            (map_mask, thr_mask, [("output_image", "in_file")]),
-            (map_mask, final_n4, [("output_image", "weight_image")]),
-            (thr_mask, outputnode, [("out_mask", "t1w_mask")]),
-            (thr_mask, apply_mask, [("out_mask", "in_mask")]),
+                ('reverse_transforms', 'transforms'),
+                ('reverse_invert_flags', 'invert_transform_flags')]),
+            (map_mask, thr_mask, [('output_image', 'in_file')]),
+            (map_mask, final_n4, [('output_image', 'weight_image')]),
+            (thr_mask, outputnode, [('out_mask', 't1w_mask')]),
+            (thr_mask, apply_mask, [('out_mask', 'in_mask')]),
         ])
         # fmt:on
         return workflow
 
     # A precomputed T2w mask was provided
     map_precomp_mask = pe.Node(
-        ApplyTransforms(interpolation="MultiLabel"), name='map_precomp_mask'
+        ApplyTransforms(interpolation='MultiLabel'), name='map_precomp_mask'
     )
     # fmt:off
     workflow.connect([
-        (inputnode, reg_mask, [("in_mask", "in_file")]),
-        (inputnode, refine_mask, [("in_mask", "in_file")]),
+        (inputnode, reg_mask, [('in_mask', 'in_file')]),
+        (inputnode, refine_mask, [('in_mask', 'in_file')]),
         (inputnode, map_precomp_mask, [
             ('in_t1w', 'reference_image'),
             ('in_mask', 'input_image')]),
         (coreg, map_precomp_mask, [
-            ("reverse_transforms", "transforms"),
-            ("reverse_invert_flags", "invert_transform_flags")]),
+            ('reverse_transforms', 'transforms'),
+            ('reverse_invert_flags', 'invert_transform_flags')]),
         (map_precomp_mask, final_n4, [('output_image', 'weight_image')]),
         (map_precomp_mask, outputnode, [('output_image', 't1w_mask')]),
         (map_precomp_mask, apply_mask, [('output_image', 'in_mask')]),
@@ -251,7 +253,7 @@ def init_coregister_derivatives_wf(
     )
 
     if t1w_mask:
-        t1wmask2t2w = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name='t1wmask2t2w')
+        t1wmask2t2w = pe.Node(ApplyTransforms(interpolation='MultiLabel'), name='t1wmask2t2w')
         # fmt:off
         workflow.connect([
             (inputnode, t1wmask2t2w, [
@@ -263,7 +265,7 @@ def init_coregister_derivatives_wf(
         # fmt:on
     if t1w_aseg:
         # fmt:off
-        t1waseg2t2w = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name='t1waseg2t2w')
+        t1waseg2t2w = pe.Node(ApplyTransforms(interpolation='MultiLabel'), name='t1waseg2t2w')
         workflow.connect([
             (inputnode, t1waseg2t2w, [
                 ('t1w_aseg', 'input_image'),
@@ -274,7 +276,7 @@ def init_coregister_derivatives_wf(
         # fmt:on
     if t2w_aseg:
         # fmt:off
-        t2waseg2t1w = pe.Node(ApplyTransforms(interpolation="MultiLabel"), name='t2waseg2t1w')
+        t2waseg2t1w = pe.Node(ApplyTransforms(interpolation='MultiLabel'), name='t2waseg2t1w')
         t2waseg2t1w.inputs.invert_transform_flags = [True, False]
         workflow.connect([
             (inputnode, t2waseg2t1w, [
