@@ -10,6 +10,7 @@ def collect_anatomical_derivatives(
     derivatives_dir: Path | str,
     subject_id: str,
     std_spaces: list,
+    session_id: str | None,
     spec: dict | None = None,
     patterns: list | None = None,
 ):
@@ -38,8 +39,14 @@ def collect_anatomical_derivatives(
     layout = BIDSLayout(derivatives_dir, config=deriv_config, validate=False)
     derivs_cache = {}
 
+    base_qry = {
+        'subject': subject_id,
+    }
+    if session_id is not None:
+        base_qry['session'] = session_id
+
     for key, qry in spec['baseline'].items():
-        qry['subject'] = subject_id
+        qry.update(base_qry)
         item = layout.get(return_type='filename', **qry)
         if not item:
             continue
@@ -47,7 +54,7 @@ def collect_anatomical_derivatives(
         derivs_cache[key] = item[0] if len(item) == 1 else item
 
     for key, qry in spec['coreg'].items():  # T1w->T2w, T2w->T1w
-        qry['subject'] = subject_id
+        qry.update(base_qry)
         item = layout.get(return_type='filename', **qry)
         if not item:
             continue
@@ -58,7 +65,7 @@ def collect_anatomical_derivatives(
         space = _space.replace(':cohort-', '+')
         for key, qry in spec['transforms'].items():
             qry = qry.copy()
-            qry['subject'] = subject_id
+            qry.update(base_qry)
             qry['from'] = qry['from'] or space
             qry['to'] = qry['to'] or space
             item = layout.get(return_type='filename', **qry)
@@ -67,7 +74,7 @@ def collect_anatomical_derivatives(
             transforms.setdefault(_space, {})[key] = item[0] if len(item) == 1 else item
 
     for key, qry in spec['surfaces'].items():
-        qry['subject'] = subject_id
+        qry.update(base_qry)
         item = layout.get(return_type='filename', **qry)
         if not item or len(item) != 2:
             continue
