@@ -92,17 +92,17 @@ RUN mkdir /opt/workbench && \
 FROM downloader as micromamba
 WORKDIR /
 # Bump the date to current to force update micromamba
-RUN echo "2023.06.29"
-RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+RUN echo "2024.04.25" && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
 ENV MAMBA_ROOT_PREFIX="/opt/conda"
 COPY env.yml /tmp/env.yml
+COPY requirements.txt /tmp/requirements.txt
+WORKDIR /tmp
 RUN micromamba create -y -f /tmp/env.yml && \
     micromamba clean -y -a
+
 ENV PATH="/opt/conda/envs/nibabies/bin:$PATH"
-RUN /opt/conda/envs/nibabies/bin/npm install -g svgo@^2.8 bids-validator@1.11.0 && \
+RUN npm install -g svgo@^3.2.0 bids-validator@^1.14.0 && \
     rm -r ~/.npm
-COPY requirements.txt /tmp/requirements.txt
-RUN /opt/conda/envs/nibabies/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Main container
 FROM ${BASE_IMAGE} as nibabies
