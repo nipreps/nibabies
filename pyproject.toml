@@ -46,6 +46,11 @@ Documentation = "https://nibabies.readthedocs.io/en/latest/"
 "Docker Images" = "https://hub.docker.com/r/nipreps/nibabies"
 
 [project.optional-dependencies]
+container = [
+    "nibabies[telemetry]",
+    "datalad",
+    "datalad-osf",
+]
 dev = [
     "black ~= 22.3.0",
     "isort ~= 5.10.1",
