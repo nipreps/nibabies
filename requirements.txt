@@ -390,7 +390,7 @@ tqdm==4.65.0
     #   datalad
     #   osfclient
     #   templateflow
-traits==6.3.2
+traits=6.3.2
     # via
     #   nipype
     #   niworkflows
