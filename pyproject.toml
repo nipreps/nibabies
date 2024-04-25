@@ -24,7 +24,7 @@ dependencies = [
     "nireports >= 23.2.0",
     "nitime",
     "nitransforms >= 23.0.1",
-    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@master",
+    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@enh/fs-source",
     "numpy >= 1.21.0",
     "packaging",
     "pandas",
