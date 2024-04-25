@@ -79,7 +79,7 @@ def init_infant_anat_fit_wf(
     cifti_output: ty.Literal['91k', '170k', False],
     msm_sulc: bool = False,
     name: str = 'infant_anat_fit_wf',
-):
+) -> Workflow:
     """
     Stage the anatomical preprocessing steps:
     - T1w reference
@@ -115,7 +115,6 @@ def init_infant_anat_fit_wf(
             spaces=spaces,
             cifti_output=cifti_output,
         )
-
         return workflow
 
     anat = reference_anat.lower()
@@ -351,7 +350,9 @@ def init_infant_anat_fit_wf(
 
         if reference_anat == 'T1w':
             workflow.connect([
-                (t1w_template_wf, sourcefile_buffer, [('outputnode.anat_valid_list', 'anat_source_files')]),
+                (t1w_template_wf, sourcefile_buffer, [
+                    ('outputnode.anat_valid_list', 'anat_source_files'),
+                ]),
             ])  # fmt:skip
 
         workflow.connect([
@@ -501,7 +502,8 @@ def init_infant_anat_fit_wf(
                 (t2w_buffer, transform_t2w_mask, [('t2w_mask', 'input_image')]),
                 (coreg_buffer, transform_t2w_mask, [('t2w2t1w_xfm', 'transforms')]),
                 (transform_t2w_mask, apply_t1w_mask, [('output_image', 'in_mask')]),
-                (t1w_buffer, apply_t1w_mask, [('t1w_preproc', 'in_file')]),  # TODO: Unsure about this connection
+                (t1w_buffer, apply_t1w_mask, [('t1w_preproc', 'in_file')]),
+                # TODO: Unsure about this connection^
             ])  # fmt:skip
 
         # Save T1w mask
@@ -606,7 +608,8 @@ def init_infant_anat_fit_wf(
                     (t1w_buffer, transform_t1w_mask, [('t1w_mask', 'input_image')]),
                     (coreg_buffer, transform_t1w_mask, [('t1w2t2w_xfm', 'transforms')]),
                     (transform_t1w_mask, apply_t2w_mask, [('output_image', 'in_mask')]),
-                    (t2w_buffer, apply_t1w_mask, [('t2w_preproc', 'in_file')]),  # TODO: Unsure about this connection
+                    (t2w_buffer, apply_t1w_mask, [('t2w_preproc', 'in_file')]),
+                    # TODO: Unsure about this connection^
                 ])  # fmt:skip
             else:
                 LOGGER.info('ANAT Brain mask will be calculated using T2w')
@@ -650,7 +653,10 @@ def init_infant_anat_fit_wf(
     if t1w_preproc and t2w_preproc:
         if t1w2t2w_xfm:
             LOGGER.info('ANAT Found T1w-T2w xfm')
-            desc += ' A T1w-T2w coregistration transform was provided as input and used throughout the workflow.'
+            desc += (
+                ' A T1w-T2w coregistration transform was provided as input and used throughout '
+                'the workflow.'
+            )
             coreg_buffer.inputs.t1w2t2w_xfm = t1w2t2w_xfm
         if t2w2t1w_xfm:
             LOGGER.info('ANAT Found T2w-T1w xfm')
@@ -788,7 +794,7 @@ def init_infant_anat_fit_wf(
         LOGGER.info(f'ANAT Stage 5: Found pre-computed registrations for {found_xfms}')
 
     # Only refine mask if necessary
-    if anat_mask or recon_method == None:
+    if anat_mask or recon_method is None:
         workflow.connect([
             (anat_buffer, refined_buffer, [
                 ('anat_mask', 'anat_mask'),
@@ -1157,7 +1163,7 @@ def init_infant_single_anat_fit_wf(
     spaces: 'SpatialReferences',
     cifti_output: ty.Literal['91k', '170k', False],
     name: str = 'infant_single_anat_fit_wf',
-):
+) -> Workflow:
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=['anat', 'roi', 'flair', 'subjects_dir', 'subject_id'],
@@ -1200,17 +1206,20 @@ def init_infant_single_anat_fit_wf(
 
     anat = reference_anat.lower()
     workflow = Workflow(name=f'infant_single_{anat}_fit_wf')
-    workflow.add_nodes([inputnode])
+    workflow.add_nodes([inputnode, outputnode])
 
     desc = (
         '\nAnatomical data preprocessing\n\n: '
         f'A total of {len(anatomicals)} {anat} images were found '
         'within the input BIDS dataset.\n'
     )
+    workflow.__desc__ = desc
+    return workflow
 
 
-def init_anat_preproc_wf(
+def init_infant_anat_full_wf(
     *,
+    reference_anat: ty.Literal['T1w', 'T2w'],
     age_months: int,
     t1w: list,
     t2w: list,
@@ -1230,6 +1239,7 @@ def init_anat_preproc_wf(
     skull_strip_fixed_seed: bool = False,
     name: str = 'infant_anat_wf',
 ) -> pe.Workflow:
+    """The full version of the fit workflow."""
     workflow = pe.Workflow(name=name)
 
     inputnode = pe.Node(
@@ -1259,6 +1269,7 @@ def init_anat_preproc_wf(
     )
     msm_sulc = False  # Not enabled for now
     anat_fit_wf = init_infant_anat_fit_wf(
+        reference_anat=reference_anat,
         age_months=age_months,
         bids_root=bids_root,
         output_dir=output_dir,
