@@ -296,6 +296,7 @@ def init_infant_anat_fit_wf(
 
     # Reporting
     anat_reports_wf = init_anat_reports_wf(
+        spaces=spaces,
         surface_recon=recon_method,
         output_dir=output_dir,
         sloppy=sloppy,
@@ -353,6 +354,9 @@ def init_infant_anat_fit_wf(
                 (t1w_template_wf, sourcefile_buffer, [
                     ('outputnode.anat_valid_list', 'anat_source_files'),
                 ]),
+                (t1w_template_wf, anat_reports_wf, [
+                    ('outputnode.out_report', 'inputnode.anat_conform_report'),
+                ]),
             ])  # fmt:skip
 
         workflow.connect([
@@ -361,9 +365,9 @@ def init_infant_anat_fit_wf(
             (t1w_template_wf, sourcefile_buffer, [
                 ('outputnode.anat_valid_list', 't1w_source_files'),
             ]),
-            (t1w_template_wf, anat_reports_wf, [
-                ('outputnode.out_report', 'inputnode.anat_conform_report'),
-            ]),
+            # (t1w_template_wf, anat_reports_wf, [
+            #     ('outputnode.out_report', 'inputnode.anat_conform_report'),
+            # ]),
             (t1w_template_wf, ds_t1w_template_wf, [
                 ('outputnode.anat_realign_xfm', 'inputnode.anat_ref_xfms'),
             ]),
@@ -371,7 +375,7 @@ def init_infant_anat_fit_wf(
                 ('t1w_source_files', 'inputnode.source_files'),
             ]),
             (anat_buffer, ds_t1w_template_wf, [('t1w_preproc', 'inputnode.anat_preproc')]),
-            (ds_t1w_template_wf, outputnode, [('outputnode.t1w_preproc', 't1w_preproc')]),
+            (ds_t1w_template_wf, outputnode, [('outputnode.anat_preproc', 't1w_preproc')]),
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Found preprocessed T1w - skipping Stage 1')
@@ -408,19 +412,20 @@ def init_infant_anat_fit_wf(
         )
 
         if reference_anat == 'T2w':
-            workflow.connect(
-                t2w_template_wf, 'outputnode.anat_valid_list',
-                sourcefile_buffer, 'anat_source_files',
-            )  # fmt:skip
+            workflow.connect([
+                (t2w_template_wf, sourcefile_buffer, [
+                    ('outputnode.anat_valid_list', 'anat_source_files'),
+                ]),
+                (t2w_template_wf, anat_reports_wf, [
+                    ('outputnode.out_report', 'inputnode.anat_conform_report'),
+                ]),
+            ])  # fmt:skip
 
         workflow.connect([
             (inputnode, t2w_template_wf, [('t2w', 'inputnode.anat_files')]),
             (t2w_template_wf, t2w_validate, [('outputnode.anat_ref', 'in_file')]),
             (t2w_template_wf, sourcefile_buffer, [
                 ('outputnode.anat_valid_list', 't2w_source_files'),
-            ]),
-            (t2w_template_wf, anat_reports_wf, [
-                ('outputnode.out_report', 'inputnode.anat_conform_report'),
             ]),
             (t2w_template_wf, ds_t2w_template_wf, [
                 ('outputnode.anat_realign_xfm', 'inputnode.anat_ref_xfms'),
@@ -429,7 +434,7 @@ def init_infant_anat_fit_wf(
                 ('t2w_source_files', 'inputnode.source_files'),
             ]),
             (anat_buffer, ds_t2w_template_wf, [('t2w_preproc', 'inputnode.anat_preproc')]),
-            (ds_t2w_template_wf, outputnode, [('outputnode.t2w_preproc', 't2w_preproc')]),
+            (ds_t2w_template_wf, outputnode, [('outputnode.anat_preproc', 't2w_preproc')]),
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Found preprocessed T2w - skipping Stage 1')
@@ -701,7 +706,7 @@ def init_infant_anat_fit_wf(
         )
 
         workflow.connect([
-            (anat_buffer, segmentation_wf, [(f'{anat}_brain', 'anat_brain')]),
+            (anat_buffer, segmentation_wf, [(f'{anat}_brain', 'inputnode.anat_brain')]),
             (segmentation_wf, seg_buffer, [
                 ('outputnode.anat_dseg', 'anat_dseg'),
                 ('outputnode.anat_tpms', 'anat_tpms'),
@@ -723,19 +728,17 @@ def init_infant_anat_fit_wf(
                 (segmentation_wf, ds_dseg_wf, [
                     ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
                 ]),
-                (ds_dseg_wf, seg_buffer, [('outputnode.anat_dseg', 'anat_dseg')]),
             ])  # fmt:skip
 
         if not anat_tpms:
             ds_tpms_wf = init_ds_tpms_wf(output_dir=str(output_dir))
             workflow.connect([
-                (sourcefile_buffer, ds_dseg_wf, [
+                (sourcefile_buffer, ds_tpms_wf, [
                     ('anat_source_files', 'inputnode.source_files'),
                 ]),
                 (segmentation_wf, ds_tpms_wf, [
                     ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
                 ]),
-                (ds_tpms_wf, seg_buffer, [('outputnode.anat_tpms', 'anat_tpms')]),
             ])  # fmt:skip
     else:
         LOGGER.info('ANAT Stage 4: Skipping segmentation workflow')
@@ -1227,14 +1230,15 @@ def init_infant_anat_full_wf(
     bids_root: str,
     precomputed: dict,
     longitudinal: bool,
+    msm_sulc: bool,
     omp_nthreads: int,
     output_dir: str,
     segmentation_atlases: str | Path | None,
     skull_strip_mode: ty.Literal['auto', 'skip', 'force'],
     recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs', None],
-    skull_strip_template: Reference,
+    skull_strip_template: 'Reference',
     sloppy: bool,
-    spaces: SpatialReferences,
+    spaces: 'SpatialReferences',
     cifti_output: ty.Literal['91k', '170k', False],
     skull_strip_fixed_seed: bool = False,
     name: str = 'infant_anat_wf',
@@ -1267,14 +1271,14 @@ def init_infant_anat_full_wf(
         ),
         name='outputnode',
     )
-    msm_sulc = False  # Not enabled for now
+
     anat_fit_wf = init_infant_anat_fit_wf(
         reference_anat=reference_anat,
         age_months=age_months,
         bids_root=bids_root,
         output_dir=output_dir,
         longitudinal=longitudinal,
-        msm_sulc=msm_sulc,
+        msm_sulc=False,  # TODO: Enable
         skull_strip_mode=skull_strip_mode,
         skull_strip_template=skull_strip_template,
         skull_strip_fixed_seed=skull_strip_fixed_seed,
