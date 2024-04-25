@@ -591,7 +591,7 @@ class workflow(_Config):
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
-    surface_recon_method = 'infantfs'
+    surface_recon_method = 'auto'
     """Method to use for surface reconstruction."""
     use_aroma = None
     """Run ICA-:abbr:`AROMA (automatic removal of motion artifacts)`."""
