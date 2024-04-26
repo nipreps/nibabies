@@ -41,7 +41,7 @@
               ".nii"
             ]
           },
-        "dseg": {
+        "anat_dseg": {
           "datatype": "anat",
           "space": null,
           "desc": null,
@@ -51,7 +51,7 @@
             ".nii"
           ]
         },
-        "tpms": {
+        "anat_tpms": {
           "datatype": "anat",
           "space": null,
           "label": [
@@ -60,6 +60,16 @@
             "CSF"
           ],
           "suffix": "probseg",
+          "extension": [
+            ".nii.gz",
+            ".nii"
+          ]
+        },
+        "anat_aseg": {
+          "datatype": "anat",
+          "space": null,
+          "desc": "aseg",
+          "suffix": "dseg",
           "extension": [
             ".nii.gz",
             ".nii"

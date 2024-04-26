@@ -690,9 +690,10 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
 
     # Stage 4: Segmentation
-    anat_dseg = getattr(precomputed, f'{anat}_dseg', None)
-    anat_tpms = getattr(precomputed, f'{anat}_tpms', None)
-    anat_aseg = getattr(precomputed, f'{anat}_aseg', False)
+    anat_dseg = precomputed.get('anat_dseg')
+    anat_tpms = precomputed.get('anat_tpms')
+    anat_aseg = precomputed.get('anat_aseg')
+
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
 
     if not (anat_dseg and anat_tpms):
@@ -827,10 +828,10 @@ def init_infant_anat_fit_wf(
         workflow.connect([
             (t2w_buffer, surface_recon_wf, [
                 ('t2w_preproc', 'inputnode.t2w'),
-                ('t2w_mask', 'inputnode.t2w_mask'),
+                ('t2w_mask', 'inputnode.in_mask'),
             ]),
             (anat_buffer, surface_recon_wf, [
-                ('anat_aseg', 'inputnode.t2w_aseg'),
+                ('anat_aseg', 'inputnode.in_aseg'),
             ]),
         ])  # fmt:skip
 
