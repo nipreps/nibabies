@@ -34,7 +34,10 @@ def init_segmentation_wf(
     name: str = 'segmentation_wf',
 ):
     workflow = Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=['anat_brain']), name='inputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['anat_brain', 'anat_aseg']),
+        name='inputnode',
+    )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=['anat_dseg', 'anat_tpms', 'anat_aseg']),
         name='outputnode',
@@ -50,7 +53,7 @@ def init_segmentation_wf(
         workflow.__desc__ = (
             'Brain tissue segmentation of cerebrospinal fluid (CSF), white-matter (WM), and '
             f'gray-matter (GM) was performed on the brain-extracted {image_type} using FSL '
-            f'FAST, distributed with {fsl.Info.version() or 'version unknown'}'
+            f'FAST, distributed with {fsl.Info.version() or "version unknown"}'
         )
         fast = pe.Node(
             fsl.FAST(segments=True, no_bias=True, probability_maps=True),
@@ -129,7 +132,7 @@ def init_jlf_wf(
 
     workflow.__desc__ = (
         f'The {image_type} image was registered to {len(segmentations)} templates for '
-        f'JointFusion, distributed with ANTs {ants.base.Info.version() or 'version unknown'}, '
+        f'JointFusion, distributed with ANTs {ants.base.Info.version() or "version unknown"}, '
         'for image segmentation. Brain tissue segmentation of cerebrospinal fluid (CSF), '
         'white-matter (WM), and gray-matter (GM) were derived from the label fused image.'
     )
