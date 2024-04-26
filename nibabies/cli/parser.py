@@ -14,7 +14,7 @@ if ty.TYPE_CHECKING:
 
 def _build_parser():
     """Build parser object."""
-    from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+    from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Action
     from functools import partial
     from pathlib import Path
 
@@ -22,6 +22,23 @@ def _build_parser():
     from packaging.version import Version
 
     from .version import check_latest, is_flagged
+
+    class DerivToDict(Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            d = {}
+            for spec in values:
+                try:
+                    name, loc = spec.split('=')
+                    loc = Path(loc)
+                except ValueError:
+                    loc = Path(spec)
+                    name = loc.name
+
+                if name in d:
+                    raise ValueError(f'Received duplicate derivative name: {name}')
+
+                d[name] = loc
+            setattr(namespace, self.dest, d)
 
     def _path_exists(path, parser):
         """Ensure a given path exists."""
@@ -186,12 +203,17 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         'how-do-I-select-only-certain-files-to-be-input-to-fMRIPrep',
     )
     g_bids.add_argument(
-        '--anat-derivatives',
-        action='store',
-        metavar='PATH',
-        type=PathExists,
-        help='Reuse the anatomical derivatives from another NiBabies run or calculated '
-        'with an alternative processing tool (NOT RECOMMENDED).',
+        '-d',
+        '--derivatives',
+        action=DerivToDict,
+        metavar='PACKAGE=PATH',
+        type=str,
+        nargs='+',
+        help=(
+            'Search PATH(s) for pre-computed derivatives. '
+            'These may be provided as named folders '
+            '(e.g., `--derivatives smriprep=/path/to/smriprep`).'
+        ),
     )
     g_bids.add_argument(
         '--bids-database-dir',
@@ -671,13 +693,6 @@ discourage its usage.""",
         type=float,
         default=45,
         help='Head radius in mm for framewise displacement calculation.',
-    )
-    g_baby.add_argument(
-        '-d',
-        '--derivatives',
-        type=DirNotEmpty,
-        nargs='+',
-        help='One or more directory containing pre-computed derivatives.',
     )
     g_baby.add_argument(
         '--deriv-filter-file',

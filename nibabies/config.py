@@ -214,15 +214,20 @@ class _Config:
             if k in ignore or v is None:
                 continue
             if k in cls._paths:
-                if isinstance(v, (list, tuple)):  # Multiple paths
+                if isinstance(v, list | tuple):  # Multiple paths
                     setattr(cls, k, [Path(p).absolute() for p in v])
+                elif isinstance(v, dict):
+                    setattr(cls, k, {key: Path(val).absolute() for key, val in v.items()})
                 else:
                     setattr(cls, k, Path(v).absolute())
             elif hasattr(cls, k):
                 setattr(cls, k, v)
 
-        if init and hasattr(cls, 'init'):
-            cls.init()
+        if init:
+            try:
+                cls.init()
+            except AttributeError:
+                pass
 
     @classmethod
     def get(cls):
@@ -236,8 +241,10 @@ class _Config:
             if callable(getattr(cls, k)):
                 continue
             if k in cls._paths:
-                if isinstance(v, (list, tuple)):  # Multiple paths
+                if isinstance(v, list | tuple):  # Multiple paths
                     v = [str(p) for p in v]
+                elif isinstance(v, dict):
+                    v = {key: str(val) for key, val in v.items()}
                 else:
                     v = str(v)
             if isinstance(v, SpatialReferences):
@@ -360,8 +367,6 @@ class nipype(_Config):
 class execution(_Config):
     """Configure run-level settings."""
 
-    anat_derivatives = None
-    """A path where anatomical derivatives are found to fast-track *sMRIPrep*."""
     bids_dir = None
     """An existing path to the dataset, which must be BIDS-compliant."""
     bids_database_dir = None
@@ -376,7 +381,7 @@ class execution(_Config):
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
     debug = []
     """Debug mode(s)."""
-    derivatives = None
+    derivatives = {}
     """One or more paths where pre-computed derivatives are found."""
     derivatives_filters = None
     """A dictionary of BIDS selection filters"""
@@ -492,7 +497,6 @@ class execution(_Config):
                 database_path=_db_path,
                 reset_database=cls.bids_database_dir is None,
                 indexer=_indexer,
-                derivatives=cls.derivatives or False,
             )
             cls.bids_database_dir = _db_path
         cls.layout = cls._layout
