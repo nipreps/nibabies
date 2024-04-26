@@ -355,8 +355,11 @@ def init_midthickness_wf(*, omp_nthreads: int, name: str = 'make_midthickness_wf
     """
 
     workflow = pe.Workflow(name=name)
-    inputnode = niu.IdentityInterface(fields=['white', 'graymid'], name='inputnode')
-    outputnode = niu.IdentityInterface(fields=['subject_id', 'subjects_dir'], name='outputnode')
+    inputnode = pe.Node(niu.IdentityInterface(fields=['white', 'graymid']), name='inputnode')
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=['subject_id', 'subjects_dir']),
+        name='outputnode',
+    )
 
     midthickness = pe.MapNode(
         MakeMidthickness(thickness=True, distance=0.5, out_name='midthickness'),

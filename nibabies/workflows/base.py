@@ -284,6 +284,7 @@ It is released under the [CC0]\
     #         stacklevel=1,
     #     )
 
+    recon_method = config.workflow.surface_recon_method
     msm_sulc = False
 
     anatomical_cache = {}
@@ -304,7 +305,7 @@ It is released under the [CC0]\
 
     # Determine some session level options here, as we should have
     # all the required information
-    if config.workflow.surface_recon_method == 'auto':
+    if recon_method == 'auto':
         if age <= 8:
             recon_method = 'mcribs'
         elif age <= 24:
