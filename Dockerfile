@@ -30,8 +30,8 @@ FROM python:slim AS src
 RUN pip install build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git
-COPY . /src/nibabies
-RUN python -m build /src/nibabies
+COPY . /src
+RUN python -m build /src
 
 # Older Python to support legacy MCRIBS
 FROM python:3.6.15-slim as pyenv
@@ -90,6 +90,13 @@ RUN mkdir /opt/workbench && \
 
 # Micromamba
 FROM downloader as micromamba
+
+# Install a C compiler to build extensions when needed.
+# traits<6.4 wheels are not available for Python 3.11+, but build easily.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 WORKDIR /
 # Bump the date to current to force update micromamba
 RUN echo "2024.04.25" && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
@@ -257,7 +264,7 @@ RUN ${CONDA_PYTHON} -m pip install --no-cache-dir --upgrade templateflow && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
 # Install pre-built wheel
-COPY --from=src /src/nibabies/dist/*.whl .
+COPY --from=src /src/dist/*.whl .
 RUN ${CONDA_PYTHON} -m pip install --no-cache-dir $( ls *.whl )[telemetry,test]
 
 # Facilitate Apptainer use
