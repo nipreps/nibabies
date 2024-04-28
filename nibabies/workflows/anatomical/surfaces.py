@@ -210,7 +210,7 @@ def init_mcribs_dhcp_wf(*, name='mcribs_dhcp_wf'):
         name='inputnode',
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(['sphere_reg_fsLR']),
+        niu.IdentityInterface(['sphere_reg_dhcpAsym']),
         name='outputnode',
     )
 
@@ -258,7 +258,7 @@ def init_mcribs_dhcp_wf(*, name='mcribs_dhcp_wf'):
 
     workflow.connect([
         (inputnode, project_unproject, [('sphere_reg', 'sphere_in')]),
-        (project_unproject, outputnode, [('sphere_out', 'sphere_reg_fsLR')]),
+        (project_unproject, outputnode, [('sphere_out', 'sphere_reg_dhcpAsym')]),
     ])  # fmt:skip
 
     return workflow

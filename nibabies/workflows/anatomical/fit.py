@@ -148,6 +148,8 @@ def init_infant_anat_fit_wf(
                 't2w_mask',
                 't2w_valid_list',
                 # Anat specific
+                'anat_preproc',
+                'anat_mask',
                 'anat_dseg',
                 'anat_tpms',
                 'anat2std_xfm',
@@ -783,7 +785,7 @@ def init_infant_anat_fit_wf(
             (anat_buffer, register_template_wf, [(f'{anat}_preproc', 'inputnode.moving_image')]),
             (refined_buffer, register_template_wf, [(f'{anat}_mask', 'inputnode.moving_mask')]),
             (sourcefile_buffer, ds_template_registration_wf, [
-                (f'{anat}_source_files', 'inputnode.source_files')
+                ('anat_source_files', 'inputnode.source_files')
             ]),
             (register_template_wf, ds_template_registration_wf, [
                 ('outputnode.template', 'inputnode.template'),
@@ -998,11 +1000,7 @@ def init_infant_anat_fit_wf(
         LOGGER.info(f'ANAT Stage 8: Creating GIFTI surfaces for {surfs + spheres}')
     if surfs:
         gifti_surfaces_wf = init_gifti_surfaces_wf(surfaces=surfs)
-        ds_surfaces_wf = init_ds_surfaces_wf(
-            bids_root=bids_root,
-            output_dir=output_dir,
-            surfaces=surfs,
-        )
+        ds_surfaces_wf = init_ds_surfaces_wf(output_dir=output_dir, surfaces=surfs)
 
         workflow.connect([
             (surface_recon_wf, gifti_surfaces_wf, [
@@ -1015,7 +1013,7 @@ def init_infant_anat_fit_wf(
             (gifti_surfaces_wf, surfaces_buffer, [
                 (f'outputnode.{surf}', surf) for surf in surfs
             ]),
-            (sourcefile_buffer, ds_surfaces_wf, [('source_files', 'inputnode.source_files')]),
+            (sourcefile_buffer, ds_surfaces_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_surfaces_wf, ds_surfaces_wf, [
                 (f'outputnode.{surf}', f'inputnode.{surf}') for surf in surfs
             ]),
@@ -1025,7 +1023,6 @@ def init_infant_anat_fit_wf(
             surfaces=spheres, to_scanner=False, name='gifti_spheres_wf'
         )
         ds_spheres_wf = init_ds_surfaces_wf(
-            bids_root=bids_root,
             output_dir=output_dir,
             surfaces=spheres,
             name='ds_spheres_wf',
@@ -1040,7 +1037,7 @@ def init_infant_anat_fit_wf(
             (gifti_spheres_wf, surfaces_buffer, [
                 (f'outputnode.{sphere}', sphere) for sphere in spheres
             ]),
-            (sourcefile_buffer, ds_spheres_wf, [('source_files', 'inputnode.source_files')]),
+            (sourcefile_buffer, ds_spheres_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_spheres_wf, ds_spheres_wf, [
                 (f'outputnode.{sphere}', f'inputnode.{sphere}') for sphere in spheres
             ]),
@@ -1064,7 +1061,7 @@ def init_infant_anat_fit_wf(
             (gifti_morph_wf, surfaces_buffer, [
                 (f'outputnode.{metric}', metric) for metric in metrics
             ]),
-            (sourcefile_buffer, ds_morph_wf, [('source_files', 'inputnode.source_files')]),
+            (sourcefile_buffer, ds_morph_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_morph_wf, ds_morph_wf, [
                 (f'outputnode.{metric}', f'inputnode.{metric}') for metric in metrics
             ]),
@@ -1088,7 +1085,9 @@ def init_infant_anat_fit_wf(
                 ('white', 'inputnode.white'),
                 ('pial', 'inputnode.pial'),
             ]),
-            (sourcefile_buffer, ds_ribbon_mask_wf, [('source_files', 'inputnode.source_files')]),
+            (sourcefile_buffer, ds_ribbon_mask_wf, [
+                ('anat_source_files', 'inputnode.source_files'),
+            ]),
             (anat_ribbon_wf, ds_ribbon_mask_wf, [
                 ('outputnode.anat_ribbon', 'inputnode.mask_file'),
             ]),
@@ -1105,7 +1104,6 @@ def init_infant_anat_fit_wf(
             fsLR_reg_wf = init_mcribs_dhcp_wf()
 
             ds_fsLR_reg_wf = init_ds_surfaces_wf(
-                bids_root=bids_root,
                 output_dir=output_dir,
                 surfaces=['sphere_reg_dhcpAsym'],
                 name='ds_fsLR_reg_wf',
@@ -1113,11 +1111,15 @@ def init_infant_anat_fit_wf(
 
             workflow.connect([
                 (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
-                (sourcefile_buffer, ds_fsLR_reg_wf, [('source_files', 'inputnode.source_files')]),
-                (fsLR_reg_wf, ds_fsLR_reg_wf, [
-                    ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
+                (sourcefile_buffer, ds_fsLR_reg_wf, [
+                    ('anat_source_files', 'inputnode.source_files'),
                 ]),
-                (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+                (fsLR_reg_wf, ds_fsLR_reg_wf, [
+                    ('outputnode.sphere_reg_dhcpAsym', 'inputnode.sphere_reg_dhcpAsym')
+                ]),
+                (ds_fsLR_reg_wf, fsLR_buffer, [
+                    ('outputnode.sphere_reg_dhcpAsym', 'sphere_reg_fsLR'),
+                ]),
             ])  # fmt:skip
         else:
             LOGGER.info('ANAT Stage 9: Found pre-computed dhcp-fsLR registration sphere')
@@ -1129,7 +1131,6 @@ def init_infant_anat_fit_wf(
             fsLR_reg_wf = init_fsLR_reg_wf()
 
             ds_fsLR_reg_wf = init_ds_surfaces_wf(
-                bids_root=bids_root,
                 output_dir=output_dir,
                 surfaces=['sphere_reg_fsLR'],
                 name='ds_fsLR_reg_wf',
@@ -1137,7 +1138,9 @@ def init_infant_anat_fit_wf(
 
             workflow.connect([
                 (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
-                (sourcefile_buffer, ds_fsLR_reg_wf, [('source_files', 'inputnode.source_files')]),
+                (sourcefile_buffer, ds_fsLR_reg_wf, [
+                    ('anat_source_files', 'inputnode.source_files'),
+                ]),
                 (fsLR_reg_wf, ds_fsLR_reg_wf, [
                     ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
                 ]),
@@ -1352,9 +1355,7 @@ def init_infant_anat_full_wf(
             output_dir=output_dir,
         )
         surface_derivatives_wf = init_surface_derivatives_wf()
-        ds_surfaces_wf = init_ds_surfaces_wf(
-            bids_root=bids_root, output_dir=output_dir, surfaces=['inflated']
-        )
+        ds_surfaces_wf = init_ds_surfaces_wf(output_dir=output_dir, surfaces=['inflated'])
         ds_curv_wf = init_ds_surface_metrics_wf(
             bids_root=bids_root, output_dir=output_dir, metrics=['curv'], name='ds_curv_wf'
         )
