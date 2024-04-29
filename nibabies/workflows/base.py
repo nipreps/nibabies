@@ -445,7 +445,10 @@ It is released under the [CC0]\
         # Reporting connections
         (inputnode, summary, [('subjects_dir', 'subjects_dir')]),
         (bidssrc, summary, [('t2w', 't2w'), ('bold', 'bold')]),
-        (bids_info, summary, [('subject', 'subject_id')]),
+        (bids_info, summary, [
+            ('subject', 'subject_id'),
+            ('session', 'session_id'),
+        ]),
         (summary, ds_report_summary, [('out_report', 'in_file')]),
         (summary, anat_wf, [('subject_id', 'inputnode.subject_id')]),
         (about, ds_report_about, [('out_report', 'in_file')]),

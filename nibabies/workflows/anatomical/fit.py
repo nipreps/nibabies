@@ -236,9 +236,14 @@ def init_infant_anat_fit_wf(
         name='coreg_buffer',
     )
 
+    aseg_buffer = pe.Node(
+        niu.IdentityInterface(fields=['anat_aseg']),
+        name='aseg_buffer',
+    )
+
     # Stage 4 - Segmentation
     seg_buffer = pe.Node(
-        niu.IdentityInterface(fields=['anat_dseg', 'anat_tpms', 'ants_segs', 'anat_aseg']),
+        niu.IdentityInterface(fields=['anat_dseg', 'anat_tpms', 'ants_segs']),
         name='seg_buffer',
     )
     # Stage 5 - collated template names, forward and reverse transforms
@@ -270,6 +275,13 @@ def init_infant_anat_fit_wf(
     msm_buffer = pe.Node(niu.IdentityInterface(fields=['sphere_reg_msm']), name='msm_buffer')
 
     workflow.connect([
+        (anat_buffer, outputnode, [
+            ('anat_preproc', 'anat_preproc'),
+        ]),
+        (refined_buffer, outputnode, [
+            ('anat_mask', 'anat_mask'),
+            ('anat_brain', 'anat_brain'),
+        ]),
         (seg_buffer, outputnode, [
             ('anat_dseg', 'anat_dseg'),
             ('anat_tpms', 'anat_tpms'),
@@ -280,6 +292,7 @@ def init_infant_anat_fit_wf(
         (sourcefile_buffer, outputnode, [
             ('t1w_source_files', 't1w_valid_list'),
             ('t2w_source_files', 't2w_valid_list'),
+            ('anat_source_files', 'anat_valid_list'),  # Alias for reference anat files
         ]),
         (surfaces_buffer, outputnode, [
             ('white', 'white'),
@@ -701,6 +714,10 @@ def init_infant_anat_fit_wf(
 
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
 
+    if anat_aseg:
+        LOGGER.info('ANAT Found precomputed anatomical segmentation')
+        aseg_buffer.inputs.anat_aseg = anat_aseg
+
     if not (anat_dseg and anat_tpms):
         LOGGER.info('ANAT Stage 4: Tissue segmentation')
         segmentation_wf = init_segmentation_wf(
@@ -718,13 +735,13 @@ def init_infant_anat_fit_wf(
                 ('outputnode.anat_tpms', 'anat_tpms'),
             ]),
         ])  # fmt:skip
-        if anat_aseg or seg_method == 'jlf':
-            workflow.connect(segmentation_wf, 'outputnode.anat_aseg', seg_buffer, 'anat_aseg')
-            if anat_aseg:
-                LOGGER.info('ANAT Found precomputed anatomical segmentation')
-                segmentation_wf.inputs.inputnode.anat_aseg = anat_aseg
 
-        # TODO: datasink
+        if anat_aseg:
+            workflow.connect(aseg_buffer, 'anat_aseg', segmentation_wf, 'inputnode.anat_aseg')
+        elif seg_method == 'jlf':
+            workflow.connect(segmentation_wf, 'outputnode.anat_aseg', aseg_buffer, 'anat_aseg')
+            # TODO: datasink aseg
+
         if not anat_dseg:
             ds_dseg_wf = init_ds_dseg_wf(output_dir=str(output_dir))
             workflow.connect([
@@ -839,7 +856,7 @@ def init_infant_anat_fit_wf(
                 ('t2w_preproc', 'inputnode.t2w'),
                 ('t2w_mask', 'inputnode.in_mask'),
             ]),
-            (seg_buffer, surface_recon_wf, [
+            (aseg_buffer, surface_recon_wf, [
                 ('anat_aseg', 'inputnode.in_aseg'),
             ]),
             (surface_recon_wf, outputnode, [
@@ -916,7 +933,7 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
 
         if anat_aseg:
-            workflow.conect(anat_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
+            workflow.conect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:

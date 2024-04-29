@@ -70,7 +70,7 @@ def init_segmentation_wf(
         workflow.connect([
             (inputnode, fast, [('anat_brain', 'in_files')]),
             (fast, to_dseg, [('partial_volume_map', 'in_dseg')]),
-            (to_dseg, outputnode, [('out', 'anat_dseg')]),
+            (to_dseg, outputnode, [('out_dseg', 'anat_dseg')]),
             (fast, fast2bids, [('partial_volume_files', 'inlist')]),
             (fast2bids, outputnode, [('out', 'anat_tpms')]),
         ])  # fmt:skip
