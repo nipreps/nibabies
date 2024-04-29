@@ -194,7 +194,7 @@ _default_omp_threads = int(os.getenv('OMP_NUM_THREADS', _available_cpus))
 
 # Debug modes are names that influence the exposure of internal details to
 # the user, either through additional derivatives or increased verbosity
-DEBUG_MODES = ('compcor', 'registration', 'fieldmaps')
+DEBUG_MODES = ('compcor', 'registration', 'fieldmaps', 'pdb')
 
 
 class _Config:
