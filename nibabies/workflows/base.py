@@ -54,7 +54,7 @@ from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.reports import AboutSummary, SubjectSummary
 from nibabies.utils.bids import parse_bids_for_age_months
-from nibabies.workflows.anatomical.fit import init_infant_anat_fit_wf, init_infant_anat_full_wf
+from nibabies.workflows.anatomical.fit import init_infant_anat_apply_wf, init_infant_anat_fit_wf
 
 if ty.TYPE_CHECKING:
     from bids.layout import BIDSLayout
@@ -208,7 +208,6 @@ def init_single_subject_wf(
     from ..utils.misc import fix_multi_source_name
 
     subject_session_id = _subject_session_id(subject_id, session_id)
-    print(f'{subject_session_id=}')
     workflow = Workflow(name=f'single_subject_{subject_session_id}_wf')
     workflow.__desc__ = f"""
 Results included in this manuscript come from preprocessing
@@ -388,32 +387,30 @@ It is released under the [CC0]\
         run_without_submitting=True,
     )
 
-    wf_args = {
-        'age_months': age,
-        't1w': t1w,
-        't2w': t2w,
-        'flair': subject_data['flair'],
-        'bids_root': bids_root,
-        'longitudinal': config.workflow.longitudinal,
-        'msm_sulc': msm_sulc,
-        'omp_nthreads': omp_nthreads,
-        'output_dir': config.execution.nibabies_dir,
-        'precomputed': anatomical_cache,
-        'segmentation_atlases': config.execution.segmentation_atlases_dir,
-        'skull_strip_fixed_seed': config.workflow.skull_strip_fixed_seed,
-        'skull_strip_mode': config.workflow.skull_strip_anat,
-        'skull_strip_template': Reference.from_string(config.workflow.skull_strip_template)[0],
-        'recon_method': recon_method,
-        'reference_anat': reference_anat,
-        'sloppy': config.execution.sloppy,
-        'spaces': spaces,
-        'cifti_output': config.workflow.cifti_output,
-    }
+    output_dir = config.execution.nibabies_dir
+    sloppy = config.execution.sloppy
+    cifti_output = config.workflow.cifti_output
 
-    anat_wf = (
-        init_infant_anat_full_wf(**wf_args)
-        if config.workflow.level == 'full'
-        else init_infant_anat_fit_wf(**wf_args)
+    anat_fit_wf = init_infant_anat_fit_wf(
+        age_months=age,
+        t1w=t1w,
+        t2w=t2w,
+        flair=subject_data['flair'],
+        bids_root=bids_root,
+        longitudinal=config.workflow.longitudinal,
+        msm_sulc=msm_sulc,
+        omp_nthreads=omp_nthreads,
+        output_dir=output_dir,
+        precomputed=anatomical_cache,
+        segmentation_atlases=config.execution.segmentation_atlases_dir,
+        skull_strip_fixed_seed=config.workflow.skull_strip_fixed_seed,
+        skull_strip_mode=config.workflow.skull_strip_anat,
+        skull_strip_template=Reference.from_string(config.workflow.skull_strip_template),
+        recon_method=recon_method,
+        reference_anat=reference_anat,
+        sloppy=sloppy,
+        spaces=spaces,
+        cifti_output=cifti_output,
     )
 
     # allow to run with anat-fast-track on fMRI-only dataset
@@ -422,9 +419,9 @@ It is released under the [CC0]\
     ) and not subject_data['t1w']:
         workflow.connect([
             (bidssrc, bids_info, [(('bold', fix_multi_source_name), 'in_file')]),
-            (anat_wf, summary, [('outputnode.anat_preproc', anat)]),
-            (anat_wf, ds_report_summary, [('outputnode.anat_preproc', 'source_file')]),
-            (anat_wf, ds_report_about, [('outputnode.anat_preproc', 'source_file')]),
+            (anat_fit_wf, summary, [('outputnode.anat_preproc', anat)]),
+            (anat_fit_wf, ds_report_summary, [('outputnode.anat_preproc', 'source_file')]),
+            (anat_fit_wf, ds_report_about, [('outputnode.anat_preproc', 'source_file')]),
         ])  # fmt:skip
     else:
         workflow.connect([
@@ -435,8 +432,8 @@ It is released under the [CC0]\
         ])  # fmt:skip
 
     workflow.connect([
-        (inputnode, anat_wf, [('subjects_dir', 'inputnode.subjects_dir')]),
-        (bidssrc, anat_wf, [
+        (inputnode, anat_fit_wf, [('subjects_dir', 'inputnode.subjects_dir')]),
+        (bidssrc, anat_fit_wf, [
             ('t1w', 'inputnode.t1w'),
             ('t2w', 'inputnode.t2w'),
             ('roi', 'inputnode.roi'),
@@ -450,18 +447,52 @@ It is released under the [CC0]\
             ('session', 'session_id'),
         ]),
         (summary, ds_report_summary, [('out_report', 'in_file')]),
-        (summary, anat_wf, [('subject_id', 'inputnode.subject_id')]),
+        (summary, anat_fit_wf, [('subject_id', 'inputnode.subject_id')]),
         (about, ds_report_about, [('out_report', 'in_file')]),
     ])  # fmt:skip
 
     # template_iterator_wf = None
     # select_MNI2009c_xfm = None
     if config.workflow.level == 'full':
-        # Much of the logic here is extracted into a separate, fuller anatomical workflow
+        anat_apply_wf = init_infant_anat_apply_wf(
+            bids_root=bids_root,
+            msm_sulc=msm_sulc,
+            omp_nthreads=omp_nthreads,
+            output_dir=output_dir,
+            recon_method=recon_method,
+            sloppy=sloppy,
+            spaces=spaces,
+            cifti_output=cifti_output,
+        )
+
+        reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
+        workflow.connect(
+            [
+                (
+                    anat_fit_wf,
+                    anat_apply_wf,
+                    [
+                        ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                        ('outputnode.anat_valid_list', 'inputnode.anat_valid_list'),
+                        ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                        ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                        ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                        ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                        ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                        ('outputnode.midthickness', 'inputnode.midthickness'),
+                        (f'outputnode.{reg_sphere}', f'inputnode.{reg_sphere}'),
+                        ('outputnode.sulc', 'inputnode.sulc'),
+                        ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                        ('outputnode.subject_id', 'inputnode.subject_id'),
+                        ('outputnode.template', 'inputnode.template'),
+                        ('outputnode.thickness', 'inputnode.thickness'),
+                    ],
+                ),
+            ]
+        )
         # TODO:
         # - Grab template_iterator_wf workflow
         # - Grab select_MNI2009c_xfm node
-        pass
 
         # if 'MNI152NLin2009cAsym' in spaces.get_spaces():
         #     select_MNI2009c_xfm = pe.Node(
