@@ -117,8 +117,6 @@ def init_infant_anat_fit_wf(
         )
         return workflow
 
-    anat = reference_anat.lower()
-
     # Organization
     # ------------
     # This workflow takes the usual (inputnode -> graph -> outputnode) format
@@ -240,7 +238,7 @@ def init_infant_anat_fit_wf(
 
     # Stage 4 - Segmentation
     seg_buffer = pe.Node(
-        niu.IdentityInterface(fields=['anat_dseg', 'anat_tpms', 'ants_segs']),
+        niu.IdentityInterface(fields=['anat_dseg', 'anat_tpms', 'ants_segs', 'anat_aseg']),
         name='seg_buffer',
     )
     # Stage 5 - collated template names, forward and reverse transforms
@@ -650,7 +648,10 @@ def init_infant_anat_fit_wf(
             )
         t2w_buffer.inputs.t2w_mask = t2w_mask
         apply_t2w_mask.inputs.in_mask = t2w_mask
-        workflow.connect(t2w_validate, 'out_file', apply_t2w_mask, 'in_file')
+        workflow.connect([
+            (t2w_validate, apply_t2w_mask, [('out_file', 'in_file')]),
+            (apply_t2w_mask, t2w_buffer, [('out_file', 't2w_brain')]),
+        ])  # fmt:skip
 
     # Stage 3: Coregistration
     t1w2t2w_xfm = precomputed.get('t1w2t2w_xfm')
@@ -680,8 +681,10 @@ def init_infant_anat_fit_wf(
             probmap=not t2w_mask,
         )
         workflow.connect([
-            (anat_buffer, coregistration_wf, [
+            (t1w_buffer, coregistration_wf, [
                 ('t1w_preproc', 'inputnode.in_t1w'),
+            ]),
+            (t2w_buffer, coregistration_wf, [
                 ('t2w_preproc', 'inputnode.in_t2w'),
                 ('t2w_mask', 'inputnode.in_mask'),
             ]),
@@ -709,7 +712,7 @@ def init_infant_anat_fit_wf(
         )
 
         workflow.connect([
-            (anat_buffer, segmentation_wf, [(f'{anat}_brain', 'inputnode.anat_brain')]),
+            (anat_buffer, segmentation_wf, [('anat_brain', 'inputnode.anat_brain')]),
             (segmentation_wf, seg_buffer, [
                 ('outputnode.anat_dseg', 'anat_dseg'),
                 ('outputnode.anat_tpms', 'anat_tpms'),
@@ -782,8 +785,8 @@ def init_infant_anat_fit_wf(
 
         workflow.connect([
             (inputnode, register_template_wf, [('roi', 'inputnode.lesion_mask')]),
-            (anat_buffer, register_template_wf, [(f'{anat}_preproc', 'inputnode.moving_image')]),
-            (refined_buffer, register_template_wf, [(f'{anat}_mask', 'inputnode.moving_mask')]),
+            (anat_buffer, register_template_wf, [('anat_preproc', 'inputnode.moving_image')]),
+            (refined_buffer, register_template_wf, [('anat_mask', 'inputnode.moving_mask')]),
             (sourcefile_buffer, ds_template_registration_wf, [
                 ('anat_source_files', 'inputnode.source_files')
             ]),
@@ -828,12 +831,20 @@ def init_infant_anat_fit_wf(
         )
 
         workflow.connect([
+            (inputnode, surface_recon_wf, [
+                ('subject_id', 'inputnode.subject_id'),
+                ('subjects_dir', 'inputnode.subjects_dir'),
+            ]),
             (t2w_buffer, surface_recon_wf, [
                 ('t2w_preproc', 'inputnode.t2w'),
                 ('t2w_mask', 'inputnode.in_mask'),
             ]),
-            (anat_buffer, surface_recon_wf, [
+            (seg_buffer, surface_recon_wf, [
                 ('anat_aseg', 'inputnode.in_aseg'),
+            ]),
+            (surface_recon_wf, outputnode, [
+                ('outputnode.subjects_dir', 'subjects_dir'),
+                ('outputnode.subject_id', 'subject_id'),
             ]),
         ])  # fmt:skip
 
@@ -1008,7 +1019,7 @@ def init_infant_anat_fit_wf(
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
             ]),
             (fsnative_buffer, gifti_surfaces_wf, [
-                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
             (gifti_surfaces_wf, surfaces_buffer, [
                 (f'outputnode.{surf}', surf) for surf in surfs
@@ -1245,7 +1256,7 @@ def init_infant_anat_full_wf(
     spaces: 'SpatialReferences',
     cifti_output: ty.Literal['91k', '170k', False],
     skull_strip_fixed_seed: bool = False,
-    name: str = 'infant_anat_wf',
+    name: str = 'infant_anat_full_wf',
 ) -> pe.Workflow:
     """The full version of the fit workflow."""
     workflow = pe.Workflow(name=name)

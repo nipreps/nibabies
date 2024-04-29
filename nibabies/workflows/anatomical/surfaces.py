@@ -108,7 +108,7 @@ def init_mcribs_surface_recon_wf(
         63: 50,
         253: 48,
     }
-    map_labels = pe.Node(MapLabels(mappings=fs2mcribs), name='map_labels')
+    fs_to_mcribs = pe.Node(MapLabels(mappings=fs2mcribs), name='fs_to_mcribs')
 
     t2w_las = pe.Node(ReorientImage(target_orientation='LAS'), name='t2w_las')
     seg_las = t2w_las.clone(name='seg_las')
@@ -151,8 +151,8 @@ def init_mcribs_surface_recon_wf(
 
     workflow.connect([
         (inputnode, t2w_las, [('t2w', 'in_file')]),
-        (inputnode, map_labels, [('in_aseg', 'in_file')]),
-        (map_labels, seg_las, [('out_file', 'in_file')]),
+        (inputnode, fs_to_mcribs, [('in_aseg', 'in_file')]),
+        (fs_to_mcribs, seg_las, [('out_file', 'in_file')]),
         (inputnode, mcribs_recon, [
             ('subjects_dir', 'subjects_dir'),
             ('subject_id', 'subject_id')]),

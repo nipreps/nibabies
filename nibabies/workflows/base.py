@@ -208,6 +208,7 @@ def init_single_subject_wf(
     from ..utils.misc import fix_multi_source_name
 
     subject_session_id = _subject_session_id(subject_id, session_id)
+    print(f'{subject_session_id=}')
     workflow = Workflow(name=f'single_subject_{subject_session_id}_wf')
     workflow.__desc__ = f"""
 Results included in this manuscript come from preprocessing
@@ -415,9 +416,6 @@ It is released under the [CC0]\
         else init_infant_anat_fit_wf(**wf_args)
     )
 
-    # Ensure surface reconstruction is run at the per-session level
-    anat_wf.inputs.inputnode.subject_id = subject_session_id
-
     # allow to run with anat-fast-track on fMRI-only dataset
     if (
         't1w_preproc' in anatomical_cache or 't2w_preproc' in anatomical_cache
@@ -449,6 +447,7 @@ It is released under the [CC0]\
         (bidssrc, summary, [('t2w', 't2w'), ('bold', 'bold')]),
         (bids_info, summary, [('subject', 'subject_id')]),
         (summary, ds_report_summary, [('out_report', 'in_file')]),
+        (summary, anat_wf, [('subject_id', 'inputnode.subject_id')]),
         (about, ds_report_about, [('out_report', 'in_file')]),
     ])  # fmt:skip
 
