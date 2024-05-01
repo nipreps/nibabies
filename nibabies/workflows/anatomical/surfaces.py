@@ -147,7 +147,7 @@ def init_mcribs_surface_recon_wf(
     )
 
     fssource = pe.Node(FreeSurferSource(), name='fssource', run_without_submitting=True)
-    midthickness_wf = init_midthickness_wf(omp_nthreads=omp_nthreads)
+    midthickness_wf = init_make_midthickness_wf(omp_nthreads=omp_nthreads)
 
     workflow.connect([
         (inputnode, t2w_las, [('t2w', 'in_file')]),
@@ -163,7 +163,9 @@ def init_mcribs_surface_recon_wf(
             ('subject_id', 'subject_id')]),
         (mcribs_recon, mcribs_postrecon, [('mcribs_dir', 'outdir')]),
         (mcribs_postrecon, fssource, [('subjects_dir', 'subjects_dir')]),
-        (inputnode, fssource, [('subject_id', 'inputnode.subject_id')]),
+        (mcribs_postrecon, midthickness_wf, [('subjects_dir', 'inputnode.subjects_dir')]),
+        (inputnode, fssource, [('subject_id', 'subject_id')]),
+        (inputnode, midthickness_wf, [('subject_id', 'inputnode.subject_id')]),
         (fssource, midthickness_wf, [
             ('white', 'inputnode.white'),
             ('graymid', 'inputnode.graymid'),
@@ -294,7 +296,7 @@ def init_infantfs_surface_recon_wf(
         workflow.connect(inputnode, 'in_aseg', recon, 'aseg_file')
 
     fssource = pe.Node(FreeSurferSource(), name='fssource', run_without_submitting=True)
-    midthickness_wf = init_midthickness_wf(omp_nthreads=omp_nthreads)
+    midthickness_wf = init_make_midthickness_wf(omp_nthreads=omp_nthreads)
 
     workflow.connect([
         (inputnode, gen_recon_outdir, [
@@ -311,6 +313,10 @@ def init_infantfs_surface_recon_wf(
         (recon, fssource, [
             ('subject_id', 'subject_id'),
             (('outdir', _parent), 'subjects_dir'),
+        ]),
+        (recon, midthickness_wf, [
+            ('subject_id', 'inputnode.subject_id'),
+            (('outdir', _parent), 'inputnode.subjects_dir'),
         ]),
         (fssource, midthickness_wf, [
             ('white', 'inputnode.white'),
@@ -348,14 +354,19 @@ def init_infantfs_surface_recon_wf(
     return workflow
 
 
-def init_midthickness_wf(*, omp_nthreads: int, name: str = 'make_midthickness_wf') -> pe.Workflow:
+def init_make_midthickness_wf(
+    *, omp_nthreads: int, name: str = 'make_midthickness_wf'
+) -> pe.Workflow:
     """
     Standalone workflow to create and save cortical midthickness, derived from
     the generated white / graymid surfaces.
     """
 
     workflow = pe.Workflow(name=name)
-    inputnode = pe.Node(niu.IdentityInterface(fields=['white', 'graymid']), name='inputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['subject_id', 'subjects_dir', 'white', 'graymid']),
+        name='inputnode',
+    )
     outputnode = pe.Node(
         niu.IdentityInterface(fields=['subject_id', 'subjects_dir']),
         name='outputnode',
@@ -383,6 +394,10 @@ def init_midthickness_wf(*, omp_nthreads: int, name: str = 'make_midthickness_wf
             ('graymid', 'graymid'),
         ]),
         (midthickness, save_midthickness, [('out_file', 'surf.@graymid')]),
+        (inputnode, save_midthickness, [
+            ('subjects_dir', 'base_directory'),
+            ('subject_id', 'container'),
+        ]),
         (save_midthickness, sync, [('out_file', 'filenames')]),
         (sync, outputnode, [
             ('subjects_dir', 'subjects_dir'),
