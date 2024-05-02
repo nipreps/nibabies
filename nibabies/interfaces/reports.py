@@ -159,12 +159,14 @@ class SubjectSummary(SummaryInterface):
                 )
 
             elif recon_method == 'infantfs':
+                from niworkflows.utils.connections import pop_file
+
                 from nibabies.interfaces.freesurfer import InfantReconAll
 
                 recon = InfantReconAll(
                     subjects_dir=self.inputs.subjects_dir,
                     subject_id=self._recon_id,
-                    t1_file=self.inputs.t1w,
+                    t1_file=pop_file(self.inputs.t1w),
                 )
                 recon_status = (
                     statuses['done'] if recon.cmdline.startswith('echo') else statuses['todo']
