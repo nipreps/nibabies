@@ -54,7 +54,11 @@ from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.reports import AboutSummary, SubjectSummary
 from nibabies.utils.bids import parse_bids_for_age_months
-from nibabies.workflows.anatomical.fit import init_infant_anat_apply_wf, init_infant_anat_fit_wf
+from nibabies.workflows.anatomical.fit import (
+    init_infant_anat_apply_wf,
+    init_infant_anat_fit_wf,
+    init_infant_single_anat_fit_wf,
+)
 
 if ty.TYPE_CHECKING:
     from bids.layout import BIDSLayout
@@ -316,7 +320,9 @@ It is released under the [CC0]\
     preferred_anat = config.execution.reference_anat
     t1w = subject_data['t1w']
     t2w = subject_data['t2w']
+    single_anat = False
     if not t1w and t2w:
+        single_anat = True
         reference_anat = 'T1w' if t1w else 'T2w'
         if preferred_anat and reference_anat != preferred_anat:
             raise AttributeError(
@@ -324,7 +330,11 @@ It is released under the [CC0]\
             )
     else:
         if not (reference_anat := preferred_anat):
-            reference_anat = 'T2w' if age <= 8 else 'T1w'
+            if recon_method is None:
+                reference_anat = 'T2w' if age <= 8 else 'T1w'
+            else:
+                reference_anat = 'T2w' if recon_method == 'mcribs' else 'T1w'
+
     anat = reference_anat.lower()  # To be used for workflow connections
 
     bids_root = str(config.execution.bids_dir)
@@ -391,27 +401,30 @@ It is released under the [CC0]\
     sloppy = config.execution.sloppy
     cifti_output = config.workflow.cifti_output
 
-    anat_fit_wf = init_infant_anat_fit_wf(
-        age_months=age,
-        t1w=t1w,
-        t2w=t2w,
-        flair=subject_data['flair'],
-        bids_root=bids_root,
-        longitudinal=config.workflow.longitudinal,
-        msm_sulc=msm_sulc,
-        omp_nthreads=omp_nthreads,
-        output_dir=output_dir,
-        precomputed=anatomical_cache,
-        segmentation_atlases=config.execution.segmentation_atlases_dir,
-        skull_strip_fixed_seed=config.workflow.skull_strip_fixed_seed,
-        skull_strip_mode=config.workflow.skull_strip_anat,
-        skull_strip_template=Reference.from_string(config.workflow.skull_strip_template),
-        recon_method=recon_method,
-        reference_anat=reference_anat,
-        sloppy=sloppy,
-        spaces=spaces,
-        cifti_output=cifti_output,
-    )
+    wf_args = {
+        'age_months': age,
+        't1w': t1w,
+        't2w': t2w,
+        'flair': subject_data['flair'],
+        'bids_root': bids_root,
+        'longitudinal': config.workflow.longitudinal,
+        'msm_sulc': msm_sulc,
+        'omp_nthreads': omp_nthreads,
+        'output_dir': output_dir,
+        'precomputed': anatomical_cache,
+        'segmentation_atlases': config.execution.segmentation_atlases_dir,
+        'skull_strip_fixed_seed': config.workflow.skull_strip_fixed_seed,
+        'skull_strip_mode': config.workflow.skull_strip_anat,
+        'skull_strip_template': Reference.from_string(config.workflow.skull_strip_template)[0],
+        'recon_method': recon_method,
+        'reference_anat': reference_anat,
+        'sloppy': sloppy,
+        'spaces': spaces,
+        'cifti_output': cifti_output,
+    }
+
+    fit_wf = init_infant_single_anat_fit_wf if single_anat else init_infant_anat_fit_wf
+    anat_fit_wf = fit_wf(**wf_args)
 
     # allow to run with anat-fast-track on fMRI-only dataset
     if (
