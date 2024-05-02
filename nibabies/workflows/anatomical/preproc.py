@@ -6,7 +6,7 @@ from niworkflows.engine.workflows import LiterateWorkflow
 def init_anat_preproc_wf(
     *,
     bspline_fitting_distance: int = 200,
-    name: str = "anat_preproc_wf",
+    name: str = 'anat_preproc_wf',
 ) -> LiterateWorkflow:
     """Polish up raw anatomical data.
 
@@ -28,24 +28,24 @@ def init_anat_preproc_wf(
     anat_preproc: :obj:`str`
         Preprocessed anatomical image (Denoising/INU/Clipping)
     """
-    from nipype.interfaces.ants import DenoiseImage, N4BiasFieldCorrection
+    from nipype.interfaces.ants import N4BiasFieldCorrection
     from niworkflows.interfaces.header import ValidateImage
     from niworkflows.interfaces.nibabel import IntensityClip
 
     wf = LiterateWorkflow(name=name)
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["in_anat"]),
-        name="inputnode",
+        niu.IdentityInterface(fields=['in_anat']),
+        name='inputnode',
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["anat_preproc"]),
-        name="outputnode",
+        niu.IdentityInterface(fields=['anat_preproc']),
+        name='outputnode',
     )
 
     # validate image
-    validate = pe.Node(ValidateImage(), name="anat_validate", run_without_submitting=True)
-    clip = pe.Node(IntensityClip(p_min=10.0, p_max=99.5), name="clip")
-    denoise = pe.Node(DenoiseImage(dimension=3, noise_model="Rician"), name="denoise")
+    validate = pe.Node(ValidateImage(), name='anat_validate', run_without_submitting=True)
+    clip = pe.Node(IntensityClip(p_min=10.0, p_max=99.5), name='clip')
+    # denoise = pe.Node(DenoiseImage(dimension=3, noise_model="Rician"), name="denoise")
     n4_correct = pe.Node(
         N4BiasFieldCorrection(
             dimension=3,
@@ -57,18 +57,18 @@ def init_anat_preproc_wf(
             rescale_intensities=True,
             shrink_factor=4,
         ),
-        name="n4_correct",
+        name='n4_correct',
     )
-    final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=99.5), name="final_clip")
+    final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=99.5), name='final_clip')
 
     # fmt:off
     wf.connect([
-        (inputnode, validate, [("in_anat", "in_file")]),
-        (validate, clip, [("out_file", "in_file")]),
-        (clip, denoise, [("out_file", "input_image")]),
-        (denoise, n4_correct, [("output_image", "input_image")]),
-        (n4_correct, final_clip, [("output_image", "in_file")]),
-        (final_clip, outputnode, [("out_file", "anat_preproc")]),
+        (inputnode, validate, [('in_anat', 'in_file')]),
+        (validate, clip, [('out_file', 'in_file')]),
+        (clip, n4_correct, [('out_file', 'input_image')]),
+        # (denoise, n4_correct, [("output_image", "input_image")]),
+        (n4_correct, final_clip, [('output_image', 'in_file')]),
+        (final_clip, outputnode, [('out_file', 'anat_preproc')]),
     ])
     # fmt:on
     return wf
