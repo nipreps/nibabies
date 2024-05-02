@@ -460,36 +460,31 @@ It is released under the [CC0]\
             omp_nthreads=omp_nthreads,
             output_dir=output_dir,
             recon_method=recon_method,
+            reference_anat=reference_anat,
             sloppy=sloppy,
             spaces=spaces,
             cifti_output=cifti_output,
         )
 
         reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
-        workflow.connect(
-            [
-                (
-                    anat_fit_wf,
-                    anat_apply_wf,
-                    [
-                        ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
-                        ('outputnode.anat_valid_list', 'inputnode.anat_valid_list'),
-                        ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
-                        ('outputnode.anat_mask', 'inputnode.anat_mask'),
-                        ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                        ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-                        ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                        ('outputnode.midthickness', 'inputnode.midthickness'),
-                        (f'outputnode.{reg_sphere}', f'inputnode.{reg_sphere}'),
-                        ('outputnode.sulc', 'inputnode.sulc'),
-                        ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-                        ('outputnode.subject_id', 'inputnode.subject_id'),
-                        ('outputnode.template', 'inputnode.template'),
-                        ('outputnode.thickness', 'inputnode.thickness'),
-                    ],
-                ),
-            ]
-        )
+        workflow.connect([
+            (anat_fit_wf, anat_apply_wf, [
+                ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                ('outputnode.anat_valid_list', 'inputnode.anat_valid_list'),
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                ('outputnode.midthickness', 'inputnode.midthickness'),
+                (f'outputnode.{reg_sphere}', f'inputnode.{reg_sphere}'),
+                ('outputnode.sulc', 'inputnode.sulc'),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+                ('outputnode.template', 'inputnode.template'),
+                ('outputnode.thickness', 'inputnode.thickness'),
+            ]),
+        ])  # fmt:skip
         # TODO:
         # - Grab template_iterator_wf workflow
         # - Grab select_MNI2009c_xfm node
