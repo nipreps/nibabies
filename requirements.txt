@@ -294,7 +294,7 @@ toml==0.10.2
     # via nibabies (pyproject.toml)
 tornado==6.3.3
     # via bokeh
-tqdm==4.65.0
+tqdm==4.66.3
     # via templateflow
 traits==6.3.2
     # via
