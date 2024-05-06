@@ -1356,7 +1356,7 @@ def init_infant_single_anat_fit_wf(
 
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['anat', 'roi', 'flair', 'subjects_dir', 'subject_id'],
+            fields=['t1w', 't2w', 'anat', 'roi', 'flair', 'subjects_dir', 'subject_id'],
         ),
         name='inputnode',
     )
@@ -1545,7 +1545,7 @@ def init_infant_single_anat_fit_wf(
         ])  # fmt:skip
 
         workflow.connect([
-            (inputnode, anat_template_wf, [('t1w', 'inputnode.anat_files')]),
+            (inputnode, anat_template_wf, [('anat', 'inputnode.anat_files')]),
             (anat_template_wf, anat_validate, [('outputnode.anat_ref', 'in_file')]),
             (anat_template_wf, ds_anat_template_wf, [
                 ('outputnode.anat_realign_xfm', 'inputnode.anat_ref_xfms'),

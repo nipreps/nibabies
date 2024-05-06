@@ -427,9 +427,7 @@ It is released under the [CC0]\
     anat_fit_wf = fit_wf(**wf_args)
 
     # allow to run with anat-fast-track on fMRI-only dataset
-    if (
-        't1w_preproc' in anatomical_cache or 't2w_preproc' in anatomical_cache
-    ) and not subject_data['t1w']:
+    if f'{anat}_preproc' in anatomical_cache and not subject_data[anat]:
         workflow.connect([
             (bidssrc, bids_info, [(('bold', fix_multi_source_name), 'in_file')]),
             (anat_fit_wf, summary, [('outputnode.anat_preproc', anat)]),
@@ -438,11 +436,14 @@ It is released under the [CC0]\
         ])  # fmt:skip
     else:
         workflow.connect([
-            (bidssrc, bids_info, [(('t1w', fix_multi_source_name), 'in_file')]),
+            (bidssrc, bids_info, [((anat, fix_multi_source_name), 'in_file')]),
             (bidssrc, summary, [('t1w', 't1w')]),
-            (bidssrc, ds_report_summary, [(('t1w', fix_multi_source_name), 'source_file')]),
-            (bidssrc, ds_report_about, [(('t1w', fix_multi_source_name), 'source_file')]),
+            (bidssrc, ds_report_summary, [((anat, fix_multi_source_name), 'source_file')]),
+            (bidssrc, ds_report_about, [((anat, fix_multi_source_name), 'source_file')]),
         ])  # fmt:skip
+
+    if single_anat:
+        workflow.connect(bidssrc, anat, anat_fit_wf, 'inputnode.anat')
 
     workflow.connect([
         (inputnode, anat_fit_wf, [('subjects_dir', 'inputnode.subjects_dir')]),
