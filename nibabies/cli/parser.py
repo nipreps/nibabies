@@ -23,6 +23,24 @@ def _build_parser():
 
     from .version import check_latest, is_flagged
 
+    deprecations = {
+        # parser attribute name: (replacement flag, version slated to be removed in)
+        'bold2t1w_init': ('--bold2anat-init', '24.2.0'),
+        'bold2t1w_dof': ('--bold2anat-dof', '24.2.0'),
+    }
+
+    class DeprecatedAction(Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            new_opt, rem_vers = deprecations.get(self.dest, (None, None))
+            msg = (
+                f"{self.option_strings} has been deprecated and will be removed in "
+                f"{rem_vers or 'a later version'}."
+            )
+            if new_opt:
+                msg += f' Please use `{new_opt}` instead.'
+            print(msg, file=sys.stderr)
+            delattr(namespace, self.dest)
+
     class DerivToDict(Action):
         def __call__(self, parser, namespace, values, option_string=None):
             d = {}
@@ -354,19 +372,32 @@ Useful for further Tedana processing post-NiBabies.""",
 
     g_conf.add_argument(
         '--bold2t1w-init',
-        action='store',
-        default='register',
+        action=DeprecatedAction,
         choices=['register', 'header'],
-        help='Either "register" (the default) to initialize volumes at center or "header"'
-        ' to use the header information when coregistering BOLD to T1w images.',
+        help='Deprecated - use `--bold2anat-init` instead.',
     )
     g_conf.add_argument(
         '--bold2t1w-dof',
+        action=DeprecatedAction,
+        choices=[6, 9, 12],
+        type=int,
+        help='Deprecated - use `--bold2anat-dof` instead.',
+    )
+    g_conf.add_argument(
+        '--bold2anat-init',
+        choices=['auto', 't1w', 't2w', 'header'],
+        default='auto',
+        help='Method of initial BOLD to anatomical coregistration. If `auto`, a T2w image is used '
+        'if available, otherwise the T1w image. `t1w` forces use of the T1w, `t2w` forces use of '
+        'the T2w, and `header` uses the BOLD header information without an initial registration.',
+    )
+    g_conf.add_argument(
+        '--bold2anat-dof',
         action='store',
         default=6,
         choices=[6, 9, 12],
         type=int,
-        help='Degrees of freedom when registering BOLD to T1w images. '
+        help='Degrees of freedom when registering BOLD to anatomical images. '
         '6 degrees (rotation and translation) are used by default.',
     )
     g_conf.add_argument(
@@ -731,14 +762,6 @@ def parse_args(args=None, namespace=None):
 
     parser = _build_parser()
     opts = parser.parse_args(args, namespace)
-
-    # Deprecations
-    if opts.force_reconall:
-        config.loggers.cli.warning(
-            '--force-reconall is deprecated and will be removed in a future release.'
-            'To run traditional `recon-all`, use `--surface-recon-method freesurfer` instead.'
-        )
-        opts.surface_recon_method = 'freesurfer'
 
     if opts.config_file:
         skip = {} if opts.reports_only else {'execution': ('run_uuid',)}

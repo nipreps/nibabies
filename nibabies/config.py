@@ -543,9 +543,9 @@ class workflow(_Config):
     aroma_melodic_dim = None
     """Number of ICA components to be estimated by MELODIC
     (positive = exact, negative = maximum)."""
-    bold2t1w_dof = None
-    """Degrees of freedom of the BOLD-to-T1w registration steps."""
-    bold2t1w_init = 'register'
+    bold2anat_dof = None
+    """Degrees of freedom of the BOLD-to-anatomical registration steps."""
+    bold2anat_init = 'auto'
     """Whether to use standard coregistration ('register') or to initialize coregistration from the
     BOLD image-header ('header')."""
     cifti_output = None
