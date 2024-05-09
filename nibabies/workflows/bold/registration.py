@@ -99,14 +99,14 @@ def init_bold_reg_wf(
     subject_id
         FreeSurfer subject ID
     fsnative2anat_xfm
-        LTA-style affine matrix translating from FreeSurfer-conformed subject space to T1w
+        LTA-style affine matrix translating from FreeSurfer-conformed subject space to anatomical
 
     Outputs
     -------
-    itk_bold_to_t1
-        Affine transform from ``ref_bold_brain`` to T1 space (ITK format)
-    itk_t1_to_bold
-        Affine transform from T1 space to BOLD space (ITK format)
+    itk_bold_to_anat
+        Affine transform from ``ref_bold_brain`` to anatomical space (ITK format)
+    itk_anat_to_bold
+        Affine transform from anatomical space to BOLD space (ITK format)
     fallback
         Boolean indicating whether BBR was rejected (mri_coreg registration returned)
 
@@ -117,7 +117,6 @@ def init_bold_reg_wf(
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-
 
     workflow = Workflow(name=name)
     inputnode = pe.Node(
@@ -660,7 +659,7 @@ def init_fsl_bbr_wf(
         Brain mask of structural image
     t1w_dseg
         FAST segmentation of masked ``t1w_preproc``
-    fsnative2t1w_xfm
+    fsnative2anat_xfm
         Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_bbreg_wf`)
     subjects_dir
         Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_bbreg_wf`)
@@ -703,7 +702,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         niu.IdentityInterface(
             [
                 'in_file',
-                'fsnative2t1w_xfm',  # BBRegister
+                'fsnative2anat_xfm',  # BBRegister
                 'subjects_dir',
                 'subject_id',
                 't1w_preproc',  # FLIRT BBR
