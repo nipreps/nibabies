@@ -1656,8 +1656,26 @@ def init_infant_single_anat_fit_wf(
         apply_mask.inputs.in_mask = anat_mask
         workflow.connect([
             (anat_validate, apply_mask, [('out_file', 'in_file')]),
-            (apply_mask, anat_buffer, [('out_file', 'anat_brain')]),
         ])  # fmt:skip
+
+        if not anat_preproc:
+            LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
+            n4_only_wf = init_n4_only_wf(
+                omp_nthreads=omp_nthreads,
+                atropos_use_random_seed=not skull_strip_fixed_seed,
+                bids_suffix=reference_anat,
+                name='n4_only_wf',
+            )
+            workflow.connect([
+                (apply_mask, n4_only_wf, [('out_file', 'inputnode.in_files')]),
+                (n4_only_wf, anat_buffer, [
+                    (('outputnode.bias_corrected', pop_file), 'anat_preproc'),
+                    (('outputnode.out_file', pop_file), 'anat_brain'),
+                ]),
+            ])  # fmt:skip
+        else:
+            LOGGER.info('ANAT Skipping T2w masking')
+            workflow.connect(apply_mask, 'out_file', anat_buffer, 'anat_brain')
 
     # Stage 3: Segmentation
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
