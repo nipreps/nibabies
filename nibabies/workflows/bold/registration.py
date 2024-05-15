@@ -19,12 +19,10 @@ from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
 from nibabies import config, data
+from nibabies.types import AffineDOF, RegistrationInit
 
 DEFAULT_MEMORY_MIN_GB = config.DEFAULT_MEMORY_MIN_GB
 LOGGER = logging.getLogger('nipype.workflow')
-
-AffineDOF = ty.Literal[6, 9, 12]
-RegistrationInit = ty.Literal['t1w', 't2w', 'header']
 
 
 def init_bold_reg_wf(
@@ -58,8 +56,8 @@ def init_bold_reg_wf(
                                   mem_gb=3,
                                   omp_nthreads=1,
                                   use_bbr=True,
-                                  bold2t1w_dof=9,
-                                  bold2t1w_init='auto')
+                                  bold2anat_dof=9,
+                                  bold2anat_init='auto')
 
     Parameters
     ----------
@@ -68,9 +66,9 @@ def init_bold_reg_wf(
     use_bbr : :obj:`bool` or None
         Enable/disable boundary-based registration refinement.
         If ``None``, test BBR result for distortion before accepting.
-    bold2t1w_dof : 6, 9 or 12
+    bold2anat_dof : 6, 9 or 12
         Degrees-of-freedom for BOLD-T1w registration
-    bold2t1w_init : str, 'header' or 'register'
+    bold2anat_init : str, 'header' or 'register'
         If ``'header'``, use header information for initialization of BOLD and T1 images.
         If ``'register'``, align volumes by their centers.
     mem_gb : :obj:`float`
@@ -135,7 +133,7 @@ def init_bold_reg_wf(
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['itk_bold_to_t1', 'itk_t1_to_bold', 'fallback']),
+        niu.IdentityInterface(fields=['itk_bold_to_anat', 'itk_anat_to_bold', 'fallback']),
         name='outputnode',
     )
 
@@ -152,6 +150,7 @@ def init_bold_reg_wf(
             bold2anat_dof=bold2anat_dof,
             bold2anat_init=bold2anat_init,
             sloppy=sloppy,
+            omp_nthreads=omp_nthreads,
         )
 
     # fmt: off
@@ -161,9 +160,9 @@ def init_bold_reg_wf(
             ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ('subjects_dir', 'inputnode.subjects_dir'),
             ('subject_id', 'inputnode.subject_id'),
-            ('t1w_preproc', 'inputnode.t1w_preproc'),
-            ('t1w_mask', 'inputnode.t1w_mask'),
-            ('t1w_dseg', 'inputnode.t1w_dseg'),
+            ('anat_preproc', 'inputnode.t1w_preproc'),
+            ('anat_mask', 'inputnode.t1w_mask'),
+            ('anat_dseg', 'inputnode.t1w_dseg'),
         ]),
         (bbr_wf, outputnode, [
             ('outputnode.itk_bold_to_t1', 'itk_bold_to_t1'),
@@ -430,32 +429,35 @@ def init_bbreg_wf(
     in_file
         Reference BOLD image to be registered
     fsnative2anat_xfm
-        FSL-style affine matrix translating from FreeSurfer T1.mgz to T1w
+        FSL-style affine matrix translating from either
+        FreeSurfer T1.mgz to T1w or T2.mgz to T2w
     subjects_dir
         FreeSurfer SUBJECTS_DIR
     subject_id
         FreeSurfer subject ID (must have folder in SUBJECTS_DIR)
-    t1w_preproc
+    anat_preproc
         Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`)
-    t1w_mask
+    anat_mask
         Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`)
-    t1w_dseg
+    anat_dseg
         Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`)
 
     Outputs
     -------
-    itk_bold_to_t1
-        Affine transform from ``ref_bold_brain`` to T1 space (ITK format)
-    itk_t1_to_bold
-        Affine transform from T1 space to BOLD space (ITK format)
+    itk_bold_to_anat
+        Affine transform from ``ref_bold_brain`` to anatomical space (ITK format)
+    itk_anat_to_bold
+        Affine transform from anatomical space to BOLD space (ITK format)
     fallback
         Boolean indicating whether BBR was rejected (mri_coreg registration returned)
 
     """
-    from fmriprep.interfaces.patches import FreeSurferSource, MRICoreg
     from nipype.interfaces.freesurfer import BBRegister
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
+    from niworkflows.interfaces.patches import FreeSurferSource
+
+    from nibabies.interfaces.patches import MRICoreg
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
