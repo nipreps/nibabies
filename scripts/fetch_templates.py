@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'Pre-emptive caching of commonly used TemplateFlow templates'
+"Pre-emptive caching of commonly used TemplateFlow templates"
 import templateflow.api as tf
 
 
@@ -102,7 +102,7 @@ def fetch_dhcpAsym(cohort=42):
     tpl-dhcpAsym_cohort-42_space-fsaverage_hemi-L_den-41k_desc-reg_sphere.surf.gii
     tpl-dhcpAsym_cohort-42_space-fsaverage_hemi-R_den-41k_desc-reg_sphere.surf.gii
     """
-    template = 'dchpAsym'
+    template = 'dhcpAsym'
 
     tf.get(template, cohort=cohort, density='32k', desc=None, suffix='sphere')
     tf.get(template, cohort=cohort, space='fsaverage', density='41k', desc='reg', suffix='sphere')
