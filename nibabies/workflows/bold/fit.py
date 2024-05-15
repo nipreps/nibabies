@@ -97,10 +97,10 @@ def get_sbrefs(
 def init_bold_fit_wf(
     *,
     bold_series: list[str],
+    reference_anat: Anatomical,
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
     omp_nthreads: int = 1,
-    reference_anat: Anatomical = 'T1w',
     name: str = 'bold_fit_wf',
 ) -> pe.Workflow:
     """
@@ -117,7 +117,7 @@ def init_bold_fit_wf(
             with mock_config():
                 bold_file = config.execution.bids_dir / "sub-01" / "func" \
                     / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
-                wf = init_bold_fit_wf(bold_series=[str(bold_file)])
+                wf = init_bold_fit_wf(bold_series=[str(bold_file)], reference_anat='T1w')
 
     Parameters
     ----------
@@ -619,7 +619,7 @@ def init_bold_fit_wf(
             (regref_buffer, bold_reg_wf, [('boldref', 'inputnode.ref_bold_brain')]),
             # Incomplete sources
             (regref_buffer, ds_boldreg_wf, [('boldref', 'inputnode.source_files')]),
-            (bold_reg_wf, ds_boldreg_wf, [('outputnode.itk_bold_to_t1', 'inputnode.xform')]),
+            (bold_reg_wf, ds_boldreg_wf, [('outputnode.itk_bold_to_anat', 'inputnode.xform')]),
             (ds_boldreg_wf, outputnode, [('outputnode.xform', 'boldref2anat_xfm')]),
             (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
         ])
