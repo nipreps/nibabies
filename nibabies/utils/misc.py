@@ -3,6 +3,7 @@
 """Miscellaneous utilities."""
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 
 
@@ -18,7 +19,7 @@ def fix_multi_source_name(in_files):
 
     from nipype.utils.filemanip import filename_to_list
 
-    if not isinstance(in_files, (tuple, list)):
+    if not isinstance(in_files, tuple | list):
         return in_files
     elif len(in_files) == 1:
         return in_files[0]
@@ -28,8 +29,8 @@ def fix_multi_source_name(in_files):
     try:
         subj = re.search(r'(?<=^sub-)[a-zA-Z0-9]*', p.name).group()
         suffix = re.search(r'(?<=_)\w+(?=\.)', p.name).group()
-    except AttributeError:
-        raise AttributeError('Could not extract BIDS information')
+    except AttributeError as e:
+        raise AttributeError('Could not extract BIDS information') from e
     return str(p.parent / f'sub-{subj}_{suffix}.nii.gz')
 
 
@@ -133,3 +134,21 @@ def get_file(pkg: str, src_path: str | Path) -> str:
     ref = files(pkg) / str(src_path)
     fl = file_manager.enter_context(as_file(ref))
     return str(fl)
+
+
+@cache
+def estimate_bold_mem_usage(bold_fname: str) -> tuple[int, dict]:
+    import nibabel as nb
+    import numpy as np
+
+    img = nb.load(bold_fname)
+    nvox = int(np.prod(img.shape, dtype='u8'))
+    # Assume tools will coerce to 8-byte floats to be safe
+    bold_size_gb = 8 * nvox / (1024**3)
+    bold_tlen = img.shape[-1]
+    mem_gb = {
+        'filesize': bold_size_gb,
+        'resampled': bold_size_gb * 4,
+        'largemem': bold_size_gb * (max(bold_tlen / 100, 1.0) + 4),
+    }
+    return bold_tlen, mem_gb

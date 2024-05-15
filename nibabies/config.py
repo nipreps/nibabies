@@ -144,7 +144,7 @@ try:
     from psutil import virtual_memory
 
     _free_mem_at_start = round(virtual_memory().available / 1024**3, 1)
-except Exception:
+except ImportError:
     _free_mem_at_start = None
 
 _oc_limit = 'n/a'
@@ -162,35 +162,8 @@ try:
                 _oc_limit = _proc_oc_kbytes.read_text().strip()
             if _oc_limit in ('0', 'n/a') and Path('/proc/sys/vm/overcommit_ratio').exists():
                 _oc_limit = '{}%'.format(Path('/proc/sys/vm/overcommit_ratio').read_text().strip())
-except Exception:
+except Exception:  # noqa: S110, BLE001
     pass
-
-_memory_gb = None
-try:
-    if 'linux' in sys.platform:
-        with open('/proc/meminfo') as f_in:
-            _meminfo_lines = f_in.readlines()
-            _mem_total_line = [line for line in _meminfo_lines if 'MemTotal' in line][0]
-            _mem_total = float(_mem_total_line.split()[1])
-            _memory_gb = _mem_total / (1024.0**2)
-    elif 'darwin' in sys.platform:
-        _mem_str = os.popen('sysctl hw.memsize').read().strip().split(' ')[-1]
-        _memory_gb = float(_mem_str) / (1024.0**3)
-except Exception:
-    pass
-
-_available_cpus = os.cpu_count()
-# attempt a more accurate CPU count (PID restriction, etc)
-try:
-    import psutil
-
-    _available_cpus = len(psutil.Process().cpu_affinity())
-except (AttributeError, ImportError, NotImplementedError):
-    if hasattr(os, 'sched_getaffinity'):
-        _available_cpus = len(os.sched_getaffinity(0))
-
-# Reduce numpy's vms by limiting OMP_NUM_THREADS
-_default_omp_threads = int(os.getenv('OMP_NUM_THREADS', _available_cpus))
 
 # Debug modes are names that influence the exposure of internal details to
 # the user, either through additional derivatives or increased verbosity
@@ -200,7 +173,7 @@ DEBUG_MODES = ('compcor', 'registration', 'fieldmaps', 'pdb')
 class _Config:
     """An abstract class forbidding instantiation."""
 
-    _paths = tuple()
+    _paths = ()
 
     def __init__(self):
         """Avert instantiation."""
@@ -300,9 +273,9 @@ class nipype(_Config):
     """Run NiPype's tool to enlist linked libraries for every interface."""
     memory_gb = None
     """Estimation in GB of the RAM this workflow can allocate at any given time."""
-    nprocs = _available_cpus
+    nprocs = os.cpu_count()
     """Number of processes (compute tasks) that can be run in parallel (multiprocessing only)."""
-    omp_nthreads = _default_omp_threads
+    omp_nthreads = None
     """Number of CPUs a single process can access for multithreaded execution."""
     plugin = 'MultiProc'
     """NiPype's execution plugin."""
@@ -757,3 +730,17 @@ def restore_env():
             os.environ[k] = environment._pre_env[k]
         else:
             del os.environ[k]
+
+
+def dismiss_echo(entities: list | None = None):
+    """Set entities to dismiss in a DerivativesDataSink."""
+    from niworkflows.utils.connections import listify
+
+    entities = entities or []
+    echo_idx = execution.echo_idx
+    if echo_idx is None or len(listify(echo_idx)) > 2:
+        entities.append('echo')
+    return entities
+
+
+DEFAULT_DISMISS_ENTITIES = dismiss_echo()
