@@ -1,6 +1,8 @@
 import json
+from collections import defaultdict
 from pathlib import Path
 
+from bids.layout import BIDSLayout
 from niworkflows.data import load as nwf_load
 
 from nibabies.data import load
@@ -25,7 +27,6 @@ def collect_anatomical_derivatives(
 
 
     """
-    from bids.layout import BIDSLayout
 
     if spec is None or patterns is None:
         _spec, _patterns = tuple(json.loads(load('io_spec_anat.json').read_text()).values())
@@ -81,4 +82,45 @@ def collect_anatomical_derivatives(
 
         derivs_cache[key] = sorted(item)
 
+    return derivs_cache
+
+
+def collect_functional_derivatives(
+    derivatives_dir: Path,
+    entities: dict,
+    fieldmap_id: str | None,
+    spec: dict | None = None,
+    patterns: list[str] | None = None,
+):
+    """Gather existing derivatives and compose a cache."""
+    if spec is None or patterns is None:
+        _spec, _patterns = tuple(
+            json.loads(load.readable('io_spec_bold.json').read_text()).values()
+        )
+
+        if spec is None:
+            spec = _spec
+        if patterns is None:
+            patterns = _patterns
+
+    derivs_cache = defaultdict(list, {})
+    layout = BIDSLayout(derivatives_dir, config=['bids', 'derivatives'], validate=False)
+    derivatives_dir = Path(derivatives_dir)
+
+    # search for both boldrefs
+    for key, qry in spec['baseline'].items():
+        query = {**qry, **entities}
+        item = layout.get(return_type='filename', **query)
+        if not item:
+            continue
+        derivs_cache[f'{key}_boldref'] = item[0] if len(item) == 1 else item
+
+    for xfm, qry in spec['transforms'].items():
+        query = {**qry, **entities}
+        if xfm == 'boldref2fmap':
+            query['to'] = fieldmap_id
+        item = layout.get(return_type='filename', **query)
+        if not item:
+            continue
+        derivs_cache[xfm] = item[0] if len(item) == 1 else item
     return derivs_cache
