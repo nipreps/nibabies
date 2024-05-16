@@ -549,11 +549,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         ])  # fmt:skip
 
     if config.workflow.cifti_output:
-        from .resampling import (
+        from nibabies.workflows.bold.resampling import (
             init_bold_fsLR_resampling_wf,
             init_bold_grayords_wf,
             init_goodvoxels_bold_mask_wf,
         )
+
+        # TODO: Individual subcortical ROI mapping
 
         bold_MNI6_wf = init_bold_volumetric_resample_wf(
             metadata=all_metadata[0],
@@ -678,8 +680,8 @@ excluding voxels whose time-series have a locally high coefficient of variation.
 
     workflow.connect([
         (inputnode, bold_confounds_wf, [
-            ('t1w_tpms', 'inputnode.t1w_tpms'),
-            ('t1w_mask', 'inputnode.t1w_mask'),
+            ('anat_tpms', 'inputnode.anat_tpms'),
+            ('anat_mask', 'inputnode.anat_mask'),
         ]),
         (bold_fit_wf, bold_confounds_wf, [
             ('outputnode.bold_mask', 'inputnode.bold_mask'),
