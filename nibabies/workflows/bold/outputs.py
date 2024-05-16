@@ -68,10 +68,10 @@ def prepare_timing_parameters(metadata: dict):
     When SliceTiming is available and used, then ``SliceTimingCorrected`` is ``True``
     and the ``StartTime`` indicates a series offset.
 
-    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
+    >>> with mock.patch("nibabies.config.workflow.ignore", []):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': True, 'DelayTime': 1.2, 'StartTime': 0.3}
-    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
+    >>> with mock.patch("nibabies.config.workflow.ignore", []):
     ...     prepare_timing_parameters(
     ...         dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
     ...              SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  #doctest: +NORMALIZE_WHITESPACE
@@ -81,10 +81,10 @@ def prepare_timing_parameters(metadata: dict):
     When SliceTiming is available and not used, then ``SliceTimingCorrected`` is ``False``
     and TA is indicated with ``DelayTime`` or ``AcquisitionDuration``.
 
-    >>> with mock.patch("fmriprep.config.workflow.ignore", ["slicetiming"]):
+    >>> with mock.patch("nibabies.config.workflow.ignore", ["slicetiming"]):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0, 0.2, 0.4, 0.6]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': False, 'DelayTime': 1.2}
-    >>> with mock.patch("fmriprep.config.workflow.ignore", ["slicetiming"]):
+    >>> with mock.patch("nibabies.config.workflow.ignore", ["slicetiming"]):
     ...     prepare_timing_parameters(
     ...         dict(VolumeTiming=[0.0, 1.0, 2.0, 5.0, 6.0, 7.0],
     ...              SliceTiming=[0.0, 0.2, 0.4, 0.6, 0.8]))  #doctest: +NORMALIZE_WHITESPACE
@@ -93,10 +93,10 @@ def prepare_timing_parameters(metadata: dict):
 
     If SliceTiming metadata is present but empty, then treat it as missing:
 
-    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
+    >>> with mock.patch("nibabies.config.workflow.ignore", []):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': False}
-    >>> with mock.patch("fmriprep.config.workflow.ignore", []):
+    >>> with mock.patch("nibabies.config.workflow.ignore", []):
     ...     prepare_timing_parameters(dict(RepetitionTime=2, SliceTiming=[0.0]))
     {'RepetitionTime': 2, 'SliceTimingCorrected': False}
     """
@@ -427,7 +427,7 @@ def init_ds_boldref_wf(
         BIDSURI(
             numinputs=1,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.fmriprep_dir.absolute()),
+            out_dir=str(config.execution.output_dir.absolute()),
         ),
         name='sources',
     )
@@ -476,7 +476,7 @@ def init_ds_registration_wf(
         BIDSURI(
             numinputs=1,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.fmriprep_dir.absolute()),
+            out_dir=str(config.execution.output_dir.absolute()),
         ),
         name='sources',
     )
@@ -525,7 +525,7 @@ def init_ds_hmc_wf(
         BIDSURI(
             numinputs=1,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.fmriprep_dir.absolute()),
+            out_dir=str(config.execution.output_dir.absolute()),
         ),
         name='sources',
     )
@@ -591,7 +591,7 @@ def init_ds_bold_native_wf(
         BIDSURI(
             numinputs=3,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.fmriprep_dir.absolute()),
+            out_dir=str(config.execution.output_dir.absolute()),
         ),
         name='sources',
     )
@@ -740,7 +740,7 @@ def init_ds_volumes_wf(
         BIDSURI(
             numinputs=6,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.fmriprep_dir.absolute()),
+            out_dir=str(config.execution.output_dir.absolute()),
         ),
         name='sources',
     )
@@ -902,7 +902,7 @@ def init_bold_preproc_report_wf(
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.bold.resampling import init_bold_preproc_report_wf
+            from nibabies.workflows.bold.resampling import init_bold_preproc_report_wf
             wf = init_bold_preproc_report_wf(mem_gb=1, reportlets_dir='.')
 
     Parameters
