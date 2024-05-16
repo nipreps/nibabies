@@ -55,8 +55,25 @@ def init_segmentation_wf(
             f'gray-matter (GM) was performed on the brain-extracted {image_type} using FSL '
             f'FAST, distributed with {fsl.Info.version() or "version unknown"}'
         )
+        # From FAST docs:
+        # Number of classes to be segmented.
+        # Normally you will want 3 (Grey Matter, White Matter and CSF).
+        # However, if there is very poor grey/white contrast you may want to reduce this to 2;
+        # alternatively, if there are strong lesions showing up as a fourth class, you may want
+        # to increase this. Also, if you are segmenting T2-weighted images, you may need to
+        # select 4 classes so that dark non-brain matter is processed correctly
+        # (this is not a problem with T1-weighted as CSF and dark non-brain matter look similar).
+
+        # fast_img_type = 1 if image_type == 'T1w' else 2
+        # fast_n_classes = 3
         fast = pe.Node(
-            fsl.FAST(segments=True, no_bias=True, probability_maps=True),
+            fsl.FAST(
+                segments=True,
+                no_bias=True,
+                probability_maps=True,
+                # img_type=1 if image_type == 'T1w' else 2,
+                # number_classes=fast_n_classes,
+            ),
             name='anat_dseg',
             mem_gb=3,
         )
