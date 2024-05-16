@@ -1,5 +1,25 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
+#
+# Copyright The NiPreps Developers <nipreps@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# We support and encourage derived works from this project, please read
+# about our expectations at
+#
+#     https://www.nipreps.org/community/licensing/
+#
 """
 Head-Motion Estimation and Correction (HMC) of BOLD images
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +35,7 @@ from nipype.pipeline import engine as pe
 from ...config import DEFAULT_MEMORY_MIN_GB
 
 
-def init_bold_hmc_wf(mem_gb, omp_nthreads, name='bold_hmc_wf'):
+def init_bold_hmc_wf(mem_gb: float, omp_nthreads: int, name: str = 'bold_hmc_wf'):
     """
     Build a workflow to estimate head-motion parameters.
 
@@ -55,8 +75,8 @@ def init_bold_hmc_wf(mem_gb, omp_nthreads, name='bold_hmc_wf'):
         ITKTransform file aligning each volume to ``ref_image``
     movpar_file
         MCFLIRT motion parameters, normalized to SPM format (X, Y, Z, Rx, Ry, Rz)
-    rms_file
-        Framewise displacement as measured by ``fsl_motion_outliers`` [Jenkinson2002]_.
+    rmsd_file
+        Root mean squared deviation as measured by ``fsl_motion_outliers`` [Jenkinson2002]_.
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
@@ -94,7 +114,6 @@ parameters) are estimated before any spatiotemporal filtering using
     def _pick_rel(rms_files):
         return rms_files[-1]
 
-    # fmt: off
     workflow.connect([
         (inputnode, mcflirt, [('raw_ref_image', 'ref_file'),
                               ('bold_file', 'in_file')]),
@@ -105,7 +124,6 @@ parameters) are estimated before any spatiotemporal filtering using
         (mcflirt, outputnode, [(('rms_files', _pick_rel), 'rmsd_file')]),
         (fsl2itk, outputnode, [('out_file', 'xforms')]),
         (normalize_motion, outputnode, [('out_file', 'movpar_file')]),
-    ])
-    # fmt: on
+    ])  # fmt:skip
 
     return workflow
