@@ -191,19 +191,20 @@ def init_bold_fit_wf(
     See Also
     --------
 
-    * :py:func:`~fmriprep.workflows.bold.reference.init_raw_boldref_wf`
-    * :py:func:`~fmriprep.workflows.bold.hmc.init_bold_hmc_wf`
+    * :py:func:`~nibabies.workflows.bold.reference.init_raw_boldref_wf`
+    * :py:func:`~nibabies.workflows.bold.hmc.init_bold_hmc_wf`
     * :py:func:`~niworkflows.func.utils.init_enhance_and_skullstrip_bold_wf`
     * :py:func:`~sdcflows.workflows.apply.registration.init_coeff2epi_wf`
     * :py:func:`~sdcflows.workflows.apply.correction.init_unwarp_wf`
-    * :py:func:`~fmriprep.workflows.bold.registration.init_bold_reg_wf`
-    * :py:func:`~fmriprep.workflows.bold.outputs.init_ds_boldref_wf`
-    * :py:func:`~fmriprep.workflows.bold.outputs.init_ds_hmc_wf`
-    * :py:func:`~fmriprep.workflows.bold.outputs.init_ds_registration_wf`
+    * :py:func:`~nibabies.workflows.bold.registration.init_bold_reg_wf`
+    * :py:func:`~nibabies.workflows.bold.outputs.init_ds_boldref_wf`
+    * :py:func:`~nibabies.workflows.bold.outputs.init_ds_hmc_wf`
+    * :py:func:`~nibabies.workflows.bold.outputs.init_ds_registration_wf`
 
     """
-    from fmriprep.utils.misc import estimate_bold_mem_usage
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+
+    from nibabies.utils.misc import estimate_bold_mem_usage
 
     if precomputed is None:
         precomputed = {}
@@ -640,9 +641,9 @@ def init_bold_native_wf(
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.tests import mock_config
-            from fmriprep import config
-            from fmriprep.workflows.bold.fit import init_bold_native_wf
+            from nibabies.workflows.tests import mock_config
+            from nibabies import config
+            from nibabies.workflows.bold.fit import init_bold_native_wf
             with mock_config():
                 bold_file = config.execution.bids_dir / "sub-01" / "func" \
                     / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
@@ -702,8 +703,8 @@ def init_bold_native_wf(
     See Also
     --------
 
-    * :py:func:`~fmriprep.workflows.bold.stc.init_bold_stc_wf`
-    * :py:func:`~fmriprep.workflows.bold.t2s.init_bold_t2s_wf`
+    * :py:func:`~nibabies.workflows.bold.stc.init_bold_stc_wf`
+    * :py:func:`~nibabies.workflows.bold.t2s.init_bold_t2s_wf`
 
     .. _optimal combination: https://tedana.readthedocs.io/en/stable/approach.html#optimal-combination
 
