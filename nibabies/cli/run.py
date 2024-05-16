@@ -152,7 +152,11 @@ def main():
                 config.execution.nibabies_dir,
                 config.execution.run_uuid,
             )
-            write_derivative_description(config.execution.bids_dir, config.execution.nibabies_dir)
+            write_derivative_description(
+                config.execution.bids_dir,
+                config.execution.nibabies_dir,
+                config.execution.dataset_links,
+            )
             write_bidsignore(config.execution.nibabies_dir)
 
 
