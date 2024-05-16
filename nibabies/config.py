@@ -1,14 +1,34 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
+#
+# Copyright The NiPreps Developers <nipreps@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# We support and encourage derived works from this project, please read
+# about our expectations at
+#
+#     https://www.nipreps.org/community/licensing/
+#
 r"""
-A Python module to maintain unique, run-wide *nibabies* settings.
+A Python module to maintain unique, run-wide *NiBabies* settings.
 
 This module implements the memory structures to keep a consistent, singleton config.
 Settings are passed across processes via filesystem, and a copy of the settings for
 each run and subject is left under
-``<output_dir>/sub-<participant_id>/log/<run_unique_id>/nibabies.toml``.
+``<nibabies_dir>/sub-<participant_id>/log/<run_unique_id>/nibabies.toml``.
 Settings are stored using :abbr:`ToML (Tom's Markup Language)`.
-The module has a :py:func:`~nibabies.config.to_filename` function to allow writting out
+The module has a :py:func:`~nibabies.config.to_filename` function to allow writing out
 the settings to hard disk in *ToML* format, which looks like:
 
 .. literalinclude:: ../nibabies/data/tests/config.toml
@@ -68,39 +88,54 @@ The :py:mod:`config` is responsible for other conveniency actions.
 
 """
 import os
-import random
-import sys
-from pathlib import Path
-from time import strftime
-from uuid import uuid4
+from multiprocessing import set_start_method
 
-try:
-    from importlib.metadata import version as get_version
-except ImportError:
-    # <= 3.7
-    from importlib_metadata import version as get_version
-
-__version__ = get_version('nibabies')
-_pre_exec_env = dict(os.environ)
+from templateflow.conf import TF_LAYOUT
 
 # Disable NiPype etelemetry always
 _disable_et = bool(os.getenv('NO_ET') is not None or os.getenv('NIPYPE_NO_ET') is not None)
 os.environ['NIPYPE_NO_ET'] = '1'
 os.environ['NO_ET'] = '1'
 
-_yes_flags = ('1', 'on', 'true', 'y', 'yes')
-# Only show warnings if requested
-if os.getenv('NIBABIES_SHOW_WARNINGS', '0').lower() in _yes_flags:
-    import logging
-else:
+CONFIG_FILENAME = 'nibabies.toml'
+
+try:
+    set_start_method('forkserver')
+except RuntimeError:
+    pass  # context has been already set
+finally:
+    # Defer all custom import for after initializing the forkserver and
+    # ignoring the most annoying warnings
+    import random
+    import sys
+    from pathlib import Path
+    from time import strftime
+    from uuid import uuid4
+
+    from nipype import __version__ as _nipype_ver
+    from templateflow import __version__ as _tf_ver
+
+    from . import __version__
+
+if not hasattr(sys, '_is_pytest_session'):
+    sys._is_pytest_session = False  # Trick to avoid sklearn's FutureWarnings
+# Disable all warnings in main and children processes only on production versions
+if not any(
+    (
+        '+' in __version__,
+        __version__.endswith('.dirty'),
+        os.getenv('NIBABIES_DEV', '0').lower() in ('1', 'on', 'true', 'y', 'yes'),
+    )
+):
     from ._warnings import logging
 
-    if not hasattr(sys, '_is_pytest_session'):
-        sys._is_pytest_session = False  # Trick to avoid sklearn's FutureWarnings
-
-    if '+' not in __version__ or not __version__.endswith('.dirty'):
-        # Disable all warnings in main and children processes only on production versions
-        os.environ['PYTHONWARNINGS'] = 'ignore'
+    os.environ['PYTHONWARNINGS'] = 'ignore'
+elif os.getenv('NIBABIES_WARNINGS', '0').lower() in ('1', 'on', 'true', 'y', 'yes'):
+    # allow disabling warnings on development versions
+    # https://github.com/nipreps/fmriprep/pull/2080#discussion_r409118765
+    from ._warnings import logging
+else:
+    import logging
 
 logging.addLevelName(25, 'IMPORTANT')  # Add a new level between INFO and WARNING
 logging.addLevelName(15, 'VERBOSE')  # Add a new level between INFO and DEBUG
@@ -128,7 +163,7 @@ if os.getenv('IS_DOCKER_8395080871'):
     _cgroup = Path('/proc/1/cgroup')
     if _cgroup.exists() and 'docker' in _cgroup.read_text():
         _docker_ver = os.getenv('DOCKER_VERSION_8395080871')
-        _exec_env = 'docker'
+        _exec_env = 'nibabies-wrapper' if _docker_ver else 'docker'
     del _cgroup
 
 _fs_license = os.getenv('FS_LICENSE')
@@ -138,7 +173,9 @@ if not _fs_license and os.getenv('FREESURFER_HOME'):
         _fs_license = str(Path(_fs_home) / 'license.txt')
     del _fs_home
 
-_templateflow_home = Path(os.getenv('TEMPLATEFLOW_HOME', Path.home() / '.cache' / 'templateflow'))
+_templateflow_home = Path(
+    os.getenv('TEMPLATEFLOW_HOME', os.path.join(os.getenv('HOME'), '.cache', 'templateflow'))
+)
 
 try:
     from psutil import virtual_memory
@@ -254,14 +291,12 @@ class environment(_Config):
     """Linux's kernel virtual memory overcommit policy."""
     overcommit_limit = _oc_limit
     """Linux's kernel virtual memory overcommit limits."""
-    nipype_version = get_version('nipype')
+    nipype_version = _nipype_ver
     """Nipype's current version."""
-    templateflow_version = get_version('templateflow')
+    templateflow_version = _tf_ver
     """The TemplateFlow client version installed."""
     version = __version__
     """*NiBabies*'s version."""
-    _pre_env = _pre_exec_env
-    """Environmental variables set prior to execution."""
 
 
 class nipype(_Config):
@@ -352,6 +387,8 @@ class execution(_Config):
     """Only generate a boilerplate."""
     sloppy = False
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
+    dataset_links = {}
+    """A dictionary of dataset links to be used to track Sources in sidecars."""
     debug = []
     """Debug mode(s)."""
     derivatives = {}
@@ -411,13 +448,13 @@ class execution(_Config):
     """Path to a working directory where intermediate results will be available."""
     write_graph = False
     """Write out the computational graph corresponding to the planned preprocessing."""
-
     _layout = None
 
     _paths = (
         'anat_derivatives',
         'bids_dir',
         'bids_database_dir',
+        'dataset_links',
         'derivatives',
         'fs_license_file',
         'fs_subjects_dir',
@@ -446,24 +483,31 @@ class execution(_Config):
         if cls._layout is None:
             import re
 
-            from bids.layout import BIDSLayout, BIDSLayoutIndexer
+            from bids.layout import BIDSLayout
+            from bids.layout.index import BIDSLayoutIndexer
 
             _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / 'bids_db')
             _db_path.mkdir(exist_ok=True, parents=True)
 
             # Recommended after PyBIDS 12.1
+            ignore_patterns = [
+                'code',
+                'stimuli',
+                'sourcedata',
+                'models',
+                re.compile(r'^\.'),
+                re.compile(r'sub-[a-zA-Z0-9]+(/ses-[a-zA-Z0-9]+)?/(beh|dwi|eeg|ieeg|meg|perf)'),
+            ]
+            if cls.participant_label and cls.bids_database_dir is None:
+                # Ignore any subjects who aren't the requested ones.
+                # This is only done if the database is written out to a run-specific folder.
+                ignore_patterns.append(
+                    re.compile(r'sub-(?!(' + '|'.join(cls.participant_label) + r')(\b|_))')
+                )
+
             _indexer = BIDSLayoutIndexer(
                 validate=False,
-                ignore=(
-                    'code',
-                    'stimuli',
-                    'sourcedata',
-                    'models',
-                    re.compile(r'^\.'),
-                    re.compile(
-                        r'sub-[a-zA-Z0-9]+(/ses-[a-zA-Z0-9]+)?/(beh|dwi|eeg|ieeg|meg|perf)'
-                    ),
-                ),
+                ignore=ignore_patterns,
             )
             cls._layout = BIDSLayout(
                 str(cls.bids_dir),
@@ -473,21 +517,32 @@ class execution(_Config):
             )
             cls.bids_database_dir = _db_path
         cls.layout = cls._layout
-
-        def _unserialize_bids_queries(queries):
+        if cls.bids_filters:
             from bids.layout import Query
 
-            for acq, filters in queries.items():
-                queries[acq] = {
-                    k: getattr(Query, v[7:-4]) if not isinstance(v, Query) and 'Query' in v else v
-                    for k, v in filters.items()
-                }
-            return queries
+            def _process_value(value):
+                """Convert string with "Query" in it to Query object."""
+                if isinstance(value, list):
+                    return [_process_value(val) for val in value]
+                else:
+                    return (
+                        getattr(Query, value[7:-4])
+                        if not isinstance(value, Query) and 'Query' in value
+                        else value
+                    )
 
-        if cls.bids_filters:
-            cls.bids_filters = _unserialize_bids_queries(cls.bids_filters)
-        if cls.derivatives_filters:
-            cls.derivatives_filters = _unserialize_bids_queries(cls.derivatives_filters)
+            # unserialize pybids Query enum values
+            for acq, filters in cls.bids_filters.items():
+                for k, v in filters.items():
+                    cls.bids_filters[acq][k] = _process_value(v)
+
+        dataset_links = {
+            'raw': cls.bids_dir,
+            'templateflow': Path(TF_LAYOUT.root),
+        }
+        for deriv_name, deriv_path in cls.derivatives.items():
+            dataset_links[deriv_name] = deriv_path
+        cls.dataset_links = dataset_links
 
         if 'all' in cls.debug:
             cls.debug = list(DEBUG_MODES)
@@ -660,27 +715,57 @@ def _set_numpy_seed():
     return val
 
 
-def from_dict(settings):
-    """Read settings from a flat dictionary."""
-    nipype.load(settings)
-    execution.load(settings)
-    workflow.load(settings)
-    seeds.load(settings)
+def from_dict(settings, init=True, ignore=None):
+    """Read settings from a flat dictionary.
+
+    Arguments
+    ---------
+    setting : dict
+        Settings to apply to any configuration
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    ignore : :py:class:`~collections.abc.Container`
+        Collection of keys in ``setting`` to ignore
+    """
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
+
+    nipype.load(settings, init=initialize('nipype'), ignore=ignore)
+    execution.load(settings, init=initialize('execution'), ignore=ignore)
+    workflow.load(settings, init=initialize('workflow'), ignore=ignore)
+    seeds.load(settings, init=initialize('seeds'), ignore=ignore)
     loggers.init()
 
 
-def load(filename, skip=None):
-    """Load settings from file."""
+def load(filename, skip=None, init=True):
+    """Load settings from file.
+
+    Arguments
+    ---------
+    filename : :py:class:`os.PathLike`
+        TOML file containing fMRIPrep configuration.
+    skip : dict or None
+        Sets of values to ignore during load, keyed by section name
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    """
     from toml import loads
 
     skip = skip or {}
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
+
     filename = Path(filename)
     settings = loads(filename.read_text())
     for sectionname, configs in settings.items():
         if sectionname != 'environment':
             section = getattr(sys.modules[__name__], sectionname)
             ignore = skip.get(sectionname)
-            section.load(configs, ignore=ignore)
+            section.load(configs, ignore=ignore, init=initialize(sectionname))
 
 
 def get(flat=False):
