@@ -347,7 +347,6 @@ def init_bold_fit_wf(
         output_dir=config.execution.output_dir,
     )
 
-    # fmt:off
     workflow.connect([
         (hmcref_buffer, outputnode, [
             ('boldref', 'hmc_boldref'),
@@ -378,8 +377,7 @@ def init_bold_fit_wf(
             ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
         ]),
         (summary, func_fit_reports_wf, [('out_report', 'inputnode.summary_report')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
 
     # Stage 1: Generate motion correction boldref
     hmc_boldref_source_buffer = pe.Node(
@@ -510,7 +508,6 @@ def init_bold_fit_wf(
                 )
                 ds_fmapreg_wf.inputs.inputnode.source_files = [bold_file]
 
-                # fmt:off
                 workflow.connect([
                     (enhance_boldref_wf, fmapreg_wf, [
                         ('outputnode.bias_corrected_file', 'inputnode.target_ref'),
@@ -523,8 +520,7 @@ def init_bold_fit_wf(
                     (fmapreg_wf, itk_mat2txt, [('outputnode.target2fmap_xfm', 'in_xfms')]),
                     (itk_mat2txt, ds_fmapreg_wf, [('out_xfm', 'inputnode.xform')]),
                     (ds_fmapreg_wf, fmapreg_buffer, [('outputnode.xform', 'boldref2fmap_xfm')]),
-                ])
-                # fmt:on
+                ])  # fmt:skip
             else:
                 fmapreg_buffer.inputs.boldref2fmap_xfm = boldref2fmap_xform
 
@@ -535,7 +531,6 @@ def init_bold_fit_wf(
             )
             unwarp_wf.inputs.inputnode.metadata = layout.get_metadata(bold_file)
 
-            # fmt:off
             workflow.connect([
                 (inputnode, fmap_select, [
                     ('fmap_ref', 'fmap_ref'),
@@ -569,10 +564,8 @@ def init_bold_fit_wf(
                     ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
                 ]),
                 (unwarp_wf, func_fit_reports_wf, [('outputnode.fieldmap', 'inputnode.fieldmap')]),
-            ])
-            # fmt:on
+            ])  # fmt:skip
         else:
-            # fmt:off
             workflow.connect([
                 (enhance_boldref_wf, ds_coreg_boldref_wf, [
                     ('outputnode.bias_corrected_file', 'inputnode.boldref'),
@@ -580,8 +573,7 @@ def init_bold_fit_wf(
                 (enhance_boldref_wf, regref_buffer, [
                     ('outputnode.mask_file', 'boldmask'),
                 ]),
-            ])
-            # fmt:on
+            ])  # fmt:skip
     else:
         config.loggers.workflow.info('Found coregistration reference - skipping Stage 3')
         regref_buffer.inputs.boldref = precomputed['coreg_boldref']
@@ -601,11 +593,10 @@ def init_bold_fit_wf(
         ds_boldreg_wf = init_ds_registration_wf(
             output_dir=config.execution.output_dir,
             source='boldref',
-            dest='T1w',
+            dest=reference_anat,
             name='ds_boldreg_wf',
         )
 
-        # fmt:off
         workflow.connect([
             (inputnode, bold_reg_wf, [
                 ('anat_preproc', 'inputnode.anat_preproc'),
@@ -622,8 +613,7 @@ def init_bold_fit_wf(
             (bold_reg_wf, ds_boldreg_wf, [('outputnode.itk_bold_to_anat', 'inputnode.xform')]),
             (ds_boldreg_wf, outputnode, [('outputnode.xform', 'boldref2anat_xfm')]),
             (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
-        ])
-        # fmt:on
+        ])  # fmt:skip
     else:
         outputnode.inputs.boldref2anat_xfm = boldref2anat_xform
 
@@ -729,7 +719,7 @@ def init_bold_native_wf(
     bold_file = bold_series[0]
     metadata = all_metadata[0]
 
-    bold_tlen, mem_gb = estimate_bold_mem_usage(bold_file)
+    _, mem_gb = estimate_bold_mem_usage(bold_file)
 
     if multiecho:
         shapes = [nb.load(echo).shape for echo in bold_series]

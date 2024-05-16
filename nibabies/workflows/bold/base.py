@@ -36,6 +36,7 @@ from niworkflows.utils.connections import listify
 
 from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
+from nibabies.types import Anatomical
 from nibabies.utils.misc import estimate_bold_mem_usage
 
 # BOLD workflows
@@ -55,6 +56,7 @@ DEFAULT_DISMISS_ENTITIES = config.DEFAULT_DISMISS_ENTITIES
 
 def init_bold_wf(
     *,
+    reference_anat: Anatomical,
     bold_series: list[str],
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
@@ -252,6 +254,7 @@ configured with cubic B-spline interpolation.
 
     bold_fit_wf = init_bold_fit_wf(
         bold_series=bold_series,
+        reference_anat=reference_anat,
         precomputed=precomputed,
         fieldmap_id=fieldmap_id,
         omp_nthreads=omp_nthreads,
@@ -423,7 +426,7 @@ configured with cubic B-spline interpolation.
             name='ds_bold_anat_wf',
         )
         ds_bold_anat_wf.inputs.inputnode.source_files = bold_series
-        ds_bold_anat_wf.inputs.inputnode.space = 'T1w'  # TODO: Reference anatomical?
+        ds_bold_anat_wf.inputs.inputnode.space = reference_anat
 
         workflow.connect([
             (bold_fit_wf, ds_bold_anat_wf, [
@@ -520,9 +523,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (inputnode, bold_surf_wf, [
                 ('subjects_dir', 'inputnode.subjects_dir'),
                 ('subject_id', 'inputnode.subject_id'),
-                ('fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
+                ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
-            (bold_anat_wf, bold_surf_wf, [('outputnode.bold_file', 'inputnode.bold_t1w')]),
+            (bold_anat_wf, bold_surf_wf, [('outputnode.bold_file', 'inputnode.bold_anat')]),
         ])  # fmt:skip
 
         # sources are bold_file, motion_xfm, boldref2anat_xfm, fsnative2t1w_xfm
