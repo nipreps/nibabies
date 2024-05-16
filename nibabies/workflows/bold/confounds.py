@@ -33,15 +33,14 @@ from nipype.algorithms import confounds as nac
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
-from ...config import DEFAULT_MEMORY_MIN_GB
-from ...interfaces import DerivativesDataSink
-from ...interfaces.confounds import (
+from nibabies.config import DEFAULT_DISMISS_ENTITIES, DEFAULT_MEMORY_MIN_GB
+from nibabies.interfaces import DerivativesDataSink
+from nibabies.interfaces.confounds import (
     FilterDropped,
     FMRISummary,
     GatherConfounds,
     RenameACompCor,
 )
-from ...utils.bids import dismiss_echo
 
 
 def init_bold_confs_wf(
@@ -465,7 +464,11 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
     )
 
     ds_report_bold_rois = pe.Node(
-        DerivativesDataSink(desc='rois', datatype='figures', dismiss_entities=dismiss_echo()),
+        DerivativesDataSink(
+            desc='rois',
+            datatype='figures',
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+        ),
         name='ds_report_bold_rois',
         run_without_submitting=True,
         mem_gb=DEFAULT_MEMORY_MIN_GB,
@@ -485,7 +488,9 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
 
     ds_report_compcor = pe.Node(
         DerivativesDataSink(
-            desc='compcorvar', datatype='figures', dismiss_entities=dismiss_echo()
+            desc='compcorvar',
+            datatype='figures',
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
         ),
         name='ds_report_compcor',
         run_without_submitting=True,
@@ -499,7 +504,9 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
     )
     ds_report_conf_corr = pe.Node(
         DerivativesDataSink(
-            desc='confoundcorr', datatype='figures', dismiss_entities=dismiss_echo()
+            desc='confoundcorr',
+            datatype='figures',
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
         ),
         name='ds_report_conf_corr',
         run_without_submitting=True,
@@ -711,7 +718,10 @@ def init_carpetplot_wf(
     )
     ds_report_bold_conf = pe.Node(
         DerivativesDataSink(
-            desc='carpetplot', datatype='figures', extension='svg', dismiss_entities=dismiss_echo()
+            desc='carpetplot',
+            datatype='figures',
+            extension='svg',
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
         ),
         name='ds_report_bold_conf',
         run_without_submitting=True,
