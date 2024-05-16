@@ -62,6 +62,7 @@ from nibabies.workflows.anatomical.fit import (
     init_infant_anat_fit_wf,
     init_infant_single_anat_fit_wf,
 )
+from nibabies.workflows.bold.base import init_bold_wf
 
 if ty.TYPE_CHECKING:
     from bids.layout import BIDSLayout
@@ -678,13 +679,14 @@ tasks and sessions), the following preprocessing was performed.
 
         functional_cache = {}
         if config.execution.derivatives:
-            from fmriprep.utils.bids import collect_derivatives, extract_entities
+            from nibabies.utils.bids import extract_entities
+            from nibabies.utils.derivatives import collect_functional_derivatives
 
             entities = extract_entities(bold_series)
 
             for deriv_dir in config.execution.derivatives.values():
                 functional_cache.update(
-                    collect_derivatives(
+                    collect_functional_derivatives(
                         derivatives_dir=deriv_dir,
                         entities=entities,
                         fieldmap_id=fieldmap_id,
@@ -692,6 +694,7 @@ tasks and sessions), the following preprocessing was performed.
                 )
 
         bold_wf = init_bold_wf(
+            reference_anat=reference_anat,
             bold_series=bold_series,
             precomputed=functional_cache,
             fieldmap_id=fieldmap_id,
@@ -703,13 +706,13 @@ tasks and sessions), the following preprocessing was performed.
 
         workflow.connect([
             (anat_fit_wf, bold_wf, [
-                ('outputnode.t1w_preproc', 'inputnode.t1w_preproc'),
-                ('outputnode.t1w_mask', 'inputnode.t1w_mask'),
-                ('outputnode.t1w_dseg', 'inputnode.t1w_dseg'),
-                ('outputnode.t1w_tpms', 'inputnode.t1w_tpms'),
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
                 ('outputnode.white', 'inputnode.white'),
                 ('outputnode.pial', 'inputnode.pial'),
                 ('outputnode.midthickness', 'inputnode.midthickness'),
