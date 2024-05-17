@@ -103,8 +103,7 @@ def init_nibabies_wf(subworkflows_list):
     nibabies_wf.base_dir = config.execution.work_dir
 
     execution_spaces = init_execution_spaces()
-
-    freesurfer = config.workflow.run_reconall
+    freesurfer = config.workflow.surface_recon_method is not None
     if freesurfer:
         fsdir = pe.Node(
             BIDSFreeSurferDir(

@@ -53,10 +53,6 @@ FUNCTIONAL_TEMPLATE = """\
 \t\t\t<li>Non-steady-state volumes: {dummy_scan_desc}</li>
 \t\t</ul>
 \t\t</details>
-\t\t<details>
-\t\t\t<summary>Confounds collected</summary><br />
-\t\t\t<p>{confounds}.</p>
-\t\t</details>
 """
 
 ABOUT_TEMPLATE = """\t<ul>

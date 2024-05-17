@@ -5,7 +5,6 @@ from .. import config
 
 def main():
     """Entry point."""
-    import atexit
     import gc
     import os
     import sys
@@ -16,8 +15,6 @@ def main():
     from .workflow import build_boilerplate, build_workflow
 
     _cwd = os.getcwd()
-    # Revert OMP_NUM_THREADS + other runtime set environment variables
-    atexit.register(config.restore_env)
 
     parse_args()
 

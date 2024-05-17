@@ -282,9 +282,9 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
                 'fsnative2anat_xfm',  # BBRegister
                 'subjects_dir',
                 'subject_id',
-                't1w_preproc',  # FLIRT BBR
-                't1w_mask',
-                't1w_dseg',
+                'anat_preproc',  # FLIRT BBR
+                'anat_mask',
+                'anat_dseg',
             ]
         ),
         name='inputnode',

@@ -807,16 +807,6 @@ def _process_initializer(cwd, omp_nthreads):
     os.environ['OMP_NUM_THREADS'] = f'{omp_nthreads}'
 
 
-def restore_env():
-    """Restore the original environment."""
-
-    for k in os.environ.keys():
-        if k in environment._pre_env:
-            os.environ[k] = environment._pre_env[k]
-        else:
-            del os.environ[k]
-
-
 def dismiss_echo(entities: list | None = None):
     """Set entities to dismiss in a DerivativesDataSink."""
     from niworkflows.utils.connections import listify
