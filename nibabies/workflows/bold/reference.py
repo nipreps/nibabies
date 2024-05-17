@@ -58,6 +58,8 @@ def init_raw_boldref_wf(
         BOLD series NIfTI file
     multiecho : :obj:`bool`
         If multiecho data was supplied, data from the first echo will be selected
+    start_frame: :obj:`int`
+        BOLD frame to start creating the reference map from. Any earlier frames are discarded.
     name : :obj:`str`
         Name of workflow (default: ``raw_boldref_wf``)
 
@@ -117,6 +119,13 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
+    # Drop frames to avoid startle when MRI begins acquiring
+    select_frames = pe.Node(
+        niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
+        name='select_frames',
+    )
+    select_frames.inputs.start_frame = start_frame
+
     get_dummy = pe.Node(NonsteadyStatesDetector(), name='get_dummy')
     gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
 
@@ -132,15 +141,34 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         (inputnode, get_dummy, [('bold_file', 'in_file')]),
         (inputnode, calc_dummy_scans, [('dummy_scans', 'dummy_scans')]),
         (val_bold, gen_avg, [('out_file', 'in_file')]),
-        (get_dummy, gen_avg, [('t_mask', 't_mask')]),
+        (val_bold, select_frames, [('out_file', 'in_file')]),
+        (inputnode, select_frames, [('dummy_scans', 'dummy_scans')]),
+        (select_frames, gen_avg, [('t_mask', 't_mask')]),
         (get_dummy, calc_dummy_scans, [('n_dummy', 'algo_dummy_scans')]),
         (val_bold, outputnode, [
             ('out_file', 'bold_file'),
             ('out_report', 'validation_report'),
         ]),
-        (calc_dummy_scans, outputnode, [('skip_vols_num', 'skip_vols')]),
+        (select_frames, outputnode, [('start_frame', 'skip_vols')]),
         (gen_avg, outputnode, [('out_file', 'boldref')]),
         (get_dummy, outputnode, [('n_dummy', 'algo_dummy_scans')]),
     ])  # fmt:skip
 
     return workflow
+
+
+def _select_frames(in_file: str, start_frame: int, dummy_scans: int | None) -> tuple[int, list]:
+    import nibabel as nb
+    import numpy as np
+
+    img = nb.load(in_file)
+    img_len = img.shape[3]
+    if start_frame >= img_len:
+        start_frame = img_len - 1
+
+    if dummy_scans:
+        start_frame = dummy_scans
+
+    t_mask = np.array([False] * img_len, dtype=bool)
+    t_mask[start_frame:] = True
+    return start_frame, list(t_mask)
