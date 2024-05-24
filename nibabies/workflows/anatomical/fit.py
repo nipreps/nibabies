@@ -17,28 +17,20 @@ from smriprep.workflows.anatomical import (
 )
 from smriprep.workflows.fit.registration import init_register_template_wf
 from smriprep.workflows.outputs import (
-    init_ds_anat_volumes_wf,
     init_ds_dseg_wf,
     init_ds_fs_registration_wf,
-    init_ds_fs_segs_wf,
-    init_ds_grayord_metrics_wf,
     init_ds_mask_wf,
     init_ds_surface_metrics_wf,
     init_ds_surfaces_wf,
     init_ds_template_registration_wf,
     init_ds_template_wf,
     init_ds_tpms_wf,
-    init_template_iterator_wf,
 )
 from smriprep.workflows.surfaces import (
     init_fsLR_reg_wf,
     init_gifti_morphometrics_wf,
     init_gifti_surfaces_wf,
-    init_hcp_morphometrics_wf,
-    init_morph_grayords_wf,
     init_refinement_wf,
-    init_resample_midthickness_wf,
-    init_surface_derivatives_wf,
 )
 
 from nibabies import config
@@ -47,10 +39,7 @@ from nibabies.workflows.anatomical.outputs import init_anat_reports_wf
 from nibabies.workflows.anatomical.preproc import init_anat_preproc_wf
 from nibabies.workflows.anatomical.registration import init_coregistration_wf
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
-from nibabies.workflows.anatomical.surfaces import (
-    init_mcribs_dhcp_wf,
-    init_resample_midthickness_dhcp_wf,
-)
+from nibabies.workflows.anatomical.surfaces import init_mcribs_dhcp_wf
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import Reference, SpatialReferences
@@ -2136,210 +2125,4 @@ def init_infant_single_anat_fit_wf(
         else:
             LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
             fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
-    return workflow
-
-
-def init_infant_anat_apply_wf(
-    *,
-    bids_root: str,
-    msm_sulc: bool,
-    omp_nthreads: int,
-    output_dir: str,
-    recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs', None],
-    sloppy: bool,
-    spaces: 'SpatialReferences',
-    reference_anat: ty.Literal['T1w', 'T2w'],
-    cifti_output: ty.Literal['91k', '170k', False],
-    name: str = 'infant_anat_apply_wf',
-) -> pe.Workflow:
-    """The full version of the fit workflow."""
-    workflow = pe.Workflow(name=name)
-
-    reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
-    inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                'anat2std_xfm',
-                'anat_valid_list',
-                'anat_preproc',
-                'anat_mask',
-                'anat_dseg',
-                'anat_tpms',
-                'subjects_dir',
-                'subject_id',
-                'fsnative2anat_xfm',
-                'sulc',
-                'template',
-                'thickness',
-                'midthickness',
-                reg_sphere,
-            ]
-        ),
-        name='inputnode',
-    )
-
-    outputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                'template',
-                'subjects_dir',
-                'subject_id',
-                'anat_preproc',
-                'anat_mask',
-                'anat_dseg',
-                'anat_tpms',
-                'anat2std_xfm',
-                'fsnative2anat_xfm',
-                'anat_aparc',
-                'anat_aseg',
-                'sphere_reg',
-                'sphere_reg_fsLR',
-            ]
-        ),
-        name='outputnode',
-    )
-
-    template_iterator_wf = init_template_iterator_wf(spaces=spaces, sloppy=sloppy)
-    ds_std_volumes_wf = init_ds_anat_volumes_wf(
-        bids_root=bids_root,
-        output_dir=output_dir,
-        name='ds_std_volumes_wf',
-    )
-
-    workflow.connect([
-        (inputnode, outputnode, [
-            ('template', 'template'),
-            ('subjects_dir', 'subjects_dir'),
-            ('subject_id', 'subject_id'),
-            ('anat_preproc', 'anat_preproc'),
-            ('anat_mask', 'anat_mask'),
-            ('anat_dseg', 'anat_dseg'),
-            ('anat_tpms', 'anat_tpms'),
-            ('anat2std_xfm', 'anat2std_xfm'),
-            ('fsnative2anat_xfm', 'fsnative2anat_xfm'),
-            (reg_sphere, 'sphere_reg_fsLR'),
-        ]),
-        (inputnode, template_iterator_wf, [
-            ('template', 'inputnode.template'),
-            ('anat2std_xfm', 'inputnode.anat2std_xfm'),
-        ]),
-        (inputnode, ds_std_volumes_wf, [
-            ('anat_valid_list', 'inputnode.source_files'),
-            ('anat_preproc', 'inputnode.anat_preproc'),
-            ('anat_mask', 'inputnode.anat_mask'),
-            ('anat_dseg', 'inputnode.anat_dseg'),
-            ('anat_tpms', 'inputnode.anat_tpms'),
-        ]),
-        (template_iterator_wf, ds_std_volumes_wf, [
-            ('outputnode.std_t1w', 'inputnode.ref_file'),
-            ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
-            ('outputnode.space', 'inputnode.space'),
-            ('outputnode.cohort', 'inputnode.cohort'),
-            ('outputnode.resolution', 'inputnode.resolution'),
-        ]),
-    ])  # fmt:skip
-
-    if recon_method is not None:
-        ds_fs_segs_wf = init_ds_fs_segs_wf(
-            bids_root=bids_root, output_dir=output_dir, extra_entities={'space': reference_anat}
-        )
-        surface_derivatives_wf = init_surface_derivatives_wf()
-        ds_surfaces_wf = init_ds_surfaces_wf(output_dir=output_dir, surfaces=['inflated'])
-        ds_curv_wf = init_ds_surface_metrics_wf(
-            bids_root=bids_root, output_dir=output_dir, metrics=['curv'], name='ds_curv_wf'
-        )
-
-        workflow.connect([
-            (inputnode, surface_derivatives_wf, [
-                ('anat_preproc', 'inputnode.reference'),
-                ('subjects_dir', 'inputnode.subjects_dir'),
-                ('subject_id', 'inputnode.subject_id'),
-                ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-            ]),
-            (inputnode, ds_surfaces_wf, [
-                ('anat_valid_list', 'inputnode.source_files'),
-            ]),
-            (surface_derivatives_wf, ds_surfaces_wf, [
-                ('outputnode.inflated', 'inputnode.inflated'),
-            ]),
-            (inputnode, ds_curv_wf, [
-                ('anat_valid_list', 'inputnode.source_files'),
-            ]),
-            (surface_derivatives_wf, ds_curv_wf, [
-                ('outputnode.curv', 'inputnode.curv'),
-            ]),
-            (inputnode, ds_fs_segs_wf, [
-                ('anat_valid_list', 'inputnode.source_files'),
-            ]),
-            (surface_derivatives_wf, ds_fs_segs_wf, [
-                ('outputnode.out_aseg', 'inputnode.anat_fs_aseg'),
-                ('outputnode.out_aparc', 'inputnode.anat_fs_aparc'),
-            ]),
-            (surface_derivatives_wf, outputnode, [
-                ('outputnode.out_aseg', 'anat_aseg'),
-                ('outputnode.out_aparc', 'anat_aparc'),
-            ]),
-        ])  # fmt:skip
-
-        if cifti_output:
-            hcp_morphometrics_wf = init_hcp_morphometrics_wf(omp_nthreads=omp_nthreads)
-            if recon_method == 'mcribs':
-                resample_midthickness_wf = init_resample_midthickness_dhcp_wf(
-                    grayord_density=cifti_output
-                )
-            else:
-                resample_midthickness_wf = init_resample_midthickness_wf(
-                    grayord_density=cifti_output
-                )
-            morph_grayords_wf = init_morph_grayords_wf(
-                grayord_density=cifti_output, omp_nthreads=omp_nthreads
-            )
-
-            ds_grayord_metrics_wf = init_ds_grayord_metrics_wf(
-                bids_root=bids_root,
-                output_dir=output_dir,
-                metrics=['curv', 'thickness', 'sulc'],
-                cifti_output=cifti_output,
-            )
-
-            workflow.connect([
-                (inputnode, hcp_morphometrics_wf, [
-                    ('subject_id', 'inputnode.subject_id'),
-                    ('sulc', 'inputnode.sulc'),
-                    ('thickness', 'inputnode.thickness'),
-                    ('midthickness', 'inputnode.midthickness'),
-                ]),
-                (surface_derivatives_wf, hcp_morphometrics_wf, [
-                    ('outputnode.curv', 'inputnode.curv'),
-                ]),
-                (inputnode, resample_midthickness_wf, [
-                    ('midthickness', 'inputnode.midthickness'),
-                    (reg_sphere, 'inputnode.sphere_reg_fsLR'),
-                ]),
-                (inputnode, morph_grayords_wf, [
-                    ('midthickness', 'inputnode.midthickness'),
-                    (reg_sphere, 'inputnode.sphere_reg_fsLR'),
-                ]),
-                (hcp_morphometrics_wf, morph_grayords_wf, [
-                    ('outputnode.curv', 'inputnode.curv'),
-                    ('outputnode.sulc', 'inputnode.sulc'),
-                    ('outputnode.thickness', 'inputnode.thickness'),
-                    ('outputnode.roi', 'inputnode.roi'),
-                ]),
-                (resample_midthickness_wf, morph_grayords_wf, [
-                    ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
-                ]),
-                (inputnode, ds_grayord_metrics_wf, [
-                    ('anat_valid_list', 'inputnode.source_files'),
-                ]),
-                (morph_grayords_wf, ds_grayord_metrics_wf, [
-                    ('outputnode.curv_fsLR', 'inputnode.curv'),
-                    ('outputnode.curv_metadata', 'inputnode.curv_metadata'),
-                    ('outputnode.thickness_fsLR', 'inputnode.thickness'),
-                    ('outputnode.thickness_metadata', 'inputnode.thickness_metadata'),
-                    ('outputnode.sulc_fsLR', 'inputnode.sulc'),
-                    ('outputnode.sulc_metadata', 'inputnode.sulc_metadata'),
-                ]),
-            ])  # fmt:skip
-
     return workflow
