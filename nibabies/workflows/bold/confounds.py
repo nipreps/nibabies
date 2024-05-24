@@ -28,7 +28,6 @@ Calculate BOLD confounds
 
 """
 
-import templateflow.api as tf
 from nipype.algorithms import confounds as nac
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -680,7 +679,11 @@ def init_carpetplot_wf(
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+
+    if not cifti_output:
+        raise NotImplementedError(
+            'Carpetplot can only be generated with a dense timeseries via `--cifti-output`.'
+        )
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -728,51 +731,14 @@ def init_carpetplot_wf(
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
-    parcels = pe.Node(niu.Function(function=_carpet_parcellation), name='parcels')
-    parcels.inputs.nifti = not cifti_output
-    # List transforms
-    mrg_xfms = pe.Node(niu.Merge(2), name='mrg_xfms')
-
-    # Warp segmentation into EPI space
-    resample_parc = pe.Node(
-        ApplyTransforms(
-            dimension=3,
-            input_image=str(
-                tf.get(
-                    'MNI152NLin2009cAsym',
-                    resolution=1,
-                    desc='carpet',
-                    suffix='dseg',
-                    extension=['.nii', '.nii.gz'],
-                )
-            ),
-            invert_transform_flags=[True, False],
-            interpolation='MultiLabel',
-            args='-u int',
-        ),
-        name='resample_parc',
-    )
-
     workflow = Workflow(name=name)
-    if cifti_output:
-        workflow.connect(inputnode, 'cifti_bold', conf_plot, 'in_cifti')
-
     workflow.connect([
-        (inputnode, mrg_xfms, [
-            ('boldref2anat_xfm', 'in1'),
-            ('std2anat_xfm', 'in2'),
-        ]),
-        (inputnode, resample_parc, [('bold_mask', 'reference_image')]),
-        (inputnode, parcels, [('crown_mask', 'crown_mask')]),
-        (inputnode, parcels, [('acompcor_mask', 'acompcor_mask')]),
         (inputnode, conf_plot, [
             ('bold', 'in_nifti'),
+            ('cifti_bold', 'in_cifti'),
             ('confounds_file', 'confounds_file'),
             ('dummy_scans', 'drop_trs'),
         ]),
-        (mrg_xfms, resample_parc, [('out', 'transforms')]),
-        (resample_parc, parcels, [('output_image', 'segmentation')]),
-        (parcels, conf_plot, [('out', 'in_segm')]),
         (conf_plot, ds_report_bold_conf, [('out_file', 'in_file')]),
         (conf_plot, outputnode, [('out_file', 'out_carpetplot')]),
     ])  # fmt:skip
@@ -794,33 +760,6 @@ def _binary_union(mask1, mask2):
     out_name = Path('mask_union.nii.gz').absolute()
     out.to_filename(out_name)
     return str(out_name)
-
-
-def _carpet_parcellation(segmentation, crown_mask, acompcor_mask, nifti=False):
-    """Generate the union of two masks."""
-    from pathlib import Path
-
-    import nibabel as nb
-    import numpy as np
-
-    img = nb.load(segmentation)
-
-    lut = np.zeros((256,), dtype='uint8')
-    lut[100:201] = 1 if nifti else 0  # Ctx GM
-    lut[30:99] = 2 if nifti else 0  # dGM
-    lut[1:11] = 3 if nifti else 1  # WM+CSF
-    lut[255] = 5 if nifti else 0  # Cerebellum
-    # Apply lookup table
-    seg = lut[np.uint16(img.dataobj)]
-    seg[np.bool_(nb.load(crown_mask).dataobj)] = 6 if nifti else 2
-    # Separate deep from shallow WM+CSF
-    seg[np.bool_(nb.load(acompcor_mask).dataobj)] = 4 if nifti else 1
-
-    outimg = img.__class__(seg.astype('uint8'), img.affine, img.header)
-    outimg.set_data_dtype('uint8')
-    out_file = Path('segments.nii.gz').absolute()
-    outimg.to_filename(out_file)
-    return str(out_file)
 
 
 def _get_zooms(in_file):

@@ -34,7 +34,6 @@ import os
 import re
 
 import nibabel as nb
-import numpy as np
 import pandas as pd
 from nipype import logging
 from nipype.interfaces.base import (
@@ -49,7 +48,7 @@ from nipype.interfaces.base import (
 )
 from nipype.utils.filemanip import fname_presuffix
 from nireports.reportlets.modality.func import fMRIPlot
-from niworkflows.utils.timeseries import _cifti_timeseries, _nifti_timeseries
+from niworkflows.utils.timeseries import _cifti_timeseries
 
 LOGGER = logging.getLogger('nipype.interface')
 
@@ -339,10 +338,10 @@ def _gather_confounds(
 
 
 class _FMRISummaryInputSpec(BaseInterfaceInputSpec):
-    in_nifti = File(exists=True, mandatory=True, desc='input BOLD (4D NIfTI file)')
-    in_cifti = File(exists=True, desc='input BOLD (CIFTI dense timeseries)')
+    in_nifti = File(exists=True, desc='input BOLD (4D NIfTI file)')
+    in_cifti = File(exists=True, mandatory=True, desc='input BOLD (CIFTI dense timeseries)')
     in_segm = File(exists=True, desc='volumetric segmentation corresponding to in_nifti')
-    confounds_file = File(exists=True, desc="BIDS' _confounds.tsv file")
+    confounds_file = File(exists=True, mandatory=True, desc="BIDS' _confounds.tsv file")
 
     str_or_tuple = traits.Either(
         traits.Str,
@@ -370,37 +369,26 @@ class FMRISummary(SimpleInterface):
 
     def _run_interface(self, runtime):
         self._results['out_file'] = fname_presuffix(
-            self.inputs.in_nifti, suffix='_fmriplot.svg', use_ext=False, newpath=runtime.cwd
+            self.inputs.in_cifti, suffix='_fmriplot.svg', use_ext=False, newpath=runtime.cwd
         )
-
-        has_cifti = isdefined(self.inputs.in_cifti)
 
         # Read input object and create timeseries + segments object
-        seg_file = self.inputs.in_segm if isdefined(self.inputs.in_segm) else None
-        dataset, segments = _nifti_timeseries(
-            nb.load(self.inputs.in_nifti),
-            nb.load(seg_file),
-            remap_rois=False,
-            labels=(
-                ('WM+CSF', 'Edge')
-                if has_cifti
-                else ('Ctx GM', 'dGM', 'sWM+sCSF', 'dWM+dCSF', 'Cb', 'Edge')
-            ),
-        )
+        # seg_file = self.inputs.in_segm or None
 
-        # Process CIFTI
-        if has_cifti:
-            cifti_data, cifti_segments = _cifti_timeseries(nb.load(self.inputs.in_cifti))
+        # MG: Only plot CIFTI outputs for the time being
+        cifti_data, cifti_segments = _cifti_timeseries(nb.load(self.inputs.in_cifti))
 
-            if seg_file is not None:
-                # Append WM+CSF and Edge masks
-                cifti_length = cifti_data.shape[0]
-                dataset = np.vstack((cifti_data, dataset))
-                segments = {k: np.array(v) + cifti_length for k, v in segments.items()}
-                cifti_segments.update(segments)
-                segments = cifti_segments
-            else:
-                dataset, segments = cifti_data, cifti_segments
+        # if seg_file is not None:
+        #     # Append WM+CSF and Edge masks
+        #     cifti_length = cifti_data.shape[0]
+        #     dataset = np.vstack((cifti_data, dataset))
+        #     segments = {k: np.array(v) + cifti_length for k, v in segments.items()}
+        #     cifti_segments.update(segments)
+        #     segments = cifti_segments
+        # else:
+
+        # MG: This is the only route atm
+        dataset, segments = cifti_data, cifti_segments
 
         dataframe = pd.read_csv(
             self.inputs.confounds_file,
@@ -441,7 +429,7 @@ class FMRISummary(SimpleInterface):
             confounds=data,
             units=units,
             nskip=self.inputs.drop_trs,
-            paired_carpet=has_cifti,
+            paired_carpet=True,
         ).plot()
         fig.savefig(self._results['out_file'], bbox_inches='tight')
         return runtime
