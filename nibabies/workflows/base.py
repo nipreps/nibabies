@@ -52,13 +52,14 @@ from nipype.pipeline import engine as pe
 from niworkflows.interfaces.utility import KeySelect
 from niworkflows.utils.connections import listify
 from packaging.version import Version
+from smriprep.workflows.outputs import init_template_iterator_wf
 
 from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.reports import AboutSummary, SubjectSummary
 from nibabies.utils.bids import parse_bids_for_age_months
+from nibabies.workflows.anatomical.apply import init_infant_anat_apply_wf
 from nibabies.workflows.anatomical.fit import (
-    init_infant_anat_apply_wf,
     init_infant_anat_fit_wf,
     init_infant_single_anat_fit_wf,
 )
@@ -468,25 +469,21 @@ It is released under the [CC0]\
         (about, ds_report_about, [('out_report', 'in_file')]),
     ])  # fmt:skip
 
-    # template_iterator_wf = None
-    # select_MNI2009c_xfm = None
+    reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
+    template_iterator_wf = None
     if config.workflow.level == 'full':
         anat_apply_wf = init_infant_anat_apply_wf(
             bids_root=bids_root,
+            cifti_output=cifti_output,
             msm_sulc=msm_sulc,
             omp_nthreads=omp_nthreads,
             output_dir=output_dir,
             recon_method=recon_method,
             reference_anat=reference_anat,
-            sloppy=sloppy,
             spaces=spaces,
-            cifti_output=cifti_output,
         )
-
-        reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
         workflow.connect([
             (anat_fit_wf, anat_apply_wf, [
-                ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('outputnode.anat_valid_list', 'inputnode.anat_valid_list'),
                 ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
                 ('outputnode.anat_mask', 'inputnode.anat_mask'),
@@ -498,49 +495,24 @@ It is released under the [CC0]\
                 ('outputnode.sulc', 'inputnode.sulc'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.template', 'inputnode.template'),
                 ('outputnode.thickness', 'inputnode.thickness'),
             ]),
         ])  # fmt:skip
-        # TODO:
-        if 'MNI152NLin2009cAsym' in spaces.get_spaces():
-            select_MNI2009c_xfm = pe.Node(
-                KeySelect(fields=['std2anat_xfm'], key='MNI152NLin2009cAsym'),
-                name='select_MNI2009c_xfm',
-                run_without_submitting=True,
-            )
+
+        if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
+            template_iterator_wf = init_template_iterator_wf(spaces=spaces, sloppy=sloppy)
+
             workflow.connect([
-                (anat_fit_wf, select_MNI2009c_xfm, [
-                    ('outputnode.std2anat_xfm', 'std2anat_xfm'),
-                    ('outputnode.template', 'keys'),
+                (anat_fit_wf, template_iterator_wf, [
+                    ('outputnode.template', 'inputnode.template'),
+                    ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ]),
-            ])  # fmt:skip
-
-        # Thread MNI152NLin6Asym standard outputs to CIFTI subworkflow, skipping
-        # the iterator, which targets only output spaces.
-        # This can lead to duplication in the working directory if people actually
-        # want MNI152NLin6Asym outputs, but we'll live with it.
-        if config.workflow.cifti_output:
-            from smriprep.interfaces.templateflow import TemplateFlowSelect
-
-            ref = Reference(
-                'MNI152NLin6Asym',
-                {'res': 2 if config.workflow.cifti_output == '91k' else 1},
-            )
-
-            select_MNI6_xfm = pe.Node(
-                KeySelect(fields=['anat2std_xfm'], key=ref.fullname),
-                name='select_MNI6',
-                run_without_submitting=True,
-            )
-            select_MNI6_tpl = pe.Node(
-                TemplateFlowSelect(template=ref.fullname, resolution=ref.spec['res']),
-                name='select_MNI6_tpl',
-            )
-            workflow.connect([
-                (anat_fit_wf, select_MNI6_xfm, [
-                    ('outputnode.anat2std_xfm', 'anat2std_xfm'),
-                    ('outputnode.template', 'keys'),
+                (template_iterator_wf, anat_apply_wf, [
+                    ('outputnode.std_t1w', 'inputnode.std_t1w',),
+                    ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                    ('outputnode.space', 'inputnode.std_space'),
+                    ('outputnode.cohort', 'inputnode.std_cohort'),
+                    ('outputnode.resolution', 'inputnode.std_resolution'),
                 ]),
             ])  # fmt:skip
 
@@ -697,6 +669,7 @@ tasks and sessions), the following preprocessing was performed.
             bold_series=bold_series,
             precomputed=functional_cache,
             fieldmap_id=fieldmap_id,
+            spaces=spaces,
         )
         if bold_wf is None:
             continue
@@ -716,10 +689,7 @@ tasks and sessions), the following preprocessing was performed.
                 ('outputnode.pial', 'inputnode.pial'),
                 ('outputnode.midthickness', 'inputnode.midthickness'),
                 ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
-                (
-                    f'outputnode.sphere_reg_{"msm" if msm_sulc else "fsLR"}',
-                    'inputnode.sphere_reg_fsLR',
-                ),
+                (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
             ]),
         ])  # fmt:skip
         if fieldmap_id:
@@ -738,7 +708,6 @@ tasks and sessions), the following preprocessing was performed.
             if template_iterator_wf is not None:
                 workflow.connect([
                     (template_iterator_wf, bold_wf, [
-                        ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
                         ('outputnode.space', 'inputnode.std_space'),
                         ('outputnode.resolution', 'inputnode.std_resolution'),
                         ('outputnode.cohort', 'inputnode.std_cohort'),
@@ -747,8 +716,18 @@ tasks and sessions), the following preprocessing was performed.
                     ]),
                 ])  # fmt:skip
 
-            if select_MNI2009c_xfm is not None:
+            if 'MNI152NLin2009cAsym' in spaces.get_spaces():
+                select_MNI2009c_xfm = pe.Node(
+                    KeySelect(fields=['std2anat_xfm'], key='MNI152NLin2009cAsym'),
+                    name='select_MNI2009c_xfm',
+                    run_without_submitting=True,
+                )
+
                 workflow.connect([
+                    (anat_fit_wf, select_MNI2009c_xfm, [
+                        ('outputnode.std2anat_xfm', 'std2anat_xfm'),
+                        ('outputnode.template', 'keys'),
+                    ]),
                     (select_MNI2009c_xfm, bold_wf, [
                         ('std2anat_xfm', 'inputnode.mni2009c2anat_xfm'),
                     ]),
@@ -759,7 +738,28 @@ tasks and sessions), the following preprocessing was performed.
             # This can lead to duplication in the working directory if people actually
             # want MNI152NLin6Asym outputs, but we'll live with it.
             if config.workflow.cifti_output:
+                from smriprep.interfaces.templateflow import TemplateFlowSelect
+
+                ref = Reference(
+                    'MNI152NLin6Asym',
+                    {'res': 2 if config.workflow.cifti_output == '91k' else 1},
+                )
+
+                select_MNI6_xfm = pe.Node(
+                    KeySelect(fields=['anat2std_xfm'], key=ref.fullname),
+                    name='select_MNI6',
+                    run_without_submitting=True,
+                )
+                select_MNI6_tpl = pe.Node(
+                    TemplateFlowSelect(template=ref.fullname, resolution=ref.spec['res']),
+                    name='select_MNI6_tpl',
+                )
+
                 workflow.connect([
+                    (anat_fit_wf, select_MNI6_xfm, [
+                        ('outputnode.anat2std_xfm', 'anat2std_xfm'),
+                        ('outputnode.template', 'keys'),
+                    ]),
                     (select_MNI6_xfm, bold_wf, [('anat2std_xfm', 'inputnode.anat2mni6_xfm')]),
                     (select_MNI6_tpl, bold_wf, [('brain_mask', 'inputnode.mni6_mask')]),
                     (anat_apply_wf, bold_wf, [
@@ -822,13 +822,6 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
 
     if not spaces.is_cached():
         spaces.checkpoint()
-
-    # Ensure user-defined spatial references for outputs are correctly parsed.
-    # Certain options require normalization to a space not explicitly defined by users.
-    # These spaces will not be included in the final outputs.
-    if config.workflow.use_aroma:
-        # Make sure there's a normalization to FSL for AROMA to use.
-        spaces.add(Reference('MNI152NLin6Asym', {'res': '2'}))
 
     if config.workflow.cifti_output:
         # CIFTI grayordinates to corresponding FSL-MNI resolutions.

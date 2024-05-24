@@ -29,6 +29,7 @@ Orchestrating the BOLD-preprocessing workflow
 .. autofunction:: init_bold_native_wf
 
 """
+import typing as ty
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -51,6 +52,9 @@ from nibabies.workflows.bold.outputs import (
 from nibabies.workflows.bold.resampling import init_bold_surf_wf
 from nibabies.workflows.bold.t2s import init_t2s_reporting_wf
 
+if ty.TYPE_CHECKING:
+    from niworkflows.utils.spaces import SpatialReferences
+
 DEFAULT_DISMISS_ENTITIES = config.DEFAULT_DISMISS_ENTITIES
 
 
@@ -60,6 +64,7 @@ def init_bold_wf(
     bold_series: list[str],
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
+    spaces: 'SpatialReferences',
 ) -> pe.Workflow:
     """
     This workflow controls the functional preprocessing stages of *fMRIPrep*.
@@ -107,15 +112,15 @@ def init_bold_wf(
     fsnative2anat_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed subject space to anatomical
     white
-        FreeSurfer white matter surfaces, in T1w space, collated left, then right
+        FreeSurfer white matter surfaces, in anat space, collated left, then right
     midthickness
-        FreeSurfer mid-thickness surfaces, in T1w space, collated left, then right
+        FreeSurfer mid-thickness surfaces, in anat space, collated left, then right
     pial
-        FreeSurfer pial surfaces, in T1w space, collated left, then right
+        FreeSurfer pial surfaces, in anat space, collated left, then right
     sphere_reg_fsLR
         Registration spheres from fsnative to fsLR space, collated left, then right
     anat_ribbon
-        Binary cortical ribbon mask in T1w space
+        Binary cortical ribbon mask in anat space
     fmap_id
         Unique identifiers to select fieldmap files
     fmap
@@ -283,7 +288,6 @@ configured with cubic B-spline interpolation.
     # Now that we're resampling and combining, multiecho matters
     multiecho = len(bold_series) > 2
 
-    spaces = config.workflow.spaces
     nonstd_spaces = set(spaces.get_nonstandard())
     freesurfer_spaces = spaces.get_fs_spaces()
 
@@ -366,7 +370,7 @@ configured with cubic B-spline interpolation.
         )
 
         workflow.connect([
-            (inputnode, t2s_reporting_wf, [('t1w_dseg', 'inputnode.label_file')]),
+            (inputnode, t2s_reporting_wf, [('anat_dseg', 'inputnode.label_file')]),
             (bold_fit_wf, t2s_reporting_wf, [
                 ('outputnode.boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('outputnode.coreg_boldref', 'inputnode.boldref'),
@@ -528,7 +532,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             (bold_anat_wf, bold_surf_wf, [('outputnode.bold_file', 'inputnode.bold_anat')]),
         ])  # fmt:skip
 
-        # sources are bold_file, motion_xfm, boldref2anat_xfm, fsnative2t1w_xfm
+        # sources are bold_file, motion_xfm, boldref2anat_xfm, fsnative2anat_xfm
         merge_surface_sources = pe.Node(
             niu.Merge(4),
             name='merge_surface_sources',
@@ -541,7 +545,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 ('outputnode.boldref2anat_xfm', 'in3'),
             ]),
             (inputnode, merge_surface_sources, [
-                ('fsnative2t1w_xfm', 'in4'),
+                ('fsnative2anat_xfm', 'in4'),
             ]),
             (merge_surface_sources, bold_surf_wf, [
                 ('out', 'inputnode.sources'),
@@ -556,7 +560,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         )
 
         # TODO: Individual subcortical ROI mapping
-
         bold_MNI6_wf = init_bold_volumetric_resample_wf(
             metadata=all_metadata[0],
             fieldmap_id=fieldmap_id if not multiecho else None,
@@ -631,7 +634,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),
                 ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
             ]),
-            # Resample T1w-space BOLD to fsLR surfaces
+            # Resample anat-space BOLD to fsLR surfaces
             (inputnode, bold_fsLR_resampling_wf, [
                 ('white', 'inputnode.white'),
                 ('pial', 'inputnode.pial'),
@@ -699,7 +702,8 @@ excluding voxels whose time-series have a locally high coefficient of variation.
         ]),
     ])  # fmt:skip
 
-    if spaces.get_spaces(nonstandard=False, dim=(3,)):
+    # MG: Make carpetplot workflow only work with CIFTI
+    if config.workflow.cifti_output:
         carpetplot_wf = init_carpetplot_wf(
             mem_gb=mem_gb['resampled'],
             metadata=all_metadata[0],
@@ -707,17 +711,15 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             name='carpetplot_wf',
         )
 
-        if config.workflow.cifti_output:
-            workflow.connect(
-                bold_grayords_wf, 'outputnode.cifti_bold', carpetplot_wf, 'inputnode.cifti_bold',
-            )  # fmt:skip
-
         def _last(inlist):
             return inlist[-1]
 
         workflow.connect([
-            (inputnode, carpetplot_wf, [
-                ('mni2009c2anat_xfm', 'inputnode.std2anat_xfm'),
+            # (inputnode, carpetplot_wf, [
+            #     ('mni2009c2anat_xfm', 'inputnode.std2anat_xfm'),
+            # ]),
+            (bold_grayords_wf, carpetplot_wf, [
+                ('outputnode.cifti_bold', 'inputnode.cifti_bold'),
             ]),
             (bold_fit_wf, carpetplot_wf, [
                 ('outputnode.dummy_scans', 'inputnode.dummy_scans'),
