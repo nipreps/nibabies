@@ -716,57 +716,34 @@ tasks and sessions), the following preprocessing was performed.
                     ]),
                 ])  # fmt:skip
 
-            if 'MNI152NLin2009cAsym' in spaces.get_spaces():
-                select_MNI2009c_xfm = pe.Node(
-                    KeySelect(fields=['std2anat_xfm'], key='MNI152NLin2009cAsym'),
-                    name='select_MNI2009c_xfm',
+            if 'MNIInfant' in [ref.space for ref in spaces.references]:
+                select_MNIInfant_xfm = pe.Node(
+                    KeySelect(
+                        fields=['anat2std_xfm', 'std2anat_xfm'],
+                        key=get_MNIInfant_key(spaces),
+                    ),
+                    name='select_MNIInfant_xfm',
                     run_without_submitting=True,
                 )
 
                 workflow.connect([
-                    (anat_fit_wf, select_MNI2009c_xfm, [
+                    (anat_fit_wf, select_MNIInfant_xfm, [
                         ('outputnode.std2anat_xfm', 'std2anat_xfm'),
-                        ('outputnode.template', 'keys'),
-                    ]),
-                    (select_MNI2009c_xfm, bold_wf, [
-                        ('std2anat_xfm', 'inputnode.mni2009c2anat_xfm'),
-                    ]),
-                ])  # fmt:skip
-
-            # Thread MNI152NLin6Asym standard outputs to CIFTI subworkflow, skipping
-            # the iterator, which targets only output spaces.
-            # This can lead to duplication in the working directory if people actually
-            # want MNI152NLin6Asym outputs, but we'll live with it.
-            if config.workflow.cifti_output:
-                from smriprep.interfaces.templateflow import TemplateFlowSelect
-
-                ref = Reference(
-                    'MNI152NLin6Asym',
-                    {'res': 2 if config.workflow.cifti_output == '91k' else 1},
-                )
-
-                select_MNI6_xfm = pe.Node(
-                    KeySelect(fields=['anat2std_xfm'], key=ref.fullname),
-                    name='select_MNI6',
-                    run_without_submitting=True,
-                )
-                select_MNI6_tpl = pe.Node(
-                    TemplateFlowSelect(template=ref.fullname, resolution=ref.spec['res']),
-                    name='select_MNI6_tpl',
-                )
-
-                workflow.connect([
-                    (anat_fit_wf, select_MNI6_xfm, [
                         ('outputnode.anat2std_xfm', 'anat2std_xfm'),
                         ('outputnode.template', 'keys'),
                     ]),
-                    (select_MNI6_xfm, bold_wf, [('anat2std_xfm', 'inputnode.anat2mni6_xfm')]),
-                    (select_MNI6_tpl, bold_wf, [('brain_mask', 'inputnode.mni6_mask')]),
+                    (select_MNIInfant_xfm, bold_wf, [
+                        ('std2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
+                        ('anat2std_xfm', 'inputnode.anat2mniinfant_xfm')
+                    ]),
+                ])  # fmt:skip
+
+            if config.workflow.cifti_output:
+                workflow.connect([
                     (anat_apply_wf, bold_wf, [
                         ('outputnode.roi', 'inputnode.cortex_mask'),
-                    ]),
-                    (anat_apply_wf, bold_wf, [
                         ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
+                        ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
                     ]),
                 ])  # fmt:skip
 
@@ -937,3 +914,17 @@ def get_estimator(layout, fname):
         field_source = get_identifier(intended_rel)
 
     return field_source
+
+
+def get_MNIInfant_key(spaces: SpatialReferences) -> str:
+    """Parse spaces and return matching MNIInfant space, including cohort."""
+    key = None
+    for space in spaces.references:
+        # str formats as <reference.name>:<reference.spec>
+        if 'MNIInfant' in str(space) and 'res-native' not in str(space):
+            key = str(space)
+            break
+
+    if key is None:
+        raise KeyError(f'MNIInfant not found in SpatialReferences: {spaces}')
+    return key

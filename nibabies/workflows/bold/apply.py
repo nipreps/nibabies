@@ -124,7 +124,7 @@ def init_bold_volumetric_resample_wf(
     boldref2target = pe.Node(niu.Merge(2), name='boldref2target', run_without_submitting=True)
     bold2target = pe.Node(niu.Merge(2), name='bold2target', run_without_submitting=True)
     resample = pe.Node(
-        ResampleSeries(jacobian=jacobian),
+        ResampleSeries(jacobian=jacobian, num_threads=omp_nthreads),
         name='resample',
         n_procs=omp_nthreads,
         mem_gb=mem_gb['resampled'],

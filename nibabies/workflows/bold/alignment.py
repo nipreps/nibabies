@@ -11,7 +11,7 @@ from nibabies.data import load as load_data
 from nibabies.interfaces.workbench import VolumeLabelImport
 
 
-def init_subcortical_rois_wf(*, name='subcortical_rois_wf'):
+def init_subcortical_rois_wf(*, name: str = 'subcortical_rois_wf'):
     """
     Refine segmentations into volumes of expected CIFTI subcortical structures.
 
@@ -91,7 +91,11 @@ def init_subcortical_rois_wf(*, name='subcortical_rois_wf'):
     return workflow
 
 
-def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_alignment_wf'):
+def init_subcortical_mni_alignment_wf(
+    *,
+    vol_sigma: float = 0.8,
+    name: str = 'subcortical_mni_alignment_wf',
+):
     """
     Align individual subcortical structures into MNI space.
 
@@ -254,7 +258,6 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
     merge_rois = pe.Node(MergeROIs(), name='merge_rois')
 
     workflow = Workflow(name=name)
-    # fmt: off
     workflow.connect([
         (inputnode, applyxfm_atlas, [
             ('MNIInfant_bold', 'in_file'),
@@ -306,12 +309,11 @@ def init_subcortical_mni_alignment_wf(*, vol_sigma=0.8, name='subcortical_mni_al
         (separate, merge_rois, [('volume_all_file', 'in_files')]),
         (merge_rois, outputnode, [('out_file', 'subcortical_volume')]),
         (inputnode, outputnode, [('MNI152_rois', 'subcortical_labels')]),
-    ])
-    # fmt: on
+    ])  # fmt:skip
     return workflow
 
 
-def parse_roi_labels(label_file):
+def parse_roi_labels(label_file: str):
     """
     Parse a label file composed of one or more sets of:
     <labelname>

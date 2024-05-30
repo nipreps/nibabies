@@ -722,7 +722,6 @@ The BOLD time-series were resampled onto the left/right-symmetric template
 
 def init_bold_grayords_wf(
     grayord_density: ty.Literal['91k', '170k'],
-    mem_gb: float,
     repetition_time: float,
     name: str = 'bold_grayords_wf',
 ):
@@ -737,77 +736,115 @@ def init_bold_grayords_wf(
             :simple_form: yes
 
             from nibabies.workflows.bold.resampling import init_bold_grayords_wf
-            wf = init_bold_grayords_wf(mem_gb=0.1, grayord_density="91k", repetition_time=2)
+            wf = init_bold_grayords_wf(grayord_density='91k')
 
     Parameters
     ----------
-    grayord_density : :class:`str`
-        Either ``"91k"`` or ``"170k"``, representing the total *grayordinates*.
+    grayord_density : :obj:`str`
+        Either `91k` or `170k`, representing the total of vertices or *grayordinates*.
     mem_gb : :obj:`float`
         Size of BOLD file in GB
-    repetition_time : :obj:`float`
-        Repetition time in seconds
     name : :obj:`str`
-        Unique name for the subworkflow (default: ``"bold_grayords_wf"``)
+        Unique name for the subworkflow (default: ``'bold_grayords_wf'``)
 
     Inputs
     ------
-    bold_fsLR : :obj:`str`
-        List of paths to BOLD series resampled as functional GIFTI files in fsLR space
     bold_std : :obj:`str`
-        List of BOLD conversions to standard spaces.
-    spatial_reference : :obj:`str`
-        List of unique identifiers corresponding to the BOLD standard-conversions.
-
+        The subcortical structures in MNI152NLin6Asym space.
+    bold_labels : :obj:`str`
+        Volume file containing all subcortical labels
+    bold_fsLR : :obj:`list`
+        List of BOLD files resampled on the fsaverage (ico7) surfaces
 
     Outputs
     -------
-    cifti_bold : :obj:`str`
-        BOLD CIFTI dtseries.
-    cifti_metadata : :obj:`str`
-        BIDS metadata file corresponding to ``cifti_bold``.
+    dtseries : :obj:`str`
+        BOLD CIFTI dense timeseries.
+    dtseries_metadata : :obj:`str`
+        BIDS metadata file corresponding to ``dtseries``.
 
     """
+    import templateflow.api as tf
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.cifti import GenerateCifti
+
+    from nibabies.interfaces.nibabel import ReorientImage
+    from nibabies.interfaces.workbench import CiftiCreateDenseTimeseries
 
     workflow = Workflow(name=name)
-
-    mni_density = '2' if grayord_density == '91k' else '1'
-
     workflow.__desc__ = f"""\
 *Grayordinates* files [@hcppipelines] containing {grayord_density} samples were also
-generated with surface data transformed directly to fsLR space and subcortical
-data transformed to {mni_density} mm resolution MNI152NLin6Asym space.
+generated using the highest-resolution ``fsaverage`` as intermediate standardized
+surface space.
 """
 
+    fslr_density = '32k' if grayord_density == '91k' else '59k'
+
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['bold_std', 'bold_fsLR']),
+        niu.IdentityInterface(fields=['bold_std', 'bold_labels', 'bold_fsLR']),
         name='inputnode',
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['cifti_bold', 'cifti_metadata']),
+        niu.IdentityInterface(fields=['dtseries', 'dtseries_metadata']),
         name='outputnode',
     )
 
-    gen_cifti = pe.Node(
-        GenerateCifti(
-            TR=repetition_time,
-            grayordinates=grayord_density,
-        ),
-        name='gen_cifti',
-        mem_gb=mem_gb,
+    split_surfaces = pe.Node(
+        niu.Function(function=_split_surfaces, output_names=['left_surface', 'right_surface']),
+        name='split_surfaces',
     )
 
+    reorient_data = pe.Node(ReorientImage(target_orientation='LAS'), name='reorient_data')
+    reorient_labels = reorient_data.clone(name='reorient_labels')
+
+    gen_cifti = pe.Node(CiftiCreateDenseTimeseries(timestep=repetition_time), name='gen_cifti')
+    gen_cifti.inputs.roi_left = tf.get(
+        'fsLR',
+        density=fslr_density,
+        hemi='L',
+        desc='nomedialwall',
+        suffix='dparc',
+    )
+    gen_cifti.inputs.roi_right = tf.get(
+        'fsLR',
+        density=fslr_density,
+        hemi='R',
+        desc='nomedialwall',
+        suffix='dparc',
+    )
+    gen_cifti_metadata = pe.Node(
+        niu.Function(function=_gen_metadata, output_names=['out_metadata']),
+        name='gen_cifti_metadata',
+    )
+    gen_cifti_metadata.inputs.grayord_density = grayord_density
+
     workflow.connect([
-        (inputnode, gen_cifti, [
-            ('bold_fsLR', 'surface_bolds'),
-            ('bold_std', 'bold_file'),
-        ]),
-        (gen_cifti, outputnode, [
-            ('out_file', 'cifti_bold'),
-            ('out_metadata', 'cifti_metadata'),
-        ]),
+        (inputnode, reorient_data, [('bold_std', 'in_file')]),
+        (inputnode, reorient_labels, [('bold_labels', 'in_file')]),
+        (reorient_data, gen_cifti, [('out_file', 'volume_data')]),
+        (reorient_labels, gen_cifti, [('out_file', 'volume_structure_labels')]),
+        (inputnode, split_surfaces, [('bold_fsLR', 'in_surfaces')]),
+        (split_surfaces, gen_cifti, [
+            ('left_surface', 'left_metric'),
+            ('right_surface', 'right_metric')]),
+        (gen_cifti, outputnode, [('out_file', 'dtseries')]),
+        (gen_cifti_metadata, outputnode, [('out_metadata', 'dtseries_metadata')]),
     ])  # fmt:skip
     return workflow
+
+
+def _gen_metadata(grayord_density):
+    import json
+    from pathlib import Path
+
+    from niworkflows.interfaces.cifti import _prepare_cifti
+
+    _, _, metadata = _prepare_cifti(grayord_density)
+    metadata_file = Path('bold.dtseries.json').absolute()
+    metadata_file.write_text(json.dumps(metadata, indent=2))
+    return str(metadata_file)
+
+
+def _split_surfaces(in_surfaces: list) -> tuple[str, str]:
+    """Split surfaces into selectable hemispheres."""
+    return in_surfaces[0], in_surfaces[1]
