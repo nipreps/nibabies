@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-import warnings
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
@@ -106,15 +105,8 @@ def load_ants_h5(filename: Path) -> nt.base.TransformBase:
         raise ValueError(msg)
 
     fixed_params = transform2['TransformFixedParameters'][:]
-    if not np.array_equal(fixed_params, FIXED_PARAMS):
-        msg = 'Unexpected fixed parameters\n'
-        msg += f'Expected: {FIXED_PARAMS}\n'
-        msg += f'Found: {fixed_params}'
-        if not np.array_equal(fixed_params[6:], FIXED_PARAMS[6:]):
-            raise ValueError(msg)
-        warnings.warn(msg, stacklevel=1)
 
-    shape = tuple(fixed_params[:3].astype(int))
+    shape = tuple(fixed_params[:3].astype(int)[::-1])
     warp = h['TransformGroup']['2']['TransformParameters'][:]
     warp = warp.reshape((*shape, 3)).transpose(2, 1, 0, 3)
     warp *= np.array([-1, -1, 1])
