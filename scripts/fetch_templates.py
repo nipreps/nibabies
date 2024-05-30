@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"Pre-emptive caching of commonly used TemplateFlow templates"
+'Pre-emptive caching of commonly used TemplateFlow templates'
 import templateflow.api as tf
 
 
@@ -108,6 +108,15 @@ def fetch_dhcpAsym(cohort=42):
     tf.get(template, cohort=cohort, space='fsaverage', density='41k', desc='reg', suffix='sphere')
 
 
+def fetch_MNI2009():
+    template = 'MNI152NLin2009cAsym'
+
+    tf.get(template, resolution=(1, 2), desc=None, suffix='T1w')
+    tf.get(template, resolution=(1, 2), desc='brain', suffix='mask')
+    tf.get(template, resolution=2, desc='fMRIPrep', suffix='boldref')
+    tf.get(template, resolution=1, label='brain', suffix='probseg')
+
+
 def main():
     fetch_MNI6()
     fetch_UNCInfant()
@@ -115,6 +124,7 @@ def main():
     fetch_fsLR()
     fetch_MNIInfant()
     fetch_dhcpAsym()
+    fetch_MNI2009()
 
 
 if __name__ == '__main__':
