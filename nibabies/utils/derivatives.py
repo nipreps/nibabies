@@ -95,7 +95,7 @@ def collect_functional_derivatives(
     """Gather existing derivatives and compose a cache."""
     if spec is None or patterns is None:
         _spec, _patterns = tuple(
-            json.loads(load.readable('io_spec_bold.json').read_text()).values()
+            json.loads(load.readable('io_spec_func.json').read_text()).values()
         )
 
         if spec is None:
