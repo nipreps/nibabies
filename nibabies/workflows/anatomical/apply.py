@@ -4,7 +4,6 @@ import nipype.interfaces.utility as niu
 import nipype.pipeline.engine as pe
 from smriprep.workflows.outputs import (
     init_ds_anat_volumes_wf,
-    init_ds_fs_segs_wf,
     init_ds_grayord_metrics_wf,
     init_ds_surface_metrics_wf,
     init_ds_surfaces_wf,
@@ -16,6 +15,7 @@ from smriprep.workflows.surfaces import (
     init_surface_derivatives_wf,
 )
 
+from nibabies.workflows.anatomical.outputs import init_ds_seg_wf
 from nibabies.workflows.anatomical.surfaces import init_resample_midthickness_dhcp_wf
 
 if ty.TYPE_CHECKING:
@@ -31,6 +31,7 @@ def init_infant_anat_apply_wf(
     output_dir: str,
     recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs', None],
     reference_anat: ty.Literal['T1w', 'T2w'],
+    precomputed: dict,
     spaces: 'SpatialReferences',
     name: str = 'infant_anat_apply_wf',
 ) -> pe.Workflow:
@@ -96,10 +97,41 @@ def init_infant_anat_apply_wf(
         ])  # fmt:skip
 
     if recon_method is not None:
-        ds_fs_segs_wf = init_ds_fs_segs_wf(
-            bids_root=bids_root, output_dir=output_dir, extra_entities={'space': reference_anat}
-        )
         surface_derivatives_wf = init_surface_derivatives_wf()
+        # Split out segmentations to better save precomputed inputs
+        seg_buffer = pe.Node(
+            niu.IdentityInterface(fields=['anat_aseg', 'anat_aparc']),
+            name='seg_buffer',
+        )
+
+        ds_aseg_wf = init_ds_seg_wf(
+            output_dir=output_dir,
+            seg_type='aseg',
+            extra_entities={'space': reference_anat},
+        )
+        ds_aparc_wf = init_ds_seg_wf(
+            output_dir=output_dir,
+            seg_type='aparcaseg',
+            extra_entities={'space': reference_anat},
+        )
+        if precomputed.get('anat_aseg', False):
+            seg_buffer.inputs.anat_aseg = precomputed['anat_aseg']
+        else:
+            workflow.connect([
+                (surface_derivatives_wf, seg_buffer, [
+                    ('outputnode.out_aseg', 'anat_aseg'),
+                ]),
+            ])  # fmt:skip
+
+        if precomputed.get('anat_aparc', False):
+            seg_buffer.inputs.anat_aparc = precomputed['anat_aparc']
+        else:
+            workflow.connect([
+                (surface_derivatives_wf, seg_buffer, [
+                    ('outputnode.out_aparc', 'anat_aparc'),
+                ]),
+            ])  # fmt:skip
+
         ds_surfaces_wf = init_ds_surfaces_wf(output_dir=output_dir, surfaces=['inflated'])
         ds_curv_wf = init_ds_surface_metrics_wf(
             bids_root=bids_root, output_dir=output_dir, metrics=['curv'], name='ds_curv_wf'
@@ -124,16 +156,15 @@ def init_infant_anat_apply_wf(
             (surface_derivatives_wf, ds_curv_wf, [
                 ('outputnode.curv', 'inputnode.curv'),
             ]),
-            (inputnode, ds_fs_segs_wf, [
+            (inputnode, ds_aseg_wf, [
                 ('anat_valid_list', 'inputnode.source_files'),
             ]),
-            (surface_derivatives_wf, ds_fs_segs_wf, [
-                ('outputnode.out_aseg', 'inputnode.anat_fs_aseg'),
-                ('outputnode.out_aparc', 'inputnode.anat_fs_aparc'),
+            (inputnode, ds_aparc_wf, [
+                ('anat_valid_list', 'inputnode.source_files'),
             ]),
-            (surface_derivatives_wf, outputnode, [
-                ('outputnode.out_aseg', 'anat_aseg'),
-                ('outputnode.out_aparc', 'anat_aparc'),
+            (seg_buffer, outputnode, [
+                ('anat_aparc', 'anat_aparc'),
+                ('anat_aseg', 'anat_aseg'),
             ]),
         ])  # fmt:skip
 

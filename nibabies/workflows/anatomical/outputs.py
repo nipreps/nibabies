@@ -883,6 +883,66 @@ def init_anat_derivatives_wf(
     return workflow
 
 
+def init_ds_seg_wf(
+    *,
+    output_dir: str,
+    seg_type: str,
+    extra_entities: dict | None = None,
+):
+    """
+    Set up a battery of datasinks to store derivatives in the right location.
+
+    Parameters
+    ----------
+    bids_root : :obj:`str`
+        Root path of BIDS dataset
+    output_dir : :obj:`str`
+        Directory in which to save derivatives
+    seg_type : :obj:`str`
+        Type of segmentation (aseg, aparcaseg, etc)
+    extra_entities : :obj:`dict` or None
+        Additional entities to add to filename
+    name : :obj:`str`
+        Workflow name (default: ds_anat_segs_wf)
+
+    Inputs
+    ------
+    in_seg
+        Input segmentation, in native anatomical space
+    source_files
+        List of input anatomical images
+    """
+    workflow = Workflow(name=f'ds_{seg_type}_wf')
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['source_files', 'in_seg']),
+        name='inputnode',
+    )
+
+    extra_entities = extra_entities or {}
+
+    ds_seg = pe.Node(
+        DerivativesDataSink(
+            base_directory=output_dir,
+            desc=seg_type,
+            suffix='dseg',
+            compress=True,
+            **extra_entities,
+        ),
+        name='ds_anat_fsaseg',
+        run_without_submitting=True,
+    )
+
+    workflow.connect([
+        (inputnode, ds_seg, [
+            ('in_seg', 'in_file'),
+            ('source_files', 'source_file'),
+        ]),
+    ])  # fmt:skip
+
+    return workflow
+
+
 def _set_tpl_res(space, resolution):
     if space in ('UNCInfant', 'Fischer344'):
         from nipype.interfaces.base import Undefined

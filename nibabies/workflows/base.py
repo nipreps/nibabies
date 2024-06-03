@@ -478,6 +478,7 @@ It is released under the [CC0]\
             msm_sulc=msm_sulc,
             omp_nthreads=omp_nthreads,
             output_dir=output_dir,
+            precomputed=anatomical_cache,
             recon_method=recon_method,
             reference_anat=reference_anat,
             spaces=spaces,
