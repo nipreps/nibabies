@@ -15,11 +15,14 @@ from smriprep.workflows.surfaces import (
     init_surface_derivatives_wf,
 )
 
+from nibabies import config
 from nibabies.workflows.anatomical.outputs import init_ds_seg_wf
 from nibabies.workflows.anatomical.surfaces import init_resample_midthickness_dhcp_wf
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import SpatialReferences
+
+LOGGER = config.loggers.workflow
 
 
 def init_infant_anat_apply_wf(
@@ -97,6 +100,9 @@ def init_infant_anat_apply_wf(
         ])  # fmt:skip
 
     if recon_method is not None:
+        anat_aseg = precomputed.get(f'{reference_anat.lower()}_aseg')
+        anat_aparc = precomputed.get(f'{reference_anat.lower()}_aparc')
+
         surface_derivatives_wf = init_surface_derivatives_wf()
         # Split out segmentations to better save precomputed inputs
         seg_buffer = pe.Node(
@@ -114,8 +120,9 @@ def init_infant_anat_apply_wf(
             seg_type='aparcaseg',
             extra_entities={'space': reference_anat},
         )
-        if precomputed.get('anat_aseg', False):
-            seg_buffer.inputs.anat_aseg = precomputed['anat_aseg']
+        if anat_aseg:
+            LOGGER.info('ANAT - using precomputed aseg')
+            seg_buffer.inputs.anat_aseg = anat_aseg
         else:
             workflow.connect([
                 (surface_derivatives_wf, seg_buffer, [
@@ -123,8 +130,9 @@ def init_infant_anat_apply_wf(
                 ]),
             ])  # fmt:skip
 
-        if precomputed.get('anat_aparc', False):
-            seg_buffer.inputs.anat_aparc = precomputed['anat_aparc']
+        if anat_aparc:
+            LOGGER.info('ANAT - using precomputed aparc')
+            seg_buffer.inputs.anat_aparc = anat_aparc
         else:
             workflow.connect([
                 (surface_derivatives_wf, seg_buffer, [
@@ -166,6 +174,12 @@ def init_infant_anat_apply_wf(
                 ('anat_aparc', 'anat_aparc'),
                 ('anat_aseg', 'anat_aseg'),
             ]),
+            (seg_buffer, ds_aparc_wf, [
+                ('anat_aparc', 'inputnode.in_seg'),
+            ]),
+            (seg_buffer, ds_aseg_wf, [
+                ('anat_aseg', 'inputnode.in_seg'),
+            ])
         ])  # fmt:skip
 
         if cifti_output:
