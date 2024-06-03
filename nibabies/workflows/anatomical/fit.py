@@ -939,8 +939,8 @@ def init_infant_anat_fit_wf(
                 ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
             (register_template_wf, template_buffer, [('outputnode.template', 'in2')]),
-            (ds_template_registration_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
-            (ds_template_registration_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
+            (register_template_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
+            (register_template_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
         ])  # fmt:skip
     if found_xfms:
         LOGGER.info(f'ANAT Stage 5: Found pre-computed registrations for {found_xfms}')
@@ -1773,8 +1773,8 @@ def init_infant_single_anat_fit_wf(
                 ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
             (register_template_wf, template_buffer, [('outputnode.template', 'in2')]),
-            (ds_template_registration_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
-            (ds_template_registration_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
+            (register_template_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
+            (register_template_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
         ])  # fmt:skip
     if found_xfms:
         LOGGER.info(f'ANAT Stage 4: Found pre-computed registrations for {found_xfms}')
