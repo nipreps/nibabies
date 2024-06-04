@@ -764,7 +764,7 @@ def init_infant_anat_fit_wf(
         )
 
         # TODO: Currently the XFMs are transform0GenericAffine.mat, transform1Warp.nii.gz
-        # The coregistration should be chaged to instead save
+        # The coregistration should be changed to instead save
         # 'composite_transform' and 'inverse_composite_transform'
         # from antsRegistration (single h5 files)
         #
@@ -1059,7 +1059,7 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
 
         if anat_aseg:
-            workflow.conect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
+            workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
@@ -1878,7 +1878,7 @@ def init_infant_single_anat_fit_wf(
         ])  # fmt:skip
 
         if anat_aseg:
-            workflow.conect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
+            workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:

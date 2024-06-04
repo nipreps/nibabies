@@ -14,7 +14,7 @@ if ty.TYPE_CHECKING:
 
 def _build_parser():
     """Build parser object."""
-    from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Action
+    from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
     from functools import partial
     from pathlib import Path
 
@@ -300,7 +300,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         dest='verbose_count',
         action='count',
         default=0,
-        help='increases log verbosity for each occurence, debug level is -vvv',
+        help='increases log verbosity for each occurrence, debug level is -vvv',
     )
 
     g_subset = parser.add_argument_group('Options for performing only a subset of the workflow')

@@ -36,9 +36,9 @@ Previous, *NiBabies* expected input from the `--derivatives` flag to be in T1w s
   * DKR: Add M-CRIB-S to Docker container (#283)
   * DKR: Update dependencies, split into multi-stage build
   * ENH: Add option to exclude projecting high variance voxels to surface (#278)
-  * ENH: Resample morphometrics to fsLR CIFTI-2 files when outputing CIFTIs (#279)
+  * ENH: Resample morphometrics to fsLR CIFTI-2 files when outputting CIFTIs (#279)
   * ENH: Add MCRIBReconAll as alternative surface reconstruction method (#283)
-  * ENH: Reorder anatomical processsing, run ANTs DenoiseImage on anatomicals (#286)
+  * ENH: Reorder anatomical processing, run ANTs DenoiseImage on anatomicals (#286)
   * ENH: Extract participant ages from BIDS sources, deprecate `--age-months` (#287)
   * ENH: Dilate BOLD mask by 2 voxels to prevent over-aggressive masking degrading T2star map estimation (#296)
   * ENH: Allow precomputed derivatives in T1w or T2w space (#305)

@@ -11,8 +11,8 @@ from ..nibabel import ReorientImage
 def create_save_img(ornt: str):
     data = np.random.rand(2, 2, 2)
     img = nb.Nifti1Image(data, affine=np.eye(4))
-    # img will alway be in RAS at the start
-    ras = nb.orientations.axcodes2ornt("RAS")
+    # img will always be in RAS at the start
+    ras = nb.orientations.axcodes2ornt('RAS')
     if ornt != 'RAS':
         new = nb.orientations.axcodes2ornt(ornt)
         xfm = nb.orientations.ornt_transform(ras, new)
@@ -23,13 +23,13 @@ def create_save_img(ornt: str):
 
 
 @pytest.mark.parametrize(
-    "in_ornt,out_ornt",
+    ('in_ornt', 'out_ornt'),
     [
-        ("RAS", "RAS"),
-        ("RAS", "LAS"),
-        ("LAS", "RAS"),
-        ("RAS", "RPI"),
-        ("LPI", "RAS"),
+        ('RAS', 'RAS'),
+        ('RAS', 'LAS'),
+        ('LAS', 'RAS'),
+        ('RAS', 'RPI'),
+        ('LPI', 'RAS'),
     ],
 )
 def test_reorient_image(tmpdir, in_ornt, out_ornt):

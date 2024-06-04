@@ -707,7 +707,7 @@ def _set_ants_seed():
 
 
 def _set_numpy_seed():
-    """NumPy's random seed is independant from Python's `random` module"""
+    """NumPy's random seed is independent from Python's `random` module"""
     import numpy as np
 
     val = random.randint(1, 65536)

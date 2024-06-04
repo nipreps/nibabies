@@ -13,26 +13,26 @@ from nipype.interfaces.base import (
 
 
 class CiftiSelectInputSpec(BaseInterfaceInputSpec):
-    hemi = traits.Enum("L", "R", desc="Hemisphere")
-    surfaces = InputMultiObject(File(exists=True), desc="Surfaces")
-    morphometrics = InputMultiObject(File(exists=True), desc="Surface morphometrics")
+    hemi = traits.Enum('L', 'R', desc='Hemisphere')
+    surfaces = InputMultiObject(File(exists=True), desc='Surfaces')
+    morphometrics = InputMultiObject(File(exists=True), desc='Surface morphometrics')
     spherical_registrations = InputMultiObject(
-        File(exists=True), desc="Spherical registration to fsLR"
+        File(exists=True), desc='Spherical registration to fsLR'
     )
-    template_spheres = InputMultiObject(File(exists=True), desc="fsLR sphere")
-    template_surfaces = InputMultiObject(File(exists=True), desc="fsLR midthickness")
-    template_rois = InputMultiObject(File(exists=True), desc="fsLR ROIs")
+    template_spheres = InputMultiObject(File(exists=True), desc='fsLR sphere')
+    template_surfaces = InputMultiObject(File(exists=True), desc='fsLR midthickness')
+    template_rois = InputMultiObject(File(exists=True), desc='fsLR ROIs')
 
 
 class CiftiSelectOutputSpec(TraitedSpec):
-    white = OutputMultiObject(File, desc="white surface")
-    pial = OutputMultiObject(File, desc="pial surface")
-    midthickness = OutputMultiObject(File, desc="midthickness surface")
-    thickness = OutputMultiObject(File, desc="thickness surface")
-    sphere_reg = OutputMultiObject(File, desc="fsLR spherical regisration")
-    template_sphere = OutputMultiObject(File, desc="fsLR sphere")
-    template_surface = OutputMultiObject(File, desc="fsLR surface (midthickness)")
-    template_roi = OutputMultiObject(File, desc="fsLR ROIs")
+    white = OutputMultiObject(File, desc='white surface')
+    pial = OutputMultiObject(File, desc='pial surface')
+    midthickness = OutputMultiObject(File, desc='midthickness surface')
+    thickness = OutputMultiObject(File, desc='thickness surface')
+    sphere_reg = OutputMultiObject(File, desc='fsLR spherical registration')
+    template_sphere = OutputMultiObject(File, desc='fsLR sphere')
+    template_surface = OutputMultiObject(File, desc='fsLR surface (midthickness)')
+    template_roi = OutputMultiObject(File, desc='fsLR ROIs')
 
 
 class CiftiSelect(SimpleInterface):
@@ -40,7 +40,7 @@ class CiftiSelect(SimpleInterface):
     output_spec = CiftiSelectOutputSpec
 
     def _run_interface(self, runtime):
-        idx = 0 if self.inputs.hemi == "L" else 1
+        idx = 0 if self.inputs.hemi == 'L' else 1
         all_surfaces = (self.inputs.surfaces or []) + (self.inputs.morphometrics or [])
         container = {
             'white': [],

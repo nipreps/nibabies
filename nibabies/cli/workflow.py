@@ -20,7 +20,7 @@ def build_workflow(config_file):
     from ..utils.misc import check_deps
     from ..workflows.base import init_nibabies_wf
 
-    # initalize config
+    # initialize config
     config.load(config_file)
     build_logger = config.loggers.workflow
 
