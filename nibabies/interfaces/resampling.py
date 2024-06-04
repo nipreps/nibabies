@@ -105,11 +105,14 @@ def load_ants_h5(filename: Path) -> nt.base.TransformBase:
         raise ValueError(msg)
 
     fixed_params = transform2['TransformFixedParameters'][:]
-
-    shape = tuple(fixed_params[:3].astype(int)[::-1])
-    warp = h['TransformGroup']['2']['TransformParameters'][:]
-    warp = warp.reshape((*shape, 3)).transpose(2, 1, 0, 3)
-    warp *= np.array([-1, -1, 1])
+    shape = tuple(fixed_params[:3].astype(int))
+    # ITK stores warps in Fortran-order, where the vector components change fastest
+    # Nitransforms expects 3 volumes, not a volume of three-vectors, so transpose
+    warp = np.reshape(
+        transform2['TransformParameters'],
+        (3, *shape),
+        order='F',
+    ).transpose(1, 2, 3, 0)
 
     warp_affine = np.eye(4)
     warp_affine[:3, :3] = fixed_params[9:].reshape((3, 3))
