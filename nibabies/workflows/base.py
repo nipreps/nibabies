@@ -471,6 +471,7 @@ It is released under the [CC0]\
 
     reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
     template_iterator_wf = None
+    select_MNIInfant_xfm = None
     if config.workflow.level == 'full':
         anat_apply_wf = init_infant_anat_apply_wf(
             bids_root=bids_root,
@@ -499,6 +500,24 @@ It is released under the [CC0]\
                 ('outputnode.thickness', 'inputnode.thickness'),
             ]),
         ])  # fmt:skip
+
+        if 'MNIInfant' in [ref.space for ref in spaces.references]:
+            select_MNIInfant_xfm = pe.Node(
+                KeySelect(
+                    fields=['anat2std_xfm', 'std2anat_xfm'],
+                    key=get_MNIInfant_key(spaces),
+                ),
+                name='select_MNIInfant_xfm',
+                run_without_submitting=True,
+            )
+
+            workflow.connect([
+                (anat_fit_wf, select_MNIInfant_xfm, [
+                    ('outputnode.std2anat_xfm', 'std2anat_xfm'),
+                    ('outputnode.anat2std_xfm', 'anat2std_xfm'),
+                    ('outputnode.template', 'keys'),
+                ]),
+            ])  # fmt:skip
 
         if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
             template_iterator_wf = init_template_iterator_wf(spaces=spaces, sloppy=sloppy)
@@ -717,22 +736,8 @@ tasks and sessions), the following preprocessing was performed.
                     ]),
                 ])  # fmt:skip
 
-            if 'MNIInfant' in [ref.space for ref in spaces.references]:
-                select_MNIInfant_xfm = pe.Node(
-                    KeySelect(
-                        fields=['anat2std_xfm', 'std2anat_xfm'],
-                        key=get_MNIInfant_key(spaces),
-                    ),
-                    name='select_MNIInfant_xfm',
-                    run_without_submitting=True,
-                )
-
+            if select_MNIInfant_xfm is not None:
                 workflow.connect([
-                    (anat_fit_wf, select_MNIInfant_xfm, [
-                        ('outputnode.std2anat_xfm', 'std2anat_xfm'),
-                        ('outputnode.anat2std_xfm', 'anat2std_xfm'),
-                        ('outputnode.template', 'keys'),
-                    ]),
                     (select_MNIInfant_xfm, bold_wf, [
                         ('std2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
                         ('anat2std_xfm', 'inputnode.anat2mniinfant_xfm')
