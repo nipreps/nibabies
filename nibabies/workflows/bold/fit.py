@@ -796,7 +796,7 @@ def init_bold_native_wf(
 
     # Slice-timing correction
     if run_stc:
-        bold_stc_wf = init_bold_stc_wf(metadata=metadata, mem_gb=mem_gb)
+        bold_stc_wf = init_bold_stc_wf(metadata=metadata)
         workflow.connect([
             (inputnode, bold_stc_wf, [('dummy_scans', 'inputnode.skip_vols')]),
             (validate_bold, bold_stc_wf, [('out_file', 'inputnode.bold_file')]),
