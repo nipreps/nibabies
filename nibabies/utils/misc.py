@@ -20,6 +20,7 @@ def fix_multi_source_name(in_files):
     '/path/to/sub-045_T1w.nii.gz'
     """
     import re
+    from pathlib import Path
 
     from nipype.utils.filemanip import filename_to_list
 
