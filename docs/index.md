@@ -1,4 +1,4 @@
-```{include} ../README.md
+```
 :relative-docs: docs/
 :relative-images:
 ```
@@ -6,11 +6,11 @@
 ## Contents
 
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 3
 
-installation
-usage
-faqs
-outputs
-community
+installation.md
+usage.md
+faqs.md
+outputs.md
+community.md
 ```
