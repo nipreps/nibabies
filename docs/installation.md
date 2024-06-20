@@ -23,13 +23,18 @@ There are also a few keyword tags, `latest` and `unstable`, that serve as specia
 `unstable` points to the most recent developmental change, and should only be used to test new features or fixes.
 
 :::{tip}
-
 `latest` will pull the most recent release, but beware that it will not be updated until calling the docker pull command again. For this reason, it is recommended to pull using the explicit version tag.
 :::
 
 ### Working with Apptainer (formerly Singularity)
 
-The easiest way to create an Apptainer image is to build from the [Docker](#working-with-docker) images hosted online.
+Visit the [apptainer containers page](https://datasets.datalad.org/?dir=/repronim/containers/images/bids), courtesy of DataLad and ReproNim, to download already created images.
+
+:::{tip}
+Images are listed as ``bids-nibabies--<version>.sing``, where ``<version>`` is the release tag.
+:::
+
+Otherwise, you can create an Apptainer image from the [Docker](#working-with-docker) images hosted online.
 
 ```bash
 apptainer build nibabies-24.0.0.sif docker://nipreps/nibabies:24.0.0
