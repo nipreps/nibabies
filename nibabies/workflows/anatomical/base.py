@@ -75,6 +75,7 @@ def init_infant_anat_wf(
     freesurfer: bool,
     hires: bool | None,
     longitudinal: bool,
+    msm_sulc: bool,
     omp_nthreads: int,
     output_dir: str | Path,
     segmentation_atlases: str | Path | None,
@@ -463,7 +464,7 @@ def init_infant_anat_wf(
             mcribs_dir=str(config.execution.mcribs_dir),  # Needed to preserve runs
         )
         # M-CRIB-S to dHCP42week (32k)
-        sphere_reg_wf = init_mcribs_sphere_reg_wf()
+        sphere_reg_wf = init_mcribs_sphere_reg_wf(sloppy=sloppy, msm_sulc=msm_sulc)
 
         wf.connect([
             (t2w_template_wf, denoise_t2w, [('outputnode.anat_ref', 'input_image')]),
@@ -480,7 +481,7 @@ def init_infant_anat_wf(
         from smriprep.workflows.surfaces import init_sphere_reg_wf
 
         # fsaverage to fsLR
-        sphere_reg_wf = init_sphere_reg_wf()
+        sphere_reg_wf = init_sphere_reg_wf(msm_sulc=msm_sulc)
 
         # fmt:off
         wf.connect([
