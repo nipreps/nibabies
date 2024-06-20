@@ -209,6 +209,7 @@ def init_func_derivatives_wf(
                 "bold_mask_native",
                 "cifti_metadata",
                 "cifti_density",
+                "bold_rois",
                 "confounds",
                 "confounds_metadata",
                 "goodvoxels_mask",
@@ -823,12 +824,31 @@ def init_func_derivatives_wf(
             mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         )
 
+        ds_bold_subcortical = pe.Node(
+            DerivativesDataSink(
+                base_directory=output_dir,
+                suffix="bold",
+                compress=True,
+                TaskName=metadata.get("TaskName"),
+                space="fsLR",
+                desc="rois",
+                **timing_parameters,
+            ),
+            name="ds_bold_subcortical",
+            run_without_submitting=True,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
+        )
+
         # fmt: off
         workflow.connect([
             (inputnode, ds_bold_cifti, [(('bold_cifti', _unlist), 'in_file'),
                                         ('source_file', 'source_file'),
                                         ('cifti_density', 'density'),
-                                        (('cifti_metadata', _read_json), 'meta_dict')])
+                                        (('cifti_metadata', _read_json), 'meta_dict')]),
+            (inputnode, ds_bold_subcortical, [
+                ('bold_rois', 'in_file'),
+                ('source_file', 'source_file')]),
+
         ])
         # fmt: on
 
