@@ -23,15 +23,15 @@
 # SOFTWARE.
 
 # Ubuntu 22.04 LTS - Jammy
-ARG BASE_IMAGE=ubuntu:jammy-20230605
+ARG BASE_IMAGE=ubuntu:jammy-20240405
 
 # NiBabies wheel
 FROM python:slim AS src
 RUN pip install build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git
-COPY . /src/nibabies
-RUN python -m build /src/nibabies
+COPY . /src
+RUN python -m build /src
 
 # Older Python to support legacy MCRIBS
 FROM python:3.6.15-slim as pyenv
@@ -90,19 +90,26 @@ RUN mkdir /opt/workbench && \
 
 # Micromamba
 FROM downloader as micromamba
+
+# Install a C compiler to build extensions when needed.
+# traits<6.4 wheels are not available for Python 3.11+, but build easily.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 WORKDIR /
 # Bump the date to current to force update micromamba
-RUN echo "2023.06.29"
-RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+RUN echo "2024.04.25" && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
 ENV MAMBA_ROOT_PREFIX="/opt/conda"
 COPY env.yml /tmp/env.yml
+COPY requirements.txt /tmp/requirements.txt
+WORKDIR /tmp
 RUN micromamba create -y -f /tmp/env.yml && \
     micromamba clean -y -a
+
 ENV PATH="/opt/conda/envs/nibabies/bin:$PATH"
-RUN /opt/conda/envs/nibabies/bin/npm install -g svgo@^2.8 bids-validator@1.11.0 && \
+RUN npm install -g svgo@^3.2.0 bids-validator@^1.14.0 && \
     rm -r ~/.npm
-COPY requirements.txt /tmp/requirements.txt
-RUN /opt/conda/envs/nibabies/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Main container
 FROM ${BASE_IMAGE} as nibabies
@@ -257,7 +264,7 @@ RUN ${CONDA_PYTHON} -m pip install --no-cache-dir --upgrade templateflow && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
 # Install pre-built wheel
-COPY --from=src /src/nibabies/dist/*.whl .
+COPY --from=src /src/dist/*.whl .
 RUN ${CONDA_PYTHON} -m pip install --no-cache-dir $( ls *.whl )[telemetry,test]
 
 # Facilitate Apptainer use

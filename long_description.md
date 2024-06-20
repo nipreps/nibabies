@@ -13,7 +13,7 @@ other challenges require a more specialized workflow. *NiBabies*, an open-source
 pipeline extending from fMRIPrep for infant structural and functional MRI
 preprocessing, aims to address this need.
 
-The workflow is built atop [Nipype](https://nipype.readthedocs.io) and encompases a large
+The workflow is built atop [Nipype](https://nipype.readthedocs.io) and encompasses a large
 set of tools from well-known neuroimaging packages, including
 [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/),
 [ANTs](https://stnava.github.io/ANTs/),

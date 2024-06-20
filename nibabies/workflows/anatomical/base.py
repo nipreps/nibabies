@@ -33,33 +33,33 @@ if ty.TYPE_CHECKING:
 
 
 ANAT_OUT_FIELDS = [
-    "anat_preproc",
-    "anat_brain",
-    "anat_mask",
-    "anat_dseg",
-    "anat_tpms",
-    "anat_ref_xfms",
-    "std_preproc",
-    "std_brain",
-    "std_dseg",
-    "std_tpms",
-    "subjects_dir",
-    "subject_id",
-    "anat2std_xfm",
-    "std2anat_xfm",
-    "anat2fsnative_xfm",
-    "fsnative2anat_xfm",
-    "surfaces",
-    "morphometrics",
-    "anat_aseg",
-    "anat_mcrib",
-    "anat_aparc",
-    "anat_ribbon",
-    "template",
+    'anat_preproc',
+    'anat_brain',
+    'anat_mask',
+    'anat_dseg',
+    'anat_tpms',
+    'anat_ref_xfms',
+    'std_preproc',
+    'std_brain',
+    'std_dseg',
+    'std_tpms',
+    'subjects_dir',
+    'subject_id',
+    'anat2std_xfm',
+    'std2anat_xfm',
+    'anat2fsnative_xfm',
+    'fsnative2anat_xfm',
+    'surfaces',
+    'morphometrics',
+    'anat_aseg',
+    'anat_mcrib',
+    'anat_aparc',
+    'anat_ribbon',
+    'template',
     # registration sphere space is dependent on surface recon method
-    "sphere_reg",
-    "sphere_reg_fsLR",
-    "midthickness_fsLR",
+    'sphere_reg',
+    'sphere_reg_fsLR',
+    'midthickness_fsLR',
 ]
 
 
@@ -72,7 +72,6 @@ def init_infant_anat_wf(
     contrast: ty.Literal['T1w', 'T2w'],
     bids_root: str | Path,
     derivatives: Derivatives,
-    freesurfer: bool,
     hires: bool | None,
     longitudinal: bool,
     omp_nthreads: int,
@@ -83,7 +82,7 @@ def init_infant_anat_wf(
     sloppy: bool,
     spaces: SpatialReferences,
     cifti_output: ty.Literal['91k', '170k'] | None,
-    name: str = "infant_anat_wf",
+    name: str = 'infant_anat_wf',
 ) -> LiterateWorkflow:
     """
 
@@ -136,7 +135,7 @@ def init_infant_anat_wf(
     """
     if not t1w or not t2w:
         # Error type?
-        raise RuntimeError("Both T1w and T2w images are required to run this workflow.")
+        raise RuntimeError('Both T1w and T2w images are required to run this workflow.')
 
     num_t1w = len(t1w)
     num_t2w = len(t2w)
@@ -158,7 +157,7 @@ def init_infant_anat_wf(
     t2w_aseg = bool(derivatives.t2w_aseg)
 
     # The T2 derivatives are only prioritized first if MCRIBS reconstruction is to be used.
-    if recon_method == "mcribs":
+    if recon_method == 'mcribs':
         if t2w_aseg:
             t1w_aseg = False
         if t2w_mask:
@@ -170,7 +169,7 @@ def init_infant_anat_wf(
         t2w_aseg = False
 
     config.loggers.workflow.info(
-        "Derivatives used:\n\t<T1 mask %s>\n\t<T1 aseg %s>\n\t<T2 mask %s>\n\t<T2 aseg %s>",
+        'Derivatives used:\n\t<T1 mask %s>\n\t<T1 aseg %s>\n\t<T2 mask %s>\n\t<T2 aseg %s>',
         t1w_mask,
         t1w_aseg,
         t2w_mask,
@@ -184,16 +183,16 @@ def init_infant_anat_wf(
     )
 
     wf.__desc__ = desc.format(
-        ants_ver=ANTsInfo.version() or "(version unknown)",
+        ants_ver=ANTsInfo.version() or '(version unknown)',
         skullstrip_tpl=skull_strip_template.fullname,
     )
-    wf.__postdesc__ = ""
+    wf.__postdesc__ = ''
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["t1w", "t2w", "subject_id", "subjects_dir"]),  # FLAIR / ROI?
-        name="inputnode",
+        niu.IdentityInterface(fields=['t1w', 't2w', 'subject_id', 'subjects_dir']),  # FLAIR / ROI?
+        name='inputnode',
     )
-    outputnode = pe.Node(niu.IdentityInterface(fields=ANAT_OUT_FIELDS), name="outputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=ANAT_OUT_FIELDS), name='outputnode')
 
     # Define output workflows
     anat_reports_wf = init_anat_reports_wf(
@@ -211,39 +210,39 @@ def init_infant_anat_wf(
     )
 
     t1w_template_wf = init_anat_template_wf(
-        contrast="T1w",
+        contrast='T1w',
         num_files=num_t1w,
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
         has_mask=t1w_mask,
         has_aseg=t1w_aseg,
-        name="t1w_template_wf",
+        name='t1w_template_wf',
     )
 
     t2w_template_wf = init_anat_template_wf(
-        contrast="T2w",
+        contrast='T2w',
         num_files=num_t2w,
         longitudinal=longitudinal,
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
         has_mask=t2w_mask,
         has_aseg=t2w_aseg,
-        name="t2w_template_wf",
+        name='t2w_template_wf',
     )
 
     # Clean up each anatomical template
     # Denoise, INU, + Clipping
-    t1w_preproc_wf = init_anat_preproc_wf(name="t1w_preproc_wf")
-    t2w_preproc_wf = init_anat_preproc_wf(name="t2w_preproc_wf")
+    t1w_preproc_wf = init_anat_preproc_wf(name='t1w_preproc_wf')
+    t2w_preproc_wf = init_anat_preproc_wf(name='t2w_preproc_wf')
 
-    if skull_strip_mode != "force":
-        raise NotImplementedError("Skull stripping is currently required.")
+    if skull_strip_mode != 'force':
+        raise NotImplementedError('Skull stripping is currently required.')
 
     coregistration_wf = init_coregistration_wf(
         omp_nthreads=omp_nthreads,
         sloppy=sloppy,
-        debug="registration" in config.execution.debug,
+        debug='registration' in config.execution.debug,
         t1w_mask=t1w_mask,
         probmap=not t2w_mask,
     )
@@ -269,78 +268,78 @@ def init_infant_anat_wf(
 
     # fmt:off
     wf.connect([
-        (inputnode, t1w_template_wf, [("t1w", "inputnode.anat_files")]),
-        (inputnode, t2w_template_wf, [("t2w", "inputnode.anat_files")]),
-        (inputnode, anat_reports_wf, [("t1w", "inputnode.source_file")]),
-        (inputnode, coreg_report_wf, [("t1w", "inputnode.source_file")]),
-        (inputnode, anat_norm_wf, [(("t1w", fix_multi_source_name), "inputnode.orig_t1w")]),
+        (inputnode, t1w_template_wf, [('t1w', 'inputnode.anat_files')]),
+        (inputnode, t2w_template_wf, [('t2w', 'inputnode.anat_files')]),
+        (inputnode, anat_reports_wf, [('t1w', 'inputnode.source_file')]),
+        (inputnode, coreg_report_wf, [('t1w', 'inputnode.source_file')]),
+        (inputnode, anat_norm_wf, [(('t1w', fix_multi_source_name), 'inputnode.orig_t1w')]),
 
         (t1w_template_wf, outputnode, [
-            ("outputnode.anat_realign_xfm", "anat_ref_xfms")]),
-        (t1w_template_wf, t1w_preproc_wf, [("outputnode.anat_ref", "inputnode.in_anat")]),
+            ('outputnode.anat_realign_xfm', 'anat_ref_xfms')]),
+        (t1w_template_wf, t1w_preproc_wf, [('outputnode.anat_ref', 'inputnode.in_anat')]),
         (t1w_template_wf, anat_derivatives_wf, [
-            ("outputnode.anat_valid_list", "inputnode.t1w_source_files"),
-            ("outputnode.anat_realign_xfm", "inputnode.t1w_ref_xfms")]),
+            ('outputnode.anat_valid_list', 'inputnode.t1w_source_files'),
+            ('outputnode.anat_realign_xfm', 'inputnode.t1w_ref_xfms')]),
         (t1w_template_wf, anat_reports_wf, [
-            ("outputnode.out_report", "inputnode.anat_conform_report")]),
+            ('outputnode.out_report', 'inputnode.anat_conform_report')]),
 
-        (t2w_template_wf, t2w_preproc_wf, [("outputnode.anat_ref", "inputnode.in_anat")]),
+        (t2w_template_wf, t2w_preproc_wf, [('outputnode.anat_ref', 'inputnode.in_anat')]),
         (t2w_template_wf, anat_derivatives_wf, [
-            ("outputnode.anat_valid_list", "inputnode.t2w_source_files"),
-            ("outputnode.anat_realign_xfm", "inputnode.t2w_ref_xfms")]),
+            ('outputnode.anat_valid_list', 'inputnode.t2w_source_files'),
+            ('outputnode.anat_realign_xfm', 'inputnode.t2w_ref_xfms')]),
 
-        (t1w_preproc_wf, coregistration_wf, [("outputnode.anat_preproc", "inputnode.in_t1w")]),
-        (t1w_preproc_wf, coreg_report_wf, [("outputnode.anat_preproc", "inputnode.t1w_preproc")]),
+        (t1w_preproc_wf, coregistration_wf, [('outputnode.anat_preproc', 'inputnode.in_t1w')]),
+        (t1w_preproc_wf, coreg_report_wf, [('outputnode.anat_preproc', 'inputnode.t1w_preproc')]),
 
         (coregistration_wf, coreg_report_wf, [
-            ("outputnode.t1w_mask", "inputnode.in_mask"),
-            ("outputnode.t2w_preproc", "inputnode.t2w_preproc")]),
+            ('outputnode.t1w_mask', 'inputnode.in_mask'),
+            ('outputnode.t2w_preproc', 'inputnode.t2w_preproc')]),
         (coregistration_wf, anat_norm_wf, [
-            ("outputnode.t1w_preproc", "inputnode.moving_image"),
-            ("outputnode.t1w_mask", "inputnode.moving_mask")]),
-        (coregistration_wf, anat_seg_wf, [("outputnode.t1w_brain", "inputnode.anat_brain")]),
+            ('outputnode.t1w_preproc', 'inputnode.moving_image'),
+            ('outputnode.t1w_mask', 'inputnode.moving_mask')]),
+        (coregistration_wf, anat_seg_wf, [('outputnode.t1w_brain', 'inputnode.anat_brain')]),
         (coregistration_wf, anat_derivatives_wf, [
-            ("outputnode.t1w_mask", "inputnode.anat_mask"),
-            ("outputnode.t1w_preproc", "inputnode.t1w_preproc"),
-            ("outputnode.t2w_preproc", "inputnode.t2w_preproc"),
+            ('outputnode.t1w_mask', 'inputnode.anat_mask'),
+            ('outputnode.t1w_preproc', 'inputnode.t1w_preproc'),
+            ('outputnode.t2w_preproc', 'inputnode.t2w_preproc'),
          ]),
         (coregistration_wf, outputnode, [
-            ("outputnode.t1w_preproc", "anat_preproc"),
-            ("outputnode.t1w_brain", "anat_brain"),
-            ("outputnode.t1w_mask", "anat_mask"),
+            ('outputnode.t1w_preproc', 'anat_preproc'),
+            ('outputnode.t1w_brain', 'anat_brain'),
+            ('outputnode.t1w_mask', 'anat_mask'),
         ]),
 
         (anat_seg_wf, outputnode, [
-            ("outputnode.anat_dseg", "anat_dseg"),
-            ("outputnode.anat_tpms", "anat_tpms")]),
+            ('outputnode.anat_dseg', 'anat_dseg'),
+            ('outputnode.anat_tpms', 'anat_tpms')]),
         (anat_seg_wf, anat_derivatives_wf, [
-            ("outputnode.anat_dseg", "inputnode.anat_dseg"),
-            ("outputnode.anat_tpms", "inputnode.anat_tpms"),
+            ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+            ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
         ]),
         (anat_seg_wf, anat_norm_wf, [
-            ("outputnode.anat_dseg", "inputnode.moving_segmentation"),
-            ("outputnode.anat_tpms", "inputnode.moving_tpms")]),
+            ('outputnode.anat_dseg', 'inputnode.moving_segmentation'),
+            ('outputnode.anat_tpms', 'inputnode.moving_tpms')]),
 
-        (anat_norm_wf, anat_reports_wf, [("poutputnode.template", "inputnode.template")]),
+        (anat_norm_wf, anat_reports_wf, [('poutputnode.template', 'inputnode.template')]),
         (anat_norm_wf, outputnode, [
-            ("poutputnode.standardized", "std_preproc"),
-            ("poutputnode.std_mask", "std_mask"),
-            ("poutputnode.std_dseg", "std_dseg"),
-            ("poutputnode.std_tpms", "std_tpms"),
-            ("outputnode.template", "template"),
-            ("outputnode.anat2std_xfm", "anat2std_xfm"),
-            ("outputnode.std2anat_xfm", "std2anat_xfm")]),
+            ('poutputnode.standardized', 'std_preproc'),
+            ('poutputnode.std_mask', 'std_mask'),
+            ('poutputnode.std_dseg', 'std_dseg'),
+            ('poutputnode.std_tpms', 'std_tpms'),
+            ('outputnode.template', 'template'),
+            ('outputnode.anat2std_xfm', 'anat2std_xfm'),
+            ('outputnode.std2anat_xfm', 'std2anat_xfm')]),
         (anat_norm_wf, anat_derivatives_wf, [
-            ("outputnode.template", "inputnode.template"),
-            ("outputnode.anat2std_xfm", "inputnode.anat2std_xfm"),
-            ("outputnode.std2anat_xfm", "inputnode.std2anat_xfm")]),
+            ('outputnode.template', 'inputnode.template'),
+            ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+            ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm')]),
 
         (outputnode, anat_reports_wf, [
-            ("anat_preproc", "inputnode.anat_preproc"),
-            ("anat_mask", "inputnode.anat_mask"),
-            ("anat_dseg", "inputnode.anat_dseg"),
-            ("std_preproc", "inputnode.std_t1w"),
-            ("std_mask", "inputnode.std_mask"),
+            ('anat_preproc', 'inputnode.anat_preproc'),
+            ('anat_mask', 'inputnode.anat_mask'),
+            ('anat_dseg', 'inputnode.anat_dseg'),
+            ('std_preproc', 'inputnode.std_t1w'),
+            ('std_mask', 'inputnode.std_mask'),
         ]),
     ])
 
@@ -355,7 +354,9 @@ def init_infant_anat_wf(
     )
     if derivatives:
         wf.connect([
-            (coregistration_wf, coreg_deriv_wf, [('outputnode.t1w2t2w_xfm', 'inputnode.t1w2t2w_xfm')]),
+            (coregistration_wf, coreg_deriv_wf, [
+                ('outputnode.t1w2t2w_xfm', 'inputnode.t1w2t2w_xfm'),
+            ]),
             (t1w_preproc_wf, coreg_deriv_wf, [('outputnode.anat_preproc', 'inputnode.t1w_ref')]),
             (t2w_preproc_wf, coreg_deriv_wf, [('outputnode.anat_preproc', 'inputnode.t2w_ref')]),
         ])
@@ -391,16 +392,16 @@ def init_infant_anat_wf(
             template_specs=skull_strip_template.spec,
             omp_nthreads=omp_nthreads,
             sloppy=sloppy,
-            debug="registration" in config.execution.debug,
+            debug='registration' in config.execution.debug,
         )
         # fmt:off
         wf.connect([
             (t2w_preproc_wf, brain_extraction_wf, [
-                ("outputnode.anat_preproc", "inputnode.t2w_preproc")]),
+                ('outputnode.anat_preproc', 'inputnode.t2w_preproc')]),
             (brain_extraction_wf, coregistration_wf, [
-                ("outputnode.t2w_preproc", "inputnode.in_t2w"),
-                ("outputnode.out_mask", "inputnode.in_mask"),
-                ("outputnode.out_probmap", "inputnode.in_probmap")]),
+                ('outputnode.t2w_preproc', 'inputnode.in_t2w'),
+                ('outputnode.out_mask', 'inputnode.in_mask'),
+                ('outputnode.out_probmap', 'inputnode.in_probmap')]),
         ])
         # fmt:on
 
@@ -414,7 +415,9 @@ def init_infant_anat_wf(
             # fmt:off
             wf.connect([
                 (t1w_template_wf, deriv_buffer, [('outputnode.anat_aseg', 't1w_aseg')]),
-                (t1w_template_wf, coreg_deriv_wf, [('outputnode.anat_aseg', 'inputnode.t1w_aseg')]),
+                (t1w_template_wf, coreg_deriv_wf, [
+                    ('outputnode.anat_aseg', 'inputnode.t1w_aseg'),
+                ]),
                 (coreg_deriv_wf, deriv_buffer, [('outputnode.t2w_aseg', 't2w_aseg')]),
             ])
             # fmt:on
@@ -424,7 +427,9 @@ def init_infant_anat_wf(
             # fmt:off
             wf.connect([
                 (t2w_template_wf, deriv_buffer, [('outputnode.anat_aseg', 't2w_aseg')]),
-                (t2w_template_wf, coreg_deriv_wf, [('outputnode.anat_aseg', 'inputnode.t2w_aseg')]),
+                (t2w_template_wf, coreg_deriv_wf, [
+                    ('outputnode.anat_aseg', 'inputnode.t2w_aseg'),
+                ]),
                 (coreg_deriv_wf, deriv_buffer, [('outputnode.t1w_aseg', 't1w_aseg')]),
             ])
             # fmt:on
@@ -453,7 +458,7 @@ def init_infant_anat_wf(
 
         # Denoise template T2w, since using the template / preproc resulted in intersection errors
         denoise_t2w = pe.Node(
-            DenoiseImage(dimension=3, noise_model="Rician"), name='denoise_t2w'
+            DenoiseImage(dimension=3, noise_model='Rician'), name='denoise_t2w'
         )
         # t2w mask, t2w aseg
         surface_recon_wf = init_mcribs_surface_recon_wf(
@@ -485,9 +490,9 @@ def init_infant_anat_wf(
         # fmt:off
         wf.connect([
             (t2w_preproc_wf, surface_recon_wf, [
-                ("outputnode.anat_preproc", "inputnode.t2w")]),
+                ('outputnode.anat_preproc', 'inputnode.t2w')]),
             (anat_seg_wf, surface_recon_wf, [
-                ("outputnode.anat_aseg", "inputnode.ants_segs")]),
+                ('outputnode.anat_aseg', 'inputnode.ants_segs')]),
         ])
         # fmt:on
 
@@ -497,52 +502,52 @@ def init_infant_anat_wf(
     # fmt:off
     wf.connect([
         (inputnode, surface_recon_wf, [
-            ("subject_id", "inputnode.subject_id"),
-            ("subjects_dir", "inputnode.subjects_dir")]),
+            ('subject_id', 'inputnode.subject_id'),
+            ('subjects_dir', 'inputnode.subjects_dir')]),
         (t1w_template_wf, surface_recon_wf, [
-            ("outputnode.anat_ref", "inputnode.t1w"),
+            ('outputnode.anat_ref', 'inputnode.t1w'),
         ]),
         (coregistration_wf, surface_recon_wf, [
-            ("outputnode.t1w_brain", "inputnode.skullstripped_t1"),
-            ("outputnode.t1w_preproc", "inputnode.corrected_t1"),
+            ('outputnode.t1w_brain', 'inputnode.skullstripped_t1'),
+            ('outputnode.t1w_preproc', 'inputnode.corrected_t1'),
         ]),
         (surface_recon_wf, outputnode, [
-            ("outputnode.subjects_dir", "subjects_dir"),
-            ("outputnode.subject_id", "subject_id"),
-            ("outputnode.t1w2fsnative_xfm", "anat2fsnative_xfm"),
-            ("outputnode.fsnative2t1w_xfm", "fsnative2anat_xfm"),
-            ("outputnode.surfaces", "surfaces"),
-            ("outputnode.morphometrics", "morphometrics"),
-            ("outputnode.out_aparc", "anat_aparc"),
-            ("outputnode.out_aseg", "anat_aseg"),
+            ('outputnode.subjects_dir', 'subjects_dir'),
+            ('outputnode.subject_id', 'subject_id'),
+            ('outputnode.t1w2fsnative_xfm', 'anat2fsnative_xfm'),
+            ('outputnode.fsnative2t1w_xfm', 'fsnative2anat_xfm'),
+            ('outputnode.surfaces', 'surfaces'),
+            ('outputnode.morphometrics', 'morphometrics'),
+            ('outputnode.out_aparc', 'anat_aparc'),
+            ('outputnode.out_aseg', 'anat_aseg'),
         ]),
         (coregistration_wf, anat_ribbon_wf, [
-            ("outputnode.t1w_mask", "inputnode.t1w_mask"),
+            ('outputnode.t1w_mask', 'inputnode.t1w_mask'),
         ]),
         (surface_recon_wf, anat_ribbon_wf, [
-            ("outputnode.surfaces", "inputnode.surfaces"),
+            ('outputnode.surfaces', 'inputnode.surfaces'),
         ]),
         (anat_ribbon_wf, outputnode, [
-            ("outputnode.anat_ribbon", "anat_ribbon")
+            ('outputnode.anat_ribbon', 'anat_ribbon')
         ]),
         (anat_ribbon_wf, anat_derivatives_wf, [
-            ("outputnode.anat_ribbon", "inputnode.anat_ribbon"),
+            ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
         ]),
         (surface_recon_wf, sphere_reg_wf, [
             ('outputnode.subject_id', 'inputnode.subject_id'),
             ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
         ]),
         (surface_recon_wf, anat_reports_wf, [
-            ("outputnode.subject_id", "inputnode.subject_id"),
-            ("outputnode.subjects_dir", "inputnode.subjects_dir"),
+            ('outputnode.subject_id', 'inputnode.subject_id'),
+            ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
         ]),
         (surface_recon_wf, anat_derivatives_wf, [
-            ("outputnode.out_aseg", "inputnode.anat_fs_aseg"),
-            ("outputnode.out_aparc", "inputnode.anat_fs_aparc"),
-            ("outputnode.t1w2fsnative_xfm", "inputnode.anat2fsnative_xfm"),
-            ("outputnode.fsnative2t1w_xfm", "inputnode.fsnative2anat_xfm"),
-            ("outputnode.surfaces", "inputnode.surfaces"),
-            ("outputnode.morphometrics", "inputnode.morphometrics"),
+            ('outputnode.out_aseg', 'inputnode.anat_fs_aseg'),
+            ('outputnode.out_aparc', 'inputnode.anat_fs_aparc'),
+            ('outputnode.t1w2fsnative_xfm', 'inputnode.anat2fsnative_xfm'),
+            ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2anat_xfm'),
+            ('outputnode.surfaces', 'inputnode.surfaces'),
+            ('outputnode.morphometrics', 'inputnode.morphometrics'),
         ]),
         (sphere_reg_wf, outputnode, [
             ('outputnode.sphere_reg', 'sphere_reg'),
@@ -558,7 +563,7 @@ def init_infant_anat_wf(
             init_anat_fsLR_resampling_wf,
         )
 
-        is_mcribs = recon_method == "mcribs"
+        is_mcribs = recon_method == 'mcribs'
         # handles morph_grayords_wf
         anat_fsLR_resampling_wf = init_anat_fsLR_resampling_wf(cifti_output, mcribs=is_mcribs)
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
@@ -573,10 +578,10 @@ def init_infant_anat_wf(
                 ('outputnode.surfaces', 'inputnode.surfaces'),
                 ('outputnode.morphometrics', 'inputnode.morphometrics')]),
             (anat_fsLR_resampling_wf, anat_derivatives_wf, [
-                ("outputnode.cifti_morph", "inputnode.cifti_morph"),
-                ("outputnode.cifti_metadata", "inputnode.cifti_metadata")]),
+                ('outputnode.cifti_morph', 'inputnode.cifti_morph'),
+                ('outputnode.cifti_metadata', 'inputnode.cifti_metadata')]),
             (anat_fsLR_resampling_wf, outputnode, [
-                ("outputnode.midthickness_fsLR", "midthickness_fsLR")])
+                ('outputnode.midthickness_fsLR', 'midthickness_fsLR')])
         ])
         # fmt:on
 
@@ -603,17 +608,17 @@ def init_infant_single_anat_wf(
     sloppy: bool,
     spaces: SpatialReferences,
     cifti_output: ty.Literal['91k', '170k'] | None,
-    name: str = "infant_single_anat_wf",
+    name: str = 'infant_single_anat_wf',
 ) -> LiterateWorkflow:
     """"""
     if t1w and t2w:
         # Error type?
         raise RuntimeError(
-            "This workflow uses only T1w or T2w inputs, but both contrasts are available."
+            'This workflow uses only T1w or T2w inputs, but both contrasts are available.'
         )
 
     if not (t1w or t2w):
-        raise RuntimeError("This workflow requires either a T1w or T2w, but none were found.")
+        raise RuntimeError('This workflow requires either a T1w or T2w, but none were found.')
 
     anat_files = t1w or t2w
     num_files = len(anat_files)
@@ -628,17 +633,17 @@ def init_infant_single_anat_wf(
         aseg = derivatives.t2w_aseg
 
     config.loggers.workflow.info(
-        f"Derivatives used (%s):\n\t\t<Mask: %s>\n\t\t<Aseg: %s>\n",
+        'Derivatives used (%s):\n\t\t<Mask: %s>\n\t\t<Aseg: %s>\n',
         contrast,
         bool(mask),
         bool(aseg),
     )
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=["t1w", "t2w", "subject_id", "subjects_dir"]),  # FLAIR / ROI?
-        name="inputnode",
+        niu.IdentityInterface(fields=['t1w', 't2w', 'subject_id', 'subjects_dir']),  # FLAIR / ROI?
+        name='inputnode',
     )
-    outputnode = pe.Node(niu.IdentityInterface(fields=ANAT_OUT_FIELDS), name="outputnode")
+    outputnode = pe.Node(niu.IdentityInterface(fields=ANAT_OUT_FIELDS), name='outputnode')
 
     desc = _gen_anat_wf_desc(
         t1w=t1w or None,
@@ -646,10 +651,10 @@ def init_infant_single_anat_wf(
         mask=bool(mask),
     )
     workflow.__desc__ = desc.format(
-        ants_ver=ANTsInfo.version() or "(version unknown)",
+        ants_ver=ANTsInfo.version() or '(version unknown)',
         skullstrip_tpl=skull_strip_template.fullname,
     )
-    workflow.__postdesc__ = ""
+    workflow.__postdesc__ = ''
 
     # outputs
     recon_method = config.workflow.surface_recon_method  # TODO: Make workflow parameter
@@ -677,10 +682,10 @@ def init_infant_single_anat_wf(
         sloppy=sloppy,
         has_mask=bool(mask),
         has_aseg=bool(aseg),
-        name=f"{contrast.lower()}_template_wf",
+        name=f'{contrast.lower()}_template_wf',
     )
     # preproc
-    anat_preproc_wf = init_anat_preproc_wf(name=f"{contrast.lower()}_preproc_wf")
+    anat_preproc_wf = init_anat_preproc_wf(name=f'{contrast.lower()}_preproc_wf')
     # T2-only brain extraction
     anat_seg_wf = init_anat_segmentations_wf(
         anat_modality=contrast,
@@ -730,7 +735,7 @@ def init_infant_single_anat_wf(
             template_specs=skull_strip_template.spec,
             omp_nthreads=omp_nthreads,
             sloppy=sloppy,
-            debug="registration" in config.execution.debug,
+            debug='registration' in config.execution.debug,
         )
         # fmt:off
         workflow.connect([
@@ -753,19 +758,21 @@ def init_infant_single_anat_wf(
 
     # fmt:off
     workflow.connect([
-        (inputnode, anat_template_wf, [(contrast.lower(), "inputnode.anat_files")]),
-        (inputnode, anat_reports_wf, [(contrast.lower(), "inputnode.source_file")]),
-        (inputnode, anat_norm_wf, [((contrast.lower(), fix_multi_source_name), "inputnode.orig_t1w")]),
+        (inputnode, anat_template_wf, [(contrast.lower(), 'inputnode.anat_files')]),
+        (inputnode, anat_reports_wf, [(contrast.lower(), 'inputnode.source_file')]),
+        (inputnode, anat_norm_wf, [
+            ((contrast.lower(), fix_multi_source_name), 'inputnode.orig_t1w'),
+        ]),
 
         (anat_template_wf, outputnode, [
-            ("outputnode.anat_realign_xfm", "anat_ref_xfms")]),
+            ('outputnode.anat_realign_xfm', 'anat_ref_xfms')]),
         (anat_template_wf, anat_preproc_wf, [
-            ("outputnode.anat_ref", "inputnode.in_anat")]),
+            ('outputnode.anat_ref', 'inputnode.in_anat')]),
         (anat_template_wf, anat_derivatives_wf, [
-            ("outputnode.anat_valid_list", f"inputnode.{contrast.lower()}_source_files"),
-            ("outputnode.anat_realign_xfm", f"inputnode.{contrast.lower()}_ref_xfms")]),
+            ('outputnode.anat_valid_list', f'inputnode.{contrast.lower()}_source_files'),
+            ('outputnode.anat_realign_xfm', f'inputnode.{contrast.lower()}_ref_xfms')]),
         (anat_template_wf, anat_reports_wf, [
-            ("outputnode.out_report", "inputnode.anat_conform_report")]),
+            ('outputnode.out_report', 'inputnode.anat_conform_report')]),
         (anat_preproc_wf, anat_norm_wf, [
             ('outputnode.anat_preproc', 'inputnode.moving_image')]),
         (anat_preproc_wf, outputnode, [
@@ -778,35 +785,35 @@ def init_infant_single_anat_wf(
             ('anat_mask', 'anat_mask')]),
         (mask_buffer, anat_seg_wf, [('anat_brain', 'inputnode.anat_brain')]),
         (anat_seg_wf, outputnode, [
-            ("outputnode.anat_dseg", "anat_dseg"),
-            ("outputnode.anat_tpms", "anat_tpms")]),
+            ('outputnode.anat_dseg', 'anat_dseg'),
+            ('outputnode.anat_tpms', 'anat_tpms')]),
         (anat_seg_wf, anat_derivatives_wf, [
-            ("outputnode.anat_dseg", "inputnode.anat_dseg"),
-            ("outputnode.anat_tpms", "inputnode.anat_tpms")]),
+            ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+            ('outputnode.anat_tpms', 'inputnode.anat_tpms')]),
         (mask_buffer, anat_norm_wf, [
             ('anat_mask', 'inputnode.moving_mask')]),
         (anat_seg_wf, anat_norm_wf, [
-            ("outputnode.anat_dseg", "inputnode.moving_segmentation"),
-            ("outputnode.anat_tpms", "inputnode.moving_tpms")]),
-        (anat_norm_wf, anat_reports_wf, [("poutputnode.template", "inputnode.template")]),
+            ('outputnode.anat_dseg', 'inputnode.moving_segmentation'),
+            ('outputnode.anat_tpms', 'inputnode.moving_tpms')]),
+        (anat_norm_wf, anat_reports_wf, [('poutputnode.template', 'inputnode.template')]),
         (anat_norm_wf, outputnode, [
-            ("poutputnode.standardized", "std_preproc"),
-            ("poutputnode.std_mask", "std_mask"),
-            ("poutputnode.std_dseg", "std_dseg"),
-            ("poutputnode.std_tpms", "std_tpms"),
-            ("outputnode.template", "template"),
-            ("outputnode.anat2std_xfm", "anat2std_xfm"),
-            ("outputnode.std2anat_xfm", "std2anat_xfm")]),
+            ('poutputnode.standardized', 'std_preproc'),
+            ('poutputnode.std_mask', 'std_mask'),
+            ('poutputnode.std_dseg', 'std_dseg'),
+            ('poutputnode.std_tpms', 'std_tpms'),
+            ('outputnode.template', 'template'),
+            ('outputnode.anat2std_xfm', 'anat2std_xfm'),
+            ('outputnode.std2anat_xfm', 'std2anat_xfm')]),
         (anat_norm_wf, anat_derivatives_wf, [
-            ("outputnode.template", "inputnode.template"),
-            ("outputnode.anat2std_xfm", "inputnode.anat2std_xfm"),
-            ("outputnode.std2anat_xfm", "inputnode.std2anat_xfm")]),
+            ('outputnode.template', 'inputnode.template'),
+            ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+            ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm')]),
         (outputnode, anat_reports_wf, [
-            ("anat_preproc", "inputnode.anat_preproc"),
-            ("anat_mask", "inputnode.anat_mask"),
-            ("anat_dseg", "inputnode.anat_dseg"),
-            ("std_preproc", "inputnode.std_t1w"),
-            ("std_mask", "inputnode.std_mask"),
+            ('anat_preproc', 'inputnode.anat_preproc'),
+            ('anat_mask', 'inputnode.anat_mask'),
+            ('anat_dseg', 'inputnode.anat_dseg'),
+            ('std_preproc', 'inputnode.std_t1w'),
+            ('std_mask', 'inputnode.std_mask'),
         ]),
     ])
     # fmt:on
@@ -871,52 +878,52 @@ def init_infant_single_anat_wf(
     # fmt:off
     workflow.connect([
         (inputnode, surface_recon_wf, [
-            ("subject_id", "inputnode.subject_id"),
-            ("subjects_dir", "inputnode.subjects_dir")]),
+            ('subject_id', 'inputnode.subject_id'),
+            ('subjects_dir', 'inputnode.subjects_dir')]),
         (anat_template_wf, surface_recon_wf, [
-            ("outputnode.anat_ref", "inputnode.t1w"),
+            ('outputnode.anat_ref', 'inputnode.t1w'),
         ]),
         (mask_buffer, surface_recon_wf, [
-            ("anat_brain", "inputnode.skullstripped_t1")]),
+            ('anat_brain', 'inputnode.skullstripped_t1')]),
         (anat_preproc_wf, surface_recon_wf, [
-            ("outputnode.anat_preproc", "inputnode.corrected_t1")]),
+            ('outputnode.anat_preproc', 'inputnode.corrected_t1')]),
         (surface_recon_wf, outputnode, [
-            ("outputnode.subjects_dir", "subjects_dir"),
-            ("outputnode.subject_id", "subject_id"),
-            ("outputnode.t1w2fsnative_xfm", "anat2fsnative_xfm"),
-            ("outputnode.fsnative2t1w_xfm", "fsnative2anat_xfm"),
-            ("outputnode.surfaces", "surfaces"),
-            ("outputnode.morphometrics", "morphometrics"),
-            ("outputnode.out_aparc", "anat_aparc"),
-            ("outputnode.out_aseg", "anat_aseg"),
+            ('outputnode.subjects_dir', 'subjects_dir'),
+            ('outputnode.subject_id', 'subject_id'),
+            ('outputnode.t1w2fsnative_xfm', 'anat2fsnative_xfm'),
+            ('outputnode.fsnative2t1w_xfm', 'fsnative2anat_xfm'),
+            ('outputnode.surfaces', 'surfaces'),
+            ('outputnode.morphometrics', 'morphometrics'),
+            ('outputnode.out_aparc', 'anat_aparc'),
+            ('outputnode.out_aseg', 'anat_aseg'),
         ]),
         (mask_buffer, anat_ribbon_wf, [
-            ("anat_mask", "inputnode.t1w_mask"),
+            ('anat_mask', 'inputnode.t1w_mask'),
         ]),
         (surface_recon_wf, anat_ribbon_wf, [
-            ("outputnode.surfaces", "inputnode.surfaces"),
+            ('outputnode.surfaces', 'inputnode.surfaces'),
         ]),
         (anat_ribbon_wf, outputnode, [
-            ("outputnode.anat_ribbon", "anat_ribbon")
+            ('outputnode.anat_ribbon', 'anat_ribbon')
         ]),
         (anat_ribbon_wf, anat_derivatives_wf, [
-            ("outputnode.anat_ribbon", "inputnode.anat_ribbon"),
+            ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
         ]),
         (surface_recon_wf, sphere_reg_wf, [
             ('outputnode.subject_id', 'inputnode.subject_id'),
             ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
         ]),
         (surface_recon_wf, anat_reports_wf, [
-            ("outputnode.subject_id", "inputnode.subject_id"),
-            ("outputnode.subjects_dir", "inputnode.subjects_dir"),
+            ('outputnode.subject_id', 'inputnode.subject_id'),
+            ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
         ]),
         (surface_recon_wf, anat_derivatives_wf, [
-            ("outputnode.out_aseg", "inputnode.anat_fs_aseg"),
-            ("outputnode.out_aparc", "inputnode.anat_fs_aparc"),
-            ("outputnode.t1w2fsnative_xfm", "inputnode.anat2fsnative_xfm"),
-            ("outputnode.fsnative2t1w_xfm", "inputnode.fsnative2anat_xfm"),
-            ("outputnode.surfaces", "inputnode.surfaces"),
-            ("outputnode.morphometrics", "inputnode.morphometrics"),
+            ('outputnode.out_aseg', 'inputnode.anat_fs_aseg'),
+            ('outputnode.out_aparc', 'inputnode.anat_fs_aparc'),
+            ('outputnode.t1w2fsnative_xfm', 'inputnode.anat2fsnative_xfm'),
+            ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2anat_xfm'),
+            ('outputnode.surfaces', 'inputnode.surfaces'),
+            ('outputnode.morphometrics', 'inputnode.morphometrics'),
         ]),
         (sphere_reg_wf, outputnode, [
             ('outputnode.sphere_reg', 'sphere_reg'),
@@ -932,7 +939,7 @@ def init_infant_single_anat_wf(
             init_anat_fsLR_resampling_wf,
         )
 
-        is_mcribs = recon_method == "mcribs"
+        is_mcribs = recon_method == 'mcribs'
         # handles morph_grayords_wf
         anat_fsLR_resampling_wf = init_anat_fsLR_resampling_wf(cifti_output, mcribs=is_mcribs)
         anat_derivatives_wf.get_node('inputnode').inputs.cifti_density = cifti_output
@@ -947,10 +954,10 @@ def init_infant_single_anat_wf(
                 ('outputnode.surfaces', 'inputnode.surfaces'),
                 ('outputnode.morphometrics', 'inputnode.morphometrics')]),
             (anat_fsLR_resampling_wf, anat_derivatives_wf, [
-                ("outputnode.cifti_morph", "inputnode.cifti_morph"),
-                ("outputnode.cifti_metadata", "inputnode.cifti_metadata")]),
+                ('outputnode.cifti_morph', 'inputnode.cifti_morph'),
+                ('outputnode.cifti_metadata', 'inputnode.cifti_metadata')]),
             (anat_fsLR_resampling_wf, outputnode, [
-                ("outputnode.midthickness_fsLR", "midthickness_fsLR")])
+                ('outputnode.midthickness_fsLR', 'midthickness_fsLR')])
         ])
         # fmt:on
     return workflow
@@ -973,52 +980,52 @@ def _gen_anat_wf_desc(t1w: list | None, t2w: list | None, mask: bool) -> str:
     # Anatomicals found
     if anat is not None:
         desc += (
-            f"A total of {len(anat)} {modality} images were found "
-            "within the input BIDS dataset.\n"
+            f'A total of {len(anat)} {modality} images were found '
+            'within the input BIDS dataset.\n'
         )
     else:
         desc += (
-            f"A total of {len(t1w)} T1w and {len(t2w)} T2w images "
-            "were found within the input BIDS dataset.\n"
+            f'A total of {len(t1w)} T1w and {len(t2w)} T2w images '
+            'were found within the input BIDS dataset.\n'
         )
 
     # Template + Preproc workflows
     if t1w:
         if len(t1w) == 1:
             desc += (
-                f"The T1-weighted (T1w) image was denoised "
-                "and corrected for intensity non-uniformity (INU)"
+                'The T1-weighted (T1w) image was denoised '
+                'and corrected for intensity non-uniformity (INU)'
             )
         else:
             desc += (
-                "All of the T1-weighted images were corrected for intensity "
-                "non-uniformity (INU)"
+                'All of the T1-weighted images were corrected for intensity '
+                'non-uniformity (INU)'
             )
         desc += (
-            "with `N4BiasFieldCorrection` [@n4], distributed with ANTs {ants_ver} "
-            "[@ants, RRID:SCR_004757]"
+            'with `N4BiasFieldCorrection` [@n4], distributed with ANTs {ants_ver} '
+            '[@ants, RRID:SCR_004757]'
         )
-        desc += ".\n" if len(t1w) > 1 else ", and used as T1w-reference throughout the workflow.\n"
+        desc += '.\n' if len(t1w) > 1 else ', and used as T1w-reference throughout the workflow.\n'
     if t2w:
         if len(t2w) == 1:
             desc += (
-                "The T2-weighted (T2w) image was denoised and corrected for intensity "
-                "non-uniformity (INU)"
+                'The T2-weighted (T2w) image was denoised and corrected for intensity '
+                'non-uniformity (INU)'
             )
         else:
             desc += (
-                "All of the T2-weighted images were corrected for intensity "
-                "non-uniformity (INU)"
+                'All of the T2-weighted images were corrected for intensity '
+                'non-uniformity (INU)'
             )
         desc += (
-            "with `N4BiasFieldCorrection` [@n4], distributed with ANTs {ants_ver} "
-            "[@ants, RRID:SCR_004757]"
+            'with `N4BiasFieldCorrection` [@n4], distributed with ANTs {ants_ver} '
+            '[@ants, RRID:SCR_004757]'
         )
-        desc += ".\n" if len(t2w) > 1 else ", and used as T2w-reference throughout the workflow.\n"
+        desc += '.\n' if len(t2w) > 1 else ', and used as T2w-reference throughout the workflow.\n'
 
     # Precomputed derivatives
     if mask:
-        desc += "A previously computed mask was used to skull-strip the anatomical image."
+        desc += 'A previously computed mask was used to skull-strip the anatomical image.'
 
     else:
         desc += (
