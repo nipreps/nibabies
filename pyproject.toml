@@ -35,6 +35,7 @@ dependencies = [
     "smriprep @ git+https://github.com/nipreps/smriprep.git@enh/nibabies-fit-apply",
     "tedana >= 23.0.2",
     "templateflow >= 24.2.0",
+    "transforms3d",
     "toml",
 ]
 dynamic = ["version"]
