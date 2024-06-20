@@ -8,7 +8,6 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from github_link import make_linkcode_resolve  # this is only available after sphinxext to PATH
 from packaging.version import Version, parse
 from sphinx import __version__ as sphinxversion
 
@@ -22,6 +21,8 @@ here = os.path.dirname(__file__)
 sys.path.append(os.path.join(here, 'sphinxext'))
 sys.path.insert(0, os.path.join(here, '..', 'wrapper'))
 
+# this is only available after sphinxext to PATH
+from github_link import make_linkcode_resolve  # noqa: E402
 
 # -- General configuration ---------------------------------------------------
 
@@ -43,7 +44,7 @@ extensions = [
     'sphinxarg.ext',  # argparse extension
     'nipype.sphinxext.plot_workflow',
     'myst_parser',  # allow markdown
-    'sphinx-togglebutton',  # collapse admonitions
+    # 'sphinx-togglebutton',  # collapse admonitions
 ]
 
 bibtex_bibfiles = ['../nibabies/data/boilerplate.bib']

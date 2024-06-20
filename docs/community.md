@@ -1,7 +1,6 @@
-## NiPreps Community
+# NiPreps Community
 
 Check out the [official NiPreps community page](https://www.nipreps.org/community/), where topics such as contributing, code of conduct, and licensing are outlined.
-
 
 ## NiBabies Coding Style
 

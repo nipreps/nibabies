@@ -24,7 +24,7 @@ There are also a few keyword tags, `latest` and `unstable`, that serve as specia
 
 :::{tip}
 
-Using versioned releases (such as `24.0.0`) are preferred to using the `latest` tag, as they are more explicit.
+`latest` will pull the most recent release, but beware that it will not be updated until calling the docker pull command again. For this reason, it is recommended to pull using the explicit version tag.
 :::
 
 ### Working with Apptainer (formerly Singularity)
@@ -32,15 +32,16 @@ Using versioned releases (such as `24.0.0`) are preferred to using the `latest` 
 The easiest way to create an Apptainer image is to build from the [Docker](#working-with-docker) images hosted online.
 
 ```bash
-apptainer build nibabies-version.sif docker://nipreps/nibabies:version
+apptainer build nibabies-24.0.0.sif docker://nipreps/nibabies:24.0.0
 ```
 
 ## Installing the nibabies-wrapper
 
 The `nibabies-wrapper` is a lightweight Python tool to facilitate running `nibabies` within a container service.
 To install or upgrade to the current release:
-```
-$ pip install --update nibabies-wrapper
+
+```bash
+pip install --update nibabies-wrapper
 ```
 
 For further details, see [](usage.md#using-the-nibabies-wrapper).

@@ -1,9 +1,4 @@
-```
-:relative-docs: docs/
-:relative-images:
-```
-
-## Contents
+# Contents
 
 ```{toctree}
 :maxdepth: 3

@@ -47,24 +47,28 @@ The outputs will be a [BIDS Derivatives](https://bids-specification.readthedocs.
 
 ```
 <output_dir>/
-  logs/
-  sub-<label>/
-  sub-<label>[_ses-<slabel>].html
-  dataset_description.json
-  .bidsignore
+├── logs/
+├── sub-<label>/
+├── sub-<label>[_ses-<label>].html
+├── dataset_description.json
+└── .bidsignore
 ```
 
 For each participant in the dataset,
 a directory of derivatives (``sub-<label>/``)
-and a visual report (``sub-<label>[_ses-<slabel>].html``) are generated.
+and a visual report (``sub-<label>.html``) are generated.
 The log directory contains `citation boilerplate`_ text.
 ``dataset_description.json`` is a metadata file in which NiBabies
 records metadata recommended by the BIDS standard.
 
-This layout, now the default, may be explicitly specified with the
-``--output-layout bids`` command-line option.
-For compatibility with legacy versions of NiBabies, the
-`legacy layout`_ is available via ``--output-layout legacy``.
+:::{admonition} fMRIPrep deviation - multi-session processing
+:class: important
+
+Due to the potential for significant development across sessions,
+NiBabies processes at the session level. Each unique session will be nested
+within a subject's output directory, and an individual report will be created
+(i.e. ``sub-<label>_ses-<label>.html``).
+:::
 
 ## Processing level
 
