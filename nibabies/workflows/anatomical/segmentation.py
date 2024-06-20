@@ -210,16 +210,22 @@ def init_jlf_wf(
 
 
 def _parse_jlf_templates(
-    templates_dir: Path | str,
-    image_type: ty.Literal['T1w', 'T2w'] = 'T2w',
+    templates_dir: str,
+    image_type: str,
     max_templates: int | None = None,
+    age_months: int | None = None,
 ):
     """
     Parse segmentation templates directory for anatomical and segmentation files.
-    The segmentations are expected to follow the FreeSurfer LUT, and the anatomicals
-    should be masked.
 
-    This is compatible with the DCAN layout::
+    Expectations
+    ------------
+    * Segmentations adhere to the FreeSurfer LUT
+    * Anatomicals are skull-stripped.
+
+    Compatibility
+    -------------
+    DCAN layout::
 
     jlf-templates/
     ├── Template01
@@ -229,19 +235,22 @@ def _parse_jlf_templates(
     ├── Template02
     ...
 
-    And the BIDS layout::
+    BIDS layout::
 
     Templates/
     ├── dataset_description.json
+    ├── participants.tsv
     ├── sub-01
     │   ├── sub-01_desc-aseg_dseg.nii.gz
-    │   ├── sub-01_T1w.json
+    │   ├── [sub-01_T1w.json]  * optional
     │   ├── sub-01_T1w.nii.gz
-    │   ├── sub-01_T2w.json
+    │   ├── [sub-01_T2w.json]  * optional
     │   └── sub-01_T2w.nii.gz
     ├── sub-02
     ...
 
+
+    TODO: Parse participants.tsv to check if age is specified, and use only relevant.
     """
     segmentations = {}
     templates_dir = Path(templates_dir)
@@ -270,7 +279,7 @@ def _parse_jlf_templates(
         segmentations[seg] = anat
 
     if len(segmentations) == 0:
-        raise FileNotFoundError('JLF requested but anatomicals / segmentations were not found.')
+        raise FileNotFoundError('JLF requested but anatomicals or segmentations were not found.')
     return segmentations
 
 
