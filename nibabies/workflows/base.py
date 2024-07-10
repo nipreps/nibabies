@@ -733,6 +733,7 @@ tasks and sessions), the following preprocessing was performed.
                         ('outputnode.cohort', 'inputnode.std_cohort'),
                         ('outputnode.std_t1w', 'inputnode.std_t1w'),
                         ('outputnode.std_mask', 'inputnode.std_mask'),
+                        ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
                     ]),
                 ])  # fmt:skip
 
