@@ -240,6 +240,11 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         help='Path to an existing PyBIDS database folder, for faster indexing '
         '(especially useful for large datasets).',
     )
+    g_bids.add_argument(
+        '--copy-derivatives',
+        action='store_true',
+        help='Copy any found derivatives into output directory',
+    )
 
     g_perfm = parser.add_argument_group('Options to handle performance')
     g_perfm.add_argument(
@@ -848,10 +853,9 @@ applied."""
     if output_dir == bids_dir:
         parser.error(
             'The selected output folder is the same as the input BIDS folder. '
-            'Please modify the output path (suggestion: %s).'
-            % bids_dir
+            f'Please modify the output path (suggestion: {bids_dir}).'
             / 'derivatives'
-            / ('nibabies-%s' % version.split('+')[0])
+            / f'nibabies-{version.split("+")[0]}'
         )
 
     if bids_dir in work_dir.parents:

@@ -311,6 +311,18 @@ It is released under the [CC0]\
                 )
             )
 
+        if config.execution.copy_derivatives:
+            from nibabies.utils.derivatives import copy_derivatives
+
+            config.loggers.workflow.info('Copying found anat derivatives into output directory')
+            copy_derivatives(
+                derivs=anatomical_cache,
+                outdir=config.execution.nibabies_dir,
+                modality='anat',
+                subject_id=f'sub-{subject_id}',
+                session_id=f'ses-{session_id}' if session_id else None,
+            )
+
     # Determine some session level options here, as we should have
     # all the required information
     if recon_method == 'auto':
@@ -682,6 +694,20 @@ tasks and sessions), the following preprocessing was performed.
                         entities=entities,
                         fieldmap_id=fieldmap_id,
                     )
+                )
+
+            if config.execution.copy_derivatives:
+                from nibabies.utils.derivatives import copy_derivatives
+
+                config.loggers.workflow.info(
+                    'Copying found func derivatives into output directory'
+                )
+                copy_derivatives(
+                    derivs=functional_cache,
+                    outdir=config.execution.nibabies_dir,
+                    modality='func',
+                    subject_id=f'sub-{subject_id}',
+                    session_id=f'ses-{session_id}' if session_id else None,
                 )
 
         bold_wf = init_bold_wf(

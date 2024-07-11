@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import json
+import shutil
 from collections import defaultdict
 from pathlib import Path
 
@@ -124,3 +127,34 @@ def collect_functional_derivatives(
             continue
         derivs_cache[xfm] = item[0] if len(item) == 1 else item
     return derivs_cache
+
+
+def copy_derivatives(
+    derivs: dict,
+    outdir: Path,
+    modality: str,
+    subject_id: str,
+    session_id: str | None = None,
+) -> None:
+    """
+    Creates a copy of any found derivatives into output directory.
+
+    Attempts to preserve file metadata to distinguish from generated files.
+    """
+    out_levels = [subject_id, modality]
+    if session_id:
+        out_levels.insert(1, session_id)
+
+    outpath = outdir.joinpath(*out_levels)
+    outpath.mkdir(parents=True, exist_ok=True)
+
+    for deriv in derivs.values():
+        # Skip empty, lists
+        if not isinstance(deriv, str):
+            continue
+        deriv = Path(deriv)
+
+        shutil.copy2(deriv, outpath / deriv.name)
+        json = deriv.parent / (deriv.name.split('.')[0] + '.json')
+        if json.exists():
+            shutil.copy2(json, outpath / json.name)
