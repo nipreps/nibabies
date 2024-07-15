@@ -49,7 +49,11 @@ def init_segmentation_wf(
         name='to_dseg',
     )
 
-    if method == 'fast':
+    if has_aseg:
+        LOGGER.info('ANAT Segmentation: Using existing segmentation')
+        workflow.connect(inputnode, 'anat_aseg', aseg_buffer, 'anat_aseg')
+
+    elif method == 'fast':
         workflow.__desc__ = (
             'Brain tissue segmentation of cerebrospinal fluid (CSF), white-matter (WM), and '
             f'gray-matter (GM) was performed on the brain-extracted {image_type} using FSL '
@@ -74,7 +78,7 @@ def init_segmentation_wf(
                 # img_type=1 if image_type == 'T1w' else 2,
                 # number_classes=fast_n_classes,
             ),
-            name='anat_dseg',
+            name='fast',
             mem_gb=3,
         )
 
@@ -93,11 +97,6 @@ def init_segmentation_wf(
         ])  # fmt:skip
         return workflow  # NOTE: no aseg will be output
 
-    # Otherwise, segment tissue based on subcortical segmentation
-    if has_aseg:
-        LOGGER.info('ANAT Segmentation: Using existing segmentation')
-        workflow.connect(inputnode, 'anat_aseg', aseg_buffer, 'anat_aseg')
-
     elif method == 'jlf':
         if not jlf_template_dir or not Path(jlf_template_dir).exists():
             raise RuntimeError('JLF requires a template directory.')
@@ -115,7 +114,10 @@ def init_segmentation_wf(
         ])  # fmt:skip
 
     to_dseg.inputs.lut = _aseg_to_three()
-    split_seg = pe.Node(niu.Function(function=_split_segments), name='split_seg')
+    split_seg = pe.Node(
+        niu.Function(function=_split_segments, output_names=['out_tpms']),
+        name='split_seg',
+    )
 
     workflow.connect([
         (aseg_buffer, outputnode, [('anat_aseg', 'anat_aseg')]),
