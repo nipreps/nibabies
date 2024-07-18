@@ -1521,7 +1521,7 @@ def init_infant_single_anat_fit_wf(
             image_type=reference_anat,
             output_dir=output_dir,
             num_anat=len(anatomicals),
-            name='ds_t1w_template_wf',
+            name='ds_anat_template_wf',
         )
 
         workflow.connect([
