@@ -132,7 +132,7 @@ def build_boilerplate(workflow):
 
         from nibabies.data import load as load_data
 
-        bib = load_data('boilerplate.bib')
+        bib = str(load_data('boilerplate.bib'))
 
         # Generate HTML file resolving citations
         cmd = [
