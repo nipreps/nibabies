@@ -32,7 +32,7 @@ DEFAULT_MEMORY_MIN_GB = 0.01
 def init_raw_boldref_wf(
     bold_file: str | None = None,
     multiecho: bool = False,
-    start_frame: int = 17,
+    ref_frame_start: int = 16,
     name: str = 'raw_boldref_wf',
 ):
     """
@@ -58,8 +58,8 @@ def init_raw_boldref_wf(
         BOLD series NIfTI file
     multiecho : :obj:`bool`
         If multiecho data was supplied, data from the first echo will be selected
-    start_frame: :obj:`int`
-        BOLD frame to start creating the reference map from. Any earlier frames are discarded.
+    ref_frame_start: :obj:`int`
+        BOLD frame to start creating the reference map from.
     name : :obj:`str`
         Name of workflow (default: ``raw_boldref_wf``)
 
@@ -124,7 +124,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
         name='select_frames',
     )
-    select_frames.inputs.start_frame = start_frame
+    select_frames.inputs.ref_frame_start = ref_frame_start
 
     get_dummy = pe.Node(NonsteadyStatesDetector(), name='get_dummy')
     gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
@@ -149,7 +149,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             ('out_file', 'bold_file'),
             ('out_report', 'validation_report'),
         ]),
-        (select_frames, outputnode, [('start_frame', 'skip_vols')]),
+        (calc_dummy_scans, outputnode, [('skip_vols_num', 'skip_vols')]),
         (gen_avg, outputnode, [('out_file', 'boldref')]),
         (get_dummy, outputnode, [('n_dummy', 'algo_dummy_scans')]),
     ])  # fmt:skip
@@ -157,17 +157,27 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
     return workflow
 
 
-def _select_frames(in_file: str, start_frame: int, dummy_scans: int | None) -> tuple[int, list]:
+def _select_frames(
+    in_file: str, ref_frame_start: int, dummy_scans: int | None
+) -> tuple[int, list]:
     import nibabel as nb
     import numpy as np
 
     img = nb.load(in_file)
     img_len = img.shape[3]
-    if start_frame >= img_len:
-        start_frame = img_len - 1
 
     if dummy_scans:
-        start_frame = dummy_scans
+        # Ensure start index is the largest of the two
+        # Will usually be `ref_frame_start`
+        start_frame = max(ref_frame_start, dummy_scans)
+    else:
+        start_frame = ref_frame_start
+
+    if start_frame >= img_len:
+        raise KeyError(
+            f'Caculating the BOLD reference starting on frame: {start_frame} but not enough BOLD '
+            f'volumes in {in_file}.'
+        )
 
     t_mask = np.array([False] * img_len, dtype=bool)
     t_mask[start_frame:] = True

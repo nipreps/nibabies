@@ -758,6 +758,12 @@ discourage its usage.""",
         'Generally, this is determined based on availability, age, and surface '
         'reconstruction method.',
     )
+    g_baby.add_argument(
+        '--hmc-bold-frame',
+        type=int,
+        default=16,
+        help='Frame to start head motion estimation on BOLD.',
+    )
     return parser
 
 

@@ -592,6 +592,8 @@ class workflow(_Config):
     """Run *fieldmap-less* susceptibility-derived distortions estimation."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
+    hmc_bold_frame = 16
+    """Frame to start head motion correction estimation on BOLD"""
     ignore = None
     """Ignore particular steps for *nibabies*."""
     level = None
