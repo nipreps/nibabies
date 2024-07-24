@@ -179,7 +179,7 @@ def init_bold_wf(
         precomputed = {}
     bold_file = bold_series[0]
 
-    output_dir = config.execution.nibabies_dir
+    output_dir = str(config.execution.nibabies_dir)
     omp_nthreads = config.nipype.omp_nthreads
     all_metadata = [config.execution.layout.get_metadata(file) for file in bold_series]
 
