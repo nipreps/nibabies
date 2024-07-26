@@ -138,7 +138,7 @@ If surface reconstructions are used, the following surface files are generated::
       sub-<subject_label>_hemi-[LR]_white.surf.gii
       sub-<subject_label>_hemi-[LR]_midthickness.surf.gii
       sub-<subject_label>_hemi-[LR]_pial.surf.gii
-      sub-<subject_label>_hemi-[LR]_desc-reg_sphere.surf.gii
+      sub-<subject_label>_hemi-[LR]_space-fsaverage_desc-reg_sphere.surf.gii
       sub-<subject_label>_hemi-[LR]_space-fsLR_desc-reg_sphere.surf.gii
       sub-<subject_label>_hemi-[LR]_space-fsLR_desc-msmsulc_sphere.surf.gii
 
