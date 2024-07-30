@@ -292,14 +292,6 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         help='skip generation of HTML and LaTeX formatted citation with pandoc',
     )
     g_perfm.add_argument(
-        '--error-on-aroma-warnings',
-        action='store_true',
-        dest='aroma_err_on_warn',
-        default=False,
-        help='Raise an error if ICA_AROMA does not produce sensible output '
-        '(e.g., if all the components are classified as signal or noise)',
-    )
-    g_perfm.add_argument(
         '-v',
         '--verbose',
         dest='verbose_count',
@@ -462,24 +454,6 @@ Useful for further Tedana processing post-NiBabies.""",
         type=int,
         default=None,
         help='Initialize the random seed for the workflow',
-    )
-
-    # ICA_AROMA options
-    g_aroma = parser.add_argument_group('Specific options for running ICA_AROMA')
-    g_aroma.add_argument(
-        '--use-aroma',
-        action='store_true',
-        default=False,
-        help='add ICA_AROMA to your preprocessing stream',
-    )
-    g_aroma.add_argument(
-        '--aroma-melodic-dimensionality',
-        dest='aroma_melodic_dim',
-        action='store',
-        default=-200,
-        type=int,
-        help='Exact or maximum number of MELODIC components to estimate '
-        '(positive = exact, negative = maximum)',
     )
 
     # Confounds options

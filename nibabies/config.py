@@ -568,11 +568,6 @@ class workflow(_Config):
     """Level of analysis."""
     anat_only = False
     """Execute the anatomical preprocessing only."""
-    aroma_err_on_warn = None
-    """Cast AROMA warnings to errors."""
-    aroma_melodic_dim = None
-    """Number of ICA components to be estimated by MELODIC
-    (positive = exact, negative = maximum)."""
     bold2anat_dof = None
     """Degrees of freedom of the BOLD-to-anatomical registration steps."""
     bold2anat_init = 'auto'
@@ -629,8 +624,6 @@ class workflow(_Config):
     instance keeping standard and nonstandard spaces."""
     surface_recon_method = 'auto'
     """Method to use for surface reconstruction."""
-    use_aroma = None
-    """Run ICA-:abbr:`AROMA (automatic removal of motion artifacts)`."""
     use_bbr = False
     """Run boundary-based registration for BOLD-to-T1w registration."""
     use_syn_sdc = None

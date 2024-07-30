@@ -40,8 +40,6 @@ write_graph = false
 
 [workflow]
 anat_only = false
-aroma_err_on_warn = false
-aroma_melodic_dim = -200
 bold2t1w_dof = 6
 bold2t1w_init = "register"
 cifti_output = false
@@ -62,7 +60,6 @@ skull_strip_template = "UNCInfant:cohort-1"
 skull_strip_t1w = "force"
 slice_time_ref = 0.5
 spaces = "MNIInfant:cohort-1:res-native MNIInfant:cohort-1"
-use_aroma = false
 use_bbr = false
 use_syn_sdc = false
 
