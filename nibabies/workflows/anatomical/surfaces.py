@@ -569,6 +569,8 @@ def _get_dhcp_spheres(subject_id: str, subjects_dir: str) -> list:
     for hemi in 'lr':
         sphere = Path(subjects_dir) / subject_id / 'surf' / f'{hemi}h.sphere.reg2'
         if not sphere.exists():
-            raise FileNotFoundError(f"MCRIBS spherical registration not found. Searched at {sphere}")
+            raise FileNotFoundError(
+                f"MCRIBS spherical registration not found. Searched at {sphere}"
+            )
         out.append(str(sphere))
     return out
