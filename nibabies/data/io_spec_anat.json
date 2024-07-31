@@ -141,7 +141,7 @@
             ".h5",
             ".txt"
           ],
-          "from": "anat",
+          "from": ["T1w", "T2w"],
           "to": null,
           "suffix": "xfm",
           "mode": "image"
@@ -153,7 +153,7 @@
             ".txt"
           ],
           "from": null,
-          "to": "anat",
+          "to": ["T1w", "T2w"],
           "suffix": "xfm",
           "mode": "image"
         }

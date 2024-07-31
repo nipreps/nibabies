@@ -107,7 +107,8 @@ def collect_functional_derivatives(
             patterns = _patterns
 
     derivs_cache = defaultdict(list, {})
-    layout = BIDSLayout(derivatives_dir, config=['bids', 'derivatives'], validate=False)
+    deriv_config = nwf_load('nipreps.json')
+    layout = BIDSLayout(derivatives_dir, config=deriv_config, validate=False)
     derivatives_dir = Path(derivatives_dir)
 
     # search for both boldrefs
