@@ -1,6 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Utilities to handle BIDS inputs."""
+
 from __future__ import annotations
 
 import json
@@ -196,7 +197,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
         ignored_subs = all_subs.difference(selected_subs)
         if ignored_subs:
             for sub in ignored_subs:
-                validator_config_dict['ignoredFiles'].append('/sub-%s/**' % sub)
+                validator_config_dict['ignoredFiles'].append(f'/sub-{sub}/**')
     with tempfile.NamedTemporaryFile(mode='w+', suffix='.json') as temp:
         temp.write(json.dumps(validator_config_dict))
         temp.flush()
@@ -266,7 +267,7 @@ def _get_age_from_tsv(
     try:
         # extract age value from row
         age = int(df.loc[mask, age_col].values[0])
-    except Exception:
+    except Exception:  # noqa: BLE001
         age = None
     return age
 
@@ -275,5 +276,5 @@ def _verify_age_json(bids_json: Path) -> bool:
     try:
         data = json.loads(bids_json.read_text())
         return data['age']['Units'].lower() == 'months'
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False

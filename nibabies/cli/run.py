@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """NiBabies runner."""
+
 from .. import config
 
 
@@ -85,7 +86,7 @@ def main():
 
         config.loggers.workflow.log(
             15,
-            '\n'.join(['nibabies config:'] + ['\t\t%s' % s for s in config.dumps().splitlines()]),
+            '\n'.join(['nibabies config:'] + [f'\t\t{s}' for s in config.dumps().splitlines()]),
         )
         config.loggers.workflow.log(25, 'nibabies started!')
 

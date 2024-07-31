@@ -37,7 +37,7 @@ def generate_reports(
     """Execute run_reports on a list of subjects."""
     reportlets_dir = None
     if work_dir is not None:
-        reportlets_dir = Path(work_dir) / "reportlets"
+        reportlets_dir = Path(work_dir) / 'reportlets'
 
     report_errors = []
     for subject, session in sub_ses_list:
@@ -56,13 +56,15 @@ def generate_reports(
     if errno:
         import logging
 
-        logger = logging.getLogger("cli")
-        error_list = ", ".join(
-            "%s (%d)" % (subid, err) for subid, err in zip(sub_ses_list, report_errors) if err
+        logger = logging.getLogger('cli')
+        error_list = ', '.join(
+            '%s (%d)' % (subid, err)
+            for subid, err in zip(sub_ses_list, report_errors, strict=False)
+            if err
         )
         logger.error(
-            "Preprocessing did not finish successfully. Errors occurred while processing "
-            "data from participants: %s. Check the HTML reports for details.",
+            'Preprocessing did not finish successfully. Errors occurred while processing '
+            'data from participants: %s. Check the HTML reports for details.',
             error_list,
         )
     return errno

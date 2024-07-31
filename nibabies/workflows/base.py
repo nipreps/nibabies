@@ -39,6 +39,7 @@ NiBabies base processing workflows
 .. autofunction:: init_single_subject_wf
 
 """
+
 from __future__ import annotations
 
 import os

@@ -8,22 +8,22 @@ import pytest
 from nibabies.data import load as load_data
 
 FILES = (
-    "functional.nii",
-    "anatomical.nii",
-    "func.dlabel.nii",
-    "func.dtseries.nii",
-    "epi.nii",
-    "T1w.nii",
-    "func_to_struct.mat",
-    "atlas.nii",
-    "label_list.txt",
-    "sub-01_run-01_echo-1_bold.nii.gz",
-    "sub-01_run-01_echo-2_bold.nii.gz",
-    "sub-01_run-01_echo-3_bold.nii.gz",
+    'functional.nii',
+    'anatomical.nii',
+    'func.dlabel.nii',
+    'func.dtseries.nii',
+    'epi.nii',
+    'T1w.nii',
+    'func_to_struct.mat',
+    'atlas.nii',
+    'label_list.txt',
+    'sub-01_run-01_echo-1_bold.nii.gz',
+    'sub-01_run-01_echo-2_bold.nii.gz',
+    'sub-01_run-01_echo-3_bold.nii.gz',
 )
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope='package')
 def data_dir():
     with TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -33,7 +33,7 @@ def data_dir():
 
 
 @pytest.fixture(autouse=True)
-def set_namespace(doctest_namespace, data_dir):
-    doctest_namespace["data_dir"] = data_dir
-    doctest_namespace["test_data"] = load_data.cached('../tests/data')
-    doctest_namespace["Path"] = Path
+def _populate_namespace(doctest_namespace, data_dir):
+    doctest_namespace['data_dir'] = data_dir
+    doctest_namespace['test_data'] = load_data.cached('../tests/data')
+    doctest_namespace['Path'] = Path

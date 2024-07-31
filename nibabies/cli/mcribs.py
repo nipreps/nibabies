@@ -8,7 +8,7 @@ from nibabies.interfaces.mcribs import MCRIBReconAll
 
 
 def _parser():
-    parser = ArgumentParser(description="Test script for MCRIBS surfaces")
+    parser = ArgumentParser(description='Test script for MCRIBS surfaces')
     parser.add_argument('subject', help='Subject ID')
     parser.add_argument('t2w', type=os.path.abspath, help='Input T2w (radioisotropic)')
     parser.add_argument(

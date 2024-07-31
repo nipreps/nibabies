@@ -131,6 +131,7 @@ extend-exclude = [
   "wrapper/**",
   ".maint/**",
   "scripts/**",
+  "docs/**",
 ]
 
 [tool.ruff.lint]
