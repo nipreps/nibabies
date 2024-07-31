@@ -127,7 +127,11 @@ junit_family = "xunit2"
 
 [tool.ruff]
 line-length = 99
-extend-exclude = ["wrapper/**"]
+extend-exclude = [
+  "wrapper/**",
+  ".maint/**",
+  "scripts/**",
+]
 
 [tool.ruff.lint]
 extend-select = [
