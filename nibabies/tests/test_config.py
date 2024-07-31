@@ -73,12 +73,9 @@ def test_config_spaces():
         for s in spaces.references
         if s.standard and s.dim == 3
     ]
-
-    spaces = _load_spaces(age)
-
-    assert 'MNI152NLin6Asym:res-2' in [str(s) for s in spaces.get_standard(full_spec=True)]
-
-    assert 'MNI152NLin6Asym_res-2' in [
+    # Only enabled if CIFTI is requested
+    assert 'MNI152NLin6Asym:res-2' not in [str(s) for s in spaces.get_standard(full_spec=True)]
+    assert 'MNI152NLin6Asym_res-2' not in [
         format_reference((s.fullname, s.spec))
         for s in spaces.references
         if s.standard and s.dim == 3
@@ -95,6 +92,7 @@ def test_config_spaces():
 
     assert [str(s) for s in spaces.get_standard(full_spec=True)] == [
         'MNIInfant:cohort-1:res-native',  # Default output space
+        'MNI152NLin6Asym:res-2',
     ]
 
     assert [
