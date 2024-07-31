@@ -19,6 +19,7 @@ classifiers = [
 license = {file = "LICENSE"}
 requires-python = ">=3.10"
 dependencies = [
+    "acres",
     "nibabel >= 5.0.0",
     "nipype >= 1.8.5",
     "nireports >= 23.2.0",
