@@ -52,8 +52,7 @@ container = [
     "datalad-osf",
 ]
 dev = [
-    "black ~= 22.3.0",
-    "isort ~= 5.10.1",
+    "ruff",
     "pre-commit",
 ]
 doc = [
@@ -105,11 +104,7 @@ version-file = "nibabies/_version.py"
 #
 
 [tool.black]
-line-length = 99
-skip-string-normalization = true
-
-[tool.isort]
-profile = 'black'
+exclude = ".*"
 
 [tool.flake8]
 max-line-length = "99"
@@ -131,6 +126,7 @@ junit_family = "xunit2"
 
 [tool.ruff]
 line-length = 99
+extend-exclude = ["wrapper/**"]
 
 [tool.ruff.lint]
 extend-select = [
@@ -167,7 +163,7 @@ inline-quotes = "single"
 
 [tool.ruff.lint.extend-per-file-ignores]
 "*/test_*.py" = ["S101"]
-"fmriprep/utils/debug.py" = ["A002", "T100"]
+"nibabies/utils/debug.py" = ["A002", "T100"]
 "docs/conf.py" = ["A001"]
 "docs/sphinxext/github_link.py" = ["BLE001"]
 
