@@ -183,7 +183,7 @@ class ContainerManager:
         elif self.service == 'singularity':
             ret = subprocess.run(['singularity', 'version'], stdout=subprocess.PIPE)
         version = ret.stdout.decode('ascii').strip()
-        version_env = f'{self.service.upper()}_VERSION_8395080871'
+        version_env = '%s_VERSION_8395080871' % self.service.upper()
         self.add_envvar((version_env, version))
 
     def add_envvar(self, envtuple):
@@ -378,7 +378,7 @@ def get_parser():
         '--image',
         metavar='IMG',
         type=str,
-        default=f'nipreps/nibabies:{__version__}',
+        default='nipreps/nibabies:%s' % __version__,
         help='image name',
     )
 
@@ -534,7 +534,7 @@ def main():
     opts, unknown_args = parser.parse_known_args()
 
     if opts.version:
-        print(f'nibabies wrapper {__version__!s}')
+        print('nibabies wrapper {!s}'.format(__version__))
         return
 
     # Set help if no directories set
@@ -605,7 +605,7 @@ def main():
     # Patch working repositories into installed package directories
     if opts.patch:
         for pkg, repo_path in opts.patch.items():
-            container.add_mount(repo_path, f'{PKG_PATH}/{pkg}')
+            container.add_mount(repo_path, os.sep.join((PKG_PATH, pkg)))
 
     if opts.env:
         for envvar in opts.env:
@@ -724,7 +724,7 @@ def main():
     print('RUNNING: ' + ' '.join(container.command))
     ret = subprocess.run(container.command)
     if ret.returncode:
-        print(f'nibabies: Please report errors to {__bugreports__}')
+        print('nibabies: Please report errors to %s' % __bugreports__)
     return ret.returncode
 
 
