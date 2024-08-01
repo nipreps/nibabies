@@ -1,14 +1,34 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
+#
+# Copyright The NiPreps Developers <nipreps@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# We support and encourage derived works from this project, please read
+# about our expectations at
+#
+#     https://www.nipreps.org/community/licensing/
+#
 r"""
-A Python module to maintain unique, run-wide *nibabies* settings.
+A Python module to maintain unique, run-wide *NiBabies* settings.
 
 This module implements the memory structures to keep a consistent, singleton config.
 Settings are passed across processes via filesystem, and a copy of the settings for
 each run and subject is left under
-``<output_dir>/sub-<participant_id>/log/<run_unique_id>/nibabies.toml``.
+``<nibabies_dir>/sub-<participant_id>/log/<run_unique_id>/nibabies.toml``.
 Settings are stored using :abbr:`ToML (Tom's Markup Language)`.
-The module has a :py:func:`~nibabies.config.to_filename` function to allow writting out
+The module has a :py:func:`~nibabies.config.to_filename` function to allow writing out
 the settings to hard disk in *ToML* format, which looks like:
 
 .. literalinclude:: ../nibabies/data/tests/config.toml
@@ -67,43 +87,59 @@ The :py:mod:`config` is responsible for other conveniency actions.
     :py:class:`~bids.layout.BIDSLayout`, etc.)
 
 """
+
 import os
-import random
-import sys
-from pathlib import Path
-from time import strftime
-from uuid import uuid4
+from multiprocessing import set_start_method
 
-try:
-    from importlib.metadata import version as get_version
-except ImportError:
-    # <= 3.7
-    from importlib_metadata import version as get_version
-
-__version__ = get_version("nibabies")
-_pre_exec_env = dict(os.environ)
+from templateflow.conf import TF_LAYOUT
 
 # Disable NiPype etelemetry always
-_disable_et = bool(os.getenv("NO_ET") is not None or os.getenv("NIPYPE_NO_ET") is not None)
-os.environ["NIPYPE_NO_ET"] = "1"
-os.environ["NO_ET"] = "1"
+_disable_et = bool(os.getenv('NO_ET') is not None or os.getenv('NIPYPE_NO_ET') is not None)
+os.environ['NIPYPE_NO_ET'] = '1'
+os.environ['NO_ET'] = '1'
 
-_yes_flags = ("1", "on", "true", "y", "yes")
-# Only show warnings if requested
-if os.getenv("NIBABIES_SHOW_WARNINGS", "0").lower() in _yes_flags:
-    import logging
-else:
+CONFIG_FILENAME = 'nibabies.toml'
+
+try:
+    set_start_method('forkserver')
+except RuntimeError:
+    pass  # context has been already set
+finally:
+    # Defer all custom import for after initializing the forkserver and
+    # ignoring the most annoying warnings
+    import random
+    import sys
+    from pathlib import Path
+    from time import strftime
+    from uuid import uuid4
+
+    from nipype import __version__ as _nipype_ver
+    from templateflow import __version__ as _tf_ver
+
+    from . import __version__
+
+if not hasattr(sys, '_is_pytest_session'):
+    sys._is_pytest_session = False  # Trick to avoid sklearn's FutureWarnings
+# Disable all warnings in main and children processes only on production versions
+if not any(
+    (
+        '+' in __version__,
+        __version__.endswith('.dirty'),
+        os.getenv('NIBABIES_DEV', '0').lower() in ('1', 'on', 'true', 'y', 'yes'),
+    )
+):
     from ._warnings import logging
 
-    if not hasattr(sys, "_is_pytest_session"):
-        sys._is_pytest_session = False  # Trick to avoid sklearn's FutureWarnings
+    os.environ['PYTHONWARNINGS'] = 'ignore'
+elif os.getenv('NIBABIES_WARNINGS', '0').lower() in ('1', 'on', 'true', 'y', 'yes'):
+    # allow disabling warnings on development versions
+    # https://github.com/nipreps/fmriprep/pull/2080#discussion_r409118765
+    from ._warnings import logging
+else:
+    import logging
 
-    if "+" not in __version__ or not __version__.endswith(".dirty"):
-        # Disable all warnings in main and children processes only on production versions
-        os.environ["PYTHONWARNINGS"] = "ignore"
-
-logging.addLevelName(25, "IMPORTANT")  # Add a new level between INFO and WARNING
-logging.addLevelName(15, "VERBOSE")  # Add a new level between INFO and DEBUG
+logging.addLevelName(25, 'IMPORTANT')  # Add a new level between INFO and WARNING
+logging.addLevelName(15, 'VERBOSE')  # Add a new level between INFO and DEBUG
 
 DEFAULT_MEMORY_MIN_GB = 0.01
 
@@ -117,94 +153,69 @@ if not _disable_et:
     from requests import get as _get_url
 
     with suppress((ConnectionError, ReadTimeout)):
-        _get_url("https://rig.mit.edu/et/projects/nipy/nipype", timeout=0.05)
+        _get_url('https://rig.mit.edu/et/projects/nipy/nipype', timeout=0.05)
 
 # Execution environment
 _exec_env = os.name
 _docker_ver = None
 # special variable set in the container
-if os.getenv("IS_DOCKER_8395080871"):
-    _exec_env = "singularity"
-    _cgroup = Path("/proc/1/cgroup")
-    if _cgroup.exists() and "docker" in _cgroup.read_text():
-        _docker_ver = os.getenv("DOCKER_VERSION_8395080871")
-        _exec_env = "docker"
+if os.getenv('IS_DOCKER_8395080871'):
+    _exec_env = 'singularity'
+    _cgroup = Path('/proc/1/cgroup')
+    if _cgroup.exists() and 'docker' in _cgroup.read_text():
+        _docker_ver = os.getenv('DOCKER_VERSION_8395080871')
+        _exec_env = 'nibabies-wrapper' if _docker_ver else 'docker'
     del _cgroup
 
-_fs_license = os.getenv("FS_LICENSE")
-if not _fs_license and os.getenv("FREESURFER_HOME"):
-    _fs_home = os.getenv("FREESURFER_HOME")
-    if _fs_home and (Path(_fs_home) / "license.txt").is_file():
-        _fs_license = str(Path(_fs_home) / "license.txt")
+_fs_license = os.getenv('FS_LICENSE')
+if not _fs_license and os.getenv('FREESURFER_HOME'):
+    _fs_home = os.getenv('FREESURFER_HOME')
+    if _fs_home and (Path(_fs_home) / 'license.txt').is_file():
+        _fs_license = str(Path(_fs_home) / 'license.txt')
     del _fs_home
 
-_templateflow_home = Path(os.getenv("TEMPLATEFLOW_HOME", Path.home() / ".cache" / "templateflow"))
+_templateflow_home = Path(
+    os.getenv('TEMPLATEFLOW_HOME', os.path.join(os.getenv('HOME'), '.cache', 'templateflow'))
+)
 
 try:
     from psutil import virtual_memory
 
     _free_mem_at_start = round(virtual_memory().available / 1024**3, 1)
-except Exception:
+except ImportError:
     _free_mem_at_start = None
 
-_oc_limit = "n/a"
-_oc_policy = "n/a"
+_oc_limit = 'n/a'
+_oc_policy = 'n/a'
 try:
     # Memory policy may have a large effect on types of errors experienced
-    _proc_oc_path = Path("/proc/sys/vm/overcommit_memory")
+    _proc_oc_path = Path('/proc/sys/vm/overcommit_memory')
     if _proc_oc_path.exists():
-        _oc_policy = {"0": "heuristic", "1": "always", "2": "never"}.get(
-            _proc_oc_path.read_text().strip(), "unknown"
+        _oc_policy = {'0': 'heuristic', '1': 'always', '2': 'never'}.get(
+            _proc_oc_path.read_text().strip(), 'unknown'
         )
-        if _oc_policy != "never":
-            _proc_oc_kbytes = Path("/proc/sys/vm/overcommit_kbytes")
+        if _oc_policy != 'never':
+            _proc_oc_kbytes = Path('/proc/sys/vm/overcommit_kbytes')
             if _proc_oc_kbytes.exists():
                 _oc_limit = _proc_oc_kbytes.read_text().strip()
-            if _oc_limit in ("0", "n/a") and Path("/proc/sys/vm/overcommit_ratio").exists():
-                _oc_limit = "{}%".format(Path("/proc/sys/vm/overcommit_ratio").read_text().strip())
-except Exception:
+            if _oc_limit in ('0', 'n/a') and Path('/proc/sys/vm/overcommit_ratio').exists():
+                _oc_limit = '{}%'.format(Path('/proc/sys/vm/overcommit_ratio').read_text().strip())
+except Exception:  # noqa: S110, BLE001
     pass
-
-_memory_gb = None
-try:
-    if "linux" in sys.platform:
-        with open("/proc/meminfo", "r") as f_in:
-            _meminfo_lines = f_in.readlines()
-            _mem_total_line = [line for line in _meminfo_lines if "MemTotal" in line][0]
-            _mem_total = float(_mem_total_line.split()[1])
-            _memory_gb = _mem_total / (1024.0**2)
-    elif "darwin" in sys.platform:
-        _mem_str = os.popen("sysctl hw.memsize").read().strip().split(" ")[-1]
-        _memory_gb = float(_mem_str) / (1024.0**3)
-except Exception:
-    pass
-
-_available_cpus = os.cpu_count()
-# attempt a more accurate CPU count (PID restriction, etc)
-try:
-    import psutil
-
-    _available_cpus = len(psutil.Process().cpu_affinity())
-except (AttributeError, ImportError, NotImplementedError):
-    if hasattr(os, "sched_getaffinity"):
-        _available_cpus = len(os.sched_getaffinity(0))
-
-# Reduce numpy's vms by limiting OMP_NUM_THREADS
-_default_omp_threads = int(os.getenv("OMP_NUM_THREADS", _available_cpus))
 
 # Debug modes are names that influence the exposure of internal details to
 # the user, either through additional derivatives or increased verbosity
-DEBUG_MODES = ("compcor", "registration", "fieldmaps")
+DEBUG_MODES = ('compcor', 'registration', 'fieldmaps', 'pdb')
 
 
 class _Config:
     """An abstract class forbidding instantiation."""
 
-    _paths = tuple()
+    _paths = ()
 
     def __init__(self):
         """Avert instantiation."""
-        raise RuntimeError("Configuration type is not instantiable.")
+        raise RuntimeError('Configuration type is not instantiable.')
 
     @classmethod
     def load(cls, settings, init=True, ignore=None):
@@ -214,15 +225,20 @@ class _Config:
             if k in ignore or v is None:
                 continue
             if k in cls._paths:
-                if isinstance(v, (list, tuple)):  # Multiple paths
+                if isinstance(v, list | tuple):  # Multiple paths
                     setattr(cls, k, [Path(p).absolute() for p in v])
+                elif isinstance(v, dict):
+                    setattr(cls, k, {key: Path(val).absolute() for key, val in v.items()})
                 else:
                     setattr(cls, k, Path(v).absolute())
             elif hasattr(cls, k):
                 setattr(cls, k, v)
 
-        if init and hasattr(cls, "init"):
-            cls.init()
+        if init:
+            try:
+                cls.init()
+            except AttributeError:
+                pass
 
     @classmethod
     def get(cls):
@@ -231,17 +247,19 @@ class _Config:
 
         out = {}
         for k, v in cls.__dict__.items():
-            if k.startswith("_") or v is None:
+            if k.startswith('_') or v is None:
                 continue
             if callable(getattr(cls, k)):
                 continue
             if k in cls._paths:
-                if isinstance(v, (list, tuple)):  # Multiple paths
+                if isinstance(v, list | tuple):  # Multiple paths
                     v = [str(p) for p in v]
+                elif isinstance(v, dict):
+                    v = {key: str(val) for key, val in v.items()}
                 else:
                     v = str(v)
             if isinstance(v, SpatialReferences):
-                v = " ".join([str(s) for s in v.references]) or None
+                v = ' '.join([str(s) for s in v.references]) or None
             if isinstance(v, Reference):
                 v = str(v) or None
             out[k] = v
@@ -274,34 +292,32 @@ class environment(_Config):
     """Linux's kernel virtual memory overcommit policy."""
     overcommit_limit = _oc_limit
     """Linux's kernel virtual memory overcommit limits."""
-    nipype_version = get_version("nipype")
+    nipype_version = _nipype_ver
     """Nipype's current version."""
-    templateflow_version = get_version("templateflow")
+    templateflow_version = _tf_ver
     """The TemplateFlow client version installed."""
     version = __version__
     """*NiBabies*'s version."""
-    _pre_env = _pre_exec_env
-    """Environmental variables set prior to execution."""
 
 
 class nipype(_Config):
     """Nipype settings."""
 
-    crashfile_format = "txt"
+    crashfile_format = 'txt'
     """The file format for crashfiles, either text or pickle."""
     get_linked_libs = False
     """Run NiPype's tool to enlist linked libraries for every interface."""
     memory_gb = None
     """Estimation in GB of the RAM this workflow can allocate at any given time."""
-    nprocs = _available_cpus
+    nprocs = os.cpu_count()
     """Number of processes (compute tasks) that can be run in parallel (multiprocessing only)."""
-    omp_nthreads = _default_omp_threads
+    omp_nthreads = None
     """Number of CPUs a single process can access for multithreaded execution."""
-    plugin = "MultiProc"
+    plugin = 'MultiProc'
     """NiPype's execution plugin."""
     plugin_args = {
-        "maxtasksperchild": 1,
-        "raise_insufficient": False,
+        'maxtasksperchild': 1,
+        'raise_insufficient': False,
     }
     """Settings for NiPype's execution plugin."""
     resource_monitor = False
@@ -313,13 +329,13 @@ class nipype(_Config):
     def get_plugin(cls):
         """Format a dictionary for Nipype consumption."""
         out = {
-            "plugin": cls.plugin,
-            "plugin_args": cls.plugin_args,
+            'plugin': cls.plugin,
+            'plugin_args': cls.plugin_args,
         }
-        if cls.plugin in ("MultiProc", "LegacyMultiProc"):
-            out["plugin_args"]["n_procs"] = int(cls.nprocs)
+        if cls.plugin in ('MultiProc', 'LegacyMultiProc'):
+            out['plugin_args']['n_procs'] = int(cls.nprocs)
             if cls.memory_gb:
-                out["plugin_args"]["memory_gb"] = float(cls.memory_gb)
+                out['plugin_args']['memory_gb'] = float(cls.memory_gb)
         return out
 
     @classmethod
@@ -331,10 +347,10 @@ class nipype(_Config):
         if cls.resource_monitor:
             ncfg.update_config(
                 {
-                    "monitoring": {
-                        "enabled": cls.resource_monitor,
-                        "sample_frequency": "0.5",
-                        "summary_append": True,
+                    'monitoring': {
+                        'enabled': cls.resource_monitor,
+                        'sample_frequency': '0.5',
+                        'summary_append': True,
                     }
                 }
             )
@@ -343,12 +359,12 @@ class nipype(_Config):
         # Nipype config (logs and execution)
         ncfg.update_config(
             {
-                "execution": {
-                    "crashdump_dir": str(execution.log_dir),
-                    "crashfile_format": cls.crashfile_format,
-                    "get_linked_libs": cls.get_linked_libs,
-                    "stop_on_first_crash": cls.stop_on_first_crash,
-                    "check_version": False,  # disable future telemetry
+                'execution': {
+                    'crashdump_dir': str(execution.log_dir),
+                    'crashfile_format': cls.crashfile_format,
+                    'get_linked_libs': cls.get_linked_libs,
+                    'stop_on_first_crash': cls.stop_on_first_crash,
+                    'check_version': False,  # disable future telemetry
                 }
             }
         )
@@ -360,8 +376,6 @@ class nipype(_Config):
 class execution(_Config):
     """Configure run-level settings."""
 
-    anat_derivatives = None
-    """A path where anatomical derivatives are found to fast-track *sMRIPrep*."""
     bids_dir = None
     """An existing path to the dataset, which must be BIDS-compliant."""
     bids_database_dir = None
@@ -372,11 +386,15 @@ class execution(_Config):
     """A dictionary of BIDS selection filters."""
     boilerplate_only = False
     """Only generate a boilerplate."""
+    copy_derivatives = False
+    """Copy any found derivatives into the output directory."""
     sloppy = False
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
+    dataset_links = {}
+    """A dictionary of dataset links to be used to track Sources in sidecars."""
     debug = []
     """Debug mode(s)."""
-    derivatives = None
+    derivatives = {}
     """One or more paths where pre-computed derivatives are found."""
     derivatives_filters = None
     """A dictionary of BIDS selection filters"""
@@ -411,6 +429,8 @@ class execution(_Config):
     output_spaces = None
     """List of (non)standard spaces designated (with the ``--output-spaces`` flag of
     the command line) as spatial references for outputs."""
+    reference_anat = None
+    """Force usage of this anatomical scan as the structural reference."""
     reports_only = False
     """Only build the reports, based on the reportlets found in a cached working directory."""
     run_uuid = f"{strftime('%Y%m%d-%H%M%S')}_{uuid4()}"
@@ -427,28 +447,28 @@ class execution(_Config):
     """The root folder of the TemplateFlow client."""
     unique_labels = None
     """Combinations of subject + session identifiers to be preprocessed."""
-    work_dir = Path("work").absolute()
+    work_dir = Path('work').absolute()
     """Path to a working directory where intermediate results will be available."""
     write_graph = False
     """Write out the computational graph corresponding to the planned preprocessing."""
-
     _layout = None
 
     _paths = (
-        "anat_derivatives",
-        "bids_dir",
-        "bids_database_dir",
-        "derivatives",
-        "fs_license_file",
-        "fs_subjects_dir",
-        "layout",
-        "log_dir",
-        "mcribs_dir",
-        "nibabies_dir",
-        "output_dir",
-        "segmentation_atlases_dir",
-        "templateflow_home",
-        "work_dir",
+        'anat_derivatives',
+        'bids_dir',
+        'bids_database_dir',
+        'dataset_links',
+        'derivatives',
+        'fs_license_file',
+        'fs_subjects_dir',
+        'layout',
+        'log_dir',
+        'mcribs_dir',
+        'nibabies_dir',
+        'output_dir',
+        'segmentation_atlases_dir',
+        'templateflow_home',
+        'work_dir',
     )
 
     @classmethod
@@ -461,56 +481,73 @@ class execution(_Config):
             ]
 
         if cls.fs_license_file and Path(cls.fs_license_file).is_file():
-            os.environ["FS_LICENSE"] = str(cls.fs_license_file)
+            os.environ['FS_LICENSE'] = str(cls.fs_license_file)
 
         if cls._layout is None:
             import re
 
-            from bids.layout import BIDSLayout, BIDSLayoutIndexer
+            from bids.layout import BIDSLayout
+            from bids.layout.index import BIDSLayoutIndexer
 
-            _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / "bids_db")
+            _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / 'bids_db')
             _db_path.mkdir(exist_ok=True, parents=True)
 
             # Recommended after PyBIDS 12.1
+            ignore_patterns = [
+                'code',
+                'stimuli',
+                'sourcedata',
+                'models',
+                re.compile(r'^\.'),
+                re.compile(r'sub-[a-zA-Z0-9]+(/ses-[a-zA-Z0-9]+)?/(beh|dwi|eeg|ieeg|meg|perf)'),
+            ]
+            if cls.participant_label and cls.bids_database_dir is None:
+                # Ignore any subjects who aren't the requested ones.
+                # This is only done if the database is written out to a run-specific folder.
+                ignore_patterns.append(
+                    re.compile(r'sub-(?!(' + '|'.join(cls.participant_label) + r')(\b|_))')
+                )
+
             _indexer = BIDSLayoutIndexer(
                 validate=False,
-                ignore=(
-                    "code",
-                    "stimuli",
-                    "sourcedata",
-                    "models",
-                    re.compile(r"^\."),
-                    re.compile(
-                        r"sub-[a-zA-Z0-9]+(/ses-[a-zA-Z0-9]+)?/(beh|dwi|eeg|ieeg|meg|perf)"
-                    ),
-                ),
+                ignore=ignore_patterns,
             )
             cls._layout = BIDSLayout(
                 str(cls.bids_dir),
                 database_path=_db_path,
                 reset_database=cls.bids_database_dir is None,
                 indexer=_indexer,
-                derivatives=cls.derivatives or False,
             )
             cls.bids_database_dir = _db_path
         cls.layout = cls._layout
-
-        def _unserialize_bids_queries(queries):
+        if cls.bids_filters:
             from bids.layout import Query
 
-            for acq, filters in queries.items():
-                queries[acq] = {
-                    k: getattr(Query, v[7:-4]) if not isinstance(v, Query) and "Query" in v else v
-                    for k, v in filters.items()
-                }
-            return queries
+            def _process_value(value):
+                """Convert string with "Query" in it to Query object."""
+                if isinstance(value, list):
+                    return [_process_value(val) for val in value]
+                else:
+                    return (
+                        getattr(Query, value[7:-4])
+                        if not isinstance(value, Query) and 'Query' in value
+                        else value
+                    )
 
-        if cls.bids_filters:
-            cls.bids_filters = _unserialize_bids_queries(cls.bids_filters)
-        if cls.derivatives_filters:
-            cls.derivatives_filters = _unserialize_bids_queries(cls.derivatives_filters)
+            # unserialize pybids Query enum values
+            for acq, filters in cls.bids_filters.items():
+                for k, v in filters.items():
+                    cls.bids_filters[acq][k] = _process_value(v)
 
-        if "all" in cls.debug:
+        dataset_links = {
+            'raw': cls.bids_dir,
+            'templateflow': Path(TF_LAYOUT.root),
+        }
+        for deriv_name, deriv_path in cls.derivatives.items():
+            dataset_links[deriv_name] = deriv_path
+        cls.dataset_links = dataset_links
+
+        if 'all' in cls.debug:
             cls.debug = list(DEBUG_MODES)
 
 
@@ -528,18 +565,13 @@ class workflow(_Config):
 
     age_months = None
     """Age (in months)"""
-    analysis_level = "participant"
+    analysis_level = 'participant'
     """Level of analysis."""
     anat_only = False
     """Execute the anatomical preprocessing only."""
-    aroma_err_on_warn = None
-    """Cast AROMA warnings to errors."""
-    aroma_melodic_dim = None
-    """Number of ICA components to be estimated by MELODIC
-    (positive = exact, negative = maximum)."""
-    bold2t1w_dof = None
-    """Degrees of freedom of the BOLD-to-T1w registration steps."""
-    bold2t1w_init = "register"
+    bold2anat_dof = None
+    """Degrees of freedom of the BOLD-to-anatomical registration steps."""
+    bold2anat_init = 'auto'
     """Whether to use standard coregistration ('register') or to initialize coregistration from the
     BOLD image-header ('header')."""
     cifti_output = None
@@ -556,8 +588,12 @@ class workflow(_Config):
     """Run *fieldmap-less* susceptibility-derived distortions estimation."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
+    hmc_bold_frame = 16
+    """Frame to start head motion correction estimation on BOLD"""
     ignore = None
     """Ignore particular steps for *nibabies*."""
+    level = None
+    """Level of preprocessing to complete. One of ['minimal', 'resampling', 'full']."""
     longitudinal = False
     """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
     medial_surface_nan = None
@@ -574,10 +610,10 @@ class workflow(_Config):
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
-    skull_strip_template = "UNCInfant:cohort-1"
+    skull_strip_template = 'UNCInfant:cohort-1'
     """Change default brain extraction template."""
-    skull_strip_t1w = "force"
-    """Skip brain extraction of the T1w image (default is ``force``, meaning that
+    skull_strip_anat = 'force'
+    """Skip brain extraction of the anatomical images (default is ``force``, meaning that
     *nibabies* will run brain extraction of the T1w)."""
     slice_time_ref = 0.5
     """The time of the reference slice to correct BOLD values to, as a fraction
@@ -587,10 +623,8 @@ class workflow(_Config):
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
-    surface_recon_method = "infantfs"
+    surface_recon_method = 'auto'
     """Method to use for surface reconstruction."""
-    use_aroma = None
-    """Run ICA-:abbr:`AROMA (automatic removal of motion artifacts)`."""
     use_bbr = False
     """Run boundary-based registration for BOLD-to-T1w registration."""
     use_syn_sdc = None
@@ -601,18 +635,18 @@ class workflow(_Config):
 class loggers:
     """Keep loggers easily accessible (see :py:func:`init`)."""
 
-    _fmt = "%(asctime)s,%(msecs)d %(name)-2s " "%(levelname)-2s:\n\t %(message)s"
-    _datefmt = "%y%m%d-%H:%M:%S"
+    _fmt = '%(asctime)s,%(msecs)d %(name)-2s ' '%(levelname)-2s:\n\t %(message)s'
+    _datefmt = '%y%m%d-%H:%M:%S'
 
     default = logging.getLogger()
     """The root logger."""
-    cli = logging.getLogger("cli")
+    cli = logging.getLogger('cli')
     """Command-line interface logging."""
-    workflow = logging.getLogger("nipype.workflow")
+    workflow = logging.getLogger('nipype.workflow')
     """NiPype's workflow logger."""
-    interface = logging.getLogger("nipype.interface")
+    interface = logging.getLogger('nipype.interface')
     """NiPype's interface logger."""
-    utils = logging.getLogger("nipype.utils")
+    utils = logging.getLogger('nipype.utils')
     """NiPype's utils logger."""
 
     @classmethod
@@ -636,7 +670,7 @@ class loggers:
         cls.workflow.setLevel(execution.log_level)
         cls.utils.setLevel(execution.log_level)
         ncfg.update_config(
-            {"logging": {"log_directory": str(execution.log_dir), "log_to_file": True}}
+            {'logging': {'log_directory': str(execution.log_dir), 'log_to_file': True}}
         )
 
 
@@ -666,12 +700,12 @@ class seeds(_Config):
 def _set_ants_seed():
     """Fix random seed for antsRegistration, antsAI, antsMotionCorr"""
     val = random.randint(1, 65536)
-    os.environ["ANTS_RANDOM_SEED"] = str(val)
+    os.environ['ANTS_RANDOM_SEED'] = str(val)
     return val
 
 
 def _set_numpy_seed():
-    """NumPy's random seed is independant from Python's `random` module"""
+    """NumPy's random seed is independent from Python's `random` module"""
     import numpy as np
 
     val = random.randint(1, 65536)
@@ -679,43 +713,73 @@ def _set_numpy_seed():
     return val
 
 
-def from_dict(settings):
-    """Read settings from a flat dictionary."""
-    nipype.load(settings)
-    execution.load(settings)
-    workflow.load(settings)
-    seeds.load(settings)
+def from_dict(settings, init=True, ignore=None):
+    """Read settings from a flat dictionary.
+
+    Arguments
+    ---------
+    setting : dict
+        Settings to apply to any configuration
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    ignore : :py:class:`~collections.abc.Container`
+        Collection of keys in ``setting`` to ignore
+    """
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
+
+    nipype.load(settings, init=initialize('nipype'), ignore=ignore)
+    execution.load(settings, init=initialize('execution'), ignore=ignore)
+    workflow.load(settings, init=initialize('workflow'), ignore=ignore)
+    seeds.load(settings, init=initialize('seeds'), ignore=ignore)
     loggers.init()
 
 
-def load(filename, skip=None):
-    """Load settings from file."""
+def load(filename, skip=None, init=True):
+    """Load settings from file.
+
+    Arguments
+    ---------
+    filename : :py:class:`os.PathLike`
+        TOML file containing fMRIPrep configuration.
+    skip : dict or None
+        Sets of values to ignore during load, keyed by section name
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    """
     from toml import loads
 
     skip = skip or {}
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
+
     filename = Path(filename)
     settings = loads(filename.read_text())
     for sectionname, configs in settings.items():
-        if sectionname != "environment":
+        if sectionname != 'environment':
             section = getattr(sys.modules[__name__], sectionname)
             ignore = skip.get(sectionname)
-            section.load(configs, ignore=ignore)
+            section.load(configs, ignore=ignore, init=initialize(sectionname))
 
 
 def get(flat=False):
     """Get config as a dict."""
     settings = {
-        "environment": environment.get(),
-        "execution": execution.get(),
-        "workflow": workflow.get(),
-        "nipype": nipype.get(),
-        "seeds": seeds.get(),
+        'environment': environment.get(),
+        'execution': execution.get(),
+        'workflow': workflow.get(),
+        'nipype': nipype.get(),
+        'seeds': seeds.get(),
     }
     if not flat:
         return settings
 
     return {
-        ".".join((section, k)): v
+        '.'.join((section, k)): v
         for section, configs in settings.items()
         for k, v in configs.items()
     }
@@ -737,15 +801,19 @@ def to_filename(filename):
 def _process_initializer(cwd, omp_nthreads):
     """Initialize the environment of the child process."""
     os.chdir(cwd)
-    os.environ["NIPYPE_NO_ET"] = "1"
-    os.environ["OMP_NUM_THREADS"] = f"{omp_nthreads}"
+    os.environ['NIPYPE_NO_ET'] = '1'
+    os.environ['OMP_NUM_THREADS'] = f'{omp_nthreads}'
 
 
-def restore_env():
-    """Restore the original environment."""
+def dismiss_echo(entities: list | None = None):
+    """Set entities to dismiss in a DerivativesDataSink."""
+    from niworkflows.utils.connections import listify
 
-    for k in os.environ.keys():
-        if k in environment._pre_env:
-            os.environ[k] = environment._pre_env[k]
-        else:
-            del os.environ[k]
+    entities = entities or []
+    echo_idx = execution.echo_idx
+    if echo_idx is None or len(listify(echo_idx)) > 2:
+        entities.append('echo')
+    return entities
+
+
+DEFAULT_DISMISS_ENTITIES = dismiss_echo()

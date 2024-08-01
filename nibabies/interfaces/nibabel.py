@@ -10,17 +10,17 @@ from nipype.interfaces.base import (
 
 
 class ReorientImageInputSpec(BaseInterfaceInputSpec):
-    in_file = File(exists=True, mandatory=True, desc="Moving file")
+    in_file = File(exists=True, mandatory=True, desc='Moving file')
     target_file = File(
-        exists=True, xor=["target_orientation"], desc="Reference file to reorient to"
+        exists=True, xor=['target_orientation'], desc='Reference file to reorient to'
     )
     target_orientation = traits.Str(
-        xor=["target_file"], desc="Axis codes of coordinate system to reorient to"
+        xor=['target_file'], desc='Axis codes of coordinate system to reorient to'
     )
 
 
 class ReorientImageOutputSpec(TraitedSpec):
-    out_file = File(desc="Reoriented file")
+    out_file = File(desc='Reoriented file')
 
 
 class ReorientImage(SimpleInterface):
@@ -28,7 +28,7 @@ class ReorientImage(SimpleInterface):
     output_spec = ReorientImageOutputSpec
 
     def _run_interface(self, runtime):
-        self._results["out_file"] = reorient_image(
+        self._results['out_file'] = reorient_image(
             self.inputs.in_file,
             target_file=self.inputs.target_file,
             target_ornt=self.inputs.target_orientation,
@@ -67,6 +67,6 @@ def reorient_image(
 
     if newpath is None:
         newpath = Path()
-    out_file = str((Path(newpath) / "reoriented.nii.gz").absolute())
+    out_file = str((Path(newpath) / 'reoriented.nii.gz').absolute())
     reoriented.to_filename(out_file)
     return out_file

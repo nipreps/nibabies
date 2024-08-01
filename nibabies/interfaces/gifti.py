@@ -15,18 +15,18 @@ from .. import __version__
 
 
 class _MaskGiftiInputSpec(BaseInterfaceInputSpec):
-    in_file = File(exists=True, mandatory=True, desc="Input GIFTI (n-darrays)")
-    mask_file = File(exists=True, mandatory=True, desc="Input mask (single binary darray)")
+    in_file = File(exists=True, mandatory=True, desc='Input GIFTI (n-darrays)')
+    mask_file = File(exists=True, mandatory=True, desc='Input mask (single binary darray)')
     threshold = traits.Float(
-        desc="If mask is probabilistic, inclusion limit",
+        desc='If mask is probabilistic, inclusion limit',
     )
     metadata = traits.Dict(
-        desc="Metadata to insert into GIFTI",
+        desc='Metadata to insert into GIFTI',
     )
 
 
 class _MaskGiftiOutputSpec(TraitedSpec):
-    out_file = File(desc="Masked file")
+    out_file = File(desc='Masked file')
 
 
 class MaskGifti(SimpleInterface):
@@ -36,7 +36,7 @@ class MaskGifti(SimpleInterface):
     output_spec = _MaskGiftiOutputSpec
 
     def _run_interface(self, runtime):
-        self._results["out_file"] = _mask_gifti(
+        self._results['out_file'] = _mask_gifti(
             self.inputs.in_file,
             self.inputs.mask_file,
             threshold=self.inputs.threshold or None,
@@ -63,8 +63,8 @@ def _mask_gifti(in_file, mask_file, *, threshold=None, metadata=None, newpath=No
     if isinstance(data, tuple):
         try:
             data = np.vstack(data)
-        except Exception:
-            raise NotImplementedError(f"Tricky GIFTI: {in_file} not supported.")
+        except Exception as err:  # noqa: BLE001
+            raise NotImplementedError(f'Tricky GIFTI: {in_file} not supported.') from err
     else:
         data = data.T
     masked = data[:, indices]
@@ -77,7 +77,7 @@ def _mask_gifti(in_file, mask_file, *, threshold=None, metadata=None, newpath=No
 
     # Finalize by adding additional metadata to file
     metad = {
-        **{"CreatedBy": f"MaskGifti (NiBabies-{__version__})"},
+        **{'CreatedBy': f'MaskGifti (NiBabies-{__version__})'},
         **metadata,
     }
     if int(nb.__version__[0]) >= 4:  # API will change in 4.0.0
@@ -91,6 +91,6 @@ def _mask_gifti(in_file, mask_file, *, threshold=None, metadata=None, newpath=No
 
     if newpath is None:
         newpath = Path()
-    out_file = str((Path(newpath) / f"masked_{Path(in_file).name}").absolute())
+    out_file = str((Path(newpath) / f'masked_{Path(in_file).name}').absolute())
     nb.save(img, out_file)
     return out_file

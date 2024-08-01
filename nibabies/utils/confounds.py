@@ -91,7 +91,8 @@ def acompcor_masks(in_files, is_aseg=False, zooms=None):
     from scipy.ndimage import binary_dilation
     from skimage.morphology import ball
 
-    assert len(in_files) == 3, f"Expected GM, WM, and CSF files. Got {in_files}"
+    if len(in_files) != 3:
+        raise ValueError('Expected GM, WM, and CSF files. Got %s', in_files)
 
     csf_file = in_files[2]  # BIDS labeling (CSF=2; last of list)
     # Load PV maps (fast) or segments (recon-all)
@@ -113,7 +114,7 @@ def acompcor_masks(in_files, is_aseg=False, zooms=None):
         csf_file = mask2vf(
             csf_file,
             zooms=zooms,
-            out_file=str(Path("acompcor_csf.nii.gz").absolute()),
+            out_file=str(Path('acompcor_csf.nii.gz').absolute()),
         )
         csf_data = nb.load(csf_file).get_fdata()
         wm_data = mask2vf(in_files[1], zooms=zooms)
@@ -125,8 +126,8 @@ def acompcor_masks(in_files, is_aseg=False, zooms=None):
     gm_data = binary_dilation(gm_data, structure=ball(3))
 
     # Output filenames
-    wm_file = str(Path("acompcor_wm.nii.gz").absolute())
-    combined_file = str(Path("acompcor_wmcsf.nii.gz").absolute())
+    wm_file = str(Path('acompcor_wm.nii.gz').absolute())
+    combined_file = str(Path('acompcor_wmcsf.nii.gz').absolute())
 
     # Prepare WM mask
     wm_data[gm_data] = 0  # Make sure voxel does not contain GM

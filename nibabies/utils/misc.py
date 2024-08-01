@@ -1,14 +1,11 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Miscellaneous utilities."""
+
 from __future__ import annotations
 
-import shutil
+from functools import cache
 from pathlib import Path
-from typing import Union
-
-from nibabies import __version__
-from nibabies.data import load as load_data
 
 
 def fix_multi_source_name(in_files):
@@ -24,7 +21,7 @@ def fix_multi_source_name(in_files):
 
     from nipype.utils.filemanip import filename_to_list
 
-    if not isinstance(in_files, (tuple, list)):
+    if not isinstance(in_files, tuple | list):
         return in_files
     elif len(in_files) == 1:
         return in_files[0]
@@ -32,11 +29,11 @@ def fix_multi_source_name(in_files):
     p = Path(filename_to_list(in_files)[0])
     # subject_label = p.name.split("_", 1)[0].split("-")[1]
     try:
-        subj = re.search(r"(?<=^sub-)[a-zA-Z0-9]*", p.name).group()
-        suffix = re.search(r"(?<=_)\w+(?=\.)", p.name).group()
-    except AttributeError:
-        raise AttributeError("Could not extract BIDS information")
-    return str(p.parent / f"sub-{subj}_{suffix}.nii.gz")
+        subj = re.search(r'(?<=^sub-)[a-zA-Z0-9]*', p.name).group()
+        suffix = re.search(r'(?<=_)\w+(?=\.)', p.name).group()
+    except AttributeError as e:
+        raise AttributeError('Could not extract BIDS information') from e
+    return str(p.parent / f'sub-{subj}_{suffix}.nii.gz')
 
 
 def check_deps(workflow):
@@ -46,7 +43,7 @@ def check_deps(workflow):
     return sorted(
         (node.interface.__class__.__name__, node.interface._cmd)
         for node in workflow._get_all_nodes()
-        if (hasattr(node.interface, "_cmd") and which(node.interface._cmd.split()[0]) is None)
+        if (hasattr(node.interface, '_cmd') and which(node.interface._cmd.split()[0]) is None)
     )
 
 
@@ -55,7 +52,7 @@ def cohort_by_months(template, months):
     Produce a recommended cohort based on partipants age
     """
     cohort_key = {
-        "MNIInfant": (
+        'MNIInfant': (
             # upper bound of template | cohort
             2,  # 1
             5,  # 2
@@ -69,7 +66,7 @@ def cohort_by_months(template, months):
             44,  # 10
             60,  # 11
         ),
-        "UNCInfant": (
+        'UNCInfant': (
             8,  # 1
             12,  # 2
             24,  # 3
@@ -77,12 +74,12 @@ def cohort_by_months(template, months):
     }
     ages = cohort_key.get(template)
     if ages is None:
-        raise KeyError("Template cohort information does not exist.")
+        raise KeyError('Template cohort information does not exist.')
 
     for cohort, age in enumerate(ages, 1):
         if months <= age:
             return cohort
-    raise KeyError("Age exceeds all cohorts!")
+    raise KeyError('Age exceeds all cohorts!')
 
 
 def check_total_memory(recommended_gb):
@@ -116,12 +113,12 @@ def combine_meepi_source(in_files):
     from nipype.utils.filemanip import filename_to_list
 
     base, in_file = os.path.split(filename_to_list(in_files)[0])
-    entities = [ent for ent in in_file.split("_") if not ent.startswith("echo-")]
-    basename = "_".join(entities)
+    entities = [ent for ent in in_file.split('_') if not ent.startswith('echo-')]
+    basename = '_'.join(entities)
     return os.path.join(base, basename)
 
 
-def get_file(pkg: str, src_path: Union[str, Path]) -> str:
+def get_file(pkg: str, src_path: str | Path) -> str:
     """
     Get or extract a source file.
     Assures the file will be available until the lifetime of the current Python process.
@@ -141,17 +138,19 @@ def get_file(pkg: str, src_path: Union[str, Path]) -> str:
     return str(fl)
 
 
-def save_fsLR_mcribs(mcribs_dir: str | Path) -> None:
-    template_dir = Path(mcribs_dir) / 'templates_fsLR'
-    template_dir.mkdir(exist_ok=True)
+@cache
+def estimate_bold_mem_usage(bold_fname: str) -> tuple[int, dict]:
+    import nibabel as nb
+    import numpy as np
 
-    atlases = load_data.cached('atlases')
-
-    for src in atlases.glob('*sphere.surf.gii'):
-        if not (dst := (template_dir / src.name)).exists():
-            try:
-                shutil.copyfile(src, dst)
-            except Exception:
-                import warnings
-
-                warnings.warn(f"Could not save {src.name} to MCRIBS outputs")
+    img = nb.load(bold_fname)
+    nvox = int(np.prod(img.shape, dtype='u8'))
+    # Assume tools will coerce to 8-byte floats to be safe
+    bold_size_gb = 8 * nvox / (1024**3)
+    bold_tlen = img.shape[-1]
+    mem_gb = {
+        'filesize': bold_size_gb,
+        'resampled': bold_size_gb * 4,
+        'largemem': bold_size_gb * (max(bold_tlen / 100, 1.0) + 4),
+    }
+    return bold_tlen, mem_gb

@@ -21,8 +21,8 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """Check the configuration module and file."""
+
 import os
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -46,7 +46,7 @@ def _reset_config():
 
 def test_reset_config():
     execution = config.execution
-    setattr(execution, 'bids_dir', 'TESTING')
+    execution.bids_dir = 'TESTING'
     assert config.execution.bids_dir == 'TESTING'
     _reset_config()
     assert config.execution.bids_dir is None
@@ -67,34 +67,28 @@ def test_config_spaces():
     config.loggers.init()
     age = 8
     spaces = _load_spaces(age)
-    assert "MNI152NLin6Asym:res-2" not in [str(s) for s in spaces.get_standard(full_spec=True)]
+    assert 'MNI152NLin6Asym:res-2' not in [str(s) for s in spaces.get_standard(full_spec=True)]
 
-    assert "MNI152NLin6Asym_res-2" not in [
+    assert 'MNI152NLin6Asym_res-2' not in [
         format_reference((s.fullname, s.spec))
         for s in spaces.references
         if s.standard and s.dim == 3
     ]
-
-    config.workflow.use_aroma = True
-    spaces = _load_spaces(age)
-
-    assert "MNI152NLin6Asym:res-2" in [str(s) for s in spaces.get_standard(full_spec=True)]
-
-    assert "MNI152NLin6Asym_res-2" in [
+    # Only enabled if CIFTI is requested
+    assert 'MNI152NLin6Asym:res-2' not in [str(s) for s in spaces.get_standard(full_spec=True)]
+    assert 'MNI152NLin6Asym_res-2' not in [
         format_reference((s.fullname, s.spec))
         for s in spaces.references
         if s.standard and s.dim == 3
     ]
 
     config.execution.output_spaces = None
-    config.workflow.use_aroma = False
 
     with pytest.raises(RuntimeError):
         spaces = _load_spaces(None)
 
     config.execution.output_spaces = None
-    config.workflow.cifti_output = "91k"
-    config.workflow.use_aroma = False
+    config.workflow.cifti_output = '91k'
     spaces = _load_spaces(1)
 
     assert [str(s) for s in spaces.get_standard(full_spec=True)] == [
@@ -111,17 +105,17 @@ def test_config_spaces():
 
 
 @pytest.mark.parametrize(
-    "master_seed,ants_seed,numpy_seed", [(1, 17612, 8272), (100, 19094, 60232)]
+    ('master_seed', 'ants_seed', 'numpy_seed'), [(1, 17612, 8272), (100, 19094, 60232)]
 )
 def test_prng_seed(master_seed, ants_seed, numpy_seed):
     """Ensure seeds are properly tracked"""
     seeds = config.seeds
     with patch.dict(os.environ, {}):
         seeds.load({'_random_seed': master_seed}, init=True)
-        assert getattr(seeds, 'master') == master_seed
+        assert seeds.master == master_seed
         assert seeds.ants == ants_seed
         assert seeds.numpy == numpy_seed
-        assert os.getenv("ANTS_RANDOM_SEED") == str(ants_seed)
+        assert os.getenv('ANTS_RANDOM_SEED') == str(ants_seed)
 
     _reset_config()
     for seed in ('_random_seed', 'master', 'ants', 'numpy'):

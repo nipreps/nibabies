@@ -4,7 +4,7 @@
 def truncation(
     in_file,
     clip_max=99.9,
-    dtype="int16",
+    dtype='int16',
     out_file=None,
     out_max=1000,
     out_min=0,
@@ -41,7 +41,7 @@ def truncation(
         data = np.clip(data, 0, np.percentile(data.reshape(-1), clip_max))
 
     if out_file is None:
-        out_file = fname_presuffix(Path(in_file).name, suffix="_trunc")
+        out_file = fname_presuffix(Path(in_file).name, suffix='_trunc')
 
     out_file = str(Path(out_file).absolute())
     img.__class__(data.astype(dtype), img.affine, hdr).to_filename(out_file)
@@ -58,7 +58,7 @@ def gaussian_filter(in_file, sigma=None, out_file=None):
     from scipy.ndimage import gaussian_filter
 
     if out_file is None:
-        out_file = fname_presuffix(Path(in_file).name, suffix="_gauss")
+        out_file = fname_presuffix(Path(in_file).name, suffix='_gauss')
     out_file = str(Path(out_file).absolute())
 
     img = nb.load(in_file)

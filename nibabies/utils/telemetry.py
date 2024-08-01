@@ -2,7 +2,7 @@ from nibabel.optpkg import optional_package
 
 from .. import __version__, config
 
-migas = optional_package("migas")[0]
+migas = optional_package('migas')[0]
 
 
 def setup_migas(init_ping: bool = True, exit_ping: bool = True) -> None:
@@ -33,4 +33,4 @@ def send_crumb(**kwargs) -> dict:
     """
     Communicate with the migas telemetry server. This requires `migas.setup()` to be called.
     """
-    return migas.add_breadcrumb("nipreps/nibabies", __version__, **kwargs)
+    return migas.add_breadcrumb('nipreps/nibabies', __version__, **kwargs)

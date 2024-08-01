@@ -1,0 +1,118 @@
+dataset_description:
+  Name: nibabies-outputs
+  BIDSVersion: 1.9.0
+  DatasetType: derivative
+'01':
+  anat:
+  - suffix: mask
+    space: T2w
+    desc: brain
+  - suffix: T2w
+    desc: preproc
+  - suffix: dseg
+    space: T2w
+  - suffix: probseg
+    space: T2w
+    label: CSF
+  - suffix: probseg
+    space: T2w
+    label: GM
+  - suffix: probseg
+    space: T2w
+    label: WM
+  - suffix: xfm
+    from: MNIInfant+1
+    to: T2w
+    mode: image
+    extension: .h5
+  - suffix: xfm
+    from: T2w
+    to: MNIInfant+1
+    mode: image
+    extension: .h5
+  - suffix: white
+    hemi: L
+    extension: .surf.gii
+  - suffix: white
+    hemi: R
+    extension: .surf.gii
+  - suffix: pial
+    hemi: L
+    extension: .surf.gii
+  - suffix: pial
+    hemi: R
+    extension: .surf.gii
+  - suffix: midthickness
+    hemi: L
+    extension: .surf.gii
+  - suffix: midthickness
+    hemi: R
+    extension: .surf.gii
+  - suffix: sphere
+    hemi: L
+    extension: .surf.gii
+  - suffix: sphere
+    hemi: R
+    extension: .surf.gii
+  - suffix: sphere
+    hemi: L
+    desc: reg
+    extension: .surf.gii
+  - suffix: sphere
+    hemi: R
+    desc: reg
+    extension: .surf.gii
+  - suffix: sphere
+    hemi: L
+    space: fsLR
+    desc: reg
+    extension: .surf.gii
+  - suffix: sphere
+    hemi: R
+    space: fsLR
+    desc: reg
+    extension: .surf.gii
+  - suffix: thickness
+    hemi: L
+    extension: .shape.gii
+  - suffix: thickness
+    hemi: R
+    extension: .shape.gii
+  - suffix: sulc
+    hemi: L
+    extension: .shape.gii
+  - suffix: sulc
+    hemi: R
+    extension: .shape.gii
+
+  func:
+  - suffix: boldref
+    desc: coreg
+  - suffix: boldref
+    desc: hmc
+  - suffix: xfm
+    extension: .txt
+    from: boldref
+    to: T2w
+    mode: image
+  - suffix: xfm
+    extension: .txt
+    from: orig
+    to: boldref
+    mode: image
+    desc: hmc
+  - suffix: boldref
+    space: MNIInfant
+    cohort: 1
+  - suffix: mask
+    space: MNIInfant
+    cohort: 1
+    desc: brain
+  - suffix: bold
+    space: MNIInfant
+    cohort: 1
+    desc: preproc
+  - suffix: bold
+    space: fsLR
+    den: 91k
+    extension: .dtseries.nii
