@@ -647,7 +647,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
             extension='.surf.gii',
         )
     ]
-    atlases = smriprep_data.load_resource('atlases')
+    atlases = smriprep_data.load('atlases')
     select_surfaces.inputs.template_roi = [
         str(atlases / f'L.atlasroi.{fslr_density}_fs_LR.shape.gii'),
         str(atlases / f'R.atlasroi.{fslr_density}_fs_LR.shape.gii'),
