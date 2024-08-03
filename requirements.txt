@@ -4,6 +4,11 @@
 #
 #    pip-compile --extra=container --output-file=requirements.txt --strip-extras pyproject.toml
 #
+acres==0.1.0
+    # via
+    #   nibabies (pyproject.toml)
+    #   niworkflows
+    #   smriprep
 annexremote==1.6.5
     # via
     #   datalad
@@ -212,7 +217,7 @@ nitransforms==23.0.1
     #   nibabies (pyproject.toml)
     #   niworkflows
     #   sdcflows
-niworkflows @ git+https://github.com/nipreps/niworkflows.git@master
+niworkflows==1.11.0
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
@@ -368,7 +373,7 @@ scipy==1.13.0
     #   scikit-learn
     #   sdcflows
     #   tedana
-sdcflows @ git+https://github.com/nipreps/sdcflows.git@master
+sdcflows==2.10.0
     # via nibabies (pyproject.toml)
 seaborn==0.13.2
     # via
@@ -384,7 +389,7 @@ six==1.16.0
     #   osfclient
     #   pybtex
     #   python-dateutil
-smriprep @ git+https://github.com/nipreps/smriprep.git@master
+smriprep==0.16.0
     # via nibabies (pyproject.toml)
 sqlalchemy==2.0.31
     # via pybids
