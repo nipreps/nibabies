@@ -11,6 +11,8 @@ import typing as ty
 import warnings
 from pathlib import Path
 
+SUPPORTED_AGE_UNITS = ('weeks', 'months', 'years')
+
 
 def write_bidsignore(deriv_dir):
     # TODO: Port to niworkflows
@@ -237,26 +239,22 @@ def parse_bids_for_age_months(
 
 
 def _get_age_from_tsv(
-    bids_tsv: Path, level: ty.Literal['session', 'participant'], key: str
+    bids_tsv: Path,
+    level: ty.Literal['session', 'participant'],
+    key: str,
 ) -> int | None:
     import pandas as pd
 
     df = pd.read_csv(str(bids_tsv), sep='\t')
     age_col = None
-    # prefer explicit "age_months" over "age"
-    for c in ('age_months', 'age'):
-        if c in df.columns:
-            age_col = c
+
+    for column in ('age_weeks', 'age_months', 'age_years', 'age'):
+        if column in df.columns:
+            age_col = column
             break
 
-    if age_col == 'age':
-        # verify age is in months
-        bids_json = bids_tsv.with_suffix('.json')
-        if not _verify_age_json(bids_json):
-            warnings.warn(
-                f'Could not verify age column is in months for file: {bids_tsv}',
-                stacklevel=1,
-            )
+    if age_col is None:
+        return
 
     # find the relevant row
     if level == 'session':
@@ -268,13 +266,57 @@ def _get_age_from_tsv(
         # extract age value from row
         age = int(df.loc[mask, age_col].values[0])
     except Exception:  # noqa: BLE001
-        age = None
-    return age
+        return
+
+    if age_col == 'age':
+        # verify age is in months
+        bids_json = bids_tsv.with_suffix('.json')
+        age_units = _get_age_units(bids_json)
+        if age_units is False:
+            warnings.warn(
+                f'Could not verify age units for file: {bids_tsv}',
+                stacklevel=1,
+            )
+            age_units = 'months'
+    else:
+        age_units = age_col.split('_')[-1]
+
+    age_months = age_to_months(age, units=age_units)
+    return age_months
 
 
-def _verify_age_json(bids_json: Path) -> bool:
+def _get_age_units(bids_json: Path) -> ty.Literal['weeks', 'months', 'years', False]:
     try:
         data = json.loads(bids_json.read_text())
-        return data['age']['Units'].lower() == 'months'
-    except Exception:  # noqa: BLE001
+    except json.JSONDecodeError:
         return False
+
+    # See if the unit is listed
+    units = data.get('age', {}).get('Units')
+    for unit in units:
+        if unit.lower() in SUPPORTED_AGE_UNITS:
+            return unit
+    return False
+
+
+def age_to_months(age: int, units: ty.Literal['weeks', 'months', 'years']) -> int:
+    """
+    Convert a given age, in either "weeks", "months", or "years", into months.
+
+    >>> age_to_months(1, 'years')
+    12
+    >>> age_to_months(2, 'weeks')
+    0
+    >>> age_to_months(3, 'weeks')
+    1
+    >>> age_to_months(8, 'months')
+    8
+    """
+    WEEKS_TO_MONTH = 0.230137
+    YEARS_TO_MONTH = 12
+
+    if units == 'weeks':
+        age = round(age * WEEKS_TO_MONTH)
+    elif units == 'years':
+        age *= YEARS_TO_MONTH
+    return age
