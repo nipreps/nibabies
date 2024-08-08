@@ -215,33 +215,51 @@ def parse_bids_for_age_months(
     session_id: str | None = None,
 ) -> int | None:
     """
-    Given a BIDS root, query the BIDS metadata files for participant age, in months.
+    Given a BIDS root, query the BIDS metadata files for participant age, and return in
+    chronological months.
 
     The heuristic followed is:
-    1) Check `sub-<subject_id>/sub-<subject_id>_sessions.tsv`
-    2) Check `<root>/participants.tsv`
+    1) Check `sub-<subject_id>[/ses-<session_id>]/<sub-<subject_id>[_ses-<session-id>]_scans.tsv
+    2) Check `sub-<subject_id>/sub-<subject_id>_sessions.tsv`
+    3) Check `<root>/participants.tsv`
     """
-    age = None
     if subject_id.startswith('sub-'):
         subject_id = subject_id[4:]
     if session_id and session_id.startswith('ses-'):
         session_id = session_id[4:]
 
-    sessions_tsv = Path(bids_root) / f'sub-{subject_id}' / f'sub-{subject_id}_sessions.tsv'
+    # Play nice with sessions
+    subject = f'sub-{subject_id}'
+    session = f'ses-{session_id}' or ''
+    prefix = f'{subject}' + f'_{session}' if session else ''
+
+    subject_level = session_level = Path(bids_root) / subject
+    if session_id:
+        session_level = subject_level / session
+
+    scans_tsv = session_level / f'{prefix}_scans.tsv'
+    if scans_tsv.exists():
+        age = _get_age_from_tsv(scans_tsv)
+
+    if age is not None:
+        return age
+
+    sessions_tsv = subject_level / f'{subject}_sessions.tsv'
     if sessions_tsv.exists() and session_id is not None:
-        age = _get_age_from_tsv(sessions_tsv, level='session', key=f'ses-{session_id}')
+        age = _get_age_from_tsv(sessions_tsv, index_column='session_id', index_val=session)
+
+    if age is not None:
+        return age
 
     participants_tsv = Path(bids_root) / 'participants.tsv'
     if participants_tsv.exists() and age is None:
-        age = _get_age_from_tsv(participants_tsv, level='participant', key=f'sub-{subject_id}')
+        age = _get_age_from_tsv(participants_tsv, index_column='participant_id', index_val=subject)
 
     return age
 
 
 def _get_age_from_tsv(
-    bids_tsv: Path,
-    level: ty.Literal['session', 'participant'],
-    key: str,
+    bids_tsv: Path, index_column: str | None = None, index_val: str | None = None
 ) -> int | None:
     import pandas as pd
 
@@ -252,19 +270,17 @@ def _get_age_from_tsv(
         if column in df.columns:
             age_col = column
             break
-
     if age_col is None:
         return
 
-    # find the relevant row
-    if level == 'session':
-        mask = df.session_id == key
-    elif level == 'participant':
-        mask = df.participant_id == key
+    if not index_column or not index_val:  # Just grab first value
+        idx = df.index[0]
+    else:
+        idx = df.index[df[index_column] == index_val].item()
 
     try:
         # extract age value from row
-        age = int(df.loc[mask, age_col].values[0])
+        age = int(df.loc[idx, age_col].item())
     except Exception:  # noqa: BLE001
         return
 
@@ -288,7 +304,7 @@ def _get_age_from_tsv(
 def _get_age_units(bids_json: Path) -> ty.Literal['weeks', 'months', 'years', False]:
     try:
         data = json.loads(bids_json.read_text())
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, OSError):
         return False
 
     # See if the unit is listed
