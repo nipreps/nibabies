@@ -8,10 +8,13 @@ import json
 import os
 import sys
 import typing as ty
-import warnings
 from pathlib import Path
 
-SUPPORTED_AGE_UNITS = ('weeks', 'months', 'years')
+SUPPORTED_AGE_UNITS = (
+    'weeks',
+    'months',
+    'years',
+)
 
 
 def write_bidsignore(deriv_dir):
@@ -289,11 +292,7 @@ def _get_age_from_tsv(
         bids_json = bids_tsv.with_suffix('.json')
         age_units = _get_age_units(bids_json)
         if age_units is False:
-            warnings.warn(
-                f'Could not verify age units for file: {bids_tsv}',
-                stacklevel=1,
-            )
-            age_units = 'months'
+            return None
     else:
         age_units = age_col.split('_')[-1]
 
@@ -307,11 +306,13 @@ def _get_age_units(bids_json: Path) -> ty.Literal['weeks', 'months', 'years', Fa
     except (json.JSONDecodeError, OSError):
         return False
 
-    # See if the unit is listed
-    units = data.get('age', {}).get('Units')
-    for unit in units:
-        if unit.lower() in SUPPORTED_AGE_UNITS:
-            return unit
+    units = data.get('age', {}).get('Units', '')
+    if not isinstance(units, str):
+        # Multiple units consfuse us
+        return False
+
+    if units.lower() in SUPPORTED_AGE_UNITS:
+        return units.lower()
     return False
 
 
