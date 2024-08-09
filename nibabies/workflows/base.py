@@ -514,7 +514,7 @@ It is released under the [CC0]\
             ]),
         ])  # fmt:skip
 
-        if 'MNIInfant' in [ref.space for ref in spaces.references]:
+        if cifti_output and 'MNIInfant' in [ref.space for ref in spaces.references]:
             select_MNIInfant_xfm = pe.Node(
                 KeySelect(
                     fields=['anat2std_xfm', 'std2anat_xfm'],
