@@ -333,6 +333,7 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
+                --surface-recon-method infantfs \
                 --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
                 --output-layout bids --anat-only
       - run:
@@ -361,6 +362,7 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
+                --surface-recon-method infantfs \
                 --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
                 --output-layout bids
       - run:
@@ -406,6 +408,7 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
+                --surface-recon-method infantfs \
                 --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
                 --output-layout bids --anat-only
       - run:
