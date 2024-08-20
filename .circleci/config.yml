@@ -10,7 +10,7 @@ _machine_defaults: &machine_defaults
 
 _python_defaults: &python_defaults
   docker:
-    - image: cimg/python:3.12.1
+    - image: cimg/python:3.12.5
       auth:
         username: $DOCKER_USER
         password: $DOCKER_PAT
@@ -160,17 +160,16 @@ jobs:
 
 
   get_data:
-    docker:
-      - image: cimg/python:3.12.1
+    <<: *python_defaults
     working_directory: /home/circleci/data
     steps:
       - restore_cache:
           keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
-            - data-v0--{{ .Revision }}
-            - data-v0-{{ .Branch }}-
-            - data-v0-master-
-            - data-v0-
+            - data-v1-{{ .Branch }}-{{ .Revision }}
+            - data-v1--{{ .Revision }}
+            - data-v1-{{ .Branch }}-
+            - data-v1-master-
+            - data-v1-
       - run:
           name: Install datalad + git-annex
           command: |
@@ -180,7 +179,7 @@ jobs:
               git config --global filter.annex.process "git-annex filter-process"
               git config --global user.name "Nipreps CI"
               git config --global user.email "nipreps@gmail.com"
-              pip install "datalad<0.18"
+              pip install datalad
             fi
       - run:
           name: Get bcp test data
@@ -334,7 +333,7 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
-                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
                 --output-layout bids --anat-only
       - run:
           name: Checking outputs of anatomical nibabies run
@@ -362,7 +361,7 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
-                --derivatives /tmp/data/${DATASET}/derivatives/precomputed \
+                --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
                 --output-layout bids
       - run:
           name: Checking outputs of full nibabies run
@@ -390,12 +389,7 @@ jobs:
             rm -f /tmp/data/${DATASET}-t2only/sub-01/ses-1mo/anat/*_T1w.*
             tree /tmp/data/${DATASET}-t2only
             mkdir -p /tmp/data/${DATASET}-t2only/derivatives
-            cp -r /tmp/data/${DATASET}/derivatives/precomputed /tmp/data/${DATASET}-t2only/derivatives
-            # rename the derivatives for now - this is only possible since they share the same space
-            sudo apt install rename
-            rename 's/space-T1w/space-T2w/' /tmp/data/${DATASET}-t2only/derivatives/precomputed/sub-01/ses-1mo/anat/*
-            sed -i 's/_T1w./_T2w./g' /tmp/data/${DATASET}-t2only/derivatives/precomputed/sub-01/ses-1mo/anat/*json
-            tree /tmp/data/${DATASET}-t2only/derivatives/precomputed
+            cp -r /tmp/data/${DATASET}/derivatives/bibsnet /tmp/data/${DATASET}-t2only/derivatives
 
       - run:
           name: Run nibabies single anatomical workflow
@@ -412,7 +406,7 @@ jobs:
                 --output-spaces MNIInfant:cohort-1 func \
                 --sloppy --write-graph --mem-mb 14000 \
                 --nthreads 4 -vv --age-months 2 --sloppy \
-                --derivatives /tmp/data/${DATASET}-t2only/derivatives/precomputed \
+                --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
                 --output-layout bids --anat-only
       - run:
           name: Checking outputs of T2-only nibabies anat
