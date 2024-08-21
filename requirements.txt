@@ -389,7 +389,7 @@ six==1.16.0
     #   osfclient
     #   pybtex
     #   python-dateutil
-smriprep==0.16.0
+smriprep @ git+https://github.com/nipreps/smriprep.git@fix/aparc-select
     # via nibabies (pyproject.toml)
 sqlalchemy==2.0.31
     # via pybids
