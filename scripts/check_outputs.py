@@ -12,6 +12,8 @@ import numpy as np
 
 DEFAULT_OUTPUT_SPACES = {"MNIInfant",}
 
+CHECKMARK = u' \u2713'
+
 
 def get_parser():
 
@@ -88,8 +90,10 @@ def test_functionals(func_dir):
         outtype = None
         if 'desc-brain_mask' in fl.name:
             outtype = 'masks'
-        elif 'desc-preproc_bold' in fl.name or '_boldref.' in fl.name:
+        elif 'desc-preproc_bold' in fl.name:
             outtype = 'preprocs'
+        elif '_boldref.' in fl.name:
+            outtype = 'boldrefs'
         elif 'desc-aseg_dseg' in fl.name or '_probseg.' in fl.name:
             outtype = 'segs'
         elif '_xfm.' in fl.name:
@@ -103,6 +107,7 @@ def test_functionals(func_dir):
             outputs[outtype].append(fl)
 
     _check_bold_preprocs(outputs['preprocs'])
+    _check_boldrefs(outputs['boldrefs'])
     _check_masks(outputs['masks'])
     _check_segs(outputs['segs'])
     _check_xfms(outputs['xfms'])
@@ -121,7 +126,7 @@ def _check_masks(masks):
             img = nb.load(mask)
             assert img.dataobj.dtype == np.uint8
             assert np.all(np.unique(img.dataobj) == [0, 1])
-        print(u' \u2713')
+        print(CHECKMARK)
 
 
 def _check_segs(segs):
@@ -148,7 +153,7 @@ def _check_segs(segs):
             assert img.dataobj.dtype == np.float32
             assert np.max(img.dataobj) == 1
             assert np.min(img.dataobj) == 0
-        print(u' \u2713')
+        print(CHECKMARK)
 
 
 def _check_xfms(xfms):
@@ -158,9 +163,12 @@ def _check_xfms(xfms):
             assert nt.linear.load(xfm, fmt='itk')
         elif xfm.name.endswith('.h5'):
             assert nt.manip.load(xfm)
+        elif xfm.name.endswith('.json'):
+            meta = json.loads(xfm.read_text())
+            assert 'Sources' in meta
         else:
             raise NotImplementedError
-        print(u' \u2713')
+        print(CHECKMARK)
 
 
 def _check_surfs(surfs):
@@ -172,7 +180,7 @@ def _check_surfs(surfs):
             da0, da1 = img.darrays
             assert da0.intent == 1008  # NIFTI_INTENT_POINTSET
             assert da1.intent == 1009  # NIFTI_INTENT_TRIANGLE
-        print(u' \u2713')
+        print(CHECKMARK)
 
 
 def _check_t1w_preprocs(preprocs):
@@ -184,7 +192,7 @@ def _check_t1w_preprocs(preprocs):
         else:
             img = nb.load(preproc)
             assert len(img.shape) == 3
-        print(u' \u2713')
+        print(CHECKMARK)
 
 
 def _check_bold_preprocs(preprocs):
@@ -195,11 +203,21 @@ def _check_bold_preprocs(preprocs):
             assert metadata['SkullStripped'] is False
         else:
             img = nb.load(preproc)
-            if '_boldref.' in preproc.name:
-                assert len(img.shape) == 3
-            elif 'desc-preproc_bold' in preproc.name:
-                assert len(img.shape) == 4
-        print(u' \u2713')
+            assert len(img.shape) == 4
+        print(CHECKMARK)
+
+
+def _check_boldrefs(boldrefs):
+    for boldref in boldrefs:
+        print(str(boldref), end='')
+        if '.json' in boldref.name:
+            metadata = json.loads(boldref.read_text())
+            assert 'Sources' in metadata
+        else:
+            bimg = nb.load(boldref)
+            if len(bimg.shape) > 3:
+                assert len(bimg.shape) == 4 and bimg.shape[3] == 1
+        print(CHECKMARK)
 
 
 def _check_ciftis(ciftis):
@@ -217,7 +235,7 @@ def _check_ciftis(ciftis):
             bm_map = matrix.get_index_map(1)
             assert series_map.indices_map_to_data_type == 'CIFTI_INDEX_TYPE_SERIES'
             assert bm_map.indices_map_to_data_type == 'CIFTI_INDEX_TYPE_BRAIN_MODELS'
-        print(u' \u2713')
+        print(CHECKMARK)
 
 
 if __name__ == "__main__":
