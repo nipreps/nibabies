@@ -160,24 +160,25 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
 def _select_frames(
     in_file: str, ref_frame_start: int, dummy_scans: int | None
 ) -> tuple[int, list]:
+    import warnings
+
     import nibabel as nb
     import numpy as np
 
     img = nb.load(in_file)
     img_len = img.shape[3]
 
-    if dummy_scans:
-        # Ensure start index is the largest of the two
-        # Will usually be `ref_frame_start`
-        start_frame = max(ref_frame_start, dummy_scans)
-    else:
-        start_frame = ref_frame_start
+    # Ensure start index is the largest of the two
+    # Will usually be `ref_frame_start`
+    start_frame = max(ref_frame_start, dummy_scans) if dummy_scans else ref_frame_start
 
     if start_frame >= img_len:
-        raise KeyError(
-            f'Caculating the BOLD reference starting on frame: {start_frame} but not enough BOLD '
-            f'volumes in {in_file}.'
+        warnings.warn(
+            f'Caculating the BOLD reference starting on frame {start_frame} but only {img_len} '
+            'volumes in BOLD file, so using last volume.',
+            stacklevel=1,
         )
+        start_frame = img_len - 1
 
     t_mask = np.array([False] * img_len, dtype=bool)
     t_mask[start_frame:] = True
