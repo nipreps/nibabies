@@ -840,7 +840,7 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
         spaces.add(Reference('MNI152NLin6Asym', {'res': vol_res}))
         # Ensure a non-native version of MNIInfant is added as a target
         cohort = cohort_by_months('MNIInfant', age_months)
-        spaces.add(Reference('MNIInfant', {'cohort': cohort}))
+        spaces.add(Reference('MNIInfant', {'cohort': cohort, 'res': 2}))
 
     return spaces
 
@@ -955,10 +955,10 @@ def get_MNIInfant_key(spaces: SpatialReferences) -> str:
     key = None
     for space in spaces.references:
         # str formats as <reference.name>:<reference.spec>
-        if 'MNIInfant' in str(space) and 'res-native' not in str(space):
+        if 'MNIInfant' in str(space) and 'res-2' in str(space):
             key = str(space)
             break
 
     if key is None:
-        raise KeyError(f'MNIInfant not found in SpatialReferences: {spaces}')
+        raise KeyError(f'MNIInfant (resolution 2x2x2) not found in SpatialReferences: {spaces}')
     return key
