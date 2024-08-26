@@ -10,10 +10,10 @@ _machine_defaults: &machine_defaults
 
 _python_defaults: &python_defaults
   docker:
-    - image: cimg/python:3.12.5
-      auth:
-        username: $DOCKER_USER
-        password: $DOCKER_PAT
+  - image: cimg/python:3.12.5
+    auth:
+      username: $DOCKER_USER
+      password: $DOCKER_PAT
   working_directory: /tmp/src/nibabies
 
 
@@ -69,525 +69,527 @@ _check_skip_job: &check_skip_job
 
 version: 2.1
 aliases:
-  - &src "/tmp/src/nibabies"
+- &src "/tmp/src/nibabies"
 orbs:
   docker: circleci/docker@2.1.4
 
 jobs:
 
   build:
-    <<: *machine_defaults
+    !!merge <<: *machine_defaults
+    environment:
+      BUILDKIT_PROGRESS: plain
     steps:
-      - checkout:
-          path: *src
-      - run: *check_skip_job
-      - restore_cache:
-          keys:
-            - build-v6-{{ .Branch }}-{{ .Revision }}
-            - build-v6--{{ .Revision }}
-            - build-v6-{{ .Branch }}-
-            - build-v6-master-
-            - build-v6-
-          paths:
-            - /tmp/docker
-            - /tmp/images
-      - docker/install-docker-credential-helper
-      - run: *docker_auth
-      - run: *setup_docker_registry
-      - run:
-          name: Create Docker builder
-          command: docker buildx create --use --name=builder --driver=docker-container
-      - run:
-          name: Clean and check images (before build)
-          command: |
-            docker image prune -f --filter="dangling=true" -f && docker images
-      - run:
-          name: Build Docker image
-          no_output_timeout: 60m
-          command: |
-            pyenv local 3
-            python -m pip install -U pip hatch
-            THISVERSION=$( python -m hatch version )
-            if [[ ${THISVERSION:0:1} == "0" ]] ; then
-              echo "WARNING: latest git tag could not be found"
-              echo "Please, make sure you fetch all tags from upstream with"
-              echo "the command ``git fetch --tags --verbose`` and push"
-              echo "them to your fork with ``git push origin --tags``"
-            fi
-            # Build docker image
-            docker buildx build --load --builder builder \
-                --cache-from localhost:5000/nibabies \
-                --cache-from nipreps/nibabies:dev \
-                -t nipreps/nibabies:dev \
-                --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
-                --build-arg VCS_REF=`git rev-parse --short HEAD` \
-                --build-arg VERSION="${CIRCLE_TAG:-$THISVERSION}" .
-      - run:
-          name: Check Docker images (after build)
-          command: docker images
-      - run:
-          name: Check Docker image
-          command: |
-            python -m pip install -U pip hatch
-            THISVERSION=$( python -m hatch version )
-            BUILT_VERSION=$( docker run --rm nipreps/nibabies:dev --version )
-            BUILT_VERSION=${BUILT_VERSION%$'\r'}
-            BUILT_VERSION=${BUILT_VERSION#*"NiBabies v"}
-            echo "VERSION: \"$THISVERSION\""
-            echo "BUILT: \"$BUILT_VERSION\""
-            set -e
-            test "$BUILT_VERSION" = "$THISVERSION"
-      - run:
-          name: Docker push to local registry
-          no_output_timeout: 40m
-          command: |
-            docker tag nipreps/nibabies:dev localhost:5000/nibabies
-            docker push localhost:5000/nibabies
-      - run:
-          name: Docker registry garbage collection
-          command: |
-            docker exec -it registry /bin/registry garbage-collect --delete-untagged \
-              /etc/docker/registry/config.yml
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - src/nibabies
-      - save_cache:
-         key: build-v6-{{ .Branch }}-{{ .Revision }}
-         paths:
-            - /tmp/docker
-            - /tmp/images
+    - checkout:
+        path: *src
+    - run: *check_skip_job
+    - restore_cache:
+        keys:
+        - build-v6-{{ .Branch }}-{{ .Revision }}
+        - build-v6--{{ .Revision }}
+        - build-v6-{{ .Branch }}-
+        - build-v6-master-
+        - build-v6-
+        paths:
+        - /tmp/docker
+        - /tmp/images
+    - docker/install-docker-credential-helper
+    - run: *docker_auth
+    - run: *setup_docker_registry
+    - run:
+        name: Create Docker builder
+        command: docker buildx create --use --name=builder --driver=docker-container
+    - run:
+        name: Clean and check images (before build)
+        command: |
+          docker image prune -f --filter="dangling=true" -f && docker images
+    - run:
+        name: Build Docker image
+        no_output_timeout: 60m
+        command: |
+          pyenv local 3
+          python -m pip install -U pip hatch
+          THISVERSION=$( python -m hatch version )
+          if [[ ${THISVERSION:0:1} == "0" ]] ; then
+            echo "WARNING: latest git tag could not be found"
+            echo "Please, make sure you fetch all tags from upstream with"
+            echo "the command ``git fetch --tags --verbose`` and push"
+            echo "them to your fork with ``git push origin --tags``"
+          fi
+          # Build docker image
+          docker buildx build --load --builder builder \
+              --cache-from localhost:5000/nibabies \
+              --cache-from nipreps/nibabies:dev \
+              -t nipreps/nibabies:dev \
+              --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
+              --build-arg VCS_REF=`git rev-parse --short HEAD` \
+              --build-arg VERSION="${CIRCLE_TAG:-$THISVERSION}" .
+    - run:
+        name: Check Docker images (after build)
+        command: docker images
+    - run:
+        name: Check Docker image
+        command: |
+          python -m pip install -U pip hatch
+          THISVERSION=$( python -m hatch version )
+          BUILT_VERSION=$( docker run --rm nipreps/nibabies:dev --version )
+          BUILT_VERSION=${BUILT_VERSION%$'\r'}
+          BUILT_VERSION=${BUILT_VERSION#*"NiBabies v"}
+          echo "VERSION: \"$THISVERSION\""
+          echo "BUILT: \"$BUILT_VERSION\""
+          set -e
+          test "$BUILT_VERSION" = "$THISVERSION"
+    - run:
+        name: Docker push to local registry
+        no_output_timeout: 40m
+        command: |
+          docker tag nipreps/nibabies:dev localhost:5000/nibabies
+          docker push localhost:5000/nibabies
+    - run:
+        name: Docker registry garbage collection
+        command: |
+          docker exec -it registry /bin/registry garbage-collect --delete-untagged \
+            /etc/docker/registry/config.yml
+    - persist_to_workspace:
+        root: /tmp
+        paths:
+        - src/nibabies
+    - save_cache:
+        key: build-v6-{{ .Branch }}-{{ .Revision }}
+        paths:
+        - /tmp/docker
+        - /tmp/images
 
 
   get_data:
-    <<: *python_defaults
+    !!merge <<: *python_defaults
     working_directory: /home/circleci/data
     steps:
-      - restore_cache:
-          keys:
-            - data-v1-{{ .Branch }}-{{ .Revision }}
-            - data-v1--{{ .Revision }}
-            - data-v1-{{ .Branch }}-
-            - data-v1-master-
-            - data-v1-
-      - run:
-          name: Install datalad + git-annex
-          command: |
-            if [[ ! -d /tmp/data/bcp ]]; then
-              pip install datalad-installer
-              datalad-installer --sudo ok git-annex -m datalad/git-annex:release
-              git config --global filter.annex.process "git-annex filter-process"
-              git config --global user.name "Nipreps CI"
-              git config --global user.email "nipreps@gmail.com"
-              pip install datalad
-            fi
-      - run:
-          name: Get bcp test data
-          command: |
-            if [[ ! -d /tmp/data/bcp ]]; then
-              echo "Downloading data"
-              mkdir -p /tmp/data
-                # avoid datalad symlinks to avoid binding problems
-                datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get -J2 sub-01
-                datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp/derivatives && cd /tmp/data/bcp/derivatives && datalad get . -J2
-                cd /tmp/data/bcp && datalad unlock -r . && chmod -R a+w .
-            else
-              echo "Reusing cached data"
-            fi
-      - save_cache:
-         key: data-v0-{{ .Branch }}-{{ .Revision }}
-         paths:
-            - /tmp/data
-      - run:
-          name: Store FreeSurfer license file
-          command: |
-            mkdir -p /tmp/fslicense
-            cd /tmp/fslicense
-            echo "cHJpbnRmICJrcnp5c3p0b2YuZ29yZ29sZXdza2lAZ21haWwuY29tXG41MTcyXG4gKkN2dW12RVYzelRmZ1xuRlM1Si8yYzFhZ2c0RVxuIiA+IGxpY2Vuc2UudHh0Cg==" | base64 -d | sh
-      - run:
-          name: Create Nipype config files
-          command: |
-            mkdir -p /tmp/bcp
-            printf "[execution]\nstop_on_first_crash = true\n" > /tmp/bcp/nipype.cfg
-            echo "poll_sleep_duration = 0.01" >> /tmp/bcp/nipype.cfg
-            echo "hash_method = content" >> /tmp/bcp/nipype.cfg
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - fslicense
-            - bcp/nipype.cfg
+    - restore_cache:
+        keys:
+        - data-v1-{{ .Branch }}-{{ .Revision }}
+        - data-v1--{{ .Revision }}
+        - data-v1-{{ .Branch }}-
+        - data-v1-master-
+        - data-v1-
+    - run:
+        name: Install datalad + git-annex
+        command: |
+          if [[ ! -d /tmp/data/bcp ]]; then
+            pip install datalad-installer
+            datalad-installer --sudo ok git-annex -m datalad/git-annex:release
+            git config --global filter.annex.process "git-annex filter-process"
+            git config --global user.name "Nipreps CI"
+            git config --global user.email "nipreps@gmail.com"
+            pip install datalad
+          fi
+    - run:
+        name: Get bcp test data
+        command: |
+          if [[ ! -d /tmp/data/bcp ]]; then
+            echo "Downloading data"
+            mkdir -p /tmp/data
+              # avoid datalad symlinks to avoid binding problems
+              datalad clone https://gin.g-node.org/nipreps-data/bcp /tmp/data/bcp && cd /tmp/data/bcp && datalad get -J2 sub-01
+              datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives /tmp/data/bcp/derivatives && cd /tmp/data/bcp/derivatives && datalad get . -J2
+              cd /tmp/data/bcp && datalad unlock -r . && chmod -R a+w .
+          else
+            echo "Reusing cached data"
+          fi
+    - save_cache:
+        key: data-v0-{{ .Branch }}-{{ .Revision }}
+        paths:
+        - /tmp/data
+    - run:
+        name: Store FreeSurfer license file
+        command: |
+          mkdir -p /tmp/fslicense
+          cd /tmp/fslicense
+          echo "cHJpbnRmICJrcnp5c3p0b2YuZ29yZ29sZXdza2lAZ21haWwuY29tXG41MTcyXG4gKkN2dW12RVYzelRmZ1xuRlM1Si8yYzFhZ2c0RVxuIiA+IGxpY2Vuc2UudHh0Cg==" | base64 -d | sh
+    - run:
+        name: Create Nipype config files
+        command: |
+          mkdir -p /tmp/bcp
+          printf "[execution]\nstop_on_first_crash = true\n" > /tmp/bcp/nipype.cfg
+          echo "poll_sleep_duration = 0.01" >> /tmp/bcp/nipype.cfg
+          echo "hash_method = content" >> /tmp/bcp/nipype.cfg
+    - persist_to_workspace:
+        root: /tmp
+        paths:
+        - fslicense
+        - bcp/nipype.cfg
 
   test_pytest:
-    <<: *machine_defaults
+    !!merge <<: *machine_defaults
     environment:
       CHECK_PYTEST: true
     steps:
-      - checkout:
-          path: *src
-      - run: *check_skip_job
-      - attach_workspace:
-          at: /tmp
-      - restore_cache:
-          keys:
-            - build-v6-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /tmp/docker
-            - /tmp/images
-      - restore_cache:
-          keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
-      - docker/install-docker-credential-helper
-      - run: *docker_auth
-      - run: *setup_docker_registry
-      - run: *pull_from_registry
-      - run:
-          name: Run nibabies tests
-          no_output_timeout: 2h
-          command: |
-            docker run -ti --rm=false \
-              -e TEST_READONLY_FILESYSTEM=1 -v $HOME:/home/readonly:ro \
-              --entrypoint="pytest" nipreps/nibabies:dev \
-              --pyargs nibabies -svx --doctest-modules
-      - run:
-          name: Build nibabies-wrapper wheel
-          command: |
-            pyenv local 3
-            python --version
-            pip install --upgrade pip build
-            python -m build wrapper/
-      - run:
-          name: Test nibabies-wrapper (Python 3)
-          command: |
-            python --version
-            pip install --upgrade pip
-            pip install wrapper/dist/*.whl
-            which nibabies-wrapper
-            nibabies-wrapper --help
-            nibabies-wrapper --version
-      - run:
-          name: Test nibabies-wrapper (Python 2)
-          command: |
-            pyenv local 2.7
-            python --version
-            pip install --upgrade "pip<21"
-            pip install wrapper/dist/*.whl
-            which nibabies-wrapper
-            nibabies-wrapper --help
-            nibabies-wrapper --version
-      - store_artifacts:
-          path: /tmp/data/reports
+    - checkout:
+        path: *src
+    - run: *check_skip_job
+    - attach_workspace:
+        at: /tmp
+    - restore_cache:
+        keys:
+        - build-v6-{{ .Branch }}-{{ .Revision }}
+        paths:
+        - /tmp/docker
+        - /tmp/images
+    - restore_cache:
+        keys:
+        - data-v0-{{ .Branch }}-{{ .Revision }}
+    - docker/install-docker-credential-helper
+    - run: *docker_auth
+    - run: *setup_docker_registry
+    - run: *pull_from_registry
+    - run:
+        name: Run nibabies tests
+        no_output_timeout: 2h
+        command: |
+          docker run -ti --rm=false \
+            -e TEST_READONLY_FILESYSTEM=1 -v $HOME:/home/readonly:ro \
+            --entrypoint="pytest" nipreps/nibabies:dev \
+            --pyargs nibabies -svx --doctest-modules
+    - run:
+        name: Build nibabies-wrapper wheel
+        command: |
+          pyenv local 3
+          python --version
+          pip install --upgrade pip build
+          python -m build wrapper/
+    - run:
+        name: Test nibabies-wrapper (Python 3)
+        command: |
+          python --version
+          pip install --upgrade pip
+          pip install wrapper/dist/*.whl
+          which nibabies-wrapper
+          nibabies-wrapper --help
+          nibabies-wrapper --version
+    - run:
+        name: Test nibabies-wrapper (Python 2)
+        command: |
+          pyenv local 2.7
+          python --version
+          pip install --upgrade "pip<21"
+          pip install wrapper/dist/*.whl
+          which nibabies-wrapper
+          nibabies-wrapper --help
+          nibabies-wrapper --version
+    - store_artifacts:
+        path: /tmp/data/reports
 
 
   test_bcp:
-    <<: *machine_defaults
+    !!merge <<: *machine_defaults
     environment:
-      - FS_LICENSE: /tmp/fslicense/license.txt
-      - DATASET: bcp
-      - CHECK_BCP: true
-      - MIGAS_OPTOUT: "1"
+    - FS_LICENSE: /tmp/fslicense/license.txt
+    - DATASET: bcp
+    - CHECK_BCP: true
+    - MIGAS_OPTOUT: "1"
     steps:
-      - checkout
-      - run: *check_skip_job
-      - attach_workspace:
-          at: /tmp
-      - restore_cache:
-          keys:
-            - build-v6-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /tmp/docker
-            - /tmp/images
-      - restore_cache:
-          keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          keys:
-            - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
-            - bcp-anat-v0--{{ .Revision }}
-            - bcp-anat-v0-{{ .Branch }}-
-            - bcp-anat-v0-master-
-            - bcp-anat-v0-
-      - docker/install-docker-credential-helper
-      - run: *docker_auth
-      - run: *setup_docker_registry
-      - run: *pull_from_registry
-      - run:
-          name: Setting up test
-          command: |
-            pyenv local 3
-            python --version
-            mkdir -p /tmp/${DATASET}/derivatives
-            pip install --upgrade pip
-            pip install --upgrade wrapper/
-      - run:
-          name: Run nibabies anatomical with precomputed derivatives
-          no_output_timeout: 2h
-          command: |
-            mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives/nibabies
-            nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
-                -i nipreps/nibabies:dev \
-                -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
-                --network none --notrack \
-                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
-                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
-                --skull-strip-template UNCInfant:cohort-1 \
-                --output-spaces MNIInfant:cohort-1 func \
-                --sloppy --write-graph --mem-mb 14000 \
-                --nthreads 4 -vv --age-months 2 --sloppy \
-                --surface-recon-method infantfs \
-                --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-                --output-layout bids --anat-only
-      - run:
-          name: Checking outputs of anatomical nibabies run
-          command: |
-            mkdir -p /tmp/${DATASET}/test
-            CHECK_OUTPUTS_FILE="${DATASET}_anat_outputs.txt"
-            cd /tmp/${DATASET}/derivatives/nibabies && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
-            cat /tmp/${DATASET}/test/outputs.out
-            sort -o /tmp/${DATASET}/test/expected.out /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE}
-            diff /tmp/${DATASET}/test/expected.out /tmp/${DATASET}/test/outputs.out
-            rm -rf /tmp/${DATASET}/test
-            exit $?
-      - run:
-          name: Rerun nibabies with BOLD data
-          no_output_timeout: 2h
-          command: |
-            mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives/nibabies
-            nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
-                -i nipreps/nibabies:dev \
-                -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
-                --network none \
-                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
-                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
-                --skull-strip-template UNCInfant:cohort-1 \
-                --output-spaces MNIInfant:cohort-1 func \
-                --sloppy --write-graph --mem-mb 14000 \
-                --nthreads 4 -vv --age-months 2 --sloppy \
-                --surface-recon-method infantfs \
-                --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-                --output-layout bids
-      - run:
-          name: Checking outputs of full nibabies run
-          command: |
-            mkdir -p /tmp/${DATASET}/test
-            CHECK_OUTPUTS_FILE="${DATASET}_full_outputs.txt"
-            cd /tmp/${DATASET}/derivatives/nibabies && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
-            cat /tmp/${DATASET}/test/outputs.out
-            sort -o /tmp/${DATASET}/test/expected.out /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE}
-            diff /tmp/${DATASET}/test/expected.out /tmp/${DATASET}/test/outputs.out
-            rm -rf /tmp/${DATASET}/test
-            exit $?
-      - run:
-          name: Verify outputs
-          command: |
-            pip install nibabel numpy nitransforms
-            python /tmp/src/nibabies/scripts/check_outputs.py /tmp/${DATASET}/derivatives/nibabies
-            exit $?
-      - run:
-          name: Create copy with only T2w data
-          command: |
-            mkdir -p /tmp/data/${DATASET}-t2only
-            cp /tmp/data/${DATASET}/dataset_description.json /tmp/data/${DATASET}-t2only
-            cp -r /tmp/data/${DATASET}/sub-01 /tmp/data/${DATASET}-t2only/sub-01
-            rm -f /tmp/data/${DATASET}-t2only/sub-01/ses-1mo/anat/*_T1w.*
-            tree /tmp/data/${DATASET}-t2only
-            mkdir -p /tmp/data/${DATASET}-t2only/derivatives
-            cp -r /tmp/data/${DATASET}/derivatives/bibsnet /tmp/data/${DATASET}-t2only/derivatives
+    - checkout
+    - run: *check_skip_job
+    - attach_workspace:
+        at: /tmp
+    - restore_cache:
+        keys:
+        - build-v6-{{ .Branch }}-{{ .Revision }}
+        paths:
+        - /tmp/docker
+        - /tmp/images
+    - restore_cache:
+        keys:
+        - data-v0-{{ .Branch }}-{{ .Revision }}
+    - restore_cache:
+        keys:
+        - bcp-anat-v0-{{ .Branch }}-{{ .Revision }}
+        - bcp-anat-v0--{{ .Revision }}
+        - bcp-anat-v0-{{ .Branch }}-
+        - bcp-anat-v0-master-
+        - bcp-anat-v0-
+    - docker/install-docker-credential-helper
+    - run: *docker_auth
+    - run: *setup_docker_registry
+    - run: *pull_from_registry
+    - run:
+        name: Setting up test
+        command: |
+          pyenv local 3
+          python --version
+          mkdir -p /tmp/${DATASET}/derivatives
+          pip install --upgrade pip
+          pip install --upgrade wrapper/
+    - run:
+        name: Run nibabies anatomical with precomputed derivatives
+        no_output_timeout: 2h
+        command: |
+          mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives/nibabies
+          nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
+              -i nipreps/nibabies:dev \
+              -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+              --network none --notrack \
+              --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+              --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+              --skull-strip-template UNCInfant:cohort-1 \
+              --output-spaces MNIInfant:cohort-1 func \
+              --sloppy --write-graph --mem-mb 14000 \
+              --nthreads 4 -vv --age-months 2 --sloppy \
+              --surface-recon-method infantfs \
+              --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
+              --output-layout bids --anat-only
+    - run:
+        name: Checking outputs of anatomical nibabies run
+        command: |
+          mkdir -p /tmp/${DATASET}/test
+          CHECK_OUTPUTS_FILE="${DATASET}_anat_outputs.txt"
+          cd /tmp/${DATASET}/derivatives/nibabies && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
+          cat /tmp/${DATASET}/test/outputs.out
+          sort -o /tmp/${DATASET}/test/expected.out /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE}
+          diff /tmp/${DATASET}/test/expected.out /tmp/${DATASET}/test/outputs.out
+          rm -rf /tmp/${DATASET}/test
+          exit $?
+    - run:
+        name: Rerun nibabies with BOLD data
+        no_output_timeout: 2h
+        command: |
+          mkdir -p /tmp/${DATASET}/work /tmp/${DATASET}/derivatives/nibabies
+          nibabies-wrapper docker /tmp/data/${DATASET} /tmp/${DATASET}/derivatives/nibabies participant \
+              -i nipreps/nibabies:dev \
+              -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+              --network none \
+              --config $PWD/nipype.cfg -w /tmp/${DATASET}/work \
+              --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+              --skull-strip-template UNCInfant:cohort-1 \
+              --output-spaces MNIInfant:cohort-1 func \
+              --sloppy --write-graph --mem-mb 14000 \
+              --nthreads 4 -vv --age-months 2 --sloppy \
+              --surface-recon-method infantfs \
+              --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
+              --output-layout bids
+    - run:
+        name: Checking outputs of full nibabies run
+        command: |
+          mkdir -p /tmp/${DATASET}/test
+          CHECK_OUTPUTS_FILE="${DATASET}_full_outputs.txt"
+          cd /tmp/${DATASET}/derivatives/nibabies && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
+          cat /tmp/${DATASET}/test/outputs.out
+          sort -o /tmp/${DATASET}/test/expected.out /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE}
+          diff /tmp/${DATASET}/test/expected.out /tmp/${DATASET}/test/outputs.out
+          rm -rf /tmp/${DATASET}/test
+          exit $?
+    - run:
+        name: Verify outputs
+        command: |
+          pip install nibabel numpy nitransforms
+          python /tmp/src/nibabies/scripts/check_outputs.py /tmp/${DATASET}/derivatives/nibabies
+          exit $?
+    - run:
+        name: Create copy with only T2w data
+        command: |
+          mkdir -p /tmp/data/${DATASET}-t2only
+          cp /tmp/data/${DATASET}/dataset_description.json /tmp/data/${DATASET}-t2only
+          cp -r /tmp/data/${DATASET}/sub-01 /tmp/data/${DATASET}-t2only/sub-01
+          rm -f /tmp/data/${DATASET}-t2only/sub-01/ses-1mo/anat/*_T1w.*
+          tree /tmp/data/${DATASET}-t2only
+          mkdir -p /tmp/data/${DATASET}-t2only/derivatives
+          cp -r /tmp/data/${DATASET}/derivatives/bibsnet /tmp/data/${DATASET}-t2only/derivatives
 
-      - run:
-          name: Run nibabies single anatomical workflow
-          no_output_timeout: 1h
-          command: |
-            mkdir -p /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only /tmp/${DATASET}/work-t2only
-            nibabies-wrapper docker /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only participant \
-                -i nipreps/nibabies:dev \
-                -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
-                --network none --notrack \
-                --config $PWD/nipype.cfg -w /tmp/${DATASET}/work-t2only \
-                --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
-                --skull-strip-template UNCInfant:cohort-1 \
-                --output-spaces MNIInfant:cohort-1 func \
-                --sloppy --write-graph --mem-mb 14000 \
-                --nthreads 4 -vv --age-months 2 --sloppy \
-                --surface-recon-method infantfs \
-                --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
-                --output-layout bids --anat-only
-      - run:
-          name: Checking outputs of T2-only nibabies anat
-          command: |
-            mkdir -p /tmp/${DATASET}/test
-            CHECK_OUTPUTS_FILE="${DATASET}_anat_t2only_outputs.txt"
-            cd /tmp/${DATASET}/derivatives/nibabies-t2only && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
-            cat /tmp/${DATASET}/test/outputs.out
-            sort -o /tmp/${DATASET}/test/expected.out /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE}
-            diff /tmp/${DATASET}/test/expected.out /tmp/${DATASET}/test/outputs.out
-            rm -rf /tmp/${DATASET}/test
-            exit $?
-      - store_artifacts:
-          path: /tmp/bcp/derivatives
+    - run:
+        name: Run nibabies single anatomical workflow
+        no_output_timeout: 1h
+        command: |
+          mkdir -p /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only /tmp/${DATASET}/work-t2only
+          nibabies-wrapper docker /tmp/data/${DATASET}-t2only /tmp/${DATASET}/derivatives/nibabies-t2only participant \
+              -i nipreps/nibabies:dev \
+              -e NIBABIES_DEV 1 --user $(id -u):$(id -g) \
+              --network none --notrack \
+              --config $PWD/nipype.cfg -w /tmp/${DATASET}/work-t2only \
+              --fs-subjects-dir /tmp/data/${DATASET}/derivatives/infant-freesurfer \
+              --skull-strip-template UNCInfant:cohort-1 \
+              --output-spaces MNIInfant:cohort-1 func \
+              --sloppy --write-graph --mem-mb 14000 \
+              --nthreads 4 -vv --age-months 2 --sloppy \
+              --surface-recon-method infantfs \
+              --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
+              --output-layout bids --anat-only
+    - run:
+        name: Checking outputs of T2-only nibabies anat
+        command: |
+          mkdir -p /tmp/${DATASET}/test
+          CHECK_OUTPUTS_FILE="${DATASET}_anat_t2only_outputs.txt"
+          cd /tmp/${DATASET}/derivatives/nibabies-t2only && tree -I 'figures|log' -lifa --noreport | sed s+^\./++ | sed '1d' | sort > /tmp/${DATASET}/test/outputs.out
+          cat /tmp/${DATASET}/test/outputs.out
+          sort -o /tmp/${DATASET}/test/expected.out /tmp/src/nibabies/.circleci/${CHECK_OUTPUTS_FILE}
+          diff /tmp/${DATASET}/test/expected.out /tmp/${DATASET}/test/outputs.out
+          rm -rf /tmp/${DATASET}/test
+          exit $?
+    - store_artifacts:
+        path: /tmp/bcp/derivatives
 
 
   deploy_docker_patches:
-    <<: *machine_defaults
+    !!merge <<: *machine_defaults
     working_directory: *src
     steps:
-      - run:
-          name: Check whether image should be deployed to Docker Hub
-          command: |
-            if [[ "$CIRCLE_PROJECT_USERNAME" != "nipreps" ]]; then
-              echo "Nothing to deploy for $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME."
-              circleci step halt
-            fi
-      - checkout
-      - run:
-          name: Check whether build should be skipped
-          command: |
-            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
-              echo "Only docs build"
-              circleci step halt
-            fi
-      - restore_cache:
-          keys:
-            - build-v6-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /tmp/docker
-            - /tmp/images
-      - docker/install-docker-credential-helper
-      - run: *docker_auth
-      - run: *setup_docker_registry
-      - run: *pull_from_registry
-      - run:
-          name: Deploy to Docker Hub
-          no_output_timeout: 40m
-          command: |
-            docker tag nipreps/nibabies:dev nipreps/nibabies:${CIRCLE_BRANCH#docker/}
-            docker push nipreps/nibabies:${CIRCLE_BRANCH#docker/}
+    - run:
+        name: Check whether image should be deployed to Docker Hub
+        command: |
+          if [[ "$CIRCLE_PROJECT_USERNAME" != "nipreps" ]]; then
+            echo "Nothing to deploy for $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME."
+            circleci step halt
+          fi
+    - checkout
+    - run:
+        name: Check whether build should be skipped
+        command: |
+          if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+            echo "Only docs build"
+            circleci step halt
+          fi
+    - restore_cache:
+        keys:
+        - build-v6-{{ .Branch }}-{{ .Revision }}
+        paths:
+        - /tmp/docker
+        - /tmp/images
+    - docker/install-docker-credential-helper
+    - run: *docker_auth
+    - run: *setup_docker_registry
+    - run: *pull_from_registry
+    - run:
+        name: Deploy to Docker Hub
+        no_output_timeout: 40m
+        command: |
+          docker tag nipreps/nibabies:dev nipreps/nibabies:${CIRCLE_BRANCH#docker/}
+          docker push nipreps/nibabies:${CIRCLE_BRANCH#docker/}
 
 
   deploy_docker:
-    <<: *machine_defaults
+    !!merge <<: *machine_defaults
     steps:
-      - checkout:
-          path: *src
-      - run:
-          name: Check whether build should be skipped
-          command: |
-            if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
-              echo "Only docs build"
-              circleci step halt
+    - checkout:
+        path: *src
+    - run:
+        name: Check whether build should be skipped
+        command: |
+          if [[ "$( git log --format='format:%s' -n 1 $CIRCLE_SHA1 | grep -i -E '^docs?(\(\w+\))?:' )" != "" ]]; then
+            echo "Only docs build"
+            circleci step halt
+          fi
+    - restore_cache:
+        keys:
+        - build-v6-{{ .Branch }}-{{ .Revision }}
+        paths:
+        - /tmp/docker
+        - /tmp/images
+    - docker/install-docker-credential-helper
+    - run: *docker_auth
+    - run: *setup_docker_registry
+    - run: *pull_from_registry
+    - run:
+        name: Deploy to Docker Hub
+        no_output_timeout: 40m
+        command: |
+          if [[ -n "$DOCKER_PAT" ]]; then
+            echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
+            docker tag nipreps/nibabies:dev nipreps/nibabies:unstable
+            docker push nipreps/nibabies:unstable
+            if [[ -n "$CIRCLE_TAG" ]]; then
+              docker tag nipreps/nibabies:dev nipreps/nibabies:latest
+              docker push nipreps/nibabies:latest
+              docker tag nipreps/nibabies:dev nipreps/nibabies:$CIRCLE_TAG
+              docker push nipreps/nibabies:$CIRCLE_TAG
             fi
-      - restore_cache:
-          keys:
-            - build-v6-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /tmp/docker
-            - /tmp/images
-      - docker/install-docker-credential-helper
-      - run: *docker_auth
-      - run: *setup_docker_registry
-      - run: *pull_from_registry
-      - run:
-          name: Deploy to Docker Hub
-          no_output_timeout: 40m
-          command: |
-            if [[ -n "$DOCKER_PAT" ]]; then
-              echo "$DOCKER_PAT" | docker login -u $DOCKER_USER --password-stdin
-              docker tag nipreps/nibabies:dev nipreps/nibabies:unstable
-              docker push nipreps/nibabies:unstable
-              if [[ -n "$CIRCLE_TAG" ]]; then
-                docker tag nipreps/nibabies:dev nipreps/nibabies:latest
-                docker push nipreps/nibabies:latest
-                docker tag nipreps/nibabies:dev nipreps/nibabies:$CIRCLE_TAG
-                docker push nipreps/nibabies:$CIRCLE_TAG
-              fi
-            fi
+          fi
 
 
   test_deploy_pypi:
-    <<: *python_defaults
+    !!merge <<: *python_defaults
     steps:
-      - checkout
-      - run:
-          name: Update build tools
-          command: |
-            python -m pip install -U pip
-            python -m pip install -U build twine hatch
-      - run:
-          name: Build nibabies
-          command: python -m build
-      - store_artifacts:
-          path: /tmp/src/nibabies/dist
-      - run:
-          name: Check sdist distribution
-          command: |
-            THISVERSION=$( python -m hatch version | tail -n1 )
-            THISVERSION=${CIRCLE_TAG:-$THISVERSION}
-            python -m twine check dist/nibabies*.tar.gz
-            virtualenv --python=python sdist
-            source sdist/bin/activate
-            python -m pip install --upgrade "pip>=19.1" numpy
-            python -m pip install dist/nibabies*.tar.gz
-            which nibabies | grep sdist\\/bin
-            INSTALLED_VERSION=$(nibabies --version)
-            INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
-            INSTALLED_VERSION=${INSTALLED_VERSION#*"NiBabies v"}
-            echo "VERSION: \"$THISVERSION\""
-            echo "INSTALLED: \"$INSTALLED_VERSION\""
-            test "$INSTALLED_VERSION" = "$THISVERSION"
-      - run:
-          name: Check wheel distribution
-          command: |
-            THISVERSION=$( python -m hatch version )
-            THISVERSION=${CIRCLE_TAG:-$THISVERSION}
-            python -m twine check dist/nibabies*.whl
-            virtualenv --python=python wheel
-            source wheel/bin/activate
-            python -m pip install dist/nibabies*.whl
-            which nibabies | grep wheel\\/bin
-            INSTALLED_VERSION=$(nibabies --version)
-            INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
-            INSTALLED_VERSION=${INSTALLED_VERSION#*"NiBabies v"}
-            echo "VERSION: \"$THISVERSION\""
-            echo "INSTALLED: \"$INSTALLED_VERSION\""
-            test "$INSTALLED_VERSION" = "$THISVERSION"
-      - run:
-          name: Build nibabies-wrapper
-          command: |
-            THISVERSION=$( python -m hatch version )
-            python -m build wrapper/
-      - store_artifacts:
-          path: /tmp/src/nibabies/wrapper/dist
+    - checkout
+    - run:
+        name: Update build tools
+        command: |
+          python -m pip install -U pip
+          python -m pip install -U build twine hatch
+    - run:
+        name: Build nibabies
+        command: python -m build
+    - store_artifacts:
+        path: /tmp/src/nibabies/dist
+    - run:
+        name: Check sdist distribution
+        command: |
+          THISVERSION=$( python -m hatch version | tail -n1 )
+          THISVERSION=${CIRCLE_TAG:-$THISVERSION}
+          python -m twine check dist/nibabies*.tar.gz
+          virtualenv --python=python sdist
+          source sdist/bin/activate
+          python -m pip install --upgrade "pip>=19.1" numpy
+          python -m pip install dist/nibabies*.tar.gz
+          which nibabies | grep sdist\\/bin
+          INSTALLED_VERSION=$(nibabies --version)
+          INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
+          INSTALLED_VERSION=${INSTALLED_VERSION#*"NiBabies v"}
+          echo "VERSION: \"$THISVERSION\""
+          echo "INSTALLED: \"$INSTALLED_VERSION\""
+          test "$INSTALLED_VERSION" = "$THISVERSION"
+    - run:
+        name: Check wheel distribution
+        command: |
+          THISVERSION=$( python -m hatch version )
+          THISVERSION=${CIRCLE_TAG:-$THISVERSION}
+          python -m twine check dist/nibabies*.whl
+          virtualenv --python=python wheel
+          source wheel/bin/activate
+          python -m pip install dist/nibabies*.whl
+          which nibabies | grep wheel\\/bin
+          INSTALLED_VERSION=$(nibabies --version)
+          INSTALLED_VERSION=${INSTALLED_VERSION%$'\r'}
+          INSTALLED_VERSION=${INSTALLED_VERSION#*"NiBabies v"}
+          echo "VERSION: \"$THISVERSION\""
+          echo "INSTALLED: \"$INSTALLED_VERSION\""
+          test "$INSTALLED_VERSION" = "$THISVERSION"
+    - run:
+        name: Build nibabies-wrapper
+        command: |
+          THISVERSION=$( python -m hatch version )
+          python -m build wrapper/
+    - store_artifacts:
+        path: /tmp/src/nibabies/wrapper/dist
 
 
   deploy_pypi:
-    <<: *python_defaults
+    !!merge <<: *python_defaults
     steps:
-      - checkout
-      - run:
-          name: Update build tools
-          command: python -m pip install pip build twine hatch
-      - run:
-          name: Build nibabies
-          command: python -m build
-      - run:
-          name: Build nibabies-wrapper
-          command: |
-            THISVERSION=$( python -m hatch version )
-            python -m build wrapper/
-      - run:
-          name: Upload packages to PyPI
-          command: |
-            python -m pip install twine
-            # upload nibabies
-            python -m twine upload dist/nibabies*
-            # upload wrapper
-            python -m twine upload wrapper/dist/nibabies*
+    - checkout
+    - run:
+        name: Update build tools
+        command: python -m pip install pip build twine hatch
+    - run:
+        name: Build nibabies
+        command: python -m build
+    - run:
+        name: Build nibabies-wrapper
+        command: |
+          THISVERSION=$( python -m hatch version )
+          python -m build wrapper/
+    - run:
+        name: Upload packages to PyPI
+        command: |
+          python -m pip install twine
+          # upload nibabies
+          python -m twine upload dist/nibabies*
+          # upload wrapper
+          python -m twine upload wrapper/dist/nibabies*
 
 
   deployable:
     docker:
-      - image: busybox:latest
+    - image: busybox:latest
     steps:
-      - run: echo Deploying!
+    - run: echo Deploying!
 
 
 workflows:
@@ -595,105 +597,105 @@ workflows:
   build_test_deploy:
     jobs:
 
-      - build:
-          context:
-            - nipreps-common
-          filters:
-            branches:
-              ignore:
-                - /docs?\/.*/
-            tags:
-              only: /.*/
+    - build:
+        context:
+        - nipreps-common
+        filters:
+          branches:
+            ignore:
+            - /docs?\/.*/
+          tags:
+            only: /.*/
 
-      - get_data:
-          context:
-            - fs-license
-          filters:
-            branches:
-              ignore:
-                - /docs?\/.*/
-                - /tests?\/.*/
-                - /docker\/.*/
-            tags:
-              only: /.*/
+    - get_data:
+        context:
+        - fs-license
+        filters:
+          branches:
+            ignore:
+            - /docs?\/.*/
+            - /tests?\/.*/
+            - /docker\/.*/
+          tags:
+            only: /.*/
 
-      - test_deploy_pypi:
-          context:
-            - nipreps-common
-          filters:
-            branches:
-              only:
-                - /rel\/.*/
-                - /maint\/.*/
-            tags:
-              only: /.*/
+    - test_deploy_pypi:
+        context:
+        - nipreps-common
+        filters:
+          branches:
+            only:
+            - /rel\/.*/
+            - /maint\/.*/
+          tags:
+            only: /.*/
 
-      - test_pytest:
-          context:
-            - nipreps-common
-          requires:
-            - build
-          filters:
-            branches:
-              ignore:
-                - /docs?\/.*/
-                - /docker\/.*/
-            tags:
-              only: /.*/
+    - test_pytest:
+        context:
+        - nipreps-common
+        requires:
+        - build
+        filters:
+          branches:
+            ignore:
+            - /docs?\/.*/
+            - /docker\/.*/
+          tags:
+            only: /.*/
 
-      - test_bcp:
-          context:
-            - nipreps-common
-          requires:
-            - get_data
-            - build
-          filters:
-            branches:
-              ignore:
-                - /docs?\/.*/
-                - /tests?\/.*/
-                - /docker\/.*/
-            tags:
-              only: /.*/
+    - test_bcp:
+        context:
+        - nipreps-common
+        requires:
+        - get_data
+        - build
+        filters:
+          branches:
+            ignore:
+            - /docs?\/.*/
+            - /tests?\/.*/
+            - /docker\/.*/
+          tags:
+            only: /.*/
 
-      - deploy_docker_patches:
-          context:
-            - nipreps-common
-          requires:
-            - build
-          filters:
-            branches:
-              only: /docker\/.*/
+    - deploy_docker_patches:
+        context:
+        - nipreps-common
+        requires:
+        - build
+        filters:
+          branches:
+            only: /docker\/.*/
 
-      - deployable:
-          requires:
-            - test_deploy_pypi
-            - test_pytest
-            - test_bcp
-          filters:
-            branches:
-              only: master
-            tags:
-              only: /.*/
+    - deployable:
+        requires:
+        - test_deploy_pypi
+        - test_pytest
+        - test_bcp
+        filters:
+          branches:
+            only: master
+          tags:
+            only: /.*/
 
-      - deploy_docker:
-          context:
-            - nipreps-common
-          requires:
-            - deployable
-          filters:
-            branches:
-              only: master
-            tags:
-              only: /.*/
+    - deploy_docker:
+        context:
+        - nipreps-common
+        requires:
+        - deployable
+        filters:
+          branches:
+            only: master
+          tags:
+            only: /.*/
 
-      - deploy_pypi:
-          context:
-            - nipreps-common
-          requires:
-            - deployable
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /.*/
+    - deploy_pypi:
+        context:
+        - nipreps-common
+        requires:
+        - deployable
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /.*/
