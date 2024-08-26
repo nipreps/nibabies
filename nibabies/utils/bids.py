@@ -240,6 +240,8 @@ def parse_bids_for_age_months(
     if session_id:
         session_level = subject_level / session
 
+    age = None
+
     scans_tsv = session_level / f'{prefix}_scans.tsv'
     if scans_tsv.exists():
         age = _get_age_from_tsv(scans_tsv)
