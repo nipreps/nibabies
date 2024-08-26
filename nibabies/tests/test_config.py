@@ -94,13 +94,14 @@ def test_config_spaces():
     assert [str(s) for s in spaces.get_standard(full_spec=True)] == [
         'MNIInfant:cohort-1:res-native',  # Default output space
         'MNI152NLin6Asym:res-2',
+        'MNIInfant:cohort-1:res-2',  # CIFTI: MNIInfant (2x2x2) -> MNI152NLin6Asym (2x2x2)
     ]
 
     assert [
         format_reference((s.fullname, s.spec))
         for s in spaces.references
         if s.standard and s.dim == 3
-    ] == ['MNIInfant_cohort-1_res-native', 'MNI152NLin6Asym_res-2', 'MNIInfant_cohort-1']
+    ] == ['MNIInfant_cohort-1_res-native', 'MNI152NLin6Asym_res-2', 'MNIInfant_cohort-1_res-2']
     _reset_config()
 
 
