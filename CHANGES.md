@@ -1,3 +1,12 @@
+24.0.0rc1 (August 27, 2024)
+===========================
+
+  * ENH: Additional support for age parsing (#376)
+  * FIX: Ensure 2mm template is added when running CIFTI (#381)
+  * CI: Fix smoke tests (#379)
+  * FIX: Do not require mniinfant xfm if no cifti (#377)
+
+
 24.0.0 (TBD)
 ============
 This major release includes a substantial refactoring of the pipeline.
@@ -16,6 +25,12 @@ Additionally, minor adjustments have been made to MCRIBS surface reconstruction 
 This release resolves a number of issues with fieldmaps inducing distortions during correction. Phase difference and direct fieldmaps are now masked correctly, preventing the overestimation of distortions outside the brain. Additionally, we now implement Jacobian weighting during unwarping, which corrects for compression and expansion effects on signal intensity. To disable Jacobian weighting, add `fmap-jacobian` to the `--ignore` argument.
 
 Finally, a new resampling method has been added, to better account for susceptibility distortion and motion in a single shot resampling to a volumetric target space. We anticipate extending this to surface targets in the future.
+
+### 24.0.0rc1 (August 27, 2024)
+  * ENH: Require units when age parsing, ingest scans.tsv (#376)
+  * FIX: Ensure 2mm template is added when running CIFTI (#381)
+  * CI: Fix smoke tests (#379)
+  * FIX: Do not require mniinfant xfm if no cifti (#377)
 
 ## 24.0.0rc0 (August 01, 2024)
   * RF: Move to fit/apply workflow (#360)
