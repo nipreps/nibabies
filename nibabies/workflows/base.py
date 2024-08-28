@@ -842,7 +842,7 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
         spaces.add(Reference('MNI152NLin6Asym', {'res': vol_res}))
         # Ensure a non-native version of MNIInfant is added as a target
         cohort = cohort_by_months('MNIInfant', age_months)
-        spaces.add(Reference('MNIInfant', {'cohort': cohort, 'res': 2}))
+        spaces.add(Reference('MNIInfant', {'cohort': cohort, 'res': vol_res}))
 
     return spaces
 
