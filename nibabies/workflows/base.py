@@ -515,10 +515,12 @@ It is released under the [CC0]\
         ])  # fmt:skip
 
         if cifti_output and 'MNIInfant' in [ref.space for ref in spaces.references]:
+            mniinfant_res = 2 if config.workflow.cifti_output == '91k' else 1
+
             select_MNIInfant_xfm = pe.Node(
                 KeySelect(
                     fields=['anat2std_xfm', 'std2anat_xfm'],
-                    key=get_MNIInfant_key(spaces),
+                    key=get_MNIInfant_key(spaces, mniinfant_res),
                 ),
                 name='select_MNIInfant_xfm',
                 run_without_submitting=True,
@@ -950,11 +952,10 @@ def get_estimator(layout, fname):
     return field_source
 
 
-def get_MNIInfant_key(spaces: SpatialReferences) -> str:
+def get_MNIInfant_key(spaces: SpatialReferences, res: str | int) -> str:
     """Parse spaces and return matching MNIInfant space, including cohort."""
-    for space in spaces.references:
-        # str formats as <reference.name>:<reference.spec>
-        if 'MNIInfant' in str(space) and 'res-2' in str(space):
-            return space.fullname
+    for ref in spaces.references:
+        if ref.space == 'MNIInfant' and f'res-{res}' in str(ref):
+            return ref.fullname
 
-    raise KeyError(f'MNIInfant (resolution 2x2x2) not found in SpatialReferences: {spaces}')
+    raise KeyError(f'MNIInfant (resolution {res}) not found in SpatialReferences: {spaces}')
