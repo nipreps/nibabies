@@ -859,7 +859,7 @@ def get_MNIInfant_mask(spaces: 'SpatialReferences') -> str:
                 tf.get(
                     'MNIInfant',
                     cohort=ref.spec['cohort'],
-                    resolution=1,
+                    resolution=2,
                     desc='brain',
                     suffix='mask',
                 )

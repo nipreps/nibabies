@@ -952,13 +952,9 @@ def get_estimator(layout, fname):
 
 def get_MNIInfant_key(spaces: SpatialReferences) -> str:
     """Parse spaces and return matching MNIInfant space, including cohort."""
-    key = None
     for space in spaces.references:
         # str formats as <reference.name>:<reference.spec>
         if 'MNIInfant' in str(space) and 'res-2' in str(space):
-            key = str(space)
-            break
+            return space.fullname
 
-    if key is None:
-        raise KeyError(f'MNIInfant (resolution 2x2x2) not found in SpatialReferences: {spaces}')
-    return key
+    raise KeyError(f'MNIInfant (resolution 2x2x2) not found in SpatialReferences: {spaces}')
