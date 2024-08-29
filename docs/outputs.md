@@ -334,7 +334,7 @@ Surface output spaces include `fsnative` (full density subject-specific mesh),
 a container format that holds both volumetric (regularly sampled in a grid) and surface
 (sampled on a triangular mesh) samples.
 Sub-cortical time series are sampled on a regular grid derived from one MNI template, while
-cortical time series are sampled on surfaces projected from the [Glasser2016]_ template.
+cortical time series are sampled on surfaces projected from the [^Glasser2016] template.
 If CIFTI outputs are requested (with the `--cifti-outputs` argument), the BOLD series are also
 saved as `dtseries.nii` CIFTI2 files
 
@@ -436,7 +436,7 @@ of both neuronal and non-neuronal origin.
 Neuronal signals are measured indirectly as changes in the local concentration of oxygenated hemoglobin.
 Non-neuronal fluctuations in fMRI data may appear as a result of head motion, scanner noise,
 or physiological fluctuations (related to cardiac or respiratory effects).
-For a detailed review of the possible sources of noise in the BOLD signal, refer to [Greve2013]_.
+For a detailed review of the possible sources of noise in the BOLD signal, refer to [^Greve2013].
 
 *Confounds* (or nuisance regressors) are variables representing fluctuations with a potential
 non-neuronal origin.
@@ -514,23 +514,23 @@ These confounds can be used to detect potential outlier time points -
 frames with sudden and large motion or intensity spikes.
 
 - `framewise_displacement` - is a quantification of the estimated bulk-head motion calculated using
-  formula proposed by [Power2012]_;
+  formula proposed by [^Power2012];
 - `rmsd` - is a quantification of the estimated relative (frame-to-frame) bulk head motion
-  calculated using the {abbr}`RMS (root mean square)` approach of [Jenkinson2002]_;
+  calculated using the {abbr}`RMS (root mean square)` approach of [^Jenkinson2002];
 - `dvars` - the derivative of RMS variance over voxels (or {abbr}`DVARS (derivative of
-  RMS variance over voxels)`) [Power2012]_;
+  RMS variance over voxels)`) [^Power2012];
 - `std_dvars` - standardized {abbr}`DVARS (derivative of RMS variance over voxels)`;
 - `non_steady_state_outlier_XX` - columns indicate non-steady state volumes with a single
   `1` value and `0` elsewhere (*i.e.*, there is one `non_steady_state_outlier_XX` column per
   outlier/volume).
 
 Detected outliers can be further removed from time series using methods such as:
-volume *censoring* - entirely discarding problematic time points [Power2012]_,
+volume *censoring* - entirely discarding problematic time points [^Power2012],
 regressing signal from outlier points in denoising procedure, or
 including outlier points in the subsequent first-level analysis when building
 the design matrix.
 Averaged value of confound (for example, mean `framewise_displacement`)
-can also be added as regressors in group level analysis [Yan2013]_.
+can also be added as regressors in group level analysis [^Yan2013].
 *Regressors of motion spikes* for outlier censoring are generated from within *NiBabies*,
 and their calculation may be adjusted with the command line options `--fd-spike-threshold`
 and `--dvars-spike-threshold` (defaults are FD > 0.5 mm or DVARS > 1.5).
@@ -574,7 +574,7 @@ In the method, principal components are calculated within an {abbr}`ROI (Region 
 that is unlikely to include signal related to neuronal activity, such as {abbr}`CSF (cerebro-spinal fluid)`
 and {abbr}`WM (white matter)` masks.
 Signals extracted from CompCor components can be further regressed out from the fMRI data with a
-denoising procedure [Behzadi2007].
+denoising procedure [^Behzadi2007].
 
 - `a_comp_cor_XX` - additional noise components are calculated using anatomical {abbr}`CompCor
   (Component Based Noise Correction)`;
@@ -628,9 +628,9 @@ For CompCor decompositions, entries include:
 
 :::{caution}
 Only a subset of these CompCor decompositions should be used for further denoising.
-The original Behzadi aCompCor implementation [Behzadi2007]_ can be applied using
+The original Behzadi aCompCor implementation [^Behzadi2007] can be applied using
 components from the combined masks, while the more recent Muschelli implementation
-[Muschelli2014]_ can be applied using
+[^Muschelli2014] can be applied using
 the {abbr}`WM (white matter)` and {abbr}`CSF (cerebro-spinal fluid)` masks.
 To determine the provenance of each component, consult the metadata file (described above).
 
@@ -647,9 +647,9 @@ cumulative fraction of variance is explained (e.g., 50%).
 :::{caution}
 Similarly, if you are using anatomical or temporal CompCor it may not make sense
 to use the `csf`, or `white_matter` global regressors -
-see `#1049 <https://github.com/nipreps/fmriprep/issues/1049>`_.
+see [fmriprep#1049](https://github.com/nipreps/fmriprep/issues/1049).
 Conversely, using the overall `global_signal` confound in addition to CompCor's
-regressors can be beneficial (see [Parkes2018]_).
+regressors can be beneficial (see [^Parkes2018]).
 :::
 
 :::{danger}
@@ -670,28 +670,14 @@ Reusing the implementation of aCompCor, *NiBabies* generates regressors correspo
 24 first principal components extracted with PCA using the voxel time-series delineated by
 the brain's outer edge (*crown*) mask.
 The procedure essentially follows the initial proposal of the approach by Patriat et al.
-[Patriat2017]_ and is described in our ISMRM abstract [Provins2022]_.
+[^Patriat2017] and is described in our ISMRM abstract [^Provins2022].
 
-Confounds and "carpet"-plot on the visual reports
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#### Confounds and "carpet"-plot on the visual reports
+
 The visual reports provide several sections per task and run to aid designing
 a denoising strategy for subsequent analysis.
 Some of the estimated confounds are plotted with a "carpet" visualization of the
-:abbr:`BOLD (blood-oxygen level-dependent)` time series [Power2016]_.
-An example of these plots follows:
-
-.. figure:: _static/sub-405_ses-01_task-rest_run-01_desc-carpetplot_bold.svg
-
-    The figure shows on top several confounds estimated for the BOLD series:
-    global signals ('GS', 'CSF', 'WM'), DVARS,
-    and framewise-displacement ('FD').
-    At the bottom, a 'carpetplot' summarizing the BOLD series [Power2016]_.
-    The carpet plot rows correspond to voxelwise time series,
-    and are separated into regions: cortical gray matter, deep
-    gray matter, white matter and cerebrospinal fluid, cerebellum
-    and the brain-edge or “crown” [Provins2022]_.
-    The crown corresponds to the voxels located on a
-    closed band around the brain [Patriat2015]_.
+:abbr:`BOLD (blood-oxygen level-dependent)` time series [^Power2016].
 
 Noise components computed during each CompCor decomposition are evaluated according
 to the fraction of variance that they explain across the nuisance ROI.
@@ -709,68 +695,78 @@ to which tissue-specific regressors correlate with global signal.
 
 See implementation on :mod:`~nibabies.workflows.bold.confounds.init_bold_confs_wf`.
 
-.. topic:: References
+## References
 
-  .. [Behzadi2007] Behzadi Y, Restom K, Liau J, Liu TT, A component-based noise correction method
-     (CompCor) for BOLD and perfusion-based fMRI. NeuroImage. 2007.
-     doi:`10.1016/j.neuroimage.2007.04.042 <https://doi.org/10.1016/j.neuroimage.2007.04.042>`_
+[^Behzadi2007]: Behzadi Y, Restom K, Liau J, Liu TT.
+A component-based noise correction method (CompCor) for BOLD and perfusion-based fMRI. NeuroImage. 2007.
+doi:[10.1016/j.neuroimage.2007.04.042](https://doi.org/10.1016/j.neuroimage.2007.04.042)
 
-  .. [Ciric2017] Ciric R, Wolf DH, Power JD, Roalf DR, Baum GL, Ruparel K, Shinohara RT, Elliott MA,
-     Eickhoff SB, Davatzikos C., Gur RC, Gur RE, Bassett DS, Satterthwaite TD.
-     Benchmarking of participant-level confound regression strategies for the control of motion
-     artifact in studies of functional connectivity. Neuroimage. 2017.
-     doi:`10.1016/j.neuroimage.2017.03.020 <https://doi.org/10.1016/j.neuroimage.2017.03.020>`_
+[^Ciric2017]: Ciric R, Wolf DH, Power JD, Roalf DR, Baum GL, Ruparel K, Shinohara RT, Elliott MA, Eickhoff SB, Davatzikos C., Gur RC, Gur RE, Bassett DS, Satterthwaite TD.
+Benchmarking of participant-level confound regression strategies for the control of motion artifact in studies of functional connectivity. 
+Neuroimage. 2017.
+doi:[10.1016/j.neuroimage.2017.03.020](https://doi.org/10.1016/j.neuroimage.2017.03.020)
 
-  .. [Greve2013] Greve DN, Brown GG, Mueller BA, Glover G, Liu TT,
-     A Survey of the Sources of Noise in fMRI. Psychometrika. 2013.
-     doi:`10.1007/s11336-013-9344-2 <https://doi.org/10.1007/s11336-013-9344-2>`_
+[^Greve2013]: Greve DN, Brown GG, Mueller BA, Glover G, Liu TT.
+A Survey of the Sources of Noise in fMRI.
+Psychometrika. 2013.
+doi:[10.1007/s11336-013-9344-2](https://doi.org/10.1007/s11336-013-9344-2)
 
-  .. [Friston1996] Friston KJ1, Williams S, Howard R, Frackowiak RS, Turner R,
-     Movement‐Related effects in fMRI time‐series. Magnetic Resonance in Medicine. 1996.
-     doi:`10.1002/mrm.191035031 <https://doi.org/10.1002/mrm.1910350312>`_
+[^Friston1996]: Friston KJ1, Williams S, Howard R, Frackowiak RS, Turner R.
+Movement‐Related effects in fMRI time‐series.
+Magnetic Resonance in Medicine. 1996.
+doi:[10.1002/mrm.191035031](https://doi.org/10.1002/mrm.1910350312)
 
-  .. [Glasser2016] Glasser MF, Coalson TS Robinson EC, Hacker CD, Harwell J, Yacoub E, Ugurbil K,
-     Andersson J, Beckmann CF, Jenkinson M, Smith SM, Van Essen DC.
-     A multi-modal parcellation of human cerebral cortex. Nature. 2016.
-     doi:`10.1038/nature18933 <https://doi.org/10.1038/nature18933>`_
+[^Glasser2016]: Glasser MF, Coalson TS Robinson EC, Hacker CD, Harwell J, Yacoub E, Ugurbil K, Andersson J, Beckmann CF, Jenkinson M, Smith SM, Van Essen DC.
+A multi-modal parcellation of human cerebral cortex.
+Nature. 2016.
+doi:[10.1038/nature18933](https://doi.org/10.1038/nature18933)
 
-  .. [Jenkinson2002] Jenkinson M, Bannister P, Brady M, Smith S. Improved optimization for the
-     robust and accurate linear registration and motion correction of brain images. Neuroimage.
-     2002. doi:`10.1016/s1053-8119(02)91132-8 <https://doi.org/10.1016/s1053-8119(02)91132-8>`__.
+[^Jenkinson2002]: Jenkinson M, Bannister P, Brady M, Smith S.
+Improved optimization for the robust and accurate linear registration and motion correction of brain images.
+Neuroimage. 2002.
+doi:[10.1016/s1053-8119(02)91132-8](https://doi.org/10.1016/s1053-8119(02)91132-8)
 
-  .. [Muschelli2014] Muschelli J, Nebel MB, Caffo BS, Barber AD, Pekar JJ, Mostofsky SH,
-     Reduction of motion-related artifacts in resting state fMRI using aCompCor. NeuroImage. 2014.
-     doi:`10.1016/j.neuroimage.2014.03.028 <https://doi.org/10.1016/j.neuroimage.2014.03.028>`_
+[^Muschelli2014]: Muschelli J, Nebel MB, Caffo BS, Barber AD, Pekar JJ, Mostofsky SH.
+Reduction of motion-related artifacts in resting state fMRI using aCompCor.
+NeuroImage. 2014.
+doi:[10.1016/j.neuroimage.2014.03.028](https://doi.org/10.1016/j.neuroimage.2014.03.028)
 
-  .. [Parkes2018] Parkes L, Fulcher B, Yücel M, Fornito A, An evaluation of the efficacy, reliability,
-     and sensitivity of motion correction strategies for resting-state functional MRI. NeuroImage. 2018.
-     doi:`10.1016/j.neuroimage.2017.12.073 <https://doi.org/10.1016/j.neuroimage.2017.12.073>`_
+[^Parkes2018]: Parkes L, Fulcher B, Yücel M, Fornito A.
+An evaluation of the efficacy, reliability, and sensitivity of motion correction strategies for resting-state functional MRI.
+NeuroImage. 2018.
+doi:[10.1016/j.neuroimage.2017.12.073](https://doi.org/10.1016/j.neuroimage.2017.12.073)
 
-  .. [Patriat2015] Patriat R, EK Molloy, RM Birn, T. Guitchev, and A. Popov. ,Using Edge Voxel Information to
-     Improve Motion Regression for Rs-FMRI Connectivity Studies. Brain Connectivity. 2015.
-     doi:`10.1089/brain.2014.0321 <https://doi.org/10.1089/brain.2014.0321>`_.
+[^Patriat2015]: Patriat R, EK Molloy, RM Birn, T. Guitchev, and A. Popov.
+Using Edge Voxel Information to Improve Motion Regression for Rs-FMRI Connectivity Studies.
+Brain Connectivity. 2015.
+doi:[10.1089/brain.2014.0321](https://doi.org/10.1089/brain.2014.0321)
 
-  .. [Patriat2017] Patriat R, Reynolds RC, Birn RM, An improved model of motion-related signal
-     changes in fMRI. NeuroImage. 2017.
-     doi:`10.1016/j.neuroimage.2016.08.051 <https://doi.org/10.1016/j.neuroimage.2016.08.051>`_.
+[^Patriat2017]: Patriat R, Reynolds RC, Birn RM,
+An improved model of motion-related signal changes in fMRI.
+NeuroImage. 2017.
+doi:[10.1016/j.neuroimage.2016.08.051](https://doi.org/10.1016/j.neuroimage.2016.08.051)
 
-  .. [Power2012] Power JD, Barnes KA, Snyder AZ, Schlaggar BL, Petersen, SA, Spurious but systematic
-     correlations in functional connectivity MRI networks arise from subject motion. NeuroImage. 2012.
-     doi:`10.1016/j.neuroimage.2011.10.018 <https://doi.org/10.1016/j.neuroimage.2011.10.018>`_
+[^Power2012]: Power JD, Barnes KA, Snyder AZ, Schlaggar BL, Petersen, SA.
+Spurious but systematic correlations in functional connectivity MRI networks arise from subject motion.
+NeuroImage. 2012.
+doi:[10.1016/j.neuroimage.2011.10.018](https://doi.org/10.1016/j.neuroimage.2011.10.018=[]
 
-  .. [Power2016] Power JD, A simple but useful way to assess fMRI scan qualities. NeuroImage. 2016.
-     doi:`10.1016/j.neuroimage.2016.08.009 <https://doi.org/10.1016/j.neuroimage.2016.08.009>`_
+[^Power2016]: Power JD.
+A simple but useful way to assess fMRI scan qualities.
+NeuroImage. 2016.
+doi:[10.1016/j.neuroimage.2016.08.009](https://doi.org/10.1016/j.neuroimage.2016.08.009)
 
-  .. [Provins2022] Provins C et al., Quality control and nuisance regression of fMRI, looking out
-     where signal should not be found. Proc. Intl. Soc. Mag. Reson. Med. 31, London (UK). 2022
-     doi:`10.31219/osf.io/hz52v <https://doi.org/10.31219/osf.io/hz52v>`_.
+[^Provins2022]: Provins C et al.
+Quality control and nuisance regression of fMRI, looking out where signal should not be found.
+Proc. Intl. Soc. Mag. Reson. Med. 31, London (UK). 2022
+doi:[10.31219/osf.io/hz52v](https://doi.org/10.31219/osf.io/hz52v)
 
-  .. [Satterthwaite2013] Satterthwaite TD, Elliott MA, Gerraty RT, Ruparel K, Loughead J, Calkins ME,
-     Eickhoff SB, Hakonarson H, Gur RC, Gur RE, Wolf DH,
-     An improved framework for confound regression and filtering for control of motion artifact
-     in the preprocessing of resting-state functional connectivity data. NeuroImage. 2013. doi:`10.1016/j.neuroimage.2012.08.052 <https://doi.org/10.1016/j.neuroimage.2012.08.052>`_
+[^Satterthwaite2013]: Satterthwaite TD, Elliott MA, Gerraty RT, Ruparel K, Loughead J, Calkins ME, Eickhoff SB, Hakonarson H, Gur RC, Gur RE, Wolf DH.
+An improved framework for confound regression and filtering for control of motion artifact in the preprocessing of resting-state functional connectivity data.
+NeuroImage. 2013.
+doi:[10.1016/j.neuroimage.2012.08.052](https://doi.org/10.1016/j.neuroimage.2012.08.052)
 
-  .. [Yan2013] Yan CG, Cheung B, Kelly C, Colcombe S, Craddock RC, Di Martino A, Li Q, Zuo XN,
-     Castellanos FX, Milham MP, A comprehensive assessment of regional variation in the impact of
-     head micromovements on functional connectomics. NeuroImage. 2013.
-     doi:`10.1016/j.neuroimage.2013.03.004 <https://doi.org/10.1016/j.neuroimage.2013.03.004>`_
+[^Yan2013]: Yan CG, Cheung B, Kelly C, Colcombe S, Craddock RC, Di Martino A, Li Q, Zuo XN, Castellanos FX, Milham MP.
+A comprehensive assessment of regional variation in the impact of head micromovements on functional connectomics.
+NeuroImage. 2013.
+doi:[10.1016/j.neuroimage.2013.03.004](https://doi.org/10.1016/j.neuroimage.2013.03.004)
