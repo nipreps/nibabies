@@ -61,8 +61,10 @@ doc = [
     "pydot >= 1.2.3",
     "sphinx >= 1.8",
     "sphinx-argparse",
-    "sphinx_rtd_theme",
-    "myst_nb",
+    "shibuya",
+    "myst_parser",
+    "sphinx-togglebutton",
+    "sphinxcontrib.bibtex",
 ]
 duecredit = ["duecredit"]
 maint = [
