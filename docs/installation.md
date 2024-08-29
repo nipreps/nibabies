@@ -31,7 +31,7 @@ There are also a few keyword tags, `latest` and `unstable`, that serve as specia
 Visit the [apptainer containers page](https://datasets.datalad.org/?dir=/repronim/containers/images/bids), courtesy of DataLad and ReproNim, to download already created images.
 
 :::{tip}
-Images are listed as ``bids-nibabies--<version>.sing``, where ``<version>`` is the release tag.
+Images are listed as `bids-nibabies--<version>.sing`, where `<version>` is the release tag.
 :::
 
 Otherwise, you can create an Apptainer image from the [Docker](#working-with-docker) images hosted online.

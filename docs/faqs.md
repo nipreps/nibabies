@@ -27,7 +27,7 @@ my_precomputed/
         └── sub-01_space-T2w_desc-brain_mask.nii.gz
 ```
 
-In this example, ``sub-01_desc-preproc_T2w.nii.gz`` will be used as the T2w reference. The other files (the brain mask and segmentation), will be in the same space.
+In this example, `sub-01_desc-preproc_T2w.nii.gz` will be used as the T2w reference. The other files (the brain mask and segmentation), will be in the same space.
 
 :::{warning}
 If no anatomical reference is provided, the outputs must be in the same space as the raw anatomical data.
