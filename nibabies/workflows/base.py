@@ -515,10 +515,12 @@ It is released under the [CC0]\
         ])  # fmt:skip
 
         if cifti_output and 'MNIInfant' in [ref.space for ref in spaces.references]:
+            mniinfant_res = 2 if config.workflow.cifti_output == '91k' else 1
+
             select_MNIInfant_xfm = pe.Node(
                 KeySelect(
                     fields=['anat2std_xfm', 'std2anat_xfm'],
-                    key=get_MNIInfant_key(spaces),
+                    key=get_MNIInfant_key(spaces, mniinfant_res),
                 ),
                 name='select_MNIInfant_xfm',
                 run_without_submitting=True,
@@ -840,7 +842,7 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
         spaces.add(Reference('MNI152NLin6Asym', {'res': vol_res}))
         # Ensure a non-native version of MNIInfant is added as a target
         cohort = cohort_by_months('MNIInfant', age_months)
-        spaces.add(Reference('MNIInfant', {'cohort': cohort, 'res': 2}))
+        spaces.add(Reference('MNIInfant', {'cohort': cohort, 'res': vol_res}))
 
     return spaces
 
@@ -950,15 +952,10 @@ def get_estimator(layout, fname):
     return field_source
 
 
-def get_MNIInfant_key(spaces: SpatialReferences) -> str:
+def get_MNIInfant_key(spaces: SpatialReferences, res: str | int) -> str:
     """Parse spaces and return matching MNIInfant space, including cohort."""
-    key = None
-    for space in spaces.references:
-        # str formats as <reference.name>:<reference.spec>
-        if 'MNIInfant' in str(space) and 'res-2' in str(space):
-            key = str(space)
-            break
+    for ref in spaces.references:
+        if ref.space == 'MNIInfant' and f'res-{res}' in str(ref):
+            return ref.fullname
 
-    if key is None:
-        raise KeyError(f'MNIInfant (resolution 2x2x2) not found in SpatialReferences: {spaces}')
-    return key
+    raise KeyError(f'MNIInfant (resolution {res}) not found in SpatialReferences: {spaces}')

@@ -104,6 +104,23 @@ def test_config_spaces():
     ] == ['MNIInfant_cohort-1_res-native', 'MNI152NLin6Asym_res-2', 'MNIInfant_cohort-1_res-2']
     _reset_config()
 
+    config.execution.output_spaces = None
+    config.workflow.cifti_output = '170k'
+    spaces = _load_spaces(1)
+
+    assert [str(s) for s in spaces.get_standard(full_spec=True)] == [
+        'MNIInfant:cohort-1:res-native',  # Default output space
+        'MNI152NLin6Asym:res-1',
+        'MNIInfant:cohort-1:res-1',
+    ]
+
+    assert [
+        format_reference((s.fullname, s.spec))
+        for s in spaces.references
+        if s.standard and s.dim == 3
+    ] == ['MNIInfant_cohort-1_res-native', 'MNI152NLin6Asym_res-1', 'MNIInfant_cohort-1_res-1']
+    _reset_config()
+
 
 @pytest.mark.parametrize(
     ('master_seed', 'ants_seed', 'numpy_seed'), [(1, 17612, 8272), (100, 19094, 60232)]

@@ -558,7 +558,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ]),
         ])  # fmt:skip
 
-    if config.workflow.cifti_output:
+    cifti_output = config.workflow.cifti_output
+    if cifti_output:
         from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 
         from nibabies.workflows.bold.alignment import (
@@ -581,7 +582,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         )
 
         bold_fsLR_resampling_wf = init_bold_fsLR_resampling_wf(
-            grayord_density=config.workflow.cifti_output,
+            grayord_density=cifti_output,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb['resampled'],
         )
@@ -615,7 +616,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
         subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf()
 
         bold_grayords_wf = init_bold_grayords_wf(
-            grayord_density=config.workflow.cifti_output,
+            grayord_density=cifti_output,
             repetition_time=all_metadata[0]['RepetitionTime'],
         )
 
@@ -624,7 +625,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 base_directory=output_dir,
                 dismiss_entities=DEFAULT_DISMISS_ENTITIES,
                 space='fsLR',
-                density=config.workflow.cifti_output,
+                density=cifti_output,
                 suffix='bold',
                 compress=False,
                 TaskName=all_metadata[0].get('TaskName'),
@@ -635,7 +636,8 @@ excluding voxels whose time-series have a locally high coefficient of variation.
         )
         ds_bold_cifti.inputs.source_file = bold_file
 
-        inputnode.inputs.mniinfant_mask = get_MNIInfant_mask(spaces)
+        mniinfant_res = 2 if cifti_output == '91k' else 1
+        inputnode.inputs.mniinfant_mask = get_MNIInfant_mask(spaces, mniinfant_res)
 
         workflow.connect([
             # Resample BOLD to MNI152NLin6Asym, may duplicate bold_std_wf above
@@ -747,11 +749,11 @@ excluding voxels whose time-series have a locally high coefficient of variation.
     ])  # fmt:skip
 
     # MG: Carpetplot workflow only work with CIFTI
-    if config.workflow.cifti_output:
+    if cifti_output:
         carpetplot_wf = init_carpetplot_wf(
             mem_gb=mem_gb['resampled'],
             metadata=all_metadata[0],
-            cifti_output=config.workflow.cifti_output,
+            cifti_output=cifti_output,
             name='carpetplot_wf',
         )
 
@@ -847,24 +849,20 @@ def _read_json(in_file):
     return loads(Path(in_file).read_text())
 
 
-def get_MNIInfant_mask(spaces: 'SpatialReferences') -> str:
+def get_MNIInfant_mask(spaces: 'SpatialReferences', res: str | int) -> str:
     """Parse spaces and return matching MNIInfant space, including cohort."""
     import templateflow.api as tf
 
-    mask = None
     for ref in spaces.references:
-        # str formats as <reference.name>:<reference.spec>
-        if ref.space == 'MNIInfant' and ref.spec.get('res', '') != 'native':
-            mask = str(
+        if ref.space == 'MNIInfant' and f'res-{res}' in str(ref):
+            return str(
                 tf.get(
                     'MNIInfant',
                     cohort=ref.spec['cohort'],
-                    resolution=1,
+                    resolution=res,
                     desc='brain',
                     suffix='mask',
                 )
             )
 
-    if mask is None:
-        raise FileNotFoundError('MNIInfant brain mask not found.')
-    return mask
+    raise FileNotFoundError(f'MNIInfant mask (resolution {res}) not found.')
