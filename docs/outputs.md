@@ -159,22 +159,26 @@ Unlike fMRIPrep, MSMSulc support is not available at the moment.
 And the affine translation (and inverse) between the anatomical reference sampling and
 FreeSurfer's conformed space for surface reconstruction (`fsnative`) is stored in::
 
-  sub-<subject_label>/[ses-<session_label>/]
-    anat/
-      sub-<subject_label>_from-fsnative_to-anat_mode-image_xfm.txt
-      sub-<subject_label>_from-anat_to-fsnative_mode-image_xfm.txt
+```
+sub-<subject_label>/[ses-<session_label>/]
+  anat/
+    sub-<subject_label>_from-fsnative_to-anat_mode-image_xfm.txt
+    sub-<subject_label>_from-anat_to-fsnative_mode-image_xfm.txt
+```
 
 Finally, cortical thickness, curvature, and sulcal depth maps are converted to GIFTI
 and CIFTI-2::
 
-  sub-<subject_label>/[ses-<session_label>/]
-    anat/
-      sub-<subject_label>_hemi-[LR]_thickness.shape.gii
-      sub-<subject_label>_hemi-[LR]_curv.shape.gii
-      sub-<subject_label>_hemi-[LR]_sulc.shape.gii
-      sub-<subject_label>_space-fsLR_den-32k_thickness.dscalar.nii
-      sub-<subject_label>_space-fsLR_den-32k_curv.dscalar.nii
-      sub-<subject_label>_space-fsLR_den-32k_sulc.dscalar.nii
+```
+sub-<subject_label>/[ses-<session_label>/]
+  anat/
+    sub-<subject_label>_hemi-[LR]_thickness.shape.gii
+    sub-<subject_label>_hemi-[LR]_curv.shape.gii
+    sub-<subject_label>_hemi-[LR]_sulc.shape.gii
+    sub-<subject_label>_space-fsLR_den-32k_thickness.dscalar.nii
+    sub-<subject_label>_space-fsLR_den-32k_curv.dscalar.nii
+    sub-<subject_label>_space-fsLR_den-32k_sulc.dscalar.nii
+```
 
 :::{warning}
 
@@ -351,10 +355,12 @@ For each {abbr}`BOLD (blood-oxygen level dependent)` run processed with *NiBabie
 accompanying *confounds* file will be generated.
 Confounds_ are saved as a {abbr}`TSV (tab-separated value)` file::
 
-  sub-<subject_label>/[ses-<session_label>/]
-    func/
-      sub-<subject_label>_[specifiers]_desc-confounds_timeseries.tsv
-      sub-<subject_label>_[specifiers]_desc-confounds_timeseries.json
+```
+sub-<subject_label>/[ses-<session_label>/]
+  func/
+    sub-<subject_label>_[specifiers]_desc-confounds_timeseries.tsv
+    sub-<subject_label>_[specifiers]_desc-confounds_timeseries.json
+```
 
 These {abbr}`TSV (tab-separated values)` tables look like the example below,
 where each row of the file corresponds to one time point found in the
@@ -420,8 +426,7 @@ In contrast to volume onsets, event onsets need to be shifted *backward* by half
 for example, from [5, 10, 15] to [4, 9, 14].
 
 Further information on this issue is found at
-`this blog post (with thanks to Russell Poldrack and Jeanette Mumford)
-<https://reproducibility.stanford.edu/slice-timing-correction-in-fmriprep-and-linear-modeling/>`__.
+[this blog post (with thanks to Russell Poldrack and Jeanette Mumford)](https://reproducibility.stanford.edu/slice-timing-correction-in-fmriprep-and-linear-modeling/).
 :::
 
 ## Confounds
@@ -556,10 +561,8 @@ If your analysis includes separate high-pass filtering, do not include
 
 :::{seealso}
 - A detailed explanation about temporal high-pass filtering is provided with
-  the `BrainVoyager User Guide
-  <https://www.brainvoyager.com/bvqx/doc/UsersGuide/Preprocessing/TemporalHighPassFiltering.html>`_.
-- `This comment
-  <https://github.com/nipreps/fmriprep/issues/1899#issuecomment-561687460>`__
+  the [BrainVoyager User Guide](https://www.brainvoyager.com/bvqx/doc/UsersGuide/Preprocessing/TemporalHighPassFiltering.html).
+- [This comment](https://github.com/nipreps/fmriprep/issues/1899#issuecomment-561687460)
   on an issue regarding CompCor regressors.
 :::
 
@@ -656,8 +659,7 @@ should also be included in the design matrix.
 :::
 
 :::{seealso}
-This didactic `discussion on NeuroStars.org
-<https://neurostars.org/t/fmrirep-outputs-very-high-number-of-acompcors-up-to-1000/5451>`__
+This didactic [discussion on NeuroStars.org](https://neurostars.org/t/fmrirep-outputs-very-high-number-of-acompcors-up-to-1000/5451)
 where Patrick Sadil gets into details about PCA and how that base technique applies
 to CompCor in general and *fMRIPrep*'s implementation in particular.
 :::
@@ -701,32 +703,9 @@ option `--return-all-components`.
 *NiBabies* reports include a plot of the cumulative variance explained by each
 component, ordered by descending singular value.
 
-.. figure:: _static/sub-01_task-rest_compcor.svg
-
-    The figure displays the cumulative variance explained by components for each
-    of four CompCor decompositions (left to right: anatomical CSF mask, anatomical
-    white matter mask, anatomical combined mask, temporal).
-    The number of components is plotted on the abscissa and
-    the cumulative variance explained on the ordinate.
-    Dotted lines indicate the minimum number of components necessary
-    to explain 50%, 70%, and 90% of the variance in the nuisance mask.
-    By default, only the components that explain the top 50% of the variance
-    are saved.
-
 Also included is a plot of correlations among confound regressors.
 This can be used to guide selection of a confound model or to assess the extent
 to which tissue-specific regressors correlate with global signal.
-
-.. figure:: _static/sub-01_task-mixedgamblestask_run-01_confounds_correlation.svg
-
-    The left-hand panel shows the matrix of correlations among selected confound
-    time series as a heat-map.
-    Note the zero-correlation blocks near the diagonal; these correspond to each
-    CompCor decomposition.
-    The right-hand panel displays the correlation of selected confound time series
-    with the mean global signal computed across the whole brain; the regressors shown
-    are those with greatest correlation with the global signal.
-    This information can be used to diagnose partial volume effects.
 
 See implementation on :mod:`~nibabies.workflows.bold.confounds.init_bold_confs_wf`.
 
