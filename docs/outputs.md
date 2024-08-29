@@ -55,10 +55,10 @@ The outputs will be a [BIDS Derivatives](https://bids-specification.readthedocs.
 ```
 
 For each participant in the dataset,
-a directory of derivatives (``sub-<label>/``)
-and a visual report (``sub-<label>.html``) are generated.
+a directory of derivatives (`sub-<label>/`)
+and a visual report (`sub-<label>.html`) are generated.
 The log directory contains `citation boilerplate`_ text.
-``dataset_description.json`` is a metadata file in which NiBabies
+`dataset_description.json` is a metadata file in which NiBabies
 records metadata recommended by the BIDS standard.
 
 :::{admonition} fMRIPrep deviation - multi-session processing
@@ -67,47 +67,47 @@ records metadata recommended by the BIDS standard.
 Due to the potential for significant development across sessions,
 NiBabies processes at the session level. Each unique session will be nested
 within a subject's output directory, and an individual report will be created
-(i.e. ``sub-<label>_ses-<label>.html``).
+(i.e. `sub-<label>_ses-<label>.html`).
 :::
 
 ## Processing level
 
 As of version 24.0.0, NiBabies supports three levels of derivatives:
 
-* ``--level minimal``: This processing mode aims to produce the smallest
+* `--level minimal`: This processing mode aims to produce the smallest
   working directory and output dataset possible, while enabling all further
   processing results to be deterministically generated. Most components of
   the `visual reports`_ can be generated at this level, so the quality of
   preprocessing can be assessed. Because no resampling is done, confounds
   and carpetplots will be missing from the reports.
-* ``--level resampling``: This processing mode aims to produce additional
+* `--level resampling`: This processing mode aims to produce additional
   derivatives that enable third-party resampling, resampling BOLD series
   in the working directory as needed, but these are not saved to the output
   directory.
-  The ``--me-output-echos`` flag will be enabled at this level, in which
+  The `--me-output-echos` flag will be enabled at this level, in which
   case the individual echos will be saved to the working directory after
   slice-timing correction, head-motion correction, and susceptibility
   distortion correction.
-* ``--level full``: This processing mode aims to produce all derivatives
+* `--level full`: This processing mode aims to produce all derivatives
   that have previously been a part of the NiBabies output dataset.
   This is the default processing level.
 
 ## Visual Reports
 
-*NiBabies* outputs summary reports, written to ``<output dir>/nibabies/sub-<subject_label>[_ses-<session_label>].html``.
+*NiBabies* outputs summary reports, written to `<output dir>/nibabies/sub-<subject_label>[_ses-<session_label>].html`.
 These reports provide a quick way to make visual inspection of the results easy.
 `View a sample report. <_static/SampleReport/sample_report.html>`_
 
 ## Derivatives of *NiBabies* (preprocessed data)
 
 Preprocessed, or derivative, data are written to
-``<output dir>/sub-<subject_label>/``. If the data is composed of sessions, each session will
+`<output dir>/sub-<subject_label>/`. If the data is composed of sessions, each session will
 have a separate output.
 The `BIDS Derivatives`_ specification describes the naming and metadata conventions we follow.
 
 ### Anatomical derivatives
 
-Anatomical derivatives are placed in each subject's ``anat`` subfolder::
+Anatomical derivatives are placed in each subject's `anat` subfolder::
 
 ```
 sub-<subject_label>/[ses-<session_label>/]
@@ -122,7 +122,7 @@ sub-<subject_label>/[ses-<session_label>/]
 ```
 
 Spatially-standardized derivatives are denoted with a space label,
-such as ``MNI152NLin2009cAsym``.
+such as `MNI152NLin2009cAsym`.
 
 :::{versionchanged} 24.0.0
 The anatomical output reference can now be either in T1w or T2w space, and will always
@@ -150,14 +150,14 @@ sub-<subject_label>/[ses-<session_label>/]
     sub-<subject_label>_hemi-[LR]_space-fsLR_desc-reg_sphere.surf.gii
 ```
 
-The registration spheres target ``fsaverage`` and ``fsLR`` spaces.
+The registration spheres target `fsaverage` and `fsLR` spaces.
 
 :::{warning}
 Unlike fMRIPrep, MSMSulc support is not available at the moment.
 :::
 
 And the affine translation (and inverse) between the anatomical reference sampling and
-FreeSurfer's conformed space for surface reconstruction (``fsnative``) is stored in::
+FreeSurfer's conformed space for surface reconstruction (`fsnative`) is stored in::
 
   sub-<subject_label>/[ses-<session_label>/]
     anat/
@@ -191,9 +191,9 @@ TODO: FSDERIVS? .. _fsderivs:
 ### Surface Reconstruction
 
 If any of the surface reconstruction methods are enabled,
-then a FreeSurfer-style subjects directory is created in
-``<output dir>/sourcedata/freesurfer`` or the directory indicated with the
-``--fs-subjects-dir`` flag.
+then a FreeSurfer-like subjects directory is created in
+`<output dir>/sourcedata/freesurfer` or the directory indicated with the
+`--fs-subjects-dir` flag.
 
 Additionally, FreeSurfer segmentations are resampled into the BOLD space,
 and lookup tables are provided.
@@ -215,21 +215,21 @@ and lookup tables are provided.
   desc-aparcaseg_dseg.tsv
 ```
 
-Copies of the ``fsaverage`` subjects distributed with the running version of
+Copies of the `fsaverage` subjects distributed with the running version of
 FreeSurfer are copied into this subjects directory, if any functional data are
 sampled to those subject spaces.
 
-Note that the use of ``sourcedata/`` recognizes FreeSurfer derivatives as an input to
+Note that the use of `sourcedata/` recognizes FreeSurfer derivatives as an input to
 the NiBabies workflow.
 This is strictly true when pre-computed FreeSurfer derivatives are provided either in
-the ``sourcedata/`` directory or passed via the ``--fs-subjects-dir`` flag;
+the `sourcedata/` directory or passed via the `--fs-subjects-dir` flag;
 if NiBabies runs FreeSurfer, then there is a mutual dependency.
 
 ### Functional derivatives
 
-Functional derivatives are stored in the ``func/`` subfolder.
-All derivatives contain ``task-<task_label>`` (mandatory) and ``run-<run_index>`` (optional), and
-these will be indicated with ``[specifiers]``
+Functional derivatives are stored in the `func/` subfolder.
+All derivatives contain `task-<task_label>` (mandatory) and `run-<run_index>` (optional), and
+these will be indicated with `[specifiers]`
 
 ```
   sub-<subject_label>/[ses-<session_label>/]
@@ -280,7 +280,7 @@ Coregistration outputs are part of the *minimal* processing level.
 
 If a fieldmap is used for the correction of a BOLD series, then a registration
 is calculated between the BOLD series and the fieldmap. If, for example, the fieldmap
-is identified with ``"B0Identifier": "TOPUP"``, the generated transform will be named
+is identified with `"B0Identifier": "TOPUP"`, the generated transform will be named
 
 ```
 sub-<subject_label>/[ses-<session_label>/]
@@ -288,7 +288,7 @@ sub-<subject_label>/[ses-<session_label>/]
     sub-<subject_label>_[specifiers]_from-boldref_to-TOPUP_mode-image_xfm.nii.gz
 ```
 
-If the association is discovered through the ``IntendedFor`` field of the
+If the association is discovered through the `IntendedFor` field of the
 fieldmap metadata, then the transform will be given an auto-generated name
 
 ```
@@ -303,12 +303,12 @@ Fieldmap registration outputs are part of the *minimal* processing level.
 
 #### Regularly gridded outputs (images)
 
-Volumetric output spaces labels (``<space_label>`` above, and in the following) include
-``T1w`` and ``MNI152NLin2009cAsym`` (default).
+Volumetric output spaces labels (`<space_label>` above, and in the following) include
+`T1w` and `MNI152NLin2009cAsym` (default).
 
 #### Surfaces, segmentations and parcellations from FreeSurfer
 
-If FreeSurfer reconstructions are used, the ``(aparc+)aseg`` segmentations are aligned to the
+If FreeSurfer reconstructions are used, the `(aparc+)aseg` segmentations are aligned to the
 subject's anatomical reference space and resampled to the BOLD grid, and the BOLD series are
 resampled to the mid-thickness surface mesh
 
@@ -320,9 +320,9 @@ sub-<subject_label>/[ses-<session_label>/]
     sub-<subject_label>_[specifiers]_hemi-[LR]_space-<space_label>_bold.func.gii
 ```
 
-Surface output spaces include ``fsnative`` (full density subject-specific mesh),
-``fsaverage`` and the down-sampled meshes ``fsaverage6`` (41k vertices) and
-``fsaverage5`` (10k vertices, default).
+Surface output spaces include `fsnative` (full density subject-specific mesh),
+`fsaverage` and the down-sampled meshes `fsaverage6` (41k vertices) and
+`fsaverage5` (10k vertices, default).
 
 #### Grayordinates files
 
@@ -331,8 +331,8 @@ a container format that holds both volumetric (regularly sampled in a grid) and 
 (sampled on a triangular mesh) samples.
 Sub-cortical time series are sampled on a regular grid derived from one MNI template, while
 cortical time series are sampled on surfaces projected from the [Glasser2016]_ template.
-If CIFTI outputs are requested (with the ``--cifti-outputs`` argument), the BOLD series are also
-saved as ``dtseries.nii`` CIFTI2 files
+If CIFTI outputs are requested (with the `--cifti-outputs` argument), the BOLD series are also
+saved as `dtseries.nii` CIFTI2 files
 
 ```bash
 sub-<subject_label>/[ses-<session_label>/]
@@ -340,7 +340,7 @@ sub-<subject_label>/[ses-<session_label>/]
     sub-<subject_label>_[specifiers]_bold.dtseries.nii
 ```
 
-CIFTI output resolution can be specified as an optional parameter after ``--cifti-output``.
+CIFTI output resolution can be specified as an optional parameter after `--cifti-output`.
 By default, '91k' outputs are produced and match up to the standard `HCP Pipelines`_ CIFTI
 output (91282 grayordinates @ 2mm). However, '170k' outputs are also possible, and produce
 higher resolution CIFTI output (170494 grayordinates @ 1.6mm).
@@ -367,7 +367,7 @@ corresponding {abbr}`BOLD (blood-oxygen level dependent)` time series
 
 #### Multi-echo derivatives
 
-For multi-echo datasets, the output ``_bold`` series are "optimally combined" by
+For multi-echo datasets, the output `_bold` series are "optimally combined" by
 `tedana`_ to better estimate the BOLD signal.
 This process also generates a T2\* map, which is resampled into every requested output
 space.
@@ -378,7 +378,7 @@ sub-<subject_label>/[ses-<session_label>/]
     sub-<subject_label>_[specifiers]_T2starmap.nii.gz
 ```
 
-If the ``--me-output-echos`` flag is specified, then the distortion-corrected (STC, HMC, SDC)
+If the `--me-output-echos` flag is specified, then the distortion-corrected (STC, HMC, SDC)
 per-echo time series are output. For example, if the inputs are of the form::
 
 ```bash
@@ -459,7 +459,7 @@ session and run in :abbr:`TSV (tab-separated value)` files - one column for each
 Such tabular files may include over 100 columns of potential confound regressors.
 
 :::{danger}
-Do not include all columns of ``~_desc-confounds_timeseries.tsv`` table
+Do not include all columns of `~_desc-confounds_timeseries.tsv` table
 into your design matrix or denoising procedure.
 Filter the table first, to include only the confounds (or components thereof)
 you want to remove from your fMRI signal.
@@ -474,13 +474,13 @@ see [Parkes2018] and [Ciric2017].
 **Basic confounds**. The most commonly used confounding time series:
 
 - Estimated head-motion parameters:
-  ``trans_x``, ``trans_y``, ``trans_z``, ``rot_x``, ``rot_y``, ``rot_z`` - the 6 rigid-body motion
+  `trans_x`, `trans_y`, `trans_z`, `rot_x`, `rot_y`, `rot_z` - the 6 rigid-body motion
   parameters (3 translations and 3 rotation), estimated relative to a reference image;
 
 - Global signals:
-  - ``csf`` - the average signal within anatomically-derived eroded {abbr}`CSF (cerebro-spinal fluid)` mask;
-  - ``white_matter`` - the average signal within  the anatomically-derived eroded {abbr}`WM (white matter)` masks;
-  - ``global_signal`` -  the average signal within the brain mask.
+  - `csf` - the average signal within anatomically-derived eroded {abbr}`CSF (cerebro-spinal fluid)` mask;
+  - `white_matter` - the average signal within  the anatomically-derived eroded {abbr}`WM (white matter)` masks;
+  - `global_signal` -  the average signal within the brain mask.
 
 #### Parameter expansion of basic confounds
 
@@ -495,28 +495,28 @@ expansion [Satterthwaite2013], providing time series corresponding to the first
 (six base motion parameters + six temporal derivatives of six motion parameters +
 12 quadratic terms of six motion parameters and their six temporal derivatives).
 Additionally, *NiBabies* returns temporal derivatives and quadratic terms for the
-three global signals (``csf``, ``white_matter`` and ``global_signal``)
+three global signals (`csf`, `white_matter` and `global_signal`)
 to enable applying the 36-parameter denoising strategy proposed by [Satterthwaite2013].
 
 Derivatives and quadratic terms are stored under column names with
-suffixes: ``_derivative1`` and powers ``_power2``.
-These are calculated for head-motion estimates (``trans_`` and ``rot_``) and global signals
-(``white_matter``, ``csf``, and ``global_signal``).
+suffixes: `_derivative1` and powers `_power2`.
+These are calculated for head-motion estimates (`trans_` and `rot_`) and global signals
+(`white_matter`, `csf`, and `global_signal`).
 
 #### Outlier detection
 
 These confounds can be used to detect potential outlier time points -
 frames with sudden and large motion or intensity spikes.
 
-- ``framewise_displacement`` - is a quantification of the estimated bulk-head motion calculated using
+- `framewise_displacement` - is a quantification of the estimated bulk-head motion calculated using
   formula proposed by [Power2012]_;
-- ``rmsd`` - is a quantification of the estimated relative (frame-to-frame) bulk head motion
+- `rmsd` - is a quantification of the estimated relative (frame-to-frame) bulk head motion
   calculated using the {abbr}`RMS (root mean square)` approach of [Jenkinson2002]_;
-- ``dvars`` - the derivative of RMS variance over voxels (or {abbr}`DVARS (derivative of
+- `dvars` - the derivative of RMS variance over voxels (or {abbr}`DVARS (derivative of
   RMS variance over voxels)`) [Power2012]_;
-- ``std_dvars`` - standardized {abbr}`DVARS (derivative of RMS variance over voxels)`;
-- ``non_steady_state_outlier_XX`` - columns indicate non-steady state volumes with a single
-  ``1`` value and ``0`` elsewhere (*i.e.*, there is one ``non_steady_state_outlier_XX`` column per
+- `std_dvars` - standardized {abbr}`DVARS (derivative of RMS variance over voxels)`;
+- `non_steady_state_outlier_XX` - columns indicate non-steady state volumes with a single
+  `1` value and `0` elsewhere (*i.e.*, there is one `non_steady_state_outlier_XX` column per
   outlier/volume).
 
 Detected outliers can be further removed from time series using methods such as:
@@ -524,12 +524,12 @@ volume *censoring* - entirely discarding problematic time points [Power2012]_,
 regressing signal from outlier points in denoising procedure, or
 including outlier points in the subsequent first-level analysis when building
 the design matrix.
-Averaged value of confound (for example, mean ``framewise_displacement``)
+Averaged value of confound (for example, mean `framewise_displacement`)
 can also be added as regressors in group level analysis [Yan2013]_.
 *Regressors of motion spikes* for outlier censoring are generated from within *NiBabies*,
-and their calculation may be adjusted with the command line options ``--fd-spike-threshold``
-and ``--dvars-spike-threshold`` (defaults are FD > 0.5 mm or DVARS > 1.5).
-Regressors of motion spikes are stored in separate ``motion_outlier_XX`` columns.
+and their calculation may be adjusted with the command line options `--fd-spike-threshold`
+and `--dvars-spike-threshold` (defaults are FD > 0.5 mm or DVARS > 1.5).
+Regressors of motion spikes are stored in separate `motion_outlier_XX` columns.
 
 #### Discrete cosine-basis regressors
 
@@ -541,7 +541,7 @@ for these confounding signals.
 Using the {abbr}`DCT (discrete cosine transform)` basis functions, *NiBabies* generates
 these low-frequency predictors:
 
-- ``cosine_XX`` - DCT-basis regressors.
+- `cosine_XX` - DCT-basis regressors.
 
 One characteristic of the cosine regressors is that they are identical for two different
 datasets with the same {abbr}`TR (repetition time)` and the same *effective* number of
@@ -551,7 +551,7 @@ states* are removed before generating the cosine regressors.
 
 :::{caution}
 If your analysis includes separate high-pass filtering, do not include
-``cosine_XX`` regressors in your design matrix.
+`cosine_XX` regressors in your design matrix.
 :::
 
 :::{seealso}
@@ -573,18 +573,18 @@ and {abbr}`WM (white matter)` masks.
 Signals extracted from CompCor components can be further regressed out from the fMRI data with a
 denoising procedure [Behzadi2007].
 
-- ``a_comp_cor_XX`` - additional noise components are calculated using anatomical {abbr}`CompCor
+- `a_comp_cor_XX` - additional noise components are calculated using anatomical {abbr}`CompCor
   (Component Based Noise Correction)`;
-- ``t_comp_cor_XX`` - additional noise components are calculated using temporal {abbr}`CompCor
+- `t_comp_cor_XX` - additional noise components are calculated using temporal {abbr}`CompCor
   (Component Based Noise Correction)`.
 
 Four separate CompCor decompositions are performed to compute noise components: one temporal
-decomposition (``t_comp_cor_XX``) and three anatomical decompositions (``a_comp_cor_XX``) across
+decomposition (`t_comp_cor_XX`) and three anatomical decompositions (`a_comp_cor_XX`) across
 three different noise ROIs: an eroded white matter mask, an eroded CSF mask, and a combined mask derived
 from the union of these.
 
 Each confounds data file will also have a corresponding metadata file
-(``~desc-confounds_regressors.json``).
+(`~desc-confounds_regressors.json`).
 Metadata files contain additional information about columns in the confounds TSV file:
 
 ```json
@@ -611,17 +611,17 @@ Metadata files contain additional information about columns in the confounds TSV
 
 For CompCor decompositions, entries include:
 
-- ``Method``: anatomical or temporal CompCor.
-- ``Mask``: denotes the {abbr}`ROI (region of interest)` where the decomposition that generated
-  the component was performed: ``CSF``, ``WM``, or ``combined`` for anatomical CompCor.
-- ``SingularValue``: singular value of the component.
-- ``VarianceExplained``: the fraction of variance explained by the component across the decomposition ROI mask.
-- ``CumulativeVarianceExplained``: the total fraction of variance explained by this particular component
+- `Method`: anatomical or temporal CompCor.
+- `Mask`: denotes the {abbr}`ROI (region of interest)` where the decomposition that generated
+  the component was performed: `CSF`, `WM`, or `combined` for anatomical CompCor.
+- `SingularValue`: singular value of the component.
+- `VarianceExplained`: the fraction of variance explained by the component across the decomposition ROI mask.
+- `CumulativeVarianceExplained`: the total fraction of variance explained by this particular component
   and all preceding components.
-- ``Retained``: Indicates whether the component was saved in ``desc-confounds_timeseries.tsv``
+- `Retained`: Indicates whether the component was saved in `desc-confounds_timeseries.tsv`
   for use in denoising.
   Entries that are not saved in the data file for denoising are still stored in metadata with the
-  ``dropped`` prefix.
+  `dropped` prefix.
 
 :::{caution}
 Only a subset of these CompCor decompositions should be used for further denoising.
@@ -643,15 +643,15 @@ cumulative fraction of variance is explained (e.g., 50%).
 
 :::{caution}
 Similarly, if you are using anatomical or temporal CompCor it may not make sense
-to use the ``csf``, or ``white_matter`` global regressors -
+to use the `csf`, or `white_matter` global regressors -
 see `#1049 <https://github.com/nipreps/fmriprep/issues/1049>`_.
-Conversely, using the overall ``global_signal`` confound in addition to CompCor's
+Conversely, using the overall `global_signal` confound in addition to CompCor's
 regressors can be beneficial (see [Parkes2018]_).
 :::
 
 :::{danger}
 *NiBabies* does high-pass filtering before running anatomical or temporal CompCor.
-Therefore, when using CompCor regressors, the corresponding ``cosine_XX`` regressors
+Therefore, when using CompCor regressors, the corresponding `cosine_XX` regressors
 should also be included in the design matrix.
 :::
 
@@ -697,7 +697,7 @@ This is used by *NiBabies* to determine whether each component should be saved f
 use in denoising operations: a component is saved if it contributes to explaining
 the top 50 percent of variance in the nuisance ROI.
 *NiBabies* can be configured to save all components instead using the command line
-option ``--return-all-components``.
+option `--return-all-components`.
 *NiBabies* reports include a plot of the cumulative variance explained by each
 component, ordered by descending singular value.
 
