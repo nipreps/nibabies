@@ -1,4 +1,7 @@
-# Contents
+```{include} ../README.md
+```
+
+# Table of Contents
 
 ```{toctree}
 :maxdepth: 3
