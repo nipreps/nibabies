@@ -17,24 +17,28 @@ This release resolves a number of issues with fieldmaps inducing distortions dur
 
 Finally, a new resampling method has been added, to better account for susceptibility distortion and motion in a single shot resampling to a volumetric target space. We anticipate extending this to surface targets in the future.
 
-  * RF: Move to fit/apply workflow (#360)
   * FIX: nest pathlib import in fix_multi_source_name (#365)
   * FIX: Avoid retrieving multiple templates from latest TF (#353)
-  * ENH: better repr for Derivatives class (#351)
   * FIX: Raise informative error if no t1w or t2w found (#347)
-  * Replace `resource_filename` with `load_data` (#345)
   * FIX: Easier pyenv usage (#342)
-  * Build(deps): Bump urllib3 from 2.0.3 to 2.0.7 (#319)
-  * Build(deps): Bump pillow from 9.5.0 to 10.0.1 (#317)
-  * DOC: Use correct argument flag (#338)
-  * MAINT: Raise minimum to 3.10, bump actions (#337)
   * FIX: Catch nonexistent derivatives, clean up subworkflow logic (#336)
-  * Use fsLR reg sphere for MCRIBS morphometrics resampling (#334)
-  * FIX: Multiple T2ws, coerce reference to string (#333)
-  * MAINT: Update to latest migas API (#326)
+  * FIX: Use fsLR reg sphere for MCRIBS morphometrics resampling (#334)
   * FIX: T2star map MNI scaling (#320)
+
   * ENH: Alter outputs when MCRIBS reconstruction is used (#329)
   * ENH: Use nireports for Report generation + add reportlet per reconstruction (#328)
+  * ENH: better repr for Derivatives class (#351)
+
+  * RF: Move to fit/apply workflow (#360)
+  * RF: Replace `resource_filename` with `load_data` (#345)
+
+  * MAINT: Bump urllib3 from 2.0.3 to 2.0.7 (#319)
+  * MAINT: Raise minimum to 3.10, bump actions (#337)
+  * MAINT: Bump pillow from 9.5.0 to 10.0.1 (#317)
+  * MAINT: Update to latest migas API (#326)
+
+  * DOC: Use correct argument flag (#338)
+  * DOC: Move to new theme, add outputs description (#383)
 
 
 23.1.0 (November 22, 2023)

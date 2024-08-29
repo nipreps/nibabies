@@ -375,7 +375,7 @@ six==1.16.0
     #   osfclient
     #   pybtex
     #   python-dateutil
-smriprep @ git+https://github.com/nipreps/smriprep.git@master
+smriprep==0.16.1
     # via nibabies (pyproject.toml)
 sqlalchemy==2.0.31
     # via pybids
