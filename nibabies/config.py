@@ -630,6 +630,8 @@ class workflow(_Config):
     use_syn_sdc = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation
     in the absence of any alternatives."""
+    me_t2s_fit_method = 'curvefit'
+    """The method by which to estimate T2*/S0 for multi-echo data"""
 
 
 class loggers:

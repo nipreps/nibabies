@@ -46,6 +46,7 @@ def init_bold_t2s_wf(
     echo_times: ty.Sequence[float],
     mem_gb: float,
     omp_nthreads: int,
+    me_t2s_fit_method: ty.Literal['curvefit', 'loglin'] = 'curvefit',
     name: str = 'bold_t2s_wf',
 ):
     r"""
@@ -89,14 +90,16 @@ def init_bold_t2s_wf(
     from niworkflows.interfaces.morphology import BinaryDilation
 
     workflow = Workflow(name=name)
-    if config.workflow.me_t2s_fit_method == 'curvefit':
+    if me_t2s_fit_method == 'curvefit':
         fit_str = (
             'nonlinear regression. '
             'The T2<sup>★</sup>/S<sub>0</sub> estimates from a log-linear regression fit '
             'were used for initial values'
         )
-    else:
+    elif me_t2s_fit_method == 'loglin':
         fit_str = 'log-linear regression'
+    else:
+        fit_str = f'unknown method: {me_t2s_fit_method}'
 
     workflow.__desc__ = f"""\
 A T2<sup>★</sup> map was estimated from the preprocessed EPI echoes, by voxel-wise fitting
@@ -116,7 +119,7 @@ The optimally combined time series was carried forward as the *preprocessed BOLD
     dilate_mask = pe.Node(BinaryDilation(radius=2), name='dilate_mask')
 
     t2smap_node = pe.Node(
-        T2SMap(echo_times=list(echo_times), fittype=config.workflow.me_t2s_fit_method),
+        T2SMap(echo_times=list(echo_times), fittype=me_t2s_fit_method),
         name='t2smap_node',
         mem_gb=2.5 * mem_gb * len(echo_times),
     )
