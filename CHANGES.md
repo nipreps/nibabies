@@ -1,5 +1,5 @@
-24.0.0 (TBD)
-============
+24.0.0 (August 29, 2024)
+========================
 This major release includes a substantial refactoring of the pipeline.
 
 One key addition is the addition of the `--level` flag, which can take the arguments minimal, resampling or full. The default is full, which should produce nearly the same results as previous versions. minimal will produce only the minimum necessary to deterministically generate the remaining derivatives. resampling will produce some additional derivatives, intended to simplify resampling with other tools.
@@ -7,9 +7,9 @@ One key addition is the addition of the `--level` flag, which can take the argum
 The `--derivatives` flag was altered to take arguments in the form `name=/path/to/dir`.
 For each directory provided, if a derivative is found - it will be used instead of computing it from scratch. If a derivative is not found, NiBabies will compute it and proceed as usual.
 
-Taken together, these features can allow a dataset provider to run a minimal NiBabies run, targeting many output spaces, while a user can then run a --derivatives run to generate additional derivatives in only the output spaces they need. Another use case is to provide an precomputed derivative to override the default NiBabies behavior, enabling easier workarounds for bugs or experimentation with alternatives.
+Taken together, these features can allow a dataset provider to run a minimal NiBabies run, targeting many output spaces, while a user can then run a `--derivatives` run to generate additional derivatives in only the output spaces they need. Another use case is to provide an precomputed derivative to override the default NiBabies behavior, enabling easier workarounds for bugs or experimentation with alternatives.
 
-Another new feature is a dynamic anatomical reference, which is set based on surface reconstruction method or through the `--reference-anatomical` flag. Previously, T1w was the default output space.
+Another new feature is a dynamic anatomical reference, which is set based on surface reconstruction method or through the `--reference-anatomical` flag. Previously, T1w was the default output space. Now, the reference anatomical is determined based on the surface reconstruction method.
 
 Additionally, minor adjustments have been made to MCRIBS surface reconstruction to address failure rates. This is still an on-going investigation, but preliminary results look promising.
 
@@ -17,27 +17,29 @@ This release resolves a number of issues with fieldmaps inducing distortions dur
 
 Finally, a new resampling method has been added, to better account for susceptibility distortion and motion in a single shot resampling to a volumetric target space. We anticipate extending this to surface targets in the future.
 
-## 24.0.0rc0 (August 01, 2024)
-  * RF: Move to fit/apply workflow (#360)
   * FIX: nest pathlib import in fix_multi_source_name (#365)
   * FIX: Avoid retrieving multiple templates from latest TF (#353)
-  * ENH: better repr for Derivatives class (#351)
   * FIX: Raise informative error if no t1w or t2w found (#347)
-  * Replace `resource_filename` with `load_data` (#345)
   * FIX: Easier pyenv usage (#342)
-  * Build(deps): Bump urllib3 from 2.0.3 to 2.0.7 (#319)
-  * Build(deps): Bump pillow from 9.5.0 to 10.0.1 (#317)
-  * DOC: Use correct argument flag (#338)
-  * MAINT: Raise minimum to 3.10, bump actions (#337)
   * FIX: Catch nonexistent derivatives, clean up subworkflow logic (#336)
-  * Use fsLR reg sphere for MCRIBS morphometrics resampling (#334)
-  * FIX: Multiple T2ws, coerce reference to string (#333)
-
-## 24.0.0a1
-  * MAINT: Update to latest migas API (#326)
+  * FIX: Use fsLR reg sphere for MCRIBS morphometrics resampling (#334)
   * FIX: T2star map MNI scaling (#320)
+
   * ENH: Alter outputs when MCRIBS reconstruction is used (#329)
   * ENH: Use nireports for Report generation + add reportlet per reconstruction (#328)
+  * ENH: better repr for Derivatives class (#351)
+
+  * RF: Move to fit/apply workflow (#360)
+  * RF: Replace `resource_filename` with `load_data` (#345)
+
+  * MAINT: Bump urllib3 from 2.0.3 to 2.0.7 (#319)
+  * MAINT: Raise minimum to 3.10, bump actions (#337)
+  * MAINT: Bump pillow from 9.5.0 to 10.0.1 (#317)
+  * MAINT: Update to latest migas API (#326)
+
+  * DOC: Use correct argument flag (#338)
+  * DOC: Move to new theme, add outputs description (#383)
+
 
 23.1.0 (November 22, 2023)
 ============
