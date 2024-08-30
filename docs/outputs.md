@@ -1,6 +1,6 @@
 # Outputs of *NiBabies*
 
-*NiBabies* outputs conform to the :abbr:`BIDS (brain imaging data structure)`
+*NiBabies* outputs conform to the {abbr}`BIDS (brain imaging data structure)`
 Derivatives specification (see `BIDS Derivatives`_, along with the
 upcoming `BEP 011`_ and `BEP 012`_).
 *NiBabies* generates three broad classes of outcomes:
@@ -460,7 +460,7 @@ of possible confounds, which enable researchers to choose the most suitable deno
 strategy for their downstream analyses.
 
 Confounding variables calculated in *NiBabies* are stored separately for each subject,
-session and run in :abbr:`TSV (tab-separated value)` files - one column for each confound variable.
+session and run in {abbr}`TSV (tab-separated value)` files - one column for each confound variable.
 Such tabular files may include over 100 columns of potential confound regressors.
 
 :::{danger}
@@ -677,7 +677,7 @@ The procedure essentially follows the initial proposal of the approach by Patria
 The visual reports provide several sections per task and run to aid designing
 a denoising strategy for subsequent analysis.
 Some of the estimated confounds are plotted with a "carpet" visualization of the
-:abbr:`BOLD (blood-oxygen level-dependent)` time series [^Power2016].
+{abbr}`BOLD (blood-oxygen level-dependent)` time series [^Power2016].
 
 Noise components computed during each CompCor decomposition are evaluated according
 to the fraction of variance that they explain across the nuisance ROI.
@@ -693,7 +693,7 @@ Also included is a plot of correlations among confound regressors.
 This can be used to guide selection of a confound model or to assess the extent
 to which tissue-specific regressors correlate with global signal.
 
-See implementation on :mod:`~nibabies.workflows.bold.confounds.init_bold_confs_wf`.
+See implementation on <python#nibabies.workflows.bold.confounds.init_bold_confs_wf>.
 
 ## References
 
