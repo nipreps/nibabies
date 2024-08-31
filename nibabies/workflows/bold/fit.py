@@ -882,6 +882,7 @@ def init_bold_native_wf(
             echo_times=echo_times,
             mem_gb=mem_gb['filesize'],
             omp_nthreads=config.nipype.omp_nthreads,
+            me_t2s_fit_method=config.workflow.me_t2s_fit_method,
             name='bold_t2smap_wf',
         )
 
