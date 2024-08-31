@@ -1,3 +1,11 @@
+24.0.1 (August 31, 2024)
+========================
+A patch release with a fix for the BOLD T2\* workflow. The command line argument  `--me-t2s-fit-method` was added for finer control when processing multi-echo datasets.
+
+* FIX: Add missing me-t2s-fit-method option (#385)
+* DOC: Reformat abbreviations (#386)
+
+
 24.0.0 (August 29, 2024)
 ========================
 This major release includes a substantial refactoring of the pipeline.
