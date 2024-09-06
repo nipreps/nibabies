@@ -22,7 +22,7 @@ def create_sidecar(tsv_file: Path, units) -> None:
 age = {'age': [4, 4, 4]}
 age_weeks = {'age_weeks': [4, 8, 12]}
 age_months = {'age_months': [3, 6, 9]}
-age_years = {'age_years': [1, 1, 2]}
+age_years = {'age_years': [1, 2, 1, 2, 1, 2]} # Will be used for longitudinal TSV
 
 
 @pytest.mark.parametrize(
@@ -42,7 +42,12 @@ age_years = {'age_years': [1, 1, 2]}
 def test_get_age_from_tsv(tmp_path, idx_col, idx_val, data, sidecar, expected):
     tsv_file = tmp_path / 'test-age-parsing.tsv'
     base = {}
-    if idx_col is not None:
+    if idx_col == "participant_id" and idx_val == "x3":
+        # Longitudinal study TSV with both participant_id and session columns
+        base['participant_id'] = ["x1", "x1", "x2", "x2", "x3", "x3"]
+        base['session'] = ["v1", "v2", "v1", "v2", "v1", "v2"]
+        assert len(base['participant_id']) == len(data['age_years'])
+    elif idx_col is not None:
         base[idx_col] = ['x1', 'x2', 'x3']
     create_tsv({**base, **data}, tsv_file)
 
