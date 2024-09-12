@@ -265,7 +265,7 @@ def parse_bids_for_age_months(
 
 def _get_age_from_tsv(
     bids_tsv: Path, index_column: str | None = None, index_val: str | None = None
-) -> int | None:
+) -> float | None:
     import pandas as pd
 
     df = pd.read_csv(str(bids_tsv), sep='\t')
@@ -285,7 +285,7 @@ def _get_age_from_tsv(
 
     try:
         # extract age value from row
-        age = int(df.loc[idx, age_col].item())
+        age = float(df.loc[idx, age_col].item())
     except Exception:  # noqa: BLE001
         return
 
@@ -318,12 +318,14 @@ def _get_age_units(bids_json: Path) -> ty.Literal['weeks', 'months', 'years', Fa
     return False
 
 
-def age_to_months(age: int, units: ty.Literal['weeks', 'months', 'years']) -> int:
+def age_to_months(age: float, units: ty.Literal['weeks', 'months', 'years']) -> int:
     """
     Convert a given age, in either "weeks", "months", or "years", into months.
 
     >>> age_to_months(1, 'years')
     12
+    >>> age_to_months(0.5, 'years')
+    6
     >>> age_to_months(2, 'weeks')
     0
     >>> age_to_months(3, 'weeks')
@@ -337,5 +339,7 @@ def age_to_months(age: int, units: ty.Literal['weeks', 'months', 'years']) -> in
     if units == 'weeks':
         age = round(age * WEEKS_TO_MONTH)
     elif units == 'years':
-        age *= YEARS_TO_MONTH
+        age = round(age * YEARS_TO_MONTH)
+    elif units == 'months':
+        age = round(age)
     return age
