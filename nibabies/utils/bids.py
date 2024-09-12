@@ -244,7 +244,7 @@ def parse_bids_for_age_months(
 
     scans_tsv = session_level / f'{prefix}_scans.tsv'
     if scans_tsv.exists():
-        age = _get_age_from_tsv(scans_tsv)
+        age = _get_age_from_tsv(scans_tsv, is_scans_tsv = True)
 
     if age is not None:
         return age
@@ -264,8 +264,8 @@ def parse_bids_for_age_months(
 
 
 def _get_age_from_tsv(
-    bids_tsv: Path, index_column: str | None = None, index_val: str | None = None
-) -> float | None:
+    bids_tsv: Path, index_column: str | None = None, index_val: str | None = None,
+    is_scans_tsv: bool = False) -> float | None:
     import pandas as pd
 
     df = pd.read_csv(str(bids_tsv), sep='\t')
@@ -277,6 +277,14 @@ def _get_age_from_tsv(
             break
     if age_col is None:
         return
+    
+    if is_scans_tsv: #If it is a scans.tsv, grab try to grab age from first anat file
+        try:
+            index_column = 'filename'
+            index_val = df.loc[df['filename'].str.startswith('anat'), 'filename'].iloc[0]
+        except:
+            index_column = None
+            index_val = None
 
     if not index_column or not index_val:  # Just grab first value
         idx = df.index[0]
