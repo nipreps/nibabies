@@ -9,6 +9,10 @@ import os
 import sys
 import typing as ty
 from pathlib import Path
+import warnings
+
+import pandas as pd
+
 
 SUPPORTED_AGE_UNITS = (
     'weeks',
@@ -244,7 +248,11 @@ def parse_bids_for_age_months(
 
     scans_tsv = session_level / f'{prefix}_scans.tsv'
     if scans_tsv.exists():
-        age = _get_age_from_tsv(scans_tsv, is_scans_tsv = True)
+        age = _get_age_from_tsv(
+            scans_tsv,
+            index_column='filename',
+            index_val=r'^anat.*',
+        )
 
     if age is not None:
         return age
@@ -258,16 +266,18 @@ def parse_bids_for_age_months(
 
     participants_tsv = Path(bids_root) / 'participants.tsv'
     if participants_tsv.exists() and age is None:
-        age = _get_age_from_tsv(participants_tsv, index_column='participant_id', index_val=subject)
+        age = _get_age_from_tsv(
+            participants_tsv, index_column='participant_id', index_value=subject
+        )
 
     return age
 
 
 def _get_age_from_tsv(
-    bids_tsv: Path, index_column: str | None = None, index_val: str | None = None,
-    is_scans_tsv: bool = False) -> float | None:
-    import pandas as pd
-
+    bids_tsv: Path,
+    index_column: str | None = None,
+    index_value: str | None = None,
+) -> float | None:
     df = pd.read_csv(str(bids_tsv), sep='\t')
     age_col = None
 
@@ -277,23 +287,19 @@ def _get_age_from_tsv(
             break
     if age_col is None:
         return
-    
-    if is_scans_tsv: #If it is a scans.tsv, grab try to grab age from first anat file
-        try:
-            index_column = 'filename'
-            index_val = df.loc[df['filename'].str.startswith('anat'), 'filename'].iloc[0]
-        except:
-            index_column = None
-            index_val = None
 
-    if not index_column or not index_val:  # Just grab first value
-        idx = df.index[0]
-    else:
-        idx = df.index[df[index_column] == index_val].item()
+    df = df[df[index_column].str.fullmatch(index_value)]
+
+    # Multiple indices may be present after matching
+    if len(df) > 1:
+        warnings.warn(
+            f'Multiple matches for {index_column}:{index_value} found in {bids_tsv.name}.',
+            stacklevel=1,
+        )
 
     try:
         # extract age value from row
-        age = float(df.loc[idx, age_col].item())
+        age = float(df.loc[df.index[0], age_col].item())
     except Exception:  # noqa: BLE001
         return
 
@@ -302,7 +308,10 @@ def _get_age_from_tsv(
         bids_json = bids_tsv.with_suffix('.json')
         age_units = _get_age_units(bids_json)
         if age_units is False:
-            return None
+            raise FileNotFoundError(
+                f'Could not verify age unit for {bids_tsv.name} - ensure a sidecar JSON '
+                'describing column `age` units is available.'
+            )
     else:
         age_units = age_col.split('_')[-1]
 
@@ -326,7 +335,7 @@ def _get_age_units(bids_json: Path) -> ty.Literal['weeks', 'months', 'years', Fa
     return False
 
 
-def age_to_months(age: float, units: ty.Literal['weeks', 'months', 'years']) -> int:
+def age_to_months(age: int | float, units: ty.Literal['weeks', 'months', 'years']) -> int:
     """
     Convert a given age, in either "weeks", "months", or "years", into months.
 
@@ -345,9 +354,7 @@ def age_to_months(age: float, units: ty.Literal['weeks', 'months', 'years']) -> 
     YEARS_TO_MONTH = 12
 
     if units == 'weeks':
-        age = round(age * WEEKS_TO_MONTH)
+        age *= WEEKS_TO_MONTH
     elif units == 'years':
-        age = round(age * YEARS_TO_MONTH)
-    elif units == 'months':
-        age = round(age)
-    return age
+        age *= YEARS_TO_MONTH
+    return int(round(age))
