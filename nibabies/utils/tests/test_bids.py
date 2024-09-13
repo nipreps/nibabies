@@ -71,3 +71,12 @@ def test_get_age_from_tsv_error(tmp_path):
     create_tsv({**participants, **age}, tsv_file)
     with pytest.raises(FileNotFoundError):
         _get_age_from_tsv(tsv_file, 'participant_id', 'sub-1')
+
+
+def test_get_age_from_tsv_warning(tmp_path):
+    tsv_file = tmp_path / 'participants.tsv'
+    dual_participants = {'participant_id': ['sub-1', 'sub-2', 'sub-2']}
+    create_tsv({**dual_participants, **age_months}, tsv_file)
+
+    with pytest.warns(UserWarning):
+        _get_age_from_tsv(tsv_file, 'participant_id', 'sub-2')
