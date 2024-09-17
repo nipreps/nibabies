@@ -107,6 +107,7 @@ except RuntimeError:
 finally:
     # Defer all custom import for after initializing the forkserver and
     # ignoring the most annoying warnings
+    import logging
     import random
     import sys
     from pathlib import Path
@@ -117,26 +118,6 @@ finally:
     from templateflow import __version__ as _tf_ver
 
     from . import __version__
-
-if not hasattr(sys, '_is_pytest_session'):
-    sys._is_pytest_session = False  # Trick to avoid sklearn's FutureWarnings
-# Disable all warnings in main and children processes only on production versions
-if not any(
-    (
-        '+' in __version__,
-        __version__.endswith('.dirty'),
-        os.getenv('NIBABIES_DEV', '0').lower() in ('1', 'on', 'true', 'y', 'yes'),
-    )
-):
-    from ._warnings import logging
-
-    os.environ['PYTHONWARNINGS'] = 'ignore'
-elif os.getenv('NIBABIES_WARNINGS', '0').lower() in ('1', 'on', 'true', 'y', 'yes'):
-    # allow disabling warnings on development versions
-    # https://github.com/nipreps/fmriprep/pull/2080#discussion_r409118765
-    from ._warnings import logging
-else:
-    import logging
 
 logging.addLevelName(25, 'IMPORTANT')  # Add a new level between INFO and WARNING
 logging.addLevelName(15, 'VERBOSE')  # Add a new level between INFO and DEBUG
