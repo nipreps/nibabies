@@ -554,7 +554,7 @@ def init_infant_anat_fit_wf(
             workflow.connect([
                 (t1w_buffer, ds_t1w_mask_wf, [('t1w_mask', 'inputnode.mask_file')]),
             ])  # fmt:skip
-    else:
+    else:  # T1w mask derivative has been found
         LOGGER.info('ANAT Found T1w brain mask')
         if reference_anat == 'T1w':
             desc += (
@@ -563,7 +563,7 @@ def init_infant_anat_fit_wf(
             )
         t1w_buffer.inputs.t1w_mask = t1w_mask
         apply_t1w_mask.inputs.in_mask = t1w_mask
-        workflow.connect(t1w_validate, 'out_file', apply_t1w_mask, 'in_file')
+        workflow.connect(apply_t1w_mask, 'out_file', t1w_buffer, 't1w_brain')
 
         if not t1w_preproc:
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
@@ -574,15 +574,16 @@ def init_infant_anat_fit_wf(
                 name='t1w_n4_only_wf',
             )
             workflow.connect([
-                (apply_t1w_mask, t1w_n4_only_wf, [('out_file', 'inputnode.in_files')]),
+                (t1w_validate, t1w_n4_only_wf, [('out_file', 'inputnode.in_files')]),
                 (t1w_n4_only_wf, t1w_buffer, [
                     (('outputnode.bias_corrected', pop_file), 't1w_preproc'),
-                    (('outputnode.out_file', pop_file), 't1w_brain'),
                 ]),
+                (t1w_n4_only_wf, apply_t1w_mask, [
+                    (('outputnode.out_file', pop_file), 'in_file')]),
             ])  # fmt:skip
         else:
             LOGGER.info('ANAT Skipping T1w masking')
-            workflow.connect(apply_t1w_mask, 'out_file', t1w_buffer, 't1w_brain')
+            workflow.connect(t1w_validate, 'out_file', apply_t1w_mask, 'in_file')
 
     # T2w masking logic:
     #
@@ -709,14 +710,12 @@ def init_infant_anat_fit_wf(
         LOGGER.info('ANAT Found T2w brain mask')
         if reference_anat == 'T2w':
             desc += (
-                'A pre-computed T1w brain mask was provided as input and used throughout the '
+                'A pre-computed T2w brain mask was provided as input and used throughout the '
                 'workflow.'
             )
         t2w_buffer.inputs.t2w_mask = t2w_mask
         apply_t2w_mask.inputs.in_mask = t2w_mask
-        workflow.connect([
-            (t2w_validate, apply_t2w_mask, [('out_file', 'in_file')]),
-        ])  # fmt:skip
+        workflow.connect(apply_t2w_mask, 'out_file', t2w_buffer, 't2w_brain')
 
         if not t2w_preproc:
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
@@ -727,15 +726,16 @@ def init_infant_anat_fit_wf(
                 name='t2w_n4_only_wf',
             )
             workflow.connect([
-                (apply_t2w_mask, t2w_n4_only_wf, [('out_file', 'inputnode.in_files')]),
+                (t2w_validate, t2w_n4_only_wf, [('out_file', 'inputnode.in_files')]),
                 (t2w_n4_only_wf, t2w_buffer, [
                     (('outputnode.bias_corrected', pop_file), 't2w_preproc'),
-                    (('outputnode.out_file', pop_file), 't2w_brain'),
                 ]),
+                (t2w_n4_only_wf, apply_t2w_mask, [
+                    (('outputnode.out_file', pop_file), 'in_file')]),
             ])  # fmt:skip
         else:
             LOGGER.info('ANAT Skipping T2w masking')
-            workflow.connect(apply_t2w_mask, 'out_file', t2w_buffer, 't2w_brain')
+            workflow.connect(t2w_validate, 'out_file', apply_t2w_mask, 'in_file')
 
     # Stage 3: Coregistration
     t1w2t2w_xfm = precomputed.get('t1w2t2w_xfm')
@@ -1643,9 +1643,7 @@ def init_infant_single_anat_fit_wf(
         desc += 'A pre-computed brain mask was provided as input and used throughout the workflow.'
         anat_buffer.inputs.anat_mask = anat_mask
         apply_mask.inputs.in_mask = anat_mask
-        workflow.connect([
-            (anat_validate, apply_mask, [('out_file', 'in_file')]),
-        ])  # fmt:skip
+        workflow.connect(apply_mask, 'out_file', anat_buffer, 'anat_brain')
 
         if not anat_preproc:
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
@@ -1656,15 +1654,15 @@ def init_infant_single_anat_fit_wf(
                 name='n4_only_wf',
             )
             workflow.connect([
-                (apply_mask, n4_only_wf, [('out_file', 'inputnode.in_files')]),
+                (anat_validate, n4_only_wf, [('out_file', 'inputnode.in_files')]),
                 (n4_only_wf, anat_buffer, [
                     (('outputnode.bias_corrected', pop_file), 'anat_preproc'),
-                    (('outputnode.out_file', pop_file), 'anat_brain'),
                 ]),
+                (n4_only_wf, apply_mask, [(('outputnode.out_file', pop_file), 'in_file')]),
             ])  # fmt:skip
         else:
-            LOGGER.info('ANAT Skipping T2w masking')
-            workflow.connect(apply_mask, 'out_file', anat_buffer, 'anat_brain')
+            LOGGER.info(f'ANAT Skipping {reference_anat} masking')
+            workflow.connect(anat_validate, 'out_file', apply_mask, 'in_file')
 
     # Stage 3: Segmentation
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
