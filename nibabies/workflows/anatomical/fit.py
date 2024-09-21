@@ -567,19 +567,11 @@ def init_infant_anat_fit_wf(
 
         if not t1w_preproc:
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
-            t1w_n4_only_wf = init_n4_only_wf(
-                omp_nthreads=omp_nthreads,
-                atropos_use_random_seed=not skull_strip_fixed_seed,
-                bids_suffix='T1w',
-                name='t1w_n4_only_wf',
-            )
+            t1w_n4_wf = init_anat_preproc_wf(name='t1w_n4_wf')
             workflow.connect([
-                (t1w_validate, t1w_n4_only_wf, [('out_file', 'inputnode.in_files')]),
-                (t1w_n4_only_wf, t1w_buffer, [
-                    (('outputnode.bias_corrected', pop_file), 't1w_preproc'),
-                ]),
-                (t1w_n4_only_wf, apply_t1w_mask, [
-                    (('outputnode.out_file', pop_file), 'in_file')]),
+                (t1w_validate, t1w_n4_wf, [('out_file', 'inputnode.in_anat')]),
+                (t1w_n4_wf, t1w_buffer, [('outputnode.anat_preproc', 't1w_preproc')]),
+                (t1w_n4_wf, apply_t1w_mask, [('outputnode.anat_preproc', 'in_file')]),
             ])  # fmt:skip
         else:
             LOGGER.info('ANAT Skipping T1w masking')
@@ -719,19 +711,11 @@ def init_infant_anat_fit_wf(
 
         if not t2w_preproc:
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
-            t2w_n4_only_wf = init_n4_only_wf(
-                omp_nthreads=omp_nthreads,
-                atropos_use_random_seed=not skull_strip_fixed_seed,
-                bids_suffix='T2w',
-                name='t2w_n4_only_wf',
-            )
+            t2w_n4_wf = init_anat_preproc_wf(name='t2w_n4_wf')
             workflow.connect([
-                (t2w_validate, t2w_n4_only_wf, [('out_file', 'inputnode.in_files')]),
-                (t2w_n4_only_wf, t2w_buffer, [
-                    (('outputnode.bias_corrected', pop_file), 't2w_preproc'),
-                ]),
-                (t2w_n4_only_wf, apply_t2w_mask, [
-                    (('outputnode.out_file', pop_file), 'in_file')]),
+                (t2w_validate, t2w_n4_wf, [('out_file', 'inputnode.in_anat')]),
+                (t2w_n4_wf, t2w_buffer, [('outputnode.anat_preproc', 't2w_preproc')]),
+                (t2w_n4_wf, apply_t2w_mask, [('outputnode.anat_preproc', 'in_file')]),
             ])  # fmt:skip
         else:
             LOGGER.info('ANAT Skipping T2w masking')
@@ -1647,18 +1631,11 @@ def init_infant_single_anat_fit_wf(
 
         if not anat_preproc:
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
-            n4_only_wf = init_n4_only_wf(
-                omp_nthreads=omp_nthreads,
-                atropos_use_random_seed=not skull_strip_fixed_seed,
-                bids_suffix=reference_anat,
-                name='n4_only_wf',
-            )
+            anat_n4_wf = init_anat_preproc_wf(name='anat_n4_wf')
             workflow.connect([
-                (anat_validate, n4_only_wf, [('out_file', 'inputnode.in_files')]),
-                (n4_only_wf, anat_buffer, [
-                    (('outputnode.bias_corrected', pop_file), 'anat_preproc'),
-                ]),
-                (n4_only_wf, apply_mask, [(('outputnode.out_file', pop_file), 'in_file')]),
+                (anat_validate, anat_n4_wf, [('out_file', 'inputnode.in_anat')]),
+                (anat_n4_wf, anat_buffer, [('outputnode.anat_preproc', 'anat_preproc')]),
+                (anat_n4_wf, apply_mask, [('outputnode.anat_preproc', 'in_file')]),
             ])  # fmt:skip
         else:
             LOGGER.info(f'ANAT Skipping {reference_anat} masking')
