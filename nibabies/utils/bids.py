@@ -250,7 +250,7 @@ def parse_bids_for_age_months(
         age = _get_age_from_tsv(
             scans_tsv,
             index_column='filename',
-            index_val=r'^anat.*',
+            index_value=r'^anat.*',
         )
 
     if age is not None:
@@ -258,7 +258,7 @@ def parse_bids_for_age_months(
 
     sessions_tsv = subject_level / f'{subject}_sessions.tsv'
     if sessions_tsv.exists() and session_id is not None:
-        age = _get_age_from_tsv(sessions_tsv, index_column='session_id', index_val=session)
+        age = _get_age_from_tsv(sessions_tsv, index_column='session_id', index_value=session)
 
     if age is not None:
         return age
