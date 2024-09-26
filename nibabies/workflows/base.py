@@ -351,9 +351,11 @@ It is released under the [CC0]\
                 f'Requested to use {requested_anat} as anatomical reference but none available'
             )
     elif (reference_anat := requested_anat) is None:  # Both available with no preference
-        reference_anat = 'T2w' if any(
-            (recon_method == 'none' and age <= AUTO_T2W_MAX_AGE, recon_method == 'mcribs')
-        ) else 'T1w'
+        reference_anat = (
+            'T2w'
+            if any((recon_method == 'none' and age <= AUTO_T2W_MAX_AGE, recon_method == 'mcribs'))
+            else 'T1w'
+        )
 
     anat = reference_anat.lower()  # To be used for workflow connections
 
