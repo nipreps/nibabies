@@ -71,6 +71,9 @@ if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import SpatialReferences
 
 
+AUTO_T2W_MAX_AGE = 8
+
+
 def init_nibabies_wf(subworkflows_list):
     """
     Build *NiBabies*'s pipeline.
@@ -327,30 +330,30 @@ It is released under the [CC0]\
     # Determine some session level options here, as we should have
     # all the required information
     if recon_method == 'auto':
-        if age <= 8:
+        if age <= AUTO_T2W_MAX_AGE and anatomical_cache.get('t2w_aseg'):
+            # do not force mcribs without a vetted segmentation
             recon_method = 'mcribs'
         elif age <= 24:
             recon_method = 'infantfs'
         else:
             recon_method = 'freesurfer'
 
-    preferred_anat = config.execution.reference_anat
+    requested_anat = config.execution.reference_anat
     t1w = subject_data['t1w']
     t2w = subject_data['t2w']
     single_anat = False
-    if not t1w and t2w:
+
+    if not (t1w and t2w):
         single_anat = True
         reference_anat = 'T1w' if t1w else 'T2w'
-        if preferred_anat and reference_anat != preferred_anat:
+        if requested_anat and reference_anat != requested_anat:
             raise AttributeError(
-                f'Requested to use {preferred_anat} as anatomical reference but none available'
+                f'Requested to use {requested_anat} as anatomical reference but none available'
             )
-    else:
-        if not (reference_anat := preferred_anat):
-            if recon_method is None:
-                reference_anat = 'T2w' if age <= 8 else 'T1w'
-            else:
-                reference_anat = 'T2w' if recon_method == 'mcribs' else 'T1w'
+    elif (reference_anat := requested_anat) is None:  # Both available with no preference
+        reference_anat = 'T2w' if any(
+            (recon_method == 'none' and age <= AUTO_T2W_MAX_AGE, recon_method == 'mcribs')
+        ) else 'T1w'
 
     anat = reference_anat.lower()  # To be used for workflow connections
 
