@@ -28,6 +28,7 @@ SUBJECT_TEMPLATE = """\
 \t<ul class="elem-desc">
 \t\t<li>Subject ID: {subject_id}</li>
 \t\t<li>Session ID: {session_id}</li>
+\t\t<li>Chronological age (months): {age}</li>
 \t\t<li>Structural images: {num_t1w} T1-weighted, {num_t2w} T2-weighted</li>
 \t\t<li>Anatomical reference space: {anat_ref}<li>
 \t\t<li>Functional series: {n_bold:d}</li>
@@ -104,6 +105,7 @@ class SubjectSummaryInputSpec(BaseInterfaceInputSpec):
         'mcribs',
         desc='surface reconstruction method',
     )
+    age = traits.Int(desc='Chronological age in months at the time of session')
 
 
 class SubjectSummaryOutputSpec(SummaryOutputSpec):
@@ -204,6 +206,7 @@ class SubjectSummary(SummaryInterface):
         return SUBJECT_TEMPLATE.format(
             subject_id=self.inputs.subject_id,
             session_id=self.inputs.session_id,
+            age=self.inputs.age,
             num_t1w=num_t1w,
             num_t2w=num_t2w,
             anat_ref=self.inputs.anatomical_reference,

@@ -381,6 +381,7 @@ It is released under the [CC0]\
             recon_method=recon_method,
             std_spaces=spaces.get_spaces(nonstandard=False),
             nstd_spaces=spaces.get_spaces(standard=False),
+            age=age,
         ),
         name='summary',
         run_without_submitting=True,
