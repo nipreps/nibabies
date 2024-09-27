@@ -108,8 +108,8 @@ def init_nibabies_wf(subworkflows_list):
     nibabies_wf.base_dir = config.execution.work_dir
 
     execution_spaces = init_execution_spaces()
-    freesurfer = config.workflow.surface_recon_method is not None
-    if freesurfer:
+    surface_recon = config.workflow.surface_recon_method is not None
+    if surface_recon:
         fsdir = pe.Node(
             BIDSFreeSurferDir(
                 derivatives=config.execution.output_dir,
@@ -157,7 +157,7 @@ def init_nibabies_wf(subworkflows_list):
         single_subject_wf.config['execution']['crashdump_dir'] = str(log_dir)
         for node in single_subject_wf._get_all_nodes():
             node.config = deepcopy(single_subject_wf.config)
-        if freesurfer:
+        if surface_recon:
             nibabies_wf.connect(fsdir, 'subjects_dir', single_subject_wf, 'inputnode.subjects_dir')
         else:
             nibabies_wf.add_nodes([single_subject_wf])

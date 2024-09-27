@@ -150,6 +150,11 @@ def _build_parser():
             raise parser.error(f'Slice time reference must be in range 0-1. Received {value}.')
         return value
 
+    def _str_none(val):
+        if not isinstance(val, str):
+            return val
+        return None if val.lower() == 'none' else val
+
     verstr = f'NiBabies v{config.environment.version}'
     currentv = Version(config.environment.version)
 
@@ -757,7 +762,8 @@ discourage its usage.""",
     )
     g_baby.add_argument(
         '--surface-recon-method',
-        choices=('auto', 'infantfs', 'freesurfer', 'mcribs', 'none'),
+        choices=('auto', 'infantfs', 'freesurfer', 'mcribs', None),
+        type=_str_none,
         default='auto',
         help='Method to use for surface reconstruction.',
     )
