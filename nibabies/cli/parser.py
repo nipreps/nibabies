@@ -102,19 +102,36 @@ def _build_parser():
     def _drop_ses(value):
         return value[4:] if value.startswith('ses-') else value
 
-    def _filter_pybids_none_any(dct):
+    def _process_value(value):
         import bids
 
-        return {
-            k: bids.layout.Query.NONE if v is None else (bids.layout.Query.ANY if v == '*' else v)
-            for k, v in dct.items()
-        }
+        if value is None:
+            return bids.layout.Query.NONE
+        elif value == '*':
+            return bids.layout.Query.ANY
+        else:
+            return value
 
-    def _bids_filter(value):
-        from json import loads
+    def _filter_pybids_none_any(dct):
+        d = {}
+        for k, v in dct.items():
+            if isinstance(v, list):
+                d[k] = [_process_value(val) for val in v]
+            else:
+                d[k] = _process_value(v)
+        return d
 
-        if value and Path(value).exists():
-            return loads(Path(value).read_text(), object_hook=_filter_pybids_none_any)
+    def _bids_filter(value, parser):
+        from json import JSONDecodeError, loads
+
+        if value:
+            if Path(value).exists():
+                try:
+                    return loads(Path(value).read_text(), object_hook=_filter_pybids_none_any)
+                except JSONDecodeError as e:
+                    raise parser.error(f'JSON syntax error in: <{value}>.') from e
+            else:
+                raise parser.error(f'Path does not exist: <{value}>.')
 
     def _slice_time_ref(value, parser):
         if value == 'start':
@@ -142,6 +159,7 @@ def _build_parser():
     DirNotEmpty = partial(_dir_not_empty, parser=parser)
     IsFile = partial(_is_file, parser=parser)
     PositiveInt = partial(_min_one, parser=parser)
+    BIDSFilter = partial(_bids_filter, parser=parser)
     SliceTimeRef = partial(_slice_time_ref, parser=parser)
 
     parser.description = f"""
@@ -214,7 +232,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         '--bids-filter-file',
         dest='bids_filters',
         action='store',
-        type=_bids_filter,
+        type=BIDSFilter,
         metavar='FILE',
         help='a JSON file describing custom BIDS input filters using PyBIDS. '
         'For further details, please check out '
@@ -546,9 +564,13 @@ Useful for further Tedana processing post-NiBabies.""",
     g_syn = parser.add_argument_group('Specific options for SyN distortion correction')
     g_syn.add_argument(
         '--use-syn-sdc',
-        action='store_true',
+        nargs='?',
+        choices=['warn', 'error'],
+        action='store',
+        const='error',
         default=False,
-        help='EXPERIMENTAL: Use fieldmap-free distortion correction',
+        help='Use fieldmap-less distortion correction based on anatomical image; '
+        'if unable, error (default) or warn based on optional argument.',
     )
     g_syn.add_argument(
         '--force-syn',
