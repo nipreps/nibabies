@@ -270,3 +270,34 @@ def test_derivatives(tmp_path):
         parser.parse_args(temp_args)
 
     _reset_config()
+
+
+@pytest.mark.parametrize(
+    ('args', 'expectation'),
+    [
+        ([], 'auto'),
+        (['--surface-recon-method', 'auto'], 'auto'),
+        (['--surface-recon-method', 'mcribs'], 'mcribs'),
+        (['--surface-recon-method', 'infantfs'], 'infantfs'),
+        (['--surface-recon-method', 'freesurfer'], 'freesurfer'),
+        (['--surface-recon-method', 'none'], None),
+        (['--surface-recon-method', 'None'], None),
+        (['--surface-recon-method', 123], (TypeError,)),
+    ],
+)
+def test_surface_recon_method(tmp_path, args, expectation):
+    """Check the correct parsing of the memory argument."""
+    datapath = tmp_path / 'data'
+    datapath.mkdir(exist_ok=True)
+    _fs_file = tmp_path / 'license.txt'
+    _fs_file.write_text('')
+
+    args = [str(datapath)] + MIN_ARGS[1:] + ['--fs-license-file', str(_fs_file)] + args
+
+    cm = nullcontext()
+    if isinstance(expectation, tuple):
+        cm = pytest.raises(expectation)
+
+    with cm:
+        opts = _build_parser().parse_args(args)
+        assert opts.surface_recon_method == expectation
