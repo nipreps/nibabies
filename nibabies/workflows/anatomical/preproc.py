@@ -12,11 +12,9 @@ def init_anat_preproc_wf(
 
     This workflow accepts T1w/T2w images as inputs (either raw or a merged template) and performs:
     - Intensity clipping
-    - Denoising
     - N4 Bias Field Correction
 
-    The outputs of this workflow will be used to either create the brainmask,
-    or reconstruct the cortical surfaces.
+    The outputs of this workflow will be a structural reference used for subsequent processing.
 
     Inputs
     ------
@@ -45,7 +43,6 @@ def init_anat_preproc_wf(
     # validate image
     validate = pe.Node(ValidateImage(), name='anat_validate', run_without_submitting=True)
     clip = pe.Node(IntensityClip(p_min=10.0, p_max=99.5), name='clip')
-    # denoise = pe.Node(DenoiseImage(dimension=3, noise_model="Rician"), name="denoise")
     n4_correct = pe.Node(
         N4BiasFieldCorrection(
             dimension=3,
@@ -61,14 +58,11 @@ def init_anat_preproc_wf(
     )
     final_clip = pe.Node(IntensityClip(p_min=5.0, p_max=99.5), name='final_clip')
 
-    # fmt:off
     wf.connect([
         (inputnode, validate, [('in_anat', 'in_file')]),
         (validate, clip, [('out_file', 'in_file')]),
         (clip, n4_correct, [('out_file', 'input_image')]),
-        # (denoise, n4_correct, [("output_image", "input_image")]),
         (n4_correct, final_clip, [('output_image', 'in_file')]),
         (final_clip, outputnode, [('out_file', 'anat_preproc')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
     return wf
