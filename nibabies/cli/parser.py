@@ -28,6 +28,8 @@ def _build_parser():
         # parser attribute name: (replacement flag, version slated to be removed in)
         'bold2t1w_init': ('--bold2anat-init', '24.2.0'),
         'bold2t1w_dof': ('--bold2anat-dof', '24.2.0'),
+        'force_reconall': ('--surface-recon-method freesurfer', '24.2.0'),
+        'fs_no_reconall': ('--surface-recon-method none', '24.2.0'),
     }
 
     class DeprecatedAction(Action):
@@ -147,6 +149,11 @@ def _build_parser():
         if not 0 <= value <= 1:
             raise parser.error(f'Slice time reference must be in range 0-1. Received {value}.')
         return value
+
+    def _str_none(val):
+        if not isinstance(val, str):
+            return val
+        return None if val.lower() == 'none' else val
 
     verstr = f'NiBabies v{config.environment.version}'
     currentv = Version(config.environment.version)
@@ -619,9 +626,9 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_surfs_xor.add_argument(
         '--fs-no-reconall',
-        action='store_false',
+        action=DeprecatedAction,
         dest='run_reconall',
-        help='disable FreeSurfer surface preprocessing.',
+        help='Deprecated - use `--surface-recon-method none` instead.',
     )
 
     g_other = parser.add_argument_group('Other options')
@@ -750,14 +757,15 @@ discourage its usage.""",
     g_baby.add_argument(
         '--force-reconall',
         default=False,
-        action='store_true',
-        help='Force traditional FreeSurfer surface reconstruction.',
+        action=DeprecatedAction,
+        help='Deprecated - use `--surface-recon-method freesurfer` instead.',
     )
     g_baby.add_argument(
         '--surface-recon-method',
-        choices=('infantfs', 'freesurfer', 'mcribs', 'auto'),
+        choices=('auto', 'infantfs', 'freesurfer', 'mcribs', None),
+        type=_str_none,
         default='auto',
-        help='Method to use for surface reconstruction',
+        help='Method to use for surface reconstruction.',
     )
     g_baby.add_argument(
         '--reference-anat',
