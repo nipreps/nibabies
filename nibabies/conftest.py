@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from shutil import copytree
 
 import nibabel as nb
 import numpy as np
@@ -10,36 +10,28 @@ import pytest
 
 from nibabies.data import load as load_data
 
-FILES = (
-    'functional.nii',
-    'anatomical.nii',
-    'func.dlabel.nii',
-    'func.dtseries.nii',
-    'epi.nii',
-    'T1w.nii',
-    'func_to_struct.mat',
-    'atlas.nii',
-    'label_list.txt',
-    'sub-01_run-01_echo-1_bold.nii.gz',
-    'sub-01_run-01_echo-2_bold.nii.gz',
-    'sub-01_run-01_echo-3_bold.nii.gz',
-)
+try:
+    from importlib.resources import files as ir_files
+except ImportError:  # PY<3.9
+    from importlib_resources import files as ir_files
 
 
-@pytest.fixture(scope='package')
-def data_dir():
-    with TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir)
-        for fname in FILES:
-            Path.touch(tmp_path / fname)
-        yield tmp_path
+def copytree_or_skip(source, target):
+    data_dir = ir_files('nibabies') / source
+    if not data_dir.exists():
+        pytest.skip(f'Cannot chdir into {data_dir!r}. Probably in a zipped distribution.')
+
+    try:
+        copytree(data_dir, target / data_dir.name)
+    except Exception:  # noqa: BLE001
+        pytest.skip(f'Cannot copy {data_dir!r} into {target / data_dir.name}. Probably in a zip.')
 
 
 @pytest.fixture(autouse=True)
-def _populate_namespace(doctest_namespace, data_dir):
-    doctest_namespace['data_dir'] = data_dir
-    doctest_namespace['test_data'] = load_data.cached('../tests/data')
-    doctest_namespace['Path'] = Path
+def _populate_namespace(doctest_namespace, tmp_path):
+    doctest_namespace['copytree_or_skip'] = copytree_or_skip
+    doctest_namespace['testdir'] = tmp_path
+    doctest_namespace['datadir'] = load_data()
 
 
 @pytest.fixture

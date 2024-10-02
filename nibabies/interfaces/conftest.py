@@ -1,5 +1,6 @@
 from pathlib import Path
 from shutil import copytree
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -19,17 +20,37 @@ except ImportError:  # PY310
             os.chdir(cwd)
 
 
-@pytest.fixture(scope='module')
+DATA_FILES = (
+    'functional.nii',
+    'anatomical.nii',
+    'func.dlabel.nii',
+    'func.dtseries.nii',
+    'epi.nii',
+    'T1w.nii',
+    'func_to_struct.mat',
+    'atlas.nii',
+    'label_list.txt',
+    'sub-01_run-01_echo-1_bold.nii.gz',
+    'sub-01_run-01_echo-2_bold.nii.gz',
+    'sub-01_run-01_echo-3_bold.nii.gz',
+)
+
+
+@pytest.fixture(scope='package')
 def data_dir():
-    return Path(__file__).parent / 'tests' / 'data'
+    with TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        for fname in DATA_FILES:
+            Path.touch(tmp_path / fname)
+        yield tmp_path
 
 
 @pytest.fixture(autouse=True)
-def _docdir(request, tmp_path):
+def _docdir(data_dir, request, tmp_path):
     # Trigger ONLY for the doctests.
     doctest_plugin = request.config.pluginmanager.getplugin('doctest')
     if isinstance(request.node, doctest_plugin.DoctestItem):
-        copytree(Path(__file__).parent / 'tests' / 'data', tmp_path, dirs_exist_ok=True)
+        copytree(data_dir, tmp_path, dirs_exist_ok=True)
 
         # Chdir only for the duration of the test.
         with _chdir(tmp_path):

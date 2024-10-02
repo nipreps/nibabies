@@ -321,11 +321,11 @@ def parse_roi_labels(label_file: str):
 
     Return a list of structure names and label keys.
 
-    >>> structs, ids = parse_roi_labels(test_data / "labelfile.txt")
+    >>> structs, ids = parse_roi_labels(datadir / "FreeSurferSubcorticalLabelTableLut.txt")
     >>> structs
-    ['CEREBELLUM_LEFT', 'THALAMUS_LEFT', 'CAUDATE_LEFT']
+    ['ACCUMBENS_LEFT', 'ACCUMBENS_RIGHT', 'AMYGDALA_LEFT', ...]
     >>> ids
-    [8, 10, 11]
+    [26, 58, 18, ...]
     """
 
     with open(label_file) as fp:

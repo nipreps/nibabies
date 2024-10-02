@@ -164,7 +164,7 @@ class CiftiCreateDenseFromTemplate(WBCommand):
 
     >>> from nibabies.interfaces import workbench as wb
     >>> frmtpl = wb.CiftiCreateDenseFromTemplate()
-    >>> frmtpl.inputs.in_file = data_dir / "func.dtseries.nii"
+    >>> frmtpl.inputs.in_file = testdir / "func.dtseries.nii"
     >>> frmtpl.inputs.series = True
     >>> frmtpl.inputs.series_step = 0.8
     >>> frmtpl.inputs.series_start = 0
@@ -172,8 +172,8 @@ class CiftiCreateDenseFromTemplate(WBCommand):
     'wb_command -cifti-create-dense-from-template .../func.dtseries.nii \
     template_func.dtseries.nii -series 0.8 0.0'
 
-    >>> frmtpl.inputs.volume = [("OTHER", data_dir / 'functional.nii', True), \
-        ("PUTAMEN_LEFT", data_dir / 'functional.nii')]
+    >>> frmtpl.inputs.volume = [("OTHER", testdir / 'functional.nii', True), \
+        ("PUTAMEN_LEFT", testdir / 'functional.nii')]
     >>> frmtpl.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -cifti-create-dense-from-template .../func.dtseries.nii \
     template_func.dtseries.nii -series 0.8 0.0 \
@@ -330,8 +330,8 @@ class CiftiCreateDenseTimeseries(WBCommand):
 
     >>> from nibabies.interfaces.workbench import CiftiCreateDenseTimeseries
     >>> createdts = CiftiCreateDenseTimeseries()
-    >>> createdts.inputs.volume_data = data_dir /'functional.nii'
-    >>> createdts.inputs.volume_structure_labels = data_dir / 'atlas.nii'
+    >>> createdts.inputs.volume_data = testdir /'functional.nii'
+    >>> createdts.inputs.volume_structure_labels = testdir / 'atlas.nii'
     >>> createdts.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -cifti-create-dense-timeseries out.dtseries.nii \
     -volume .../functional.nii .../atlas.nii'
@@ -467,8 +467,8 @@ class CiftiCreateLabel(WBCommand):
 
     >>> from nibabies.interfaces import workbench as wb
     >>> lab = wb.CiftiCreateLabel()
-    >>> lab.inputs.volume_label = data_dir / "functional.nii"
-    >>> lab.inputs.structure_label_volume = data_dir / "functional.nii"
+    >>> lab.inputs.volume_label = testdir / "functional.nii"
+    >>> lab.inputs.structure_label_volume = testdir / "functional.nii"
     >>> lab.cmdline # doctest: +ELLIPSIS
     'wb_command -cifti-create-label out.dlabel.nii -volume .../functional.nii .../functional.nii'
     """
@@ -940,9 +940,9 @@ class CiftiResample(WBCommand):
 
     >>> from nibabies.interfaces import workbench as wb
     >>> res = wb.CiftiResample()
-    >>> res.inputs.in_file = data_dir / "func.dtseries.nii"
+    >>> res.inputs.in_file = testdir / "func.dtseries.nii"
     >>> res.inputs.direction = "COLUMN"
-    >>> res.inputs.template = data_dir / "func.dlabel.nii"
+    >>> res.inputs.template = testdir / "func.dlabel.nii"
     >>> res.inputs.template_direction = "COLUMN"
     >>> res.inputs.surface_method = "ADAP_BARY_AREA"
     >>> res.inputs.volume_method = "CUBIC"
@@ -1051,7 +1051,7 @@ class CiftiSeparate(WBCommand):
     dimension, columns for .dtseries.
 
     >>> separate = CiftiSeparate()
-    >>> separate.inputs.in_file = data_dir / "func.dtseries.nii"
+    >>> separate.inputs.in_file = testdir / "func.dtseries.nii"
     >>> separate.inputs.direction = "COLUMN"
     >>> separate.inputs.volume_all_file = "volume_all.nii.gz"
     >>> separate.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
@@ -1216,10 +1216,10 @@ class VolumeAffineResample(WBCommand):
 
     >>> from nibabies.interfaces.workbench import VolumeAffineResample
     >>> resample = VolumeAffineResample()
-    >>> resample.inputs.in_file = data_dir /'functional.nii'
-    >>> resample.inputs.volume_space = data_dir /'anatomical.nii'
+    >>> resample.inputs.in_file = testdir /'functional.nii'
+    >>> resample.inputs.volume_space = testdir /'anatomical.nii'
     >>> resample.inputs.method = 'CUBIC'
-    >>> resample.inputs.affine = data_dir / 'func_to_struct.mat'
+    >>> resample.inputs.affine = testdir / 'func_to_struct.mat'
     >>> resample.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
     resampled_functional.nii.gz -affine .../func_to_struct.mat'
@@ -1237,8 +1237,8 @@ class VolumeAffineResample(WBCommand):
     However, if other volumes were used to calculate the affine, they can
     be provided:
 
-    >>> resample.inputs.flirt_source_volume = data_dir / 'epi.nii'
-    >>> resample.inputs.flirt_target_volume = data_dir /'T1w.nii'
+    >>> resample.inputs.flirt_source_volume = testdir / 'epi.nii'
+    >>> resample.inputs.flirt_target_volume = testdir /'T1w.nii'
     >>> resample.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -volume-resample .../functional.nii .../anatomical.nii CUBIC \
     resampled_functional.nii.gz -affine .../func_to_struct.mat \
@@ -1297,7 +1297,7 @@ class VolumeAllLabelsToROIs(WBCommand):
 
     >>> from nibabies.interfaces.workbench import VolumeAllLabelsToROIs
     >>> rois = VolumeAllLabelsToROIs()
-    >>> rois.inputs.in_file = data_dir / 'atlas.nii'
+    >>> rois.inputs.in_file = testdir / 'atlas.nii'
     >>> rois.inputs.label_map = 1
     >>> rois.cmdline  # doctest: +ELLIPSIS
     'wb_command -volume-all-labels-to-rois .../atlas.nii 1 atlas_rois.nii.gz'
@@ -1346,7 +1346,7 @@ class VolumeLabelExportTable(WBCommand):
 
     >>> from nibabies.interfaces.workbench import VolumeLabelExportTable
     >>> label_export = VolumeLabelExportTable()
-    >>> label_export.inputs.in_file = data_dir / 'atlas.nii'
+    >>> label_export.inputs.in_file = testdir / 'atlas.nii'
     >>> label_export.inputs.label_map = 1
     >>> label_export.cmdline  # doctest: +ELLIPSIS
     'wb_command -volume-label-export-table .../atlas.nii 1 atlas_labels.txt'
@@ -1434,8 +1434,8 @@ class VolumeLabelImport(WBCommand):
 
     >>> from nibabies.interfaces.workbench import VolumeLabelImport
     >>> label_import = VolumeLabelImport()
-    >>> label_import.inputs.in_file = data_dir / 'atlas.nii'
-    >>> label_import.inputs.label_list_file = data_dir / 'label_list.txt'
+    >>> label_import.inputs.in_file = testdir / 'atlas.nii'
+    >>> label_import.inputs.label_list_file = testdir / 'label_list.txt'
     >>> label_import.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     'wb_command -volume-label-import .../atlas.nii .../label_list.txt \
     atlas_labels.nii.gz'
