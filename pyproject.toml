@@ -37,6 +37,7 @@ dependencies = [
     "tedana >= 23.0.2",
     "templateflow >= 24.2.0",
     "toml",
+    "typing_extensions; python_version<'3.11'",
 ]
 dynamic = ["version"]
 
