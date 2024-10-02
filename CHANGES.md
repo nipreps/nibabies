@@ -11,7 +11,7 @@ This new minor release includes a few bug fixes, such as excluding MCRIBS from s
   * FIX: MCRIBS auto surface reconstruction logic (#399)
   * FIX: Do not force masking of anatomicals when using `--derivatives` (#400)
 
-### Interals / Maintenance
+### Internals / Maintenance
   * MAINT: Revisit warnings filter (#396)
   * MAINT: Automate testing with tox (#404)
   * MAINT: Port over parser arguments and tests from fmriprep (#401)
