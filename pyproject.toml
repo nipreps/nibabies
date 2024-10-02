@@ -37,6 +37,7 @@ dependencies = [
     "tedana >= 23.0.2",
     "templateflow >= 24.2.0",
     "toml",
+    "typing_extensions; python_version<'3.11'",
 ]
 dynamic = ["version"]
 
@@ -71,10 +72,11 @@ maint = [
     "python-Levenshtein",
 ]
 test = [
-    "coverage",
+    "coverage[toml]",
     "pytest",
     "pytest-cov",
     "pytest-env",
+    "pytest-xdist",
 ]
 telemetry = ["migas >= 0.4.0"]
 # Aliases
@@ -120,8 +122,22 @@ per-file-ignores = [
 ]
 
 [tool.pytest.ini_options]
+minversion = "6"
+testpaths = ["nibabies"]
+log_cli_level = "INFO"
+xfail_strict = true
 norecursedirs = [".git"]
-addopts = "-svx --doctest-modules"
+addopts = [
+  "-svx",
+  "-ra",
+  "--strict-config",
+  "--strict-markers",
+  "--doctest-modules",
+  # Config pytest-cov
+  "--cov=nibabies",
+  "--cov-report=xml",
+  "--cov-config=pyproject.toml",
+]
 doctest_optionflags = "ALLOW_UNICODE NORMALIZE_WHITESPACE ELLIPSIS"
 env = "PYTHONHASHSEED=0"
 filterwarnings = ["ignore::DeprecationWarning"]
@@ -177,3 +193,15 @@ inline-quotes = "single"
 
 [tool.ruff.format]
 quote-style = "single"
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/_version.py"
+]
+
+[tool.coverage.paths]
+source = [
+  "nibabies",
+  "**/site-packages/nibabies"
+]
