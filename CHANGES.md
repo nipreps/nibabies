@@ -1,3 +1,22 @@
+24.1.0 (October 02, 2024)
+=========================
+This new minor release includes a few bug fixes, such as excluding MCRIBS from surface reconstruction without a precomputed segmentation and ensuring generated derivatives are not masked, as well as improvements to reporting.
+
+### Enhancements
+  * ENH: Add boilerplate, errors to report (#403)
+  * ENH: Add age to session report (#402)
+  * ENH: Improvements to age parsing (#395, #398)
+
+### Bug Fixes
+  * FIX: MCRIBS auto surface reconstruction logic (#399)
+  * FIX: Do not force masking of anatomicals when using `--derivatives` (#400)
+
+### Internals / Maintenance
+  * MAINT: Revisit warnings filter (#396)
+  * MAINT: Automate testing with tox (#404)
+  * MAINT: Port over parser arguments and tests from fmriprep (#401)
+
+
 24.0.1 (August 31, 2024)
 ========================
 A patch release with a fix for the BOLD T2\* workflow. The command line argument  `--me-t2s-fit-method` was added for finer control when processing multi-echo datasets.
