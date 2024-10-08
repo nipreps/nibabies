@@ -26,10 +26,6 @@ def _build_parser():
 
     deprecations = {
         # parser attribute name: (replacement flag, version slated to be removed in)
-        'bold2t1w_init': ('--bold2anat-init', '24.2.0'),
-        'bold2t1w_dof': ('--bold2anat-dof', '24.2.0'),
-        'force_reconall': ('--surface-recon-method freesurfer', '24.2.0'),
-        'fs_no_reconall': ('--surface-recon-method none', '24.2.0'),
     }
 
     class DeprecatedAction(Action):
@@ -394,19 +390,6 @@ Useful for further Tedana processing post-NiBabies.""",
     )
 
     g_conf.add_argument(
-        '--bold2t1w-init',
-        action=DeprecatedAction,
-        choices=['register', 'header'],
-        help='Deprecated - use `--bold2anat-init` instead.',
-    )
-    g_conf.add_argument(
-        '--bold2t1w-dof',
-        action=DeprecatedAction,
-        choices=[6, 9, 12],
-        type=int,
-        help='Deprecated - use `--bold2anat-dof` instead.',
-    )
-    g_conf.add_argument(
         '--bold2anat-init',
         choices=['auto', 't1w', 't2w', 'header'],
         default='auto',
@@ -624,12 +607,6 @@ Useful for further Tedana processing post-NiBabies.""",
         'Optionally, the number of grayordinate can be specified '
         '(default is 91k, which equates to 2mm resolution)',
     )
-    g_surfs_xor.add_argument(
-        '--fs-no-reconall',
-        action=DeprecatedAction,
-        dest='run_reconall',
-        help='Deprecated - use `--surface-recon-method none` instead.',
-    )
 
     g_other = parser.add_argument_group('Other options')
     g_other.add_argument(
@@ -753,12 +730,6 @@ discourage its usage.""",
         type=_bids_filter,
         metavar='FILE',
         help='A JSON file for customizing the derivatives queries.',
-    )
-    g_baby.add_argument(
-        '--force-reconall',
-        default=False,
-        action=DeprecatedAction,
-        help='Deprecated - use `--surface-recon-method freesurfer` instead.',
     )
     g_baby.add_argument(
         '--surface-recon-method',
