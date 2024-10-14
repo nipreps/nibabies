@@ -70,11 +70,13 @@ if ty.TYPE_CHECKING:
     from bids.layout import BIDSLayout
     from niworkflows.utils.spaces import SpatialReferences
 
+    SubjectSession = tuple[str, str | None]
+
 
 AUTO_T2W_MAX_AGE = 8
 
 
-def init_nibabies_wf(subworkflows_list):
+def init_nibabies_wf(subworkflows_list: list[SubjectSession]):
     """
     Build *NiBabies*'s pipeline.
 
@@ -92,7 +94,7 @@ def init_nibabies_wf(subworkflows_list):
             from nibabies.workflows.tests import mock_config
             from nibabies.workflows.base import init_nibabies_wf
             with mock_config():
-                wf = init_nibabies_wf()
+                wf = init_nibabies_wf(['01', None])
 
     Parameters
     ----------
