@@ -121,7 +121,7 @@ def _make_params(
     skull_strip_anat: str = 'auto',
     use_syn_sdc: str | bool = False,
     force_syn: bool = False,
-    freesurfer: bool = True,
+    surface_recon_method: str | None = 'auto',
     ignore: list[str] = None,
     bids_filters: dict = None,
 ):
@@ -141,7 +141,7 @@ def _make_params(
         skull_strip_anat,
         use_syn_sdc,
         force_syn,
-        freesurfer,
+        surface_recon_method,
         ignore,
         bids_filters,
     )
@@ -162,7 +162,7 @@ def _make_params(
         'skull_strip_anat',
         'use_syn_sdc',
         'force_syn',
-        'freesurfer',
+        'surface_recon_method',
         'ignore',
         'bids_filters',
     ),
@@ -185,9 +185,13 @@ def _make_params(
         _make_params(skull_strip_anat='force'),
         _make_params(skull_strip_anat='skip'),
         # _make_params(use_syn_sdc='warn', force_syn=True, ignore=['fieldmaps']),
-        _make_params(freesurfer=False),
-        _make_params(freesurfer=False, use_bbr=True),
-        _make_params(freesurfer=False, use_bbr=False),
+        _make_params(surface_recon_method=None),
+        _make_params(surface_recon_method=None, use_bbr=True),
+        _make_params(surface_recon_method=None, use_bbr=False),
+        _make_params(surface_recon_method='auto'),
+        # _make_params(surface_recon_method='mcribs'),  # Requires precomputed segmentation
+        _make_params(surface_recon_method='infantfs'),
+        _make_params(surface_recon_method='freesurfer'),
         # Currently unsupported:
         # _make_params(freesurfer=False, bold2anat_init="header"),
         # _make_params(freesurfer=False, bold2anat_init="header", use_bbr=True),
@@ -196,7 +200,7 @@ def _make_params(
         _make_params(bids_filters={'sbref': {'suffix': 'sbref'}}),
     ],
 )
-def test_init_fmriprep_wf(
+def test_init_nibabies_wf(
     monkeypatch,
     bids_root: Path,
     tmp_path: Path,
@@ -213,7 +217,7 @@ def test_init_fmriprep_wf(
     skull_strip_anat: str,
     use_syn_sdc: str | bool,
     force_syn: bool,
-    freesurfer: bool,
+    surface_recon_method: str | None,
     ignore: list[str],
     bids_filters: dict,
 ):
@@ -230,7 +234,7 @@ def test_init_fmriprep_wf(
         # config.workflow.run_msmsulc = run_msmsulc
         config.workflow.skull_strip_anat = skull_strip_anat
         config.workflow.cifti_output = cifti_output
-        config.workflow.run_reconall = freesurfer
+        config.workflow.surface_recon_method = surface_recon_method
         config.workflow.ignore = ignore
         with patch.dict('nibabies.config.execution.bids_filters', bids_filters):
             wf = init_nibabies_wf(
