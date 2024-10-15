@@ -236,8 +236,8 @@ def parse_bids_for_age_months(
 
     # Play nice with sessions
     subject = f'sub-{subject_id}'
-    session = f'ses-{session_id}' or ''
-    prefix = f'{subject}' + f'_{session}' if session else ''
+    session = f'ses-{session_id}' if session_id else ''
+    prefix = f'{subject}' + (f'_{session}' if session else '')
 
     subject_level = session_level = Path(bids_root) / subject
     if session_id:
