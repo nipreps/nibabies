@@ -940,7 +940,7 @@ def init_infant_anat_fit_wf(
 
     workflow.__desc__ = desc
 
-    if not recon_method:
+    if recon_method is None:
         LOGGER.info('ANAT Skipping Stages 6+')
         return workflow
 
@@ -1764,6 +1764,10 @@ def init_infant_single_anat_fit_wf(
         ])  # fmt:skip
 
     workflow.__desc__ = desc
+
+    if recon_method is None:
+        LOGGER.info('ANAT Skipping Stages 5+')
+        return workflow
 
     # Stage 5: Surface reconstruction
     if recon_method == 'mcribs':
