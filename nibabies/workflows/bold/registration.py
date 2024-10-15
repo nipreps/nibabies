@@ -603,7 +603,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         flt_bbr.inputs.schedule = data.load('flirtsch/bbr.sch')
     # fmt:off
     workflow.connect([
-        (inputnode, wm_mask, [('t1w_dseg', 'in_seg')]),
+        (inputnode, wm_mask, [('anat_dseg', 'in_seg')]),
         (inputnode, flt_bbr, [('in_file', 'in_file')]),
         (lta_to_fsl, flt_bbr, [('out_fsl', 'in_matrix_file')]),
     ])
