@@ -74,6 +74,13 @@ BASE_LAYOUT = {
 }
 
 
+T1W_ONLY = BASE_LAYOUT.copy()
+T1W_ONLY['01']['anat'] = [{'suffix': 'T1w'}]
+
+T2W_ONLY = T1W_ONLY.copy()
+T2W_ONLY['01']['anat'] = [{'suffix': 'T2w'}]
+
+
 @pytest.fixture(scope='module', autouse=True)
 def _quiet_logger():
     import logging
@@ -91,11 +98,17 @@ def _reset_sdcflows_registry():
     clear_registry()
 
 
-@pytest.fixture(scope='module')
-def bids_root(tmp_path_factory):
+@pytest.fixture(scope='module', params=[BASE_LAYOUT, T1W_ONLY, T2W_ONLY])
+def bids_root(tmp_path_factory, request):
+    """
+    Create a BIDS skeleton for various input types:
+    - Full inputs (T1w + T2w)
+    - T1w only
+    - T2w only
+    """
     base = tmp_path_factory.mktemp('base')
     bids_dir = base / 'bids'
-    generate_bids_skeleton(bids_dir, BASE_LAYOUT)
+    generate_bids_skeleton(bids_dir, request.param)
 
     # Ensure age information is available
     df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
