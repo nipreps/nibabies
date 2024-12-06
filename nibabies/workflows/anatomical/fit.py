@@ -9,6 +9,7 @@ from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
+from niworkflows.interfaces.utility import KeySelect
 from niworkflows.utils.connections import pop_file
 from smriprep.workflows.anatomical import (
     _is_skull_stripped,
@@ -37,7 +38,10 @@ from nibabies import config
 from nibabies.workflows.anatomical.brain_extraction import init_infant_brain_extraction_wf
 from nibabies.workflows.anatomical.outputs import init_anat_reports_wf
 from nibabies.workflows.anatomical.preproc import init_anat_preproc_wf, init_csf_norm_wf
-from nibabies.workflows.anatomical.registration import init_coregistration_wf
+from nibabies.workflows.anatomical.registration import (
+    init_concat_registrations_wf,
+    init_coregistration_wf,
+)
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
 from nibabies.workflows.anatomical.surfaces import init_mcribs_dhcp_wf
 
@@ -228,9 +232,9 @@ def init_infant_anat_fit_wf(
         name='seg_buffer',
     )
     # Stage 5 - collated template names, forward and reverse transforms
-    template_buffer = pe.Node(niu.Merge(2), name='template_buffer')
-    anat2std_buffer = pe.Node(niu.Merge(2), name='anat2std_buffer')
-    std2anat_buffer = pe.Node(niu.Merge(2), name='std2anat_buffer')
+    template_buffer = pe.Node(niu.Merge(3), name='template_buffer')
+    anat2std_buffer = pe.Node(niu.Merge(3), name='anat2std_buffer')
+    std2anat_buffer = pe.Node(niu.Merge(3), name='std2anat_buffer')
 
     # Stage 6 results: Refined stage 2 results; may be direct copy if no refinement
     refined_buffer = pe.Node(
@@ -875,14 +879,41 @@ def init_infant_anat_fit_wf(
         seg_buffer.inputs.anat_tpms = anat_tpms
 
     # Stage 5: Normalization
+
+    # If selected adult templates are requested (MNI152 6th Gen or 2009)
+    # opt to concatenate transforms first from native -> infant template (MNIInfant),
+    # and then use a previously computed MNIInfant<cohort> -> MNI transform
+    # this minimizes the chance of a bad registration.
+
     templates = []
+    concat_xfms = []
     found_xfms = {}
+    intermediate = None  # The intermediate space when concatenating xfms - includes cohort
+    intermediate_targets = {
+        'MNI152NLin6Asym',
+    }  # TODO: 'MNI152NLin2009cAsym'
+
     for template in spaces.get_spaces(nonstandard=False, dim=(3,)):
+        # resolution / spec will not differentiate here
+        if template.startswith('MNIInfant'):
+            intermediate = template
         xfms = precomputed.get('transforms', {}).get(template, {})
         if set(xfms) != {'forward', 'reverse'}:
-            templates.append(template)
+            if template in intermediate_targets:
+                concat_xfms.append(template)
+            else:
+                templates.append(template)
         else:
             found_xfms[template] = xfms
+
+    # Create another set of buffers to handle the case where we aggregate found and generated
+    # xfms to be concatenated
+    concat_template_buffer = pe.Node(niu.Merge(2), name='concat_template_buffer')
+    concat_template_buffer.inputs.in1 = list(found_xfms)
+    concat_anat2std_buffer = pe.Node(niu.Merge(2), name='concat_anat2std_buffer')
+    concat_anat2std_buffer.inputs.in1 = [xfm['forward'] for xfm in found_xfms.values()]
+    concat_std2anat_buffer = pe.Node(niu.Merge(2), name='concat_std2anat_buffer')
+    concat_std2anat_buffer.inputs.in1 = [xfm['reverse'] for xfm in found_xfms.values()]
 
     template_buffer.inputs.in1 = list(found_xfms)
     anat2std_buffer.inputs.in1 = [xfm['forward'] for xfm in found_xfms.values()]
@@ -898,7 +929,7 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
 
     if templates:
-        LOGGER.info(f'ANAT Stage 5: Preparing normalization workflow for {templates}')
+        LOGGER.info(f'ANAT Stage 5a: Preparing normalization workflow for {templates}')
         register_template_wf = init_register_template_wf(
             sloppy=sloppy,
             omp_nthreads=omp_nthreads,
@@ -925,11 +956,53 @@ def init_infant_anat_fit_wf(
                 ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
             (register_template_wf, template_buffer, [('outputnode.template', 'in2')]),
+            (register_template_wf, concat_template_buffer, [('outputnode.template', 'in2')]),
             (register_template_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
+            (register_template_wf, concat_std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
             (register_template_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
+            (register_template_wf, concat_anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
         ])  # fmt:skip
+
+    if concat_xfms:
+        LOGGER.info(f'ANAT Stage 5b: Concatenating normalization for {concat_xfms}')
+        # 1. Select intermediate's transforms
+        select_infant_mni = pe.Node(
+            KeySelect(fields=['template', 'anat2std_xfm', 'std2anat_xfm'], key=intermediate),
+            name='select_infant_mni',
+            run_without_submitting=True,
+        )
+        concat_reg_wf = init_concat_registrations_wf(templates=concat_xfms)
+        ds_concat_reg_wf = init_ds_template_registration_wf(
+            output_dir=str(output_dir),
+            image_type=reference_anat,
+            name='ds_concat_registration_wf',
+        )
+
+        workflow.connect([
+            (concat_template_buffer, select_infant_mni, [('out', 'template')]),
+            (concat_anat2std_buffer, select_infant_mni, [('out', 'anat2std_xfm')]),
+            (concat_std2anat_buffer, select_infant_mni, [('out', 'std2anat_xfm')]),
+            (select_infant_mni, concat_reg_wf, [
+                ('template', 'inputnode.intermediate'),
+                ('anat2std_xfm', 'inputnode.anat2std_xfm'),
+                ('std2anat_xfm', 'inputnode.std2anat_xfm'),
+            ]),
+            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
+            (sourcefile_buffer, ds_concat_reg_wf, [
+                ('anat_source_files', 'inputnode.source_files')
+            ]),
+            (concat_reg_wf, ds_concat_reg_wf, [
+                ('outputnode.template', 'inputnode.template'),
+                ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
+            ]),
+            (concat_reg_wf, template_buffer, [('outputnode.template', 'in3')]),
+            (concat_reg_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in3')]),
+            (concat_reg_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in3')]),
+        ])  # fmt:skip
+
     if found_xfms:
-        LOGGER.info(f'ANAT Stage 5: Found pre-computed registrations for {found_xfms}')
+        LOGGER.info(f'ANAT Stage 5c: Found pre-computed registrations for {found_xfms}')
 
     # Only refine mask if necessary
     if anat_mask or recon_method is None or not refine_mask:
@@ -1404,9 +1477,9 @@ def init_infant_single_anat_fit_wf(
         name='seg_buffer',
     )
     # Stage 4 - collated template names, forward and reverse transforms
-    template_buffer = pe.Node(niu.Merge(2), name='template_buffer')
-    anat2std_buffer = pe.Node(niu.Merge(2), name='anat2std_buffer')
-    std2anat_buffer = pe.Node(niu.Merge(2), name='std2anat_buffer')
+    template_buffer = pe.Node(niu.Merge(3), name='template_buffer')
+    anat2std_buffer = pe.Node(niu.Merge(3), name='anat2std_buffer')
+    std2anat_buffer = pe.Node(niu.Merge(3), name='std2anat_buffer')
 
     # Stage 5 results: Refined stage 2 results; may be direct copy if no refinement
     refined_buffer = pe.Node(
@@ -1720,14 +1793,40 @@ def init_infant_single_anat_fit_wf(
         seg_buffer.inputs.anat_tpms = anat_tpms
 
     # Stage 4: Normalization
+    # If selected adult templates are requested (MNI152 6th Gen or 2009)
+    # opt to concatenate transforms first from native -> infant template (MNIInfant),
+    # and then use a previously computed MNIInfant<cohort> -> MNI transform
+    # this minimizes the chance of a bad registration.
+
     templates = []
+    concat_xfms = []
     found_xfms = {}
+    intermediate = None  # The intermediate space when concatenating xfms - includes cohort
+    intermediate_targets = {
+        'MNI152NLin6Asym',
+    }  # TODO: 'MNI152NLin2009cAsym'
+
     for template in spaces.get_spaces(nonstandard=False, dim=(3,)):
+        # resolution / spec will not differentiate here
+        if template.startswith('MNIInfant'):
+            intermediate = template
         xfms = precomputed.get('transforms', {}).get(template, {})
         if set(xfms) != {'forward', 'reverse'}:
-            templates.append(template)
+            if template in intermediate_targets:
+                concat_xfms.append(template)
+            else:
+                templates.append(template)
         else:
             found_xfms[template] = xfms
+
+    # Create another set of buffers to handle the case where we aggregate found and generated
+    # xfms to be concatenated
+    concat_template_buffer = pe.Node(niu.Merge(2), name='concat_template_buffer')
+    concat_template_buffer.inputs.in1 = list(found_xfms)
+    concat_anat2std_buffer = pe.Node(niu.Merge(2), name='concat_anat2std_buffer')
+    concat_anat2std_buffer.inputs.in1 = [xfm['forward'] for xfm in found_xfms.values()]
+    concat_std2anat_buffer = pe.Node(niu.Merge(2), name='concat_std2anat_buffer')
+    concat_std2anat_buffer.inputs.in1 = [xfm['reverse'] for xfm in found_xfms.values()]
 
     template_buffer.inputs.in1 = list(found_xfms)
     anat2std_buffer.inputs.in1 = [xfm['forward'] for xfm in found_xfms.values()]
@@ -1770,9 +1869,54 @@ def init_infant_single_anat_fit_wf(
                 ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
             (register_template_wf, template_buffer, [('outputnode.template', 'in2')]),
+            (register_template_wf, concat_template_buffer, [('outputnode.template', 'in2')]),
             (register_template_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
+            (register_template_wf, concat_std2anat_buffer, [('outputnode.std2anat_xfm', 'in2')]),
             (register_template_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
+            (register_template_wf, concat_anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
         ])  # fmt:skip
+
+    if concat_xfms:
+        LOGGER.info(f'ANAT Stage 5b: Concatenating normalization for {concat_xfms}')
+        # 1. Select intermediate's transforms
+        select_infant_mni = pe.Node(
+            KeySelect(fields=['template', 'anat2std_xfm', 'std2anat_xfm']),
+            name='select_infant_mni',
+            run_without_submitting=True,
+        )
+        select_infant_mni.inputs.key = intermediate
+
+        concat_reg_wf = init_concat_registrations_wf(templates=concat_xfms)
+        ds_concat_reg_wf = init_ds_template_registration_wf(
+            output_dir=str(output_dir),
+            image_type=reference_anat,
+            name='ds_concat_registration_wf',
+        )
+
+        workflow.connect([
+            (concat_template_buffer, select_infant_mni, [('out', 'keys')]),
+            (concat_template_buffer, select_infant_mni, [('out', 'template')]),
+            (concat_anat2std_buffer, select_infant_mni, [('out', 'anat2std_xfm')]),
+            (concat_std2anat_buffer, select_infant_mni, [('out', 'std2anat_xfm')]),
+            (select_infant_mni, concat_reg_wf, [
+                ('template', 'inputnode.intermediate'),
+                ('anat2std_xfm', 'inputnode.anat2std_xfm'),
+                ('std2anat_xfm', 'inputnode.std2anat_xfm'),
+            ]),
+            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
+            (sourcefile_buffer, ds_concat_reg_wf, [
+                ('anat_source_files', 'inputnode.source_files')
+            ]),
+            (concat_reg_wf, ds_concat_reg_wf, [
+                ('outputnode.template', 'inputnode.template'),
+                ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
+                ('outputnode.std2anat_xfm', 'inputnode.std2anat_xfm'),
+            ]),
+            (concat_reg_wf, template_buffer, [('outputnode.template', 'in3')]),
+            (concat_reg_wf, anat2std_buffer, [('outputnode.anat2std_xfm', 'in3')]),
+            (concat_reg_wf, std2anat_buffer, [('outputnode.std2anat_xfm', 'in3')]),
+        ])  # fmt:skip
+
     if found_xfms:
         LOGGER.info(f'ANAT Stage 4: Found pre-computed registrations for {found_xfms}')
 

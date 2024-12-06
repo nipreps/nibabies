@@ -4,9 +4,25 @@
 
 from __future__ import annotations
 
-from nipype.interfaces import utility as niu
+from collections import defaultdict
+
+from nipype.interfaces import (
+    utility as niu,
+)
+from nipype.interfaces.ants.base import Info as ANTsInfo
 from nipype.pipeline import engine as pe
+from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+from smriprep.workflows.fit.registration import (
+    TemplateDesc,
+    TemplateFlowSelect,
+    _fmt_cohort,
+    get_metadata,
+    tf_ver,
+)
+
+from nibabies.config import DEFAULT_MEMORY_MIN_GB
+from nibabies.interfaces.patches import ConcatXFM
 
 
 def init_coregistration_wf(
@@ -288,3 +304,186 @@ def init_coregister_derivatives_wf(
         ])
         # fmt:on
     return workflow
+
+
+def init_concat_registrations_wf(
+    *,
+    templates,
+    name='concat_registrations_wf',
+):
+    """
+    Concatenate two transforms to produce a single transform, from native to ``template``.
+
+    Parameters
+    ----------
+    templates : :obj:`list` of :obj:`str`
+        List of standard space fullnames (e.g., ``MNI152NLin6Asym``
+        or ``MNIPediatricAsym:cohort-4``) which are targets for spatial
+        normalization.
+
+    Inputs
+    ------
+    anat_preproc
+        The anatomical reference, to be used as a reference image for std2anat_xfm
+    intermediate
+        Standard space fullname (usually ``MNIInfant:cohort-X``) which serves as
+        the intermediate space between native and *template*
+    anat2std_xfm
+        The incoming anat2std transform (from native to MNIInfant)
+    std2anat_xfm
+        The incoming std2anat transform (from MNIInfant to native)
+
+    Outputs
+    -------
+    anat2std_xfm
+        Anatomical -> MNIInfant -> template transform.
+    std2anat_xfm
+        The template -> MNIInfant -> anatomical transform.
+    template
+        Template name extracted from the input parameter ``template``, for further
+        use in downstream nodes.
+    template_spec
+        Template specifications extracted from the input parameter ``template``, for
+        further use in downstream nodes.
+
+    """
+    ntpls = len(templates)
+    workflow = Workflow(name=name)
+
+    if templates:
+        workflow.__desc__ = """\
+Volume-based spatial normalization to {targets} ({targets_id}) was performed by
+concatenating two registrations with `antsRegistration` (ANTs {ants_ver}). First, the
+anatomical reference was registered to the Infant MNI templates (@mniinfant). Separately,
+the Infant MNI templates were registered to {targets}, with the saved transform to template
+stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
+""".format(
+            ants_ver=ANTsInfo.version() or '(version unknown)',
+            targets='{} standard space{}'.format(
+                defaultdict('several'.format, {1: 'one', 2: 'two', 3: 'three', 4: 'four'})[ntpls],
+                's' * (ntpls != 1),
+            ),
+            targets_id=', '.join(templates),
+            tf_ver=tf_ver,
+        )
+
+        # Append template citations to description
+        for template in templates:
+            template_meta = get_metadata(template.split(':')[0])
+            template_refs = ['@{}'.format(template.split(':')[0].lower())]
+
+            if template_meta.get('RRID', None):
+                template_refs += [f'RRID:{template_meta["RRID"]}']
+
+            workflow.__desc__ += """\
+*{template_name}* [{template_refs}; TemplateFlow ID: {template}]""".format(
+                template=template,
+                template_name=template_meta['Name'],
+                template_refs=', '.join(template_refs),
+            )
+            workflow.__desc__ += '.\n' if template == templates[-1] else ', '
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=['template', 'anat_preproc', 'anat2std_xfm', 'intermediate', 'std2anat_xfm']
+        ),
+        name='inputnode',
+    )
+    inputnode.inputs.template = templates
+
+    out_fields = [
+        'anat2std_xfm',
+        'std2anat_xfm',
+        'template',
+        'template_spec',
+    ]
+    outputnode = pe.Node(niu.IdentityInterface(fields=out_fields), name='outputnode')
+
+    intermed_xfms = pe.MapNode(
+        niu.Function(
+            function=_load_intermediate_xfms, output_names=['int2std_xfm', 'std2int_xfm']
+        ),
+        name='intermed_xfms',
+        iterfield=['std'],
+        run_without_submitting=True,
+    )
+
+    split_desc = pe.MapNode(
+        TemplateDesc(), run_without_submitting=True, iterfield='template', name='split_desc'
+    )
+
+    tf_select = pe.MapNode(
+        TemplateFlowSelect(resolution=1),
+        name='tf_select',
+        run_without_submitting=True,
+        iterfield=['template', 'template_spec'],
+    )
+
+    merge_anat2std = pe.MapNode(
+        niu.Merge(2), name='merge_anat2std', iterfield=['in1', 'in2'], run_without_submitting=True
+    )
+    merge_std2anat = merge_anat2std.clone('merge_std2anat')
+
+    concat_anat2std = pe.MapNode(
+        ConcatXFM(),
+        name='concat_anat2std',
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+        iterfield=['transforms', 'reference_image'],
+    )
+    concat_std2anat = pe.MapNode(
+        ConcatXFM(),
+        name='concat_std2anat',
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+        iterfield=['transforms', 'reference_image'],
+    )
+
+    fmt_cohort = pe.MapNode(
+        niu.Function(function=_fmt_cohort, output_names=['template', 'spec']),
+        name='fmt_cohort',
+        run_without_submitting=True,
+        iterfield=['template', 'spec'],
+    )
+
+    workflow.connect([
+        (inputnode, merge_anat2std, [('anat2std_xfm', 'in2')]),
+        (inputnode, merge_std2anat, [('std2anat_xfm', 'in2')]),
+        (inputnode, concat_std2anat, [('anat_preproc', 'reference_image')]),
+        (inputnode, intermed_xfms, [('intermediate', 'intermediate')]),
+        (inputnode, intermed_xfms, [('template', 'std')]),
+
+        (intermed_xfms, merge_anat2std, [('int2std_xfm', 'in1')]),
+        (intermed_xfms, merge_std2anat, [('std2int_xfm', 'in1')]),
+
+        (merge_anat2std, concat_anat2std, [('out', 'transforms')]),
+        (merge_std2anat, concat_std2anat, [('out', 'transforms')]),
+
+        (inputnode, split_desc, [('template', 'template')]),
+        (split_desc, tf_select, [
+            ('name', 'template'),
+            ('spec', 'template_spec'),
+        ]),
+        (tf_select, concat_anat2std, [('t1w_file', 'reference_image')]),
+        (split_desc, fmt_cohort, [
+            ('name', 'template'),
+            ('spec', 'spec'),
+        ]),
+        (fmt_cohort, outputnode, [
+            ('template', 'template'),
+            ('spec', 'template_spec'),
+        ]),
+        (concat_anat2std, outputnode, [('out_xfm', 'anat2std_xfm')]),
+        (concat_std2anat, outputnode, [('out_xfm', 'std2anat_xfm')]),
+    ])  # fmt:skip
+
+    return workflow
+
+
+def _load_intermediate_xfms(intermediate, std):
+    from nibabies.data import load
+
+    # MNIInfant:cohort-1 -> MNIInfant+1
+    intmed = intermediate.replace(':cohort-', '+')
+
+    int2std = load.readable(f'tpl_xfms/from-{intmed}_to-{std}_xfm.h5')
+    std2int = load.readable(f'tpl_xfms/from-{std}_to-{intmed}_xfm.h5')
+    return int2std, std2int
