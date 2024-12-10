@@ -479,11 +479,30 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
 
 
 def _load_intermediate_xfms(intermediate, std):
+    import json
+
+    import pooch
+
     from nibabies.data import load
 
+    xfms = json.loads(load('xfm_manifest.json').read_text())
     # MNIInfant:cohort-1 -> MNIInfant+1
     intmed = intermediate.replace(':cohort-', '+')
 
-    int2std = load.readable(f'tpl_xfms/from-{intmed}_to-{std}_xfm.h5')
-    std2int = load.readable(f'tpl_xfms/from-{std}_to-{intmed}_xfm.h5')
+    int2std_name = f'from-{intmed}_to-{std}_xfm.h5'
+    int2std_meta = xfms[int2std_name]
+    int2std = pooch.retrieve(
+        url=int2std_meta['url'],
+        known_hash=int2std_meta['hash'],
+        fname=int2std_name,
+    )
+
+    std2int_name = f'from-{std}_to-{intmed}_xfm.h5'
+    std2int_meta = xfms[std2int_name]
+    std2int = pooch.retrieve(
+        url=std2int_meta['url'],
+        known_hash=std2int_meta['hash'],
+        fname=std2int_name,
+    )
+
     return int2std, std2int

@@ -1,0 +1,90 @@
+{
+    "from-MNI152NLin6Asym_to-MNIInfant+10_xfm.h5": {
+        "url": "https://osf.io/download/jf6vz/",
+        "hash": "md5:df6d40e5bbdca85f083866ad26507796"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+11_xfm.h5": {
+        "url": "https://osf.io/download/zmjyn/",
+        "hash": "md5:ff8435f06c0a44be88e050492b90ffea"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+1_xfm.h5": {
+        "url": "https://osf.io/download/kx7ny/",
+        "hash": "md5:c27d35dff75d59d605c8d786c985594e"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+2_xfm.h5": {
+        "url": "https://osf.io/download/6758aa0c67a7782b00f73c77/",
+        "hash": "md5:81fabdc70c200bf099893bd1377ef0f7"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+3_xfm.h5": {
+        "url": "https://osf.io/download/6758aa1c76bfbc22cbf73b0a/",
+        "hash": "md5:c8f5b79b95f9aa65add5524e88601cc6"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+4_xfm.h5": {
+        "url": "https://osf.io/download/6758aa1bb96fd819c41e25a4/",
+        "hash": "md5:1e4b927115a76b031c46e6180fc76a30"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+5_xfm.h5": {
+        "url": "https://osf.io/download/6758aa146e0cd8ca5f563b2b/",
+        "hash": "md5:25bfd0837a88db267762974c0a530535"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+6_xfm.h5": {
+        "url": "https://osf.io/download/6758ab50b95a2e75b11e23f0/",
+        "hash": "md5:7ed4732832ed6dd45dd2259d8b4454e7"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+7_xfm.h5": {
+        "url": "https://osf.io/download/6758ab5667a7782b00f73cfa/",
+        "hash": "md5:a1244c38b7b4825abefc5834d0398b08"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+8_xfm.h5": {
+        "url": "https://osf.io/download/rq2an/",
+        "hash": "md5:50d11fdac22c6589af8a7f61e4b3e41a"
+    },
+    "from-MNI152NLin6Asym_to-MNIInfant+9_xfm.h5": {
+        "url": "https://osf.io/download/6758ab67eacdd8b34803d991/",
+        "hash": "md5:3184d91f8b3a386ca3ec913c365651d8"
+    },
+    "from-MNIInfant+10_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/4xh9q/",
+        "hash": "md5:a1f3dd3c0ac8b05efbaf893cca6f9641"
+    },
+    "from-MNIInfant+11_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a5026e0cd8ca5f56380d/",
+        "hash": "md5:0d1aadef884574e54065d4e2cdb8e398"
+    },
+    "from-MNIInfant+1_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/7ge2b/",
+        "hash": "md5:d5e4272140c6f582f64b7f39b31ca837"
+    },
+    "from-MNIInfant+2_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a3c1a678894ad71e2422/",
+        "hash": "md5:b03651dae4d378410c44f1c6c63dbea0"
+    },
+    "from-MNIInfant+3_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a3c3bc61ce5912662055/",
+        "hash": "md5:7cc099e26647e670c8e75ead2cfe39a6"
+    },
+    "from-MNIInfant+4_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a3bc040c053b58f73b47/",
+        "hash": "md5:e92e9150f2ad4d2730f005aa9750438d"
+    },
+    "from-MNIInfant+5_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a3bdea7294dbdd66161a/",
+        "hash": "md5:9cf6cf3fb500c229da15490c9080201a"
+    },
+    "from-MNIInfant+6_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a3bf040c053b58f73b4b/",
+        "hash": "md5:2212fdb57b85e8a0f7fa9feea5b0dd1b"
+    },
+    "from-MNIInfant+7_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a4f78af26d0a97661ca9/",
+        "hash": "md5:6913f8191201350311ff61525fae8a21"
+    },
+    "from-MNIInfant+8_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a500f82c189df71e256f/",
+        "hash": "md5:809455af8416cd61c1693b5c7eafbd13"
+    },
+    "from-MNIInfant+9_to-MNI152NLin6Asym_xfm.h5": {
+        "url": "https://osf.io/download/6758a4ff040c053b58f73bd1/",
+        "hash": "md5:49317cbb038c399d4df7428f07d36983"
+    }
+}
