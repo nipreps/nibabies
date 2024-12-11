@@ -59,18 +59,18 @@ class ConcatXFMOutputSpec(TraitedSpec):
 
 class ConcatXFM(ANTSCommand):
     """
-    Streamed use of antsApplyTransforms to combine nonlinear xfms into a single file
+    Streamed use of antsApplyTransforms to combine multiple xfms into a single file
 
     Examples
     --------
 
     >>> from nibabies.interfaces.patches import ConcatXFM
     >>> cxfm = ConcatXFM()
-    >>> cxfm.inputs.transforms = ['xfm1.h5', 'xfm0.h5']
-    >>> cxfm.inputs.reference_image = 'sub-01_T1w.nii.gz'
-    >>> cxfm.cmdline
-    'antsApplyTransforms --output [ concat_xfm.h5, 1 ] --transform .../xfm1.h5 \
---transform .../xfm0.h5 --reference_image .../sub-01_T1w.nii.gz'
+    >>> cxfm.inputs.transforms = [testdir / 'xfm0.h5', testdir / 'xfm1.h5']
+    >>> cxfm.inputs.reference_image = testdir / 'anatomical.nii'
+    >>> cxfm.cmdline  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    'antsApplyTransforms --output [ concat_xfm.h5, 1 ] --reference-image .../anatomical.nii \
+--transform .../xfm0.h5 --transform .../xfm1.h5'
 
     """
 
