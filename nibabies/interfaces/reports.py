@@ -274,13 +274,13 @@ class FunctionalSummary(SummaryInterface):
         reg = {
             'FSL': [
                 'FSL <code>flirt</code> with boundary-based registration'
-                ' (BBR) metric - %d dof' % dof,
+                f' (BBR) metric - {dof} dof',
                 'FSL <code>flirt</code> rigid registration - 6 dof',
             ],
             'FreeSurfer': [
                 'FreeSurfer <code>bbregister</code> '
-                '(boundary-based registration, BBR) - %d dof' % dof,
-                'FreeSurfer <code>mri_coreg</code> - %d dof' % dof,
+                f'(boundary-based registration, BBR) - {dof} dof',
+                f'FreeSurfer <code>mri_coreg</code> - {dof} dof',
             ],
         }[self.inputs.registration][self.inputs.fallback]
 
