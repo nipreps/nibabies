@@ -904,6 +904,7 @@ def init_infant_anat_fit_wf(
             sloppy=sloppy,
             omp_nthreads=omp_nthreads,
             templates=templates,
+            image_type=reference_anat,
         )
         ds_template_registration_wf = init_ds_template_registration_wf(
             output_dir=str(output_dir),
@@ -1729,6 +1730,7 @@ def init_infant_single_anat_fit_wf(
             sloppy=sloppy,
             omp_nthreads=omp_nthreads,
             templates=templates,
+            image_type=reference_anat,
         )
         ds_template_registration_wf = init_ds_template_registration_wf(
             output_dir=str(output_dir),
