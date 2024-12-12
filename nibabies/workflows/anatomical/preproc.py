@@ -66,3 +66,29 @@ def init_anat_preproc_wf(
         (final_clip, outputnode, [('out_file', 'anat_preproc')]),
     ])  # fmt:skip
     return wf
+
+
+def init_anat_csf_norm_wf(name='anat_csf_norm_wf') -> LiterateWorkflow:
+    """Replace low intensity voxels within the CSF mask with the median value."""
+
+    workflow = LiterateWorkflow(name=name)
+    inputnode = niu.IdentityInterface(fields=['anat_preproc', 'anat_dseg'], name='inputnode')
+    outputnode = niu.IdentityInterface(fields=['anat_preproc'], name='outputnode')
+
+    applymask = pe.Node(ApplyMask(), name='applymask')
+
+    norm2median = pe.Node(niu.Function(function=_normalize_csf), name='norm2median')
+    # 1. mask brain with CSF mask
+    # fslmaths input.nii.gz -mas aseg_label-CSF_mask.nii.gz input_CSF.nii.gz
+    # 2. get median intensity of nonzero voxels in mask
+    # fslstats input_CSF.nii.gz -P 50
+    # 3. normalize CSF-masked T2w to the median
+    # fslmaths input_CSF.nii.gz -bin -mul <median intensity from (> median_CSF.nii.gz
+    # 4. make the modified T2w, setting voxel intensity to be the max between the original T2w's,
+    # and the normalized mask from (3)'s:
+    # fslmaths input.nii.gz -max median_CSF.nii.gz input_floorCSF.nii.gz
+
+    return workflow
+
+
+def _normalize_csf(in_file): ...

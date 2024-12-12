@@ -184,6 +184,12 @@ def init_infant_anat_fit_wf(
         name='anat_buffer',
     )
 
+    # Additional CSF normalization, if necessary
+    anat_norm_buffer = pe.Node(
+        niu.IdentityInterface(fields=['anat_preproc']),
+        name='anat_norm_buffer',
+    )
+
     if reference_anat == 'T1w':
         LOGGER.info('ANAT: Using T1w as the reference anatomical')
         workflow.connect([
@@ -637,24 +643,6 @@ def init_infant_anat_fit_wf(
                     (binarize_t2w, t2w_buffer, [('out_file', 't2w_mask')]),
                 ])  # fmt:skip
         else:
-            # Check whether we can convert a previously computed T2w mask
-            # or need to run the atlas based brain extraction
-
-            # if t1w_mask:
-            #     LOGGER.info('ANAT T1w mask will be transformed into T2w space')
-            #     transform_t1w_mask = pe.Node(
-            #         ApplyTransforms(interpolation='MultiLabel'),
-            #         name='transform_t1w_mask',
-            #     )
-
-            #     workflow.connect([
-            #         (t1w_buffer, transform_t1w_mask, [('t1w_mask', 'input_image')]),
-            #         (coreg_buffer, transform_t1w_mask, [('t1w2t2w_xfm', 'transforms')]),
-            #         (transform_t1w_mask, apply_t2w_mask, [('output_image', 'in_mask')]),
-            #         (t2w_buffer, apply_t1w_mask, [('t2w_preproc', 'in_file')]),
-            #         # TODO: Unsure about this connection^
-            #     ])  # fmt:skip
-            # else:
             LOGGER.info('ANAT Atlas-based brain mask will be calculated on the T2w')
             brain_extraction_wf = init_infant_brain_extraction_wf(
                 omp_nthreads=omp_nthreads,

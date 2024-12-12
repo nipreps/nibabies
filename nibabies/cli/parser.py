@@ -753,6 +753,11 @@ discourage its usage.""",
         default=16,
         help='Frame to start head motion estimation on BOLD.',
     )
+    g_baby.add_argument(
+        '--norm-csf',
+        action='store_true',
+        help='Replace low intensity voxels in CSF mask with average',
+    )
     return parser
 
 
