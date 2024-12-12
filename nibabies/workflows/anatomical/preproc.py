@@ -76,15 +76,18 @@ def init_csf_norm_wf(name: str = 'csf_norm_wf') -> LiterateWorkflow:
         'The CSF mask was used to normalize the anatomical template by the median of voxels '
         'within the mask.'
     )
-    inputnode = niu.IdentityInterface(fields=['anat_preproc', 'anat_tpms'], name='inputnode')
-    outputnode = niu.IdentityInterface(fields=['anat_preproc'], name='outputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['anat_preproc', 'anat_tpms']),
+        name='inputnode',
+    )
+    outputnode = pe.Node(niu.IdentityInterface(fields=['anat_preproc']), name='outputnode')
 
     # select CSF from BIDS-ordered list (GM, WM, CSF)
     select_csf = pe.Node(niu.Select(index=2), name='select_csf')
     norm_csf = pe.Node(niu.Function(function=_normalize_roi), name='norm_csf')
 
     workflow.connect([
-        (inputnode, select_csf, [('anat_tpms', 'in_list')]),
+        (inputnode, select_csf, [('anat_tpms', 'inlist')]),
         (select_csf, norm_csf, [('out', 'mask_file')]),
         (inputnode, norm_csf, [('anat_preproc', 'in_file')]),
         (norm_csf, outputnode, [('out', 'anat_preproc')]),
@@ -99,13 +102,14 @@ def _normalize_roi(in_file, mask_file, threshold=0.2, out_file=None):
     import numpy as np
 
     img = nb.load(in_file)
-    img_data = img.get_fdata()
+    img_data = np.asanyarray(img.dataobj)
     mask_img = nb.load(mask_file)
     # binary mask
-    bin_mask = mask_img.get_fdata() > threshold
+    bin_mask = np.asanyarray(mask_img.dataobj) > threshold
     mask_data = bin_mask * img_data
+    masked_data = mask_data[mask_data > 0]
 
-    median = np.median(mask_data[mask_data > 0])
+    median = np.median(masked_data).astype(masked_data.dtype)
     normed_data = np.maximum(img_data, bin_mask * median)
 
     oimg = img.__class__(normed_data, img.affine, img.header)
