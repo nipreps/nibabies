@@ -130,11 +130,10 @@ if not _disable_et:
     # Just get so analytics track one hit
     from contextlib import suppress
 
-    from requests import ConnectionError, ReadTimeout
-    from requests import get as _get_url
+    import requests
 
-    with suppress((ConnectionError, ReadTimeout)):
-        _get_url('https://rig.mit.edu/et/projects/nipy/nipype', timeout=0.05)
+    with suppress((requests.ConnectionError, requests.ReadTimeout)):
+        requests.get('https://rig.mit.edu/et/projects/nipy/nipype', timeout=0.05)
 
 # Execution environment
 _exec_env = os.name

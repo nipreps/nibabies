@@ -58,7 +58,7 @@ def generate_reports(
 
         logger = logging.getLogger('cli')
         error_list = ', '.join(
-            '%s (%d)' % (subid, err)
+            f'{subid} ({err})'
             for subid, err in zip(sub_ses_list, report_errors, strict=False)
             if err
         )

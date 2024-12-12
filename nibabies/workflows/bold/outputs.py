@@ -133,7 +133,7 @@ def prepare_timing_parameters(metadata: dict):
         if run_stc:
             first, last = st[0], st[-1]
             frac = config.workflow.slice_time_ref
-            tzero = np.round(first + frac * (last - first), 3)
+            tzero = float(np.round(first + frac * (last - first), 3))
             timing_parameters['StartTime'] = tzero
 
     return timing_parameters
