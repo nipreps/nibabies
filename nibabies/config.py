@@ -604,7 +604,7 @@ class workflow(_Config):
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
-    surface_recon_method = 'auto'
+    surface_recon_method = None
     """Method to use for surface reconstruction."""
     use_bbr = False
     """Run boundary-based registration for BOLD-to-T1w registration."""
