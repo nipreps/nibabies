@@ -1,3 +1,25 @@
+25.0.0 (TBD)
+============
+A new minor release with some improvements to anatomical to template spatial normalization.
+
+Registration will now prioritize the same modality as the anatomical template, if available.
+
+A new flag `--norm-csf` performs CSF normalization on the anatomical template prior to template registration.
+
+A new flag `--multi-step-reg` adds an intermediate step when registering to MNI152NLin6Asym, first performing anatomical -> MNIInfant:cohort-X (age matched by default), and then concatenates the transform with an already computed MNIInfant -> MNI152NLin6Asym.
+
+Both of these flags are experimental and disabled unless requested, but comparisons and feedback with your data are helpful for future determinations!
+
+
+  * ENH: Add flag for multi-step registration to adult templates (#415)
+  * FEAT: Option to normalize CSF prior to template registration (#419)
+  * ENH: Expand template registration to use either anatomical modality (#418)
+  * FIX: New styling catches (#417)
+  * FIX: Default surface recon method should be None (#416)
+  * TST: Build workflow across different conditions (#409)
+  * MAINT: Remove deprecated parser arguments (#407)
+
+
 24.1.0 (October 02, 2024)
 =========================
 This new minor release includes a few bug fixes, such as excluding MCRIBS from surface reconstruction without a precomputed segmentation and ensuring generated derivatives are not masked, as well as improvements to reporting.
