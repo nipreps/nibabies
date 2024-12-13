@@ -856,6 +856,11 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
 
 
 def init_execution_spaces():
+    """Initialize the spaces to be saved.
+
+    Either invoked by ``--output-spaces``,
+    or an empty :py:class:`~niworkflows.utils.spaces.SpatialReferences`
+    """
     from niworkflows.utils.spaces import Reference, SpatialReferences
 
     spaces = config.execution.output_spaces or SpatialReferences()

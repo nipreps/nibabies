@@ -137,6 +137,8 @@ def _make_params(
     surface_recon_method: str | None = 'auto',
     ignore: list[str] = None,
     bids_filters: dict = None,
+    norm_csf: bool = False,
+    multi_step_reg: bool = False,
 ):
     if ignore is None:
         ignore = []
@@ -157,6 +159,8 @@ def _make_params(
         surface_recon_method,
         ignore,
         bids_filters,
+        norm_csf,
+        multi_step_reg,
     )
 
 
@@ -178,6 +182,8 @@ def _make_params(
         'surface_recon_method',
         'ignore',
         'bids_filters',
+        'norm_csf',
+        'multi_step_reg',
     ),
     [
         _make_params(),
@@ -211,6 +217,8 @@ def _make_params(
         # _make_params(freesurfer=False, bold2anat_init="header", use_bbr=False),
         # Regression test for gh-3154:
         _make_params(bids_filters={'sbref': {'suffix': 'sbref'}}),
+        _make_params(norm_csf=True),
+        _make_params(multi_step_reg=True),
     ],
 )
 def test_init_nibabies_wf(
@@ -233,6 +241,8 @@ def test_init_nibabies_wf(
     surface_recon_method: str | None,
     ignore: list[str],
     bids_filters: dict,
+    norm_csf: bool,
+    multi_step_reg: bool,
 ):
     monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
     with mock_config(bids_dir=bids_root):
@@ -244,6 +254,8 @@ def test_init_nibabies_wf(
         config.execution.me_output_echos = me_output_echos
         config.workflow.medial_surface_nan = medial_surface_nan
         config.workflow.project_goodvoxels = project_goodvoxels
+        config.workflow.norm_csf = norm_csf
+        config.workflow.multi_step_reg = multi_step_reg
         # config.workflow.run_msmsulc = run_msmsulc
         config.workflow.skull_strip_anat = skull_strip_anat
         config.workflow.cifti_output = cifti_output

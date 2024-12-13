@@ -29,6 +29,7 @@ dependencies = [
     "numpy >= 1.21.0",
     "packaging",
     "pandas",
+    "pooch",
     "psutil >= 5.4",
     "pybids >= 0.15.0",
     "requests",
