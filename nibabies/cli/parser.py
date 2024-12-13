@@ -758,6 +758,12 @@ discourage its usage.""",
         action='store_true',
         help='Replace low intensity voxels in CSF mask with average',
     )
+    g_baby.add_argument(
+        '--multi-step-reg',
+        action='store_true',
+        help='For certain adult templates (MNI152NLin6Asym), perform two step '
+        'registrations (native -> MNIInfant -> template) and concatenate into a single xfm',
+    )
     return parser
 
 

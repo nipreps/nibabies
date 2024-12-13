@@ -889,9 +889,13 @@ def init_infant_anat_fit_wf(
     concat_xfms = []
     found_xfms = {}
     intermediate = None  # The intermediate space when concatenating xfms - includes cohort
-    intermediate_targets = {
-        'MNI152NLin6Asym',
-    }  # TODO: 'MNI152NLin2009cAsym'
+    intermediate_targets = (
+        {
+            'MNI152NLin6Asym',  # TODO: 'MNI152NLin2009cAsym'
+        }
+        if config.workflow.multi_step_reg
+        else set()
+    )
 
     for template in spaces.get_spaces(nonstandard=False, dim=(3,)):
         # resolution / spec will not differentiate here
