@@ -66,3 +66,56 @@ def init_anat_preproc_wf(
         (final_clip, outputnode, [('out_file', 'anat_preproc')]),
     ])  # fmt:skip
     return wf
+
+
+def init_csf_norm_wf(name: str = 'csf_norm_wf') -> LiterateWorkflow:
+    """Replace low intensity voxels within the CSF mask with the median value."""
+
+    workflow = LiterateWorkflow(name=name)
+    workflow.__desc__ = (
+        'The CSF mask was used to normalize the anatomical template by the median of voxels '
+        'within the mask.'
+    )
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['anat_preproc', 'anat_tpms']),
+        name='inputnode',
+    )
+    outputnode = pe.Node(niu.IdentityInterface(fields=['anat_preproc']), name='outputnode')
+
+    # select CSF from BIDS-ordered list (GM, WM, CSF)
+    select_csf = pe.Node(niu.Select(index=2), name='select_csf')
+    norm_csf = pe.Node(niu.Function(function=_normalize_roi), name='norm_csf')
+
+    workflow.connect([
+        (inputnode, select_csf, [('anat_tpms', 'inlist')]),
+        (select_csf, norm_csf, [('out', 'mask_file')]),
+        (inputnode, norm_csf, [('anat_preproc', 'in_file')]),
+        (norm_csf, outputnode, [('out', 'anat_preproc')]),
+    ])  # fmt:skip
+
+    return workflow
+
+
+def _normalize_roi(in_file, mask_file, threshold=0.2, out_file=None):
+    """Normalize low intensity voxels that fall within a given mask."""
+    import nibabel as nb
+    import numpy as np
+
+    img = nb.load(in_file)
+    img_data = np.asanyarray(img.dataobj)
+    mask_img = nb.load(mask_file)
+    # binary mask
+    bin_mask = np.asanyarray(mask_img.dataobj) > threshold
+    mask_data = bin_mask * img_data
+    masked_data = mask_data[mask_data > 0]
+
+    median = np.median(masked_data).astype(masked_data.dtype)
+    normed_data = np.maximum(img_data, bin_mask * median)
+
+    oimg = img.__class__(normed_data, img.affine, img.header)
+    if not out_file:
+        from nipype.utils.filemanip import fname_presuffix
+
+        out_file = fname_presuffix(in_file, suffix='normed')
+    oimg.to_filename(out_file)
+    return out_file

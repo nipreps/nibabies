@@ -578,6 +578,8 @@ class workflow(_Config):
     """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
     medial_surface_nan = None
     """Fill medial surface with :abbr:`NaNs (not-a-number)` when sampling."""
+    norm_csf = False
+    """Replace low intensity voxels in CSF mask with average."""
     project_goodvoxels = False
     """Exclude voxels with locally high coefficient of variation from sampling."""
     regressors_all_comps = None
