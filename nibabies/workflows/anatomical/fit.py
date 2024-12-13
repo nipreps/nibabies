@@ -969,9 +969,9 @@ def init_infant_anat_fit_wf(
 
     if concat_xfms:
         LOGGER.info(f'ANAT Stage 5b: Concatenating normalization for {concat_xfms}')
-        # 1. Select intermediate's transforms
+
         select_infant_mni = pe.Node(
-            KeySelect(fields=['template', 'anat2std_xfm', 'std2anat_xfm'], key=intermediate),
+            KeySelect(fields=['anat2std_xfm', 'std2anat_xfm'], key=intermediate),
             name='select_infant_mni',
             run_without_submitting=True,
         )
@@ -983,15 +983,15 @@ def init_infant_anat_fit_wf(
         )
 
         workflow.connect([
-            (concat_template_buffer, select_infant_mni, [('out', 'template')]),
+            (concat_template_buffer, select_infant_mni, [('out', 'keys')]),
             (concat_anat2std_buffer, select_infant_mni, [('out', 'anat2std_xfm')]),
             (concat_std2anat_buffer, select_infant_mni, [('out', 'std2anat_xfm')]),
             (select_infant_mni, concat_reg_wf, [
-                ('template', 'inputnode.intermediate'),
+                ('key', 'inputnode.intermediate'),
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
-            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
+            (anat_preproc_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
             ]),
@@ -1806,9 +1806,13 @@ def init_infant_single_anat_fit_wf(
     concat_xfms = []
     found_xfms = {}
     intermediate = None  # The intermediate space when concatenating xfms - includes cohort
-    intermediate_targets = {
-        'MNI152NLin6Asym',
-    }  # TODO: 'MNI152NLin2009cAsym'
+    intermediate_targets = (
+        {
+            'MNI152NLin6Asym',  # TODO: 'MNI152NLin2009cAsym'
+        }
+        if config.workflow.multi_step_reg
+        else set()
+    )
 
     for template in spaces.get_spaces(nonstandard=False, dim=(3,)):
         # resolution / spec will not differentiate here
@@ -1882,13 +1886,12 @@ def init_infant_single_anat_fit_wf(
 
     if concat_xfms:
         LOGGER.info(f'ANAT Stage 5b: Concatenating normalization for {concat_xfms}')
-        # 1. Select intermediate's transforms
+
         select_infant_mni = pe.Node(
-            KeySelect(fields=['template', 'anat2std_xfm', 'std2anat_xfm']),
+            KeySelect(fields=['anat2std_xfm', 'std2anat_xfm'], key=intermediate),
             name='select_infant_mni',
             run_without_submitting=True,
         )
-        select_infant_mni.inputs.key = intermediate
 
         concat_reg_wf = init_concat_registrations_wf(templates=concat_xfms)
         ds_concat_reg_wf = init_ds_template_registration_wf(
@@ -1899,15 +1902,14 @@ def init_infant_single_anat_fit_wf(
 
         workflow.connect([
             (concat_template_buffer, select_infant_mni, [('out', 'keys')]),
-            (concat_template_buffer, select_infant_mni, [('out', 'template')]),
             (concat_anat2std_buffer, select_infant_mni, [('out', 'anat2std_xfm')]),
             (concat_std2anat_buffer, select_infant_mni, [('out', 'std2anat_xfm')]),
             (select_infant_mni, concat_reg_wf, [
-                ('template', 'inputnode.intermediate'),
+                ('key', 'inputnode.intermediate'),
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
-            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
+            (anat_preproc_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
             ]),
