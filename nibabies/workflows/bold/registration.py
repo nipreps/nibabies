@@ -704,11 +704,11 @@ def compare_xforms(lta_list, norm_threshold=15):
           second transform relative to the first (default: `15`)
 
     """
+    import nitransforms as nt
     from nipype.algorithms.rapidart import _calc_norm_affine
-    from niworkflows.interfaces.surf import load_transform
 
-    bbr_affine = load_transform(lta_list[0])
-    fallback_affine = load_transform(lta_list[1])
+    bbr_affine = nt.linear.load(lta_list[0]).matrix
+    fallback_affine = nt.linear.load(lta_list[1]).matrix
 
     norm, _ = _calc_norm_affine([fallback_affine, bbr_affine], use_differences=True)
 
