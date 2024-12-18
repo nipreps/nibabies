@@ -698,7 +698,7 @@ def reconstruct_fieldmap(
     )
 
     if not direct:
-        fmap_img = nt.apply(fmap_img, reference=target)
+        fmap_img = nt.apply(transforms, fmap_img, reference=target)
 
     fmap_img.header.set_intent('estimate', name='fieldmap Hz')
     fmap_img.header.set_data_dtype('float32')
