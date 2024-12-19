@@ -189,12 +189,12 @@ def init_infant_anat_fit_wf(
     )
 
     # Additional buffer if CSF normalization is used
-    anat_preproc_buffer = pe.Node(
+    anat_reg_buffer = pe.Node(
         niu.IdentityInterface(fields=['anat_preproc']),
-        name='anat_preproc_buffer',
+        name='anat_reg_buffer',
     )
     if not config.workflow.norm_csf:
-        workflow.connect(anat_buffer, 'anat_preproc', anat_preproc_buffer, 'anat_preproc')
+        workflow.connect(anat_buffer, 'anat_preproc', anat_reg_buffer, 'anat_preproc')
 
     if reference_anat == 'T1w':
         LOGGER.info('ANAT: Using T1w as the reference anatomical')
@@ -260,7 +260,7 @@ def init_infant_anat_fit_wf(
     msm_buffer = pe.Node(niu.IdentityInterface(fields=['sphere_reg_msm']), name='msm_buffer')
 
     workflow.connect([
-        (anat_preproc_buffer, outputnode, [
+        (anat_buffer, outputnode, [
             ('anat_preproc', 'anat_preproc'),
         ]),
         (refined_buffer, outputnode, [
@@ -929,7 +929,7 @@ def init_infant_anat_fit_wf(
         workflow.connect([
             (anat_buffer, csf_norm_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (seg_buffer, csf_norm_wf, [('anat_tpms', 'inputnode.anat_tpms')]),
-            (csf_norm_wf, anat_preproc_buffer, [('outputnode.anat_preproc', 'anat_preproc')]),
+            (csf_norm_wf, anat_reg_buffer, [('outputnode.anat_preproc', 'anat_preproc')]),
         ])  # fmt:skip
 
     if templates:
@@ -947,7 +947,7 @@ def init_infant_anat_fit_wf(
 
         workflow.connect([
             (inputnode, register_template_wf, [('roi', 'inputnode.lesion_mask')]),
-            (anat_preproc_buffer, register_template_wf, [
+            (anat_reg_buffer, register_template_wf, [
                 ('anat_preproc', 'inputnode.moving_image'),
             ]),
             (refined_buffer, register_template_wf, [('anat_mask', 'inputnode.moving_mask')]),
@@ -991,7 +991,7 @@ def init_infant_anat_fit_wf(
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
-            (anat_preproc_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
+            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
             ]),
@@ -1184,7 +1184,7 @@ def init_infant_anat_fit_wf(
             (seg_buffer, refinement_wf, [
                 ('ants_segs', 'inputnode.ants_segs'),  # TODO: Verify this is the same as dseg
             ]),
-            (anat_preproc_buffer, applyrefined, [('anat_preproc', 'in_file')]),
+            (anat_buffer, applyrefined, [('anat_preproc', 'in_file')]),
             (refinement_wf, applyrefined, [('outputnode.out_brainmask', 'in_mask')]),
             (refinement_wf, refined_buffer, [('outputnode.out_brainmask', 'anat_mask')]),
             (applyrefined, refined_buffer, [('out_file', 'anat_brain')]),
@@ -1463,12 +1463,12 @@ def init_infant_single_anat_fit_wf(
     )
 
     # Additional buffer if CSF normalization is used
-    anat_preproc_buffer = pe.Node(
+    anat_reg_buffer = pe.Node(
         niu.IdentityInterface(fields=['anat_preproc']),
-        name='anat_preproc_buffer',
+        name='anat_reg_buffer',
     )
     if not config.workflow.norm_csf:
-        workflow.connect(anat_buffer, 'anat_preproc', anat_preproc_buffer, 'anat_preproc')
+        workflow.connect(anat_buffer, 'anat_preproc', anat_reg_buffer, 'anat_preproc')
 
     aseg_buffer = pe.Node(
         niu.IdentityInterface(fields=['anat_aseg']),
@@ -1509,7 +1509,7 @@ def init_infant_single_anat_fit_wf(
     msm_buffer = pe.Node(niu.IdentityInterface(fields=['sphere_reg_msm']), name='msm_buffer')
 
     workflow.connect([
-        (anat_preproc_buffer, outputnode, [
+        (anat_buffer, outputnode, [
             ('anat_preproc', 'anat_preproc'),
         ]),
         (refined_buffer, outputnode, [
@@ -1846,7 +1846,7 @@ def init_infant_single_anat_fit_wf(
         workflow.connect([
             (anat_buffer, csf_norm_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (seg_buffer, csf_norm_wf, [('anat_tpms', 'inputnode.anat_tpms')]),
-            (csf_norm_wf, anat_preproc_buffer, [('outputnode.anat_preproc', 'anat_preproc')]),
+            (csf_norm_wf, anat_reg_buffer, [('outputnode.anat_preproc', 'anat_preproc')]),
         ])  # fmt:skip
 
     if templates:
@@ -1864,7 +1864,7 @@ def init_infant_single_anat_fit_wf(
 
         workflow.connect([
             (inputnode, register_template_wf, [('roi', 'inputnode.lesion_mask')]),
-            (anat_preproc_buffer, register_template_wf, [
+            (anat_reg_buffer, register_template_wf, [
                 ('anat_preproc', 'inputnode.moving_image'),
             ]),
             (refined_buffer, register_template_wf, [('anat_mask', 'inputnode.moving_mask')]),
@@ -1909,7 +1909,7 @@ def init_infant_single_anat_fit_wf(
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
-            (anat_preproc_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
+            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
             ]),
@@ -2091,7 +2091,7 @@ def init_infant_single_anat_fit_wf(
             (seg_buffer, refinement_wf, [
                 ('ants_segs', 'inputnode.ants_segs'),
             ]),
-            (anat_preproc_buffer, applyrefined, [('anat_preproc', 'in_file')]),
+            (anat_buffer, applyrefined, [('anat_preproc', 'in_file')]),
             (refinement_wf, applyrefined, [('outputnode.out_brainmask', 'in_mask')]),
             (refinement_wf, refined_buffer, [('outputnode.out_brainmask', 'anat_mask')]),
             (applyrefined, refined_buffer, [('out_file', 'anat_brain')]),
