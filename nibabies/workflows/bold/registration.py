@@ -704,11 +704,11 @@ def compare_xforms(lta_list, norm_threshold=15):
           second transform relative to the first (default: `15`)
 
     """
+    import nitransforms as nt
     from nipype.algorithms.rapidart import _calc_norm_affine
-    from niworkflows.interfaces.surf import load_transform
 
-    bbr_affine = load_transform(lta_list[0])
-    fallback_affine = load_transform(lta_list[1])
+    bbr_affine = nt.linear.load(lta_list[0]).matrix
+    fallback_affine = nt.linear.load(lta_list[1]).matrix
 
     norm, _ = _calc_norm_affine([fallback_affine, bbr_affine], use_differences=True)
 
@@ -741,14 +741,16 @@ def _conditional_downsampling(in_file, in_mask, zoom_th=4.0):
     offset = old_center - newrot.dot((newshape - 1) * 0.5)
     newaffine = nb.affines.from_matvec(newrot, offset)
 
+    identity = nt.Affine()
+
     newref = nb.Nifti1Image(np.zeros(newshape, dtype=np.uint8), newaffine)
-    nt.Affine(reference=newref).apply(img).to_filename(out_file)
+    nt.apply(identity, img, reference=newref).to_filename(out_file)
 
     mask = nb.load(in_mask)
     mask.set_data_dtype(float)
     mdata = gaussian_filter(mask.get_fdata(dtype=float), scaling)
     floatmask = nb.Nifti1Image(mdata, mask.affine, mask.header)
-    newmask = nt.Affine(reference=newref).apply(floatmask)
+    newmask = nt.apply(identity, floatmask, reference=newref)
     hdr = newmask.header.copy()
     hdr.set_data_dtype(np.uint8)
     newmaskdata = (newmask.get_fdata(dtype=float) > 0.5).astype(np.uint8)

@@ -17,7 +17,7 @@ annexremote==1.6.6
     #   datalad-osf
 astor==0.8.1
     # via formulaic
-attrs==24.2.0
+attrs==24.3.0
     # via
     #   jsonschema
     #   niworkflows
@@ -31,16 +31,14 @@ bidsschematools==1.0.0
     # via bids-validator
 bokeh==3.5.2
     # via tedana
-boto3==1.35.80
+boto3==1.35.83
     # via datalad
-botocore==1.35.80
+botocore==1.35.83
     # via
     #   boto3
     #   s3transfer
-certifi==2024.8.30
+certifi==2024.12.14
     # via requests
-cffi==1.17.1
-    # via cryptography
 chardet==5.2.0
     # via datalad
 charset-normalizer==3.4.0
@@ -58,11 +56,9 @@ contourpy==1.3.1
     # via
     #   bokeh
     #   matplotlib
-cryptography==44.0.0
-    # via secretstorage
 cycler==0.12.1
     # via matplotlib
-datalad==1.1.4
+datalad==1.1.5
     # via
     #   datalad-next
     #   datalad-osf
@@ -87,8 +83,6 @@ formulaic==0.5.2
     # via pybids
 fsspec==2024.10.0
     # via universal-pathlib
-greenlet==3.1.1
-    # via sqlalchemy
 h5py==3.12.1
     # via nitransforms
 humanize==4.11.0
@@ -123,10 +117,6 @@ jaraco-context==6.0.1
     #   keyrings-alt
 jaraco-functools==4.1.0
     # via keyring
-jeepney==0.8.0
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.1.4
     # via
     #   bokeh
@@ -171,7 +161,7 @@ mapca==0.0.5
     # via tedana
 markupsafe==3.0.2
     # via jinja2
-matplotlib==3.9.3
+matplotlib==3.10.0
     # via
     #   nireports
     #   nitime
@@ -214,7 +204,7 @@ nilearn==0.10.4
     #   nireports
     #   niworkflows
     #   tedana
-nipype==1.9.1
+nipype==1.9.2
     # via
     #   nibabies (pyproject.toml)
     #   nireports
@@ -225,7 +215,7 @@ nireports==24.0.3
     # via nibabies (pyproject.toml)
 nitime==0.11
     # via nibabies (pyproject.toml)
-nitransforms==24.1.0
+nitransforms==24.1.1
     # via
     #   nibabies (pyproject.toml)
     #   niworkflows
@@ -235,7 +225,7 @@ niworkflows==1.12.1
     #   nibabies (pyproject.toml)
     #   sdcflows
     #   smriprep
-num2words==0.5.13
+num2words==0.5.14
     # via pybids
 numpy==2.1.1
     # via
@@ -327,8 +317,6 @@ pybtex==0.24.0
     # via tedana
 pybtex-apa-style==1.3
     # via tedana
-pycparser==2.22
-    # via cffi
 pydot==3.0.3
     # via nipype
 pyparsing==3.2.0
@@ -343,7 +331,7 @@ python-dateutil==2.9.0.post0
     #   nipype
     #   pandas
     #   prov
-python-gitlab==5.1.0
+python-gitlab==5.2.0
     # via datalad
 pytz==2024.2
     # via pandas
@@ -384,7 +372,7 @@ rpds-py==0.22.3
     #   referencing
 s3transfer==0.10.4
     # via boto3
-scikit-image==0.24.0
+scikit-image==0.25.0
     # via
     #   niworkflows
     #   sdcflows
@@ -415,8 +403,6 @@ seaborn==0.13.2
     # via
     #   nireports
     #   niworkflows
-secretstorage==3.3.3
-    # via keyring
 simplejson==3.19.3
     # via nipype
 six==1.17.0
