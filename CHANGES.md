@@ -11,6 +11,9 @@ A new flag `--multi-step-reg` adds an intermediate step when registering to MNI1
 Both of these flags are experimental and disabled unless requested, but comparisons and feedback with your data are helpful for future determinations!
 
 
+  * FIX: Multi-step registration options (#424)
+  * FIX: Separate anatomical preproc output from file used for registration (#423)
+  * RF: Move to NiTransforms for most transform handling (#421)
   * ENH: Add flag for multi-step registration to adult templates (#415)
   * FEAT: Option to normalize CSF prior to template registration (#419)
   * ENH: Expand template registration to use either anatomical modality (#418)
