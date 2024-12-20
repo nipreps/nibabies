@@ -405,6 +405,7 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         ),
         name='intermed_xfms',
         iterfield=['std'],
+        overwrite=True,  # otherwise, cache hits but not guarantee files are present on reruns
         run_without_submitting=True,
     )
 
