@@ -15,14 +15,10 @@ from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from smriprep.workflows.fit.registration import (
     TemplateDesc,
-    TemplateFlowSelect,
     _fmt_cohort,
     get_metadata,
     tf_ver,
 )
-
-from nibabies.config import DEFAULT_MEMORY_MIN_GB
-from nibabies.interfaces.patches import ConcatXFM
 
 
 def init_coregistration_wf(
@@ -312,7 +308,7 @@ def init_concat_registrations_wf(
     name='concat_registrations_wf',
 ):
     """
-    Concatenate two transforms to produce a single transform, from native to ``template``.
+    Concatenate two transforms to produce a single composite transform from native to template.
 
     Parameters
     ----------
@@ -347,6 +343,8 @@ def init_concat_registrations_wf(
         further use in downstream nodes.
 
     """
+    from nibabies.interfaces.patches import CompositeTransformUtil
+
     ntpls = len(templates)
     workflow = Workflow(name=name)
 
@@ -384,9 +382,7 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
             workflow.__desc__ += '.\n' if template == templates[-1] else ', '
 
     inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=['template', 'anat_preproc', 'anat2std_xfm', 'intermediate', 'std2anat_xfm']
-        ),
+        niu.IdentityInterface(fields=['template', 'intermediate', 'anat2std_xfm', 'std2anat_xfm']),
         name='inputnode',
     )
     inputnode.inputs.template = templates
@@ -413,29 +409,39 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         TemplateDesc(), run_without_submitting=True, iterfield='template', name='split_desc'
     )
 
-    tf_select = pe.MapNode(
-        TemplateFlowSelect(resolution=1),
-        name='tf_select',
-        run_without_submitting=True,
-        iterfield=['template', 'template_spec'],
-    )
-
-    merge_anat2std = pe.MapNode(
-        niu.Merge(2), name='merge_anat2std', iterfield=['in1', 'in2'], run_without_submitting=True
-    )
+    merge_anat2std = pe.Node(niu.Merge(2), name='merge_anat2std', run_without_submitting=True)
     merge_std2anat = merge_anat2std.clone('merge_std2anat')
 
-    concat_anat2std = pe.MapNode(
-        ConcatXFM(),
-        name='concat_anat2std',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        iterfield=['transforms', 'reference_image'],
+    disassemble_anat2std = pe.MapNode(
+        CompositeTransformUtil(process='disassemble', output_prefix='anat2std'),
+        iterfield=['in_file'],
+        name='disassemble_anat2std',
     )
-    concat_std2anat = pe.MapNode(
-        ConcatXFM(),
-        name='concat_std2anat',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-        iterfield=['transforms', 'reference_image'],
+
+    disassemble_std2anat = pe.MapNode(
+        CompositeTransformUtil(process='disassemble', output_prefix='std2anat', inverse=True),
+        iterfield=['in_file'],
+        name='disassemble_std2anat',
+    )
+
+    order_anat2std_composites = pe.Node(
+        niu.Function(function=_order_composites),
+        name='order_anat2std_composites',
+    )
+
+    order_std2anat_composites = pe.Node(
+        niu.Function(function=_order_composites),
+        name='order_std2anat_composites',
+    )
+
+    assemble_anat2std = pe.Node(
+        CompositeTransformUtil(process='assemble', out_file='anat2std.h5'),
+        name='assemble_anat2std',
+    )
+
+    assemble_std2anat = pe.Node(
+        CompositeTransformUtil(process='assemble', out_file='std2anat.h5'),
+        name='assemble_std2anat',
     )
 
     fmt_cohort = pe.MapNode(
@@ -446,24 +452,30 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
     )
 
     workflow.connect([
+        # Template concatenation
         (inputnode, merge_anat2std, [('anat2std_xfm', 'in2')]),
         (inputnode, merge_std2anat, [('std2anat_xfm', 'in2')]),
-        (inputnode, concat_std2anat, [('anat_preproc', 'reference_image')]),
         (inputnode, intermed_xfms, [('intermediate', 'intermediate')]),
         (inputnode, intermed_xfms, [('template', 'std')]),
-
         (intermed_xfms, merge_anat2std, [('int2std_xfm', 'in1')]),
         (intermed_xfms, merge_std2anat, [('std2int_xfm', 'in1')]),
-
-        (merge_anat2std, concat_anat2std, [('out', 'transforms')]),
-        (merge_std2anat, concat_std2anat, [('out', 'transforms')]),
-
-        (inputnode, split_desc, [('template', 'template')]),
-        (split_desc, tf_select, [
-            ('name', 'template'),
-            ('spec', 'template_spec'),
+        (merge_anat2std, disassemble_anat2std, [('out', 'in_file')]),
+        (merge_std2anat, disassemble_std2anat, [('out', 'in_file')]),
+        (disassemble_anat2std, order_anat2std_composites, [
+            ('affine_transform', 'affines'),
+            ('displacement_field', 'displacements'),
         ]),
-        (tf_select, concat_anat2std, [('t1w_file', 'reference_image')]),
+        (disassemble_std2anat, order_std2anat_composites, [
+            ('affine_transform', 'affines'),
+            ('displacement_field', 'displacements'),
+        ]),
+        (order_anat2std_composites, assemble_anat2std, [('out', 'in_file')]),
+        (order_std2anat_composites, assemble_std2anat, [('out', 'in_file')]),
+        (assemble_anat2std, outputnode, [('out_file', 'anat2std_xfm')]),
+        (assemble_std2anat, outputnode, [('out_file', 'std2anat_xfm')]),
+
+        # Template name wrangling
+        (inputnode, split_desc, [('template', 'template')]),
         (split_desc, fmt_cohort, [
             ('name', 'template'),
             ('spec', 'spec'),
@@ -472,8 +484,6 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
             ('template', 'template'),
             ('spec', 'template_spec'),
         ]),
-        (concat_anat2std, outputnode, [('out_xfm', 'anat2std_xfm')]),
-        (concat_std2anat, outputnode, [('out_xfm', 'std2anat_xfm')]),
     ])  # fmt:skip
 
     return workflow
@@ -507,3 +517,7 @@ def _load_intermediate_xfms(intermediate, std):
     )
 
     return int2std, std2int
+
+
+def _order_composites(affines, displacements):
+    return [affines[0], displacements[0], affines[1], displacements[1]]
