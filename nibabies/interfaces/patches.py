@@ -4,6 +4,12 @@ from nipype.interfaces import (
     freesurfer as fs,
 )
 from nipype.interfaces.ants.base import ANTSCommand, ANTSCommandInputSpec
+from nipype.interfaces.ants.registration import (
+    CompositeTransformUtil as _CompositeTransformUtil,
+)
+from nipype.interfaces.ants.registration import (
+    CompositeTransformUtilInputSpec as _CompositeTransformUtilInputSpec,
+)
 from nipype.interfaces.base import File, InputMultiObject, TraitedSpec, traits
 
 
@@ -104,4 +110,39 @@ class ConcatXFM(ANTSCommand):
     def _list_outputs(self):
         outputs = self._outputs().get()
         outputs['out_xfm'] = Path(self.inputs.out_xfm).absolute()
+        return outputs
+
+
+class CompositeTransformUtilInputSpec(_CompositeTransformUtilInputSpec):
+    inverse = traits.Bool(
+        False,
+        usedefault=True,
+        desc='When disassembling an inverse component transform, the indexing will be reversed.',
+    )
+
+
+class CompositeTransformUtil(_CompositeTransformUtil):
+    """Outputs have changed in newer versions of ANTs."""
+
+    input_spec = CompositeTransformUtilInputSpec
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+
+        # Index may change depending on forward/inverse transform
+        # Forward: <prefix>_00_AffineTransform.mat, <prefix>_01_DisplacementFieldTransform.nii.gz
+        # Inverse: <prefix>_01_AffineTransform.mat, <prefix>_00_DisplacementFieldTransform.nii.gz
+        idx = ['00', '01']
+        if self.inputs.inverse:
+            idx = idx[::-1]
+
+        if self.inputs.process == 'disassemble':
+            outputs['affine_transform'] = Path(
+                f'{self.inputs.output_prefix}_{idx[0]}_AffineTransform.mat'
+            ).absolute()
+            outputs['displacement_field'] = Path(
+                f'{self.inputs.output_prefix}_{idx[1]}_DisplacementFieldTransform.nii.gz'
+            ).absolute()
+        elif self.inputs.process == 'assemble':
+            outputs['out_file'] = Path(self.inputs.out_file).absolute()
         return outputs
