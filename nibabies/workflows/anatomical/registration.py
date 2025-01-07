@@ -419,26 +419,24 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
     )
 
     disassemble_std2anat = pe.MapNode(
-        CompositeTransformUtil(process='disassemble', output_prefix='std2anat', inverse=True),
+        CompositeTransformUtil(process='disassemble', output_prefix='std2anat'),
         iterfield=['in_file'],
         name='disassemble_std2anat',
     )
 
-    order_anat2std_composites = pe.Node(
-        niu.Function(function=_order_composites),
-        name='order_anat2std_composites',
+    merge_anat2std_composites = pe.Node(
+        niu.Merge(1, ravel_inputs=True),
+        name='merge_anat2std_composites',
     )
-
-    order_std2anat_composites = pe.Node(
-        niu.Function(function=_order_composites),
-        name='order_std2anat_composites',
+    merge_std2anat_composites = pe.Node(
+        niu.Merge(1, ravel_inputs=True),
+        name='merge_std2anat_composites',
     )
 
     assemble_anat2std = pe.Node(
         CompositeTransformUtil(process='assemble', out_file='anat2std.h5'),
         name='assemble_anat2std',
     )
-
     assemble_std2anat = pe.Node(
         CompositeTransformUtil(process='assemble', out_file='std2anat.h5'),
         name='assemble_std2anat',
@@ -461,16 +459,10 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         (intermed_xfms, merge_std2anat, [('std2int_xfm', 'in1')]),
         (merge_anat2std, disassemble_anat2std, [('out', 'in_file')]),
         (merge_std2anat, disassemble_std2anat, [('out', 'in_file')]),
-        (disassemble_anat2std, order_anat2std_composites, [
-            ('affine_transform', 'affines'),
-            ('displacement_field', 'displacements'),
-        ]),
-        (disassemble_std2anat, order_std2anat_composites, [
-            ('affine_transform', 'affines'),
-            ('displacement_field', 'displacements'),
-        ]),
-        (order_anat2std_composites, assemble_anat2std, [('out', 'in_file')]),
-        (order_std2anat_composites, assemble_std2anat, [('out', 'in_file')]),
+        (disassemble_anat2std, merge_anat2std_composites, [('out_transforms', 'in1')]),
+        (disassemble_std2anat, merge_std2anat_composites, [('out_transforms', 'in1')]),
+        (merge_anat2std_composites, assemble_anat2std, [('out', 'in_file')]),
+        (merge_std2anat_composites, assemble_std2anat, [('out', 'in_file')]),
         (assemble_anat2std, outputnode, [('out_file', 'anat2std_xfm')]),
         (assemble_std2anat, outputnode, [('out_file', 'std2anat_xfm')]),
 
@@ -517,7 +509,3 @@ def _load_intermediate_xfms(intermediate, std):
     )
 
     return int2std, std2int
-
-
-def _order_composites(affines, displacements):
-    return [affines[0], displacements[0], affines[1], displacements[1]]
