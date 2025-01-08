@@ -117,7 +117,7 @@ jaraco-context==6.0.1
     #   keyrings-alt
 jaraco-functools==4.1.0
     # via keyring
-jinja2==3.1.4
+jinja2==3.1.5
     # via
     #   bokeh
     #   niworkflows
