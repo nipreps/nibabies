@@ -11,13 +11,13 @@ from smriprep.workflows.outputs import (
 from smriprep.workflows.surfaces import (
     init_hcp_morphometrics_wf,
     init_morph_grayords_wf,
-    init_resample_midthickness_wf,
+    init_resample_surfaces_wf,
     init_surface_derivatives_wf,
 )
 
 from nibabies import config
 from nibabies.workflows.anatomical.outputs import init_ds_seg_wf
-from nibabies.workflows.anatomical.surfaces import init_resample_midthickness_dhcp_wf
+from nibabies.workflows.anatomical.surfaces import init_resample_surfaces_dhcp_wf
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import SpatialReferences
@@ -57,6 +57,8 @@ def init_infant_anat_apply_wf(
                 'sulc',
                 'template',
                 'thickness',
+                'white',
+                'pial',
                 'midthickness',
                 reg_sphere,
                 # template workflow inputs
@@ -185,15 +187,26 @@ def init_infant_anat_apply_wf(
         if cifti_output:
             hcp_morphometrics_wf = init_hcp_morphometrics_wf(omp_nthreads=omp_nthreads)
             if recon_method == 'mcribs':
-                resample_midthickness_wf = init_resample_midthickness_dhcp_wf(
-                    grayord_density=cifti_output
+                resample_surfaces_wf = init_resample_surfaces_dhcp_wf(
+                    surfaces=['white', 'pial', 'midthickness'],
+                    grayord_density=cifti_output,
                 )
             else:
-                resample_midthickness_wf = init_resample_midthickness_wf(
-                    grayord_density=cifti_output
+                resample_surfaces_wf = init_resample_surfaces_wf(
+                    surfaces=['white', 'pial', 'midthickness'], grayord_density=cifti_output
                 )
             morph_grayords_wf = init_morph_grayords_wf(
                 grayord_density=cifti_output, omp_nthreads=omp_nthreads
+            )
+
+            ds_fsLR_surfaces_wf = init_ds_surfaces_wf(
+                output_dir=output_dir,
+                surfaces=['white', 'pial', 'midthickness'],
+                entities={
+                    'space': 'dhcpAsym' if recon_method == 'mcribs' else 'fsLR',
+                    'density': '32k' if cifti_output == '91k' else '59k',
+                },
+                name='ds_fsLR_surfaces_wf',
             )
 
             ds_grayord_metrics_wf = init_ds_grayord_metrics_wf(
@@ -213,7 +226,9 @@ def init_infant_anat_apply_wf(
                 (surface_derivatives_wf, hcp_morphometrics_wf, [
                     ('outputnode.curv', 'inputnode.curv'),
                 ]),
-                (inputnode, resample_midthickness_wf, [
+                (inputnode, resample_surfaces_wf, [
+                    ('white', 'inputnode.white'),
+                    ('pial', 'inputnode.pial'),
                     ('midthickness', 'inputnode.midthickness'),
                     (reg_sphere, 'inputnode.sphere_reg_fsLR'),
                 ]),
@@ -230,11 +245,19 @@ def init_infant_anat_apply_wf(
                 (hcp_morphometrics_wf, outputnode, [
                     ('outputnode.roi', 'roi'),
                 ]),
-                (resample_midthickness_wf, morph_grayords_wf, [
+                (resample_surfaces_wf, morph_grayords_wf, [
                     ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
                 ]),
-                (resample_midthickness_wf, outputnode, [
+                (inputnode, ds_fsLR_surfaces_wf, [
+                    ('anat_valid_list', 'inputnode.source_files'),
+                ]),
+                (resample_surfaces_wf, outputnode, [
                     ('outputnode.midthickness_fsLR', 'midthickness_fsLR'),
+                ]),
+                (resample_surfaces_wf, ds_fsLR_surfaces_wf, [
+                    ('outputnode.white_fsLR', 'inputnode.white'),
+                    ('outputnode.pial_fsLR', 'inputnode.pial'),
+                    ('outputnode.midthickness_fsLR', 'inputnode.midthickness'),
                 ]),
                 (inputnode, ds_grayord_metrics_wf, [
                     ('anat_valid_list', 'inputnode.source_files'),

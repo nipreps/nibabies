@@ -415,9 +415,10 @@ def init_make_midthickness_wf(
     return workflow
 
 
-def init_resample_midthickness_dhcp_wf(
+def init_resample_surfaces_dhcp_wf(
+    surfaces: list[str],
     grayord_density: ty.Literal['91k', '170k'],
-    name: str = 'resample_midthickness_wf',
+    name: str = 'resample_surfaces_dhcp_wf',
 ):
     """
     Resample subject midthickness surface to specified density.
@@ -427,20 +428,20 @@ def init_resample_midthickness_dhcp_wf(
             :graph2use: colored
             :simple_form: yes
 
-            from nibabies.workflows.anatomical.surfaces import init_resample_midthickness_wf
-            wf = init_resample_midthickness_wf(grayord_density="91k")
+            from nibabies.workflows.anatomical.surfaces import init_resample_surfaces_dhcp_wf
+            wf = init_resample_surfaces_dhcp_wf(surfaces=['white', grayord_density='91k')
 
     Parameters
     ----------
     grayord_density : :obj:`str`
         Either `91k` or `170k`, representing the total of vertices or *grayordinates*.
     name : :obj:`str`
-        Unique name for the subworkflow (default: ``"resample_midthickness_wf"``)
+        Unique name for the subworkflow (default: ``"resample_surfaces_dhcp_wf``)
 
     Inputs
     ------
-    midthickness
-        GIFTI surface mesh corresponding to the midthickness surface
+    ``<surface>``
+        Left and right GIFTIs for each surface name passed to ``surfaces``
     sphere_reg_fsLR
         GIFTI surface mesh corresponding to the subject's fsLR registration sphere
 
@@ -454,11 +455,19 @@ def init_resample_midthickness_dhcp_wf(
     fslr_density = '32k' if grayord_density == '91k' else '59k'
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['midthickness', 'sphere_reg_fsLR']),
+        niu.IdentityInterface(fields=[*surfaces, 'sphere_reg_fsLR']),
         name='inputnode',
     )
 
-    outputnode = pe.Node(niu.IdentityInterface(fields=['midthickness_fsLR']), name='outputnode')
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=[f'{surf}_fsLR' for surf in surfaces]), name='outputnode'
+    )
+
+    surface_list = pe.Node(
+        niu.Merge(len(surfaces), ravel_inputs=True),
+        name='surface_list',
+        run_without_submitting=True,
+    )
 
     resampler = pe.MapNode(
         SurfaceResample(method='BARYCENTRIC'),
@@ -477,18 +486,43 @@ def init_resample_midthickness_dhcp_wf(
                 extension='.surf.gii',
             )
         )
+        # Order matters. Iterate over surfaces, then hemis to get L R L R L R
+        for _surf in surfaces
         for hemi in ['L', 'R']
     ]
 
+    surface_groups = pe.Node(
+        niu.Split(splits=[2] * len(surfaces)),
+        name='surface_groups',
+        run_without_submitting=True,
+    )
+
     workflow.connect([
-        (inputnode, resampler, [
-            ('midthickness', 'surface_in'),
-            ('sphere_reg_fsLR', 'current_sphere'),
+        (inputnode, surface_list, [
+            ((surf, _sorted_by_basename), f'in{i}')
+            for i, surf in enumerate(surfaces, start=1)
         ]),
-        (resampler, outputnode, [('surface_out', 'midthickness_fsLR')]),
+        (inputnode, resampler, [
+            (('sphere_reg_fsLR', _repeat, len(surfaces)), 'current_sphere'),
+        ]),
+        (surface_list, resampler, [('out', 'surface_in')]),
+        (resampler, surface_groups, [('surface_out', 'inlist')]),
+        (surface_groups, outputnode, [
+            (f'out{i}', f'{surf}_fsLR') for i, surf in enumerate(surfaces, start=1)
+        ]),
     ])  # fmt:skip
 
     return workflow
+
+
+def _sorted_by_basename(inlist):
+    from os.path import basename
+
+    return sorted(inlist, key=lambda x: str(basename(x)))
+
+
+def _repeat(seq: list, count: int) -> list:
+    return seq * count
 
 
 def _parent(p):
