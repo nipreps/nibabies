@@ -72,12 +72,12 @@ RUN mkdir -p /opt/afni-latest \
         -name "3dAutomask" -or \
         -name "3dvolreg" \) -delete
 
-# ANTs 2.4.4
+# ANTs 2.5.4
 FROM downloader as ants
 RUN mkdir -p /opt && \
-    curl -sSLO "https://github.com/ANTsX/ANTs/releases/download/v2.4.4/ants-2.4.4-ubuntu-22.04-X64-gcc.zip" && \
-    unzip ants-2.4.4-ubuntu-22.04-X64-gcc.zip -d /opt && \
-    rm ants-2.4.4-ubuntu-22.04-X64-gcc.zip
+    curl -sSLO "https://github.com/ANTsX/ANTs/releases/download/v2.5.4/ants-2.5.4-ubuntu-22.04-X64-gcc.zip" && \
+    unzip ants-2.5.4-ubuntu-22.04-X64-gcc.zip -d /opt && \
+    rm ants-2.5.4-ubuntu-22.04-X64-gcc.zip
 
 # Connectome Workbench 1.5.0
 FROM downloader as workbench
@@ -180,7 +180,7 @@ RUN apt-get update -qq \
     && ldconfig
 
 COPY --from=afni /opt/afni-latest /opt/afni-latest
-COPY --from=ants /opt/ants-2.4.4 /opt/ants
+COPY --from=ants /opt/ants-2.5.4 /opt/ants
 COPY --from=workbench /opt/workbench /opt/workbench
 
 # AFNI config

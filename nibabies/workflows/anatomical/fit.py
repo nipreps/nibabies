@@ -991,7 +991,6 @@ def init_infant_anat_fit_wf(
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
-            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
             ]),
@@ -1909,7 +1908,6 @@ def init_infant_single_anat_fit_wf(
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std2anat_xfm', 'inputnode.std2anat_xfm'),
             ]),
-            (anat_buffer, concat_reg_wf, [('anat_preproc', 'inputnode.anat_preproc')]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
             ]),
