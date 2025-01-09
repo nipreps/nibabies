@@ -491,8 +491,10 @@ jobs:
             docker tag nipreps/nibabies:dev nipreps/nibabies:unstable
             docker push nipreps/nibabies:unstable
             if [[ -n "$CIRCLE_TAG" ]]; then
-              docker tag nipreps/nibabies:dev nipreps/nibabies:latest
-              docker push nipreps/nibabies:latest
+              if [[ ! "$CIRCLE_TAG" =~ .*(a|b|rc|dev|post)[0-9]+ ]]; then
+                docker tag nipreps/nibabies:dev nipreps/nibabies:latest
+                docker push nipreps/nibabies:latest
+              fi
               docker tag nipreps/nibabies:dev nipreps/nibabies:$CIRCLE_TAG
               docker push nipreps/nibabies:$CIRCLE_TAG
             fi
