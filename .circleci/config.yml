@@ -16,7 +16,6 @@ _python_defaults: &python_defaults
       password: $DOCKER_PAT
   working_directory: /tmp/src/nibabies
 
-
 _docker_auth: &docker_auth
   name: Docker authentication
   command: |
@@ -160,7 +159,6 @@ jobs:
         - /tmp/docker
         - /tmp/images
 
-
   get_data:
     !!merge <<: *python_defaults
     working_directory: /home/circleci/data
@@ -278,7 +276,6 @@ jobs:
           nibabies-wrapper --version
     - store_artifacts:
         path: /tmp/data/reports
-
 
   test_bcp:
     !!merge <<: *machine_defaults
@@ -412,7 +409,7 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
-              --output-layout bids --anat-only
+              --output-layout bids --anat-only --cifti-output
     - run:
         name: Checking outputs of T2-only nibabies anat
         command: |
@@ -426,7 +423,6 @@ jobs:
           exit $?
     - store_artifacts:
         path: /tmp/bcp/derivatives
-
 
   deploy_docker_patches:
     !!merge <<: *machine_defaults
@@ -463,7 +459,6 @@ jobs:
         command: |
           docker tag nipreps/nibabies:dev nipreps/nibabies:${CIRCLE_BRANCH#docker/}
           docker push nipreps/nibabies:${CIRCLE_BRANCH#docker/}
-
 
   deploy_docker:
     !!merge <<: *machine_defaults
@@ -502,7 +497,6 @@ jobs:
               docker push nipreps/nibabies:$CIRCLE_TAG
             fi
           fi
-
 
   test_deploy_pypi:
     !!merge <<: *python_defaults
@@ -559,7 +553,6 @@ jobs:
     - store_artifacts:
         path: /tmp/src/nibabies/wrapper/dist
 
-
   deploy_pypi:
     !!merge <<: *python_defaults
     steps:
@@ -584,13 +577,11 @@ jobs:
           # upload wrapper
           python -m twine upload wrapper/dist/nibabies*
 
-
   deployable:
     docker:
     - image: busybox:latest
     steps:
     - run: echo Deploying!
-
 
 workflows:
   version: 2
