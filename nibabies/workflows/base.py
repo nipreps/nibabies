@@ -513,6 +513,8 @@ It is released under the [CC0]\
                 ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
                 ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
                 ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                ('outputnode.white', 'inputnode.white'),
+                ('outputnode.pial', 'inputnode.pial'),
                 ('outputnode.midthickness', 'inputnode.midthickness'),
                 (f'outputnode.{reg_sphere}', f'inputnode.{reg_sphere}'),
                 ('outputnode.sulc', 'inputnode.sulc'),
