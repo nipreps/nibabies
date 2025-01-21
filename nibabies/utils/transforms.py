@@ -21,6 +21,9 @@ def load_transforms(xfm_paths: list[Path], inverse: list[bool]) -> nt.base.Trans
         if path.suffix == '.h5':
             # Load as a TransformChain
             xfm = nt.manip.load(path)
+            if len(xfm.transforms) == 4:
+                # MG: This behavior should be ported to nitransforms
+                xfm = nt.manip.TransformChain(reverse_pairs(xfm.transforms))
         else:
             xfm = nt.linear.load(path)
         if inv:
@@ -32,3 +35,19 @@ def load_transforms(xfm_paths: list[Path], inverse: list[bool]) -> nt.base.Trans
     if chain is None:
         chain = nt.Affine()  # Identity
     return chain
+
+
+def reverse_pairs(arr: list) -> list:
+    """
+    Reverse the order of pairs in a list.
+
+    >>> reverse_pairs([1, 2, 3, 4])
+    [3, 4, 1, 2]
+
+    >>> reverse_pairs([1, 2, 3, 4, 5, 6])
+    [5, 6, 3, 4, 1, 2]
+    """
+    rev = []
+    for i in range(len(arr), 0, -2):
+        rev.extend(arr[i - 2 : i])
+    return rev
