@@ -382,7 +382,14 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
             workflow.__desc__ += '.\n' if template == templates[-1] else ', '
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['template', 'intermediate', 'anat2std_xfm', 'std2anat_xfm']),
+        niu.IdentityInterface(
+            fields=[
+                'template',  # template identifier (name[+cohort])
+                'intermediate',  # intermediate space (name[+cohort])
+                'anat2int_xfm',  # anatomical -> intermediate
+                'int2anat_xfm',  # std -> intermediate
+            ]
+        ),
         name='inputnode',
     )
     inputnode.inputs.template = templates
@@ -401,45 +408,11 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         ),
         name='intermed_xfms',
         iterfield=['std'],
-        overwrite=True,  # otherwise, cache hits but not guarantee files are present on reruns
         run_without_submitting=True,
     )
 
     split_desc = pe.MapNode(
         TemplateDesc(), run_without_submitting=True, iterfield='template', name='split_desc'
-    )
-
-    merge_anat2std = pe.Node(niu.Merge(2), name='merge_anat2std', run_without_submitting=True)
-    merge_std2anat = merge_anat2std.clone('merge_std2anat')
-
-    disassemble_anat2std = pe.MapNode(
-        CompositeTransformUtil(process='disassemble', output_prefix='anat2std'),
-        iterfield=['in_file'],
-        name='disassemble_anat2std',
-    )
-
-    disassemble_std2anat = pe.MapNode(
-        CompositeTransformUtil(process='disassemble', output_prefix='std2anat'),
-        iterfield=['in_file'],
-        name='disassemble_std2anat',
-    )
-
-    merge_anat2std_composites = pe.Node(
-        niu.Merge(1, ravel_inputs=True),
-        name='merge_anat2std_composites',
-    )
-    merge_std2anat_composites = pe.Node(
-        niu.Merge(1, ravel_inputs=True),
-        name='merge_std2anat_composites',
-    )
-
-    assemble_anat2std = pe.Node(
-        CompositeTransformUtil(process='assemble', out_file='anat2std.h5'),
-        name='assemble_anat2std',
-    )
-    assemble_std2anat = pe.Node(
-        CompositeTransformUtil(process='assemble', out_file='std2anat.h5'),
-        name='assemble_std2anat',
     )
 
     fmt_cohort = pe.MapNode(
@@ -449,20 +422,69 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         iterfield=['template', 'spec'],
     )
 
+    # Disassemble each composite transform individually for readability
+    dis_anat2int = pe.Node(
+        CompositeTransformUtil(process='disassemble', output_prefix='anat2int'),
+        name='dis_anat2int',
+    )
+
+    dis_int2std = pe.Node(
+        CompositeTransformUtil(process='disassemble', output_prefix='int2std'),
+        name='dis_int2std',
+    )
+
+    dis_std2int = pe.Node(
+        CompositeTransformUtil(process='disassemble', output_prefix='std2int'),
+        name='dis_std2int',
+    )
+
+    dis_int2anat = pe.Node(
+        CompositeTransformUtil(process='disassemble', output_prefix='int2anat'),
+        name='dis_int2anat',
+    )
+
+    order_anat2std = pe.Node(niu.Merge(4), name='order_anat2std', run_without_submitting=True)
+    order_std2anat = pe.Node(niu.Merge(4), name='order_std2anat', run_without_submitting=True)
+
+    assemble_anat2std = pe.Node(
+        CompositeTransformUtil(process='assemble', out_file='anat2std.h5'),
+        name='assemble_anat2std',
+    )
+    # https://github.com/ANTsX/ANTs/issues/1827
+    # Until CompositeTransformUtil accepts warps as first transform,
+    # Use SimpleITK to concatenate
+    assemble_std2anat = pe.Node(
+        niu.Function(function=_create_inverse_composite, output_names=['out_file']),
+        name='assemble_std2anat',
+    )
+
     workflow.connect([
-        # Template concatenation
-        (inputnode, merge_anat2std, [('anat2std_xfm', 'in2')]),
-        (inputnode, merge_std2anat, [('std2anat_xfm', 'in2')]),
+        # Transform concatenation
+        (inputnode, dis_anat2int, [('anat2int_xfm', 'in_file')]),
+        (inputnode, dis_int2anat, [('int2anat_xfm', 'in_file')]),
         (inputnode, intermed_xfms, [('intermediate', 'intermediate')]),
         (inputnode, intermed_xfms, [('template', 'std')]),
-        (intermed_xfms, merge_anat2std, [('int2std_xfm', 'in1')]),
-        (intermed_xfms, merge_std2anat, [('std2int_xfm', 'in1')]),
-        (merge_anat2std, disassemble_anat2std, [('out', 'in_file')]),
-        (merge_std2anat, disassemble_std2anat, [('out', 'in_file')]),
-        (disassemble_anat2std, merge_anat2std_composites, [('out_transforms', 'in1')]),
-        (disassemble_std2anat, merge_std2anat_composites, [('out_transforms', 'in1')]),
-        (merge_anat2std_composites, assemble_anat2std, [('out', 'in_file')]),
-        (merge_std2anat_composites, assemble_std2anat, [('out', 'in_file')]),
+        (intermed_xfms, dis_int2std, [('int2std_xfm', 'in_file')]),
+        (intermed_xfms, dis_std2int, [('std2int_xfm', 'in_file')]),
+        (dis_anat2int, order_anat2std, [
+            ('affine_transform', 'in1'),
+            ('displacement_field', 'in2'),
+        ]),
+        (dis_int2std, order_anat2std, [
+            ('affine_transform', 'in3'),
+            ('displacement_field', 'in4'),
+        ]),
+        # Because std2anat are inverse transforms, warp is first
+        (dis_std2int, order_std2anat, [
+            ('affine_transform', 'in2'),
+            ('displacement_field', 'in1'),
+        ]),
+        (dis_int2anat, order_std2anat, [
+            ('affine_transform', 'in4'),
+            ('displacement_field', 'in3'),
+        ]),
+        (order_anat2std, assemble_anat2std, [('out', 'in_file')]),
+        (order_std2anat, assemble_std2anat, [('out', 'in_file')]),
         (assemble_anat2std, outputnode, [('out_file', 'anat2std_xfm')]),
         (assemble_std2anat, outputnode, [('out_file', 'std2anat_xfm')]),
 
@@ -483,6 +505,7 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
 
 def _load_intermediate_xfms(intermediate, std):
     import json
+    from pathlib import Path
 
     import pooch
 
@@ -496,6 +519,7 @@ def _load_intermediate_xfms(intermediate, std):
     int2std_meta = xfms[int2std_name]
     int2std = pooch.retrieve(
         url=int2std_meta['url'],
+        path=Path.cwd(),
         known_hash=int2std_meta['hash'],
         fname=int2std_name,
     )
@@ -504,8 +528,28 @@ def _load_intermediate_xfms(intermediate, std):
     std2int_meta = xfms[std2int_name]
     std2int = pooch.retrieve(
         url=std2int_meta['url'],
+        path=Path.cwd(),
         known_hash=std2int_meta['hash'],
         fname=std2int_name,
     )
 
     return int2std, std2int
+
+
+def _create_inverse_composite(in_file, out_file='inverse_composite.h5'):
+    from pathlib import Path
+
+    import SimpleITK as sitk
+
+    composite = sitk.CompositeTransform(3)
+    for xfm_file in in_file:
+        if xfm_file.endswith('mat'):
+            xfm = sitk.ReadTransform(xfm_file)
+        else:
+            xfm = sitk.DisplacementFieldTransform(sitk.ReadImage(xfm_file))
+
+        composite.AddTransform(xfm)
+
+    out_file = str(Path(out_file).absolute())
+    sitk.WriteTransform(composite, out_file)
+    return out_file
