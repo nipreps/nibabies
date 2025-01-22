@@ -387,7 +387,7 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
                 'template',  # template identifier (name[+cohort])
                 'intermediate',  # intermediate space (name[+cohort])
                 'anat2int_xfm',  # anatomical -> intermediate
-                'int2anat_xfm',  # std -> intermediate
+                'int2anat_xfm',  # intermediate -> anatomical
             ]
         ),
         name='inputnode',
@@ -537,6 +537,22 @@ def _load_intermediate_xfms(intermediate, std):
 
 
 def _create_inverse_composite(in_file, out_file='inverse_composite.h5'):
+    """Build a composite transform with SimpleITK.
+
+    This serves as a workaround for a bug in ANTs's CompositeTransformUtil
+    where composite transforms cannot be created with a displacement field placed first.
+
+    Parameters
+    ----------
+    in_file : list of str
+        List of input transforms to concatenate into a composite transform.
+    out_file : str, optional
+        File to write the composite transform to.
+
+    Returns
+    -------
+    out_file : str
+        Absolute path to the composite transform.
     from pathlib import Path
 
     import SimpleITK as sitk
