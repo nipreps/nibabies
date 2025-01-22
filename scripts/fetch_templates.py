@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'Pre-emptive caching of commonly used TemplateFlow templates'
+'Preemptive caching of commonly used TemplateFlow templates'
 import templateflow.api as tf
 
 

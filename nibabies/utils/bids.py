@@ -41,7 +41,9 @@ def write_bidsignore(deriv_dir):
 
 
 def write_derivative_description(bids_dir, deriv_dir, dataset_links=None):
-    from ..__about__ import DOWNLOAD_URL, __packagename__, __version__
+    from nibabies import __version__
+
+    DOWNLOAD_URL = f'https://github.com/nipreps/nibabies/archive/{__version__}.tar.gz'
 
     bids_dir = Path(bids_dir)
     deriv_dir = Path(deriv_dir)
@@ -51,7 +53,7 @@ def write_derivative_description(bids_dir, deriv_dir, dataset_links=None):
         'DatasetType': 'derivative',
         'GeneratedBy': [
             {
-                'Name': __packagename__,
+                'Name': 'NiBabies',
                 'Version': __version__,
                 'CodeURL': DOWNLOAD_URL,
             }
@@ -63,7 +65,7 @@ def write_derivative_description(bids_dir, deriv_dir, dataset_links=None):
     if 'NIBABIES_DOCKER_TAG' in os.environ:
         desc['GeneratedBy'][0]['Container'] = {
             'Type': 'docker',
-            'Tag': f"nipreps/nibabies:{os.environ['NIBABIES_DOCKER_TAG']}",
+            'Tag': f'nipreps/nibabies:{os.environ["NIBABIES_DOCKER_TAG"]}',
         }
     if 'NIBABIES_SINGULARITY_URL' in os.environ:
         desc['GeneratedBy'][0]['Container'] = {

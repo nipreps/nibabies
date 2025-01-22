@@ -537,9 +537,11 @@ def _load_intermediate_xfms(intermediate, std):
 
 
 def _create_inverse_composite(in_file, out_file='inverse_composite.h5'):
-    """Build a composite transform with SimpleITK.
+    """
+    Build a composite transform with SimpleITK.
 
     This serves as a workaround for a bug in ANTs's CompositeTransformUtil
+    https://github.com/ANTsX/ANTs/issues/1827
     where composite transforms cannot be created with a displacement field placed first.
 
     Parameters
@@ -553,6 +555,8 @@ def _create_inverse_composite(in_file, out_file='inverse_composite.h5'):
     -------
     out_file : str
         Absolute path to the composite transform.
+    """
+
     from pathlib import Path
 
     import SimpleITK as sitk

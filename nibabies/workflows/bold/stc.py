@@ -115,7 +115,7 @@ BOLD runs were slice-time corrected to {tzero:0.3g}s ({frac:g} of slice acquisit
     slice_timing_correction = pe.Node(
         TShift(
             outputtype='NIFTI_GZ',
-            tr=f"{metadata['RepetitionTime']}s",
+            tr=f'{metadata["RepetitionTime"]}s',
             slice_timing=metadata['SliceTiming'],
             slice_encoding_direction=metadata.get('SliceEncodingDirection', 'k'),
             tzero=tzero,

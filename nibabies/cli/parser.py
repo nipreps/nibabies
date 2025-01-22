@@ -32,8 +32,8 @@ def _build_parser():
         def __call__(self, parser, namespace, values, option_string=None):
             new_opt, rem_vers = deprecations.get(self.dest, (None, None))
             msg = (
-                f"{self.option_strings} has been deprecated and will be removed in "
-                f"{rem_vers or 'a later version'}."
+                f'{self.option_strings} has been deprecated and will be removed in '
+                f'{rem_vers or "a later version"}.'
             )
             if new_opt:
                 msg += f' Please use `{new_opt}` instead.'
@@ -140,7 +140,7 @@ def _build_parser():
             value = float(value)
         except ValueError as e:
             raise parser.error(
-                "Slice time reference must be number, 'start', or 'middle'. " f'Received {value}.'
+                f"Slice time reference must be number, 'start', or 'middle'. Received {value}."
             ) from e
         if not 0 <= value <= 1:
             raise parser.error(f'Slice time reference must be in range 0-1. Received {value}.')
@@ -182,7 +182,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         'output_dir',
         action='store',
         type=Path,
-        help='the output path for the outcomes of preprocessing and visual ' 'reports',
+        help='the output path for the outcomes of preprocessing and visual reports',
     )
     parser.add_argument(
         'analysis_level',
@@ -297,7 +297,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
     g_perfm.add_argument(
         '--low-mem',
         action='store_true',
-        help='attempt to reduce memory usage (will increase disk usage ' 'in working directory)',
+        help='attempt to reduce memory usage (will increase disk usage in working directory)',
     )
     g_perfm.add_argument(
         '--use-plugin',
@@ -497,8 +497,7 @@ Useful for further Tedana processing post-NiBabies.""",
         action='store',
         default=0.5,
         type=float,
-        help='Threshold for flagging a frame as an outlier on the basis of framewise '
-        'displacement',
+        help='Threshold for flagging a frame as an outlier on the basis of framewise displacement',
     )
     g_confounds.add_argument(
         '--dvars-spike-threshold',
@@ -507,7 +506,7 @@ Useful for further Tedana processing post-NiBabies.""",
         action='store',
         default=1.5,
         type=float,
-        help='Threshold for flagging a frame as an outlier on the basis of standardised ' 'DVARS',
+        help='Threshold for flagging a frame as an outlier on the basis of standardised DVARS',
     )
 
     #  ANTs options
@@ -657,7 +656,7 @@ Useful for further Tedana processing post-NiBabies.""",
         '--stop-on-first-crash',
         action='store_true',
         default=False,
-        help='Force stopping on first crash, even if a work directory' ' was specified.',
+        help='Force stopping on first crash, even if a work directory was specified.',
     )
     g_other.add_argument(
         '--notrack',
@@ -875,8 +874,7 @@ applied."""
         from ..utils.bids import validate_input_dir
 
         build_log.info(
-            'Making sure the input data is BIDS compliant (warnings can be ignored in most '
-            'cases).'
+            'Making sure the input data is BIDS compliant (warnings can be ignored in most cases).'
         )
         validate_input_dir(config.environment.exec_env, opts.bids_dir, opts.participant_label)
 
@@ -896,8 +894,8 @@ applied."""
     missing_subjects = participant_label - set(all_subjects)
     if missing_subjects:
         parser.error(
-            "One or more participant labels were not found in the BIDS directory: "
-            f"{', '.join(missing_subjects)}."
+            'One or more participant labels were not found in the BIDS directory: '
+            f'{", ".join(missing_subjects)}.'
         )
 
     config.execution.participant_label = sorted(participant_label)

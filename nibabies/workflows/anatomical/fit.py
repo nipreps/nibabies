@@ -170,11 +170,11 @@ def init_infant_anat_fit_wf(
 
     # Stage 2 - Anatomicals
     t1w_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t1w_preproc', 't1w_mask' 't1w_brain']),
+        niu.IdentityInterface(fields=['t1w_preproc', 't1w_maskt1w_brain']),
         name='t1w_buffer',
     )
     t2w_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t2w_preproc', 't2w_mask' 't2w_brain', 't2w_probmap']),
+        niu.IdentityInterface(fields=['t2w_preproc', 't2w_maskt2w_brain', 't2w_probmap']),
         name='t2w_buffer',
     )
     anat_buffer = pe.Node(
@@ -453,7 +453,7 @@ def init_infant_anat_fit_wf(
     t2w_mask = precomputed.get('t2w_mask')
     anat_mask = precomputed.get(f'{anat}_mask')
     refine_mask = False
-    # T1w masking - define pre-emptively
+    # T1w masking - define preemptively
     apply_t1w_mask = pe.Node(ApplyMask(), name='apply_t1w_mask')
     apply_t2w_mask = apply_t1w_mask.clone(name='apply_t2w_mask')
 

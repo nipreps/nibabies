@@ -288,7 +288,7 @@ def _to_dtype(in_file, dtype='uint8'):
     import numpy as np
 
     img = nb.load(in_file)
-    out_file = Path(f"labels{''.join(Path(in_file).suffixes)}").absolute()
+    out_file = Path(f'labels{"".join(Path(in_file).suffixes)}').absolute()
 
     new_data = np.asanyarray(img.get_fdata(), dtype=dtype)
     img.set_data_dtype(dtype)
