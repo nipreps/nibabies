@@ -8,9 +8,6 @@ from nipype.interfaces.ants.registration import (
     CompositeTransformUtil as _CompositeTransformUtil,
 )
 from nipype.interfaces.ants.registration import (
-    CompositeTransformUtilInputSpec as _CompositeTransformUtilInputSpec,
-)
-from nipype.interfaces.ants.registration import (
     CompositeTransformUtilOutputSpec as _CompositeTransformUtilOutputSpec,
 )
 from nipype.interfaces.base import File, InputMultiObject, TraitedSpec, traits
@@ -116,22 +113,13 @@ class ConcatXFM(ANTSCommand):
         return outputs
 
 
-class CompositeTransformUtilInputSpec(_CompositeTransformUtilInputSpec):
-    order_transforms = traits.Bool(
-        True,
-        usedefault=True,
-        desc='Order disassembled transforms into [Affine, Displacement] pairs.',
-    )
-
-
 class CompositeTransformUtilOutputSpec(_CompositeTransformUtilOutputSpec):
-    out_transforms = traits.List(desc='list of transform components')
+    out_transforms = traits.List(desc='list of ordered transform components')
 
 
 class CompositeTransformUtil(_CompositeTransformUtil):
     """Outputs have changed in newer versions of ANTs."""
 
-    input_spec = CompositeTransformUtilInputSpec
     output_spec = CompositeTransformUtilOutputSpec
 
     def _list_outputs(self):
@@ -145,9 +133,6 @@ class CompositeTransformUtil(_CompositeTransformUtil):
                 str(Path(x).absolute())
                 for x in sorted(Path().glob(f'{self.inputs.output_prefix}_*'))
             ]
-
-            if self.inputs.order_transforms:
-                transforms = _order_xfms(transforms)
             outputs['out_transforms'] = transforms
 
             # Potentially could be more than one affine / displacement per composite transform...
@@ -160,26 +145,3 @@ class CompositeTransformUtil(_CompositeTransformUtil):
         elif self.inputs.process == 'assemble':
             outputs['out_file'] = Path(self.inputs.out_file).absolute()
         return outputs
-
-
-def _order_xfms(vals):
-    """
-    Assumes [affine, displacement] or [displacement, affine] transform pairs.
-
-    >>> _order_xfms(['DisplacementFieldTransform.nii.gz', 'AffineTransform.mat'])
-    ['AffineTransform.mat', 'DisplacementFieldTransform.nii.gz']
-
-    >>> _order_xfms(['AffineTransform.mat', 'DisplacementFieldTransform.nii.gz'])
-    ['AffineTransform.mat', 'DisplacementFieldTransform.nii.gz']
-
-    >>> _order_xfms(['DisplacementFieldTransform.nii.gz', 'AffineTransform.mat', \
-        'AffineTransform.mat'])
-    ['AffineTransform.mat', 'DisplacementFieldTransform.nii.gz', 'AffineTransform.mat']
-    """
-    for i in range(0, len(vals) - 1, 2):
-        if (
-            'DisplacementFieldTransform' in Path(vals[i]).name
-            and 'AffineTransform' in Path(vals[i + 1]).name
-        ):
-            vals[i], vals[i + 1] = vals[i + 1], vals[i]
-    return vals
