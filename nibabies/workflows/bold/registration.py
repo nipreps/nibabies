@@ -20,7 +20,7 @@ from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
 from nibabies import config, data
-from nibabies.types import AffineDOF, RegistrationInit
+from nibabies._types import AffineDOF, RegistrationInit
 
 DEFAULT_MEMORY_MIN_GB = config.DEFAULT_MEMORY_MIN_GB
 LOGGER = logging.getLogger('nipype.workflow')

@@ -31,10 +31,10 @@ from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransf
 from niworkflows.utils.images import dseg_label
 
 from nibabies import config
+from nibabies._types import Anatomical
 from nibabies.config import DEFAULT_DISMISS_ENTITIES, DEFAULT_MEMORY_MIN_GB, dismiss_echo
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.bids import BIDSURI
-from nibabies.types import Anatomical
 
 
 def prepare_timing_parameters(metadata: dict):

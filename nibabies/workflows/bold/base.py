@@ -37,8 +37,8 @@ from nipype.pipeline import engine as pe
 from niworkflows.utils.connections import listify
 
 from nibabies import config
+from nibabies._types import Anatomical
 from nibabies.interfaces import DerivativesDataSink
-from nibabies.types import Anatomical
 from nibabies.utils.misc import estimate_bold_mem_usage
 
 # BOLD workflows

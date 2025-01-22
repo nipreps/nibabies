@@ -34,13 +34,13 @@ from sdcflows.workflows.apply.correction import init_unwarp_wf
 from sdcflows.workflows.apply.registration import init_coeff2epi_wf
 
 from nibabies import config
+from nibabies._types import Anatomical
 from nibabies.interfaces.reports import FunctionalSummary
 from nibabies.interfaces.resampling import (
     DistortionParameters,
     ReconstructFieldmap,
     ResampleSeries,
 )
-from nibabies.types import Anatomical
 from nibabies.utils.bids import extract_entities
 from nibabies.utils.misc import estimate_bold_mem_usage
 
