@@ -8,7 +8,9 @@ acres==0.2.0
     # via
     #   nibabies (pyproject.toml)
     #   nipype
+    #   nireports
     #   niworkflows
+    #   sdcflows
     #   smriprep
 annexremote==1.6.6
     # via
@@ -31,23 +33,25 @@ bidsschematools==1.0.0
     # via bids-validator
 bokeh==3.5.2
     # via tedana
-boto3==1.35.83
+boto3==1.36.3
     # via datalad
-botocore==1.35.83
+botocore==1.36.3
     # via
     #   boto3
     #   s3transfer
 certifi==2024.12.14
     # via requests
+cffi==1.17.1
+    # via cryptography
 chardet==5.2.0
     # via datalad
-charset-normalizer==3.4.0
+charset-normalizer==3.4.1
     # via requests
 ci-info==0.3.0
     # via
     #   etelemetry
     #   migas
-click==8.1.7
+click==8.1.8
     # via
     #   bidsschematools
     #   nipype
@@ -56,6 +60,8 @@ contourpy==1.3.1
     # via
     #   bokeh
     #   matplotlib
+cryptography==44.0.0
+    # via secretstorage
 cycler==0.12.1
     # via matplotlib
 datalad==1.1.5
@@ -75,14 +81,16 @@ etelemetry==0.3.1
     # via nipype
 fasteners==0.19
     # via datalad
-filelock==3.16.1
+filelock==3.17.0
     # via nipype
-fonttools==4.55.3
+fonttools==4.55.4
     # via matplotlib
 formulaic==0.5.2
     # via pybids
-fsspec==2024.10.0
+fsspec==2024.12.0
     # via universal-pathlib
+greenlet==3.1.1
+    # via sqlalchemy
 h5py==3.12.1
     # via nitransforms
 humanize==4.11.0
@@ -91,11 +99,11 @@ humanize==4.11.0
     #   datalad-next
 idna==3.10
     # via requests
-imageio==2.36.1
+imageio==2.37.0
     # via scikit-image
-importlib-metadata==8.5.0
+importlib-metadata==8.6.1
     # via keyring
-importlib-resources==6.4.5
+importlib-resources==6.5.2
     # via
     #   nibabel
     #   nireports
@@ -117,7 +125,11 @@ jaraco-context==6.0.1
     #   keyrings-alt
 jaraco-functools==4.1.0
     # via keyring
-jinja2==3.1.4
+jeepney==0.8.0
+    # via
+    #   keyring
+    #   secretstorage
+jinja2==3.1.5
     # via
     #   bokeh
     #   niworkflows
@@ -134,11 +146,11 @@ jsonschema==4.23.0
     # via bidsschematools
 jsonschema-specifications==2024.10.1
     # via jsonschema
-keyring==25.5.0
+keyring==25.6.0
     # via datalad
 keyrings-alt==5.0.2
     # via datalad
-kiwisolver==1.4.7
+kiwisolver==1.4.8
     # via matplotlib
 latexcodec==3.0.0
     # via pybtex
@@ -173,7 +185,7 @@ migas==0.4.0
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
-more-itertools==10.5.0
+more-itertools==10.6.0
     # via
     #   datalad-next
     #   jaraco-classes
@@ -211,7 +223,7 @@ nipype==1.9.2
     #   niworkflows
     #   sdcflows
     #   smriprep
-nireports==24.0.3
+nireports==24.1.0
     # via nibabies (pyproject.toml)
 nitime==0.11
     # via nibabies (pyproject.toml)
@@ -287,7 +299,7 @@ pandas==2.2.2
     #   tedana
 patool==3.1.0
     # via datalad
-pillow==11.0.0
+pillow==11.1.0
     # via
     #   bokeh
     #   imageio
@@ -301,7 +313,7 @@ pooch==1.8.2
     # via nibabies (pyproject.toml)
 prov==2.0.1
     # via nipype
-psutil==6.1.0
+psutil==6.1.1
     # via nibabies (pyproject.toml)
 puremagic==1.28
     # via nipype
@@ -317,9 +329,11 @@ pybtex==0.24.0
     # via tedana
 pybtex-apa-style==1.3
     # via tedana
-pydot==3.0.3
+pycparser==2.22
+    # via cffi
+pydot==3.0.4
     # via nipype
-pyparsing==3.2.0
+pyparsing==3.2.1
     # via
     #   matplotlib
     #   pydot
@@ -331,7 +345,7 @@ python-dateutil==2.9.0.post0
     #   nipype
     #   pandas
     #   prov
-python-gitlab==5.2.0
+python-gitlab==5.3.1
     # via datalad
 pytz==2024.2
     # via pandas
@@ -347,7 +361,7 @@ rdflib==6.3.2
     # via
     #   nipype
     #   prov
-referencing==0.35.1
+referencing==0.36.1
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -370,7 +384,7 @@ rpds-py==0.22.3
     # via
     #   jsonschema
     #   referencing
-s3transfer==0.10.4
+s3transfer==0.11.1
     # via boto3
 scikit-image==0.25.0
     # via
@@ -397,12 +411,16 @@ scipy==1.14.1
     #   scikit-learn
     #   sdcflows
     #   tedana
-sdcflows==2.10.0
+sdcflows==2.11.0
     # via nibabies (pyproject.toml)
 seaborn==0.13.2
     # via
     #   nireports
     #   niworkflows
+secretstorage==3.3.3
+    # via keyring
+simpleitk==2.4.1
+    # via nibabies (pyproject.toml)
 simplejson==3.19.3
     # via nipype
 six==1.17.0
@@ -411,9 +429,9 @@ six==1.17.0
     #   osfclient
     #   pybtex
     #   python-dateutil
-smriprep @ git+https://github.com/nipreps/smriprep.git@dev-nibabies
+smriprep==0.17.0
     # via nibabies (pyproject.toml)
-sqlalchemy==2.0.36
+sqlalchemy==2.0.37
     # via pybids
 svgutils==0.3.4
     # via
@@ -432,7 +450,7 @@ threadpoolctl==3.5.0
     # via
     #   scikit-learn
     #   tedana
-tifffile==2024.12.12
+tifffile==2025.1.10
     # via scikit-image
 toml==0.10.2
     # via
@@ -447,28 +465,27 @@ tqdm==4.67.1
     #   robustica
     #   tedana
     #   templateflow
-traits==6.3.2
-    # via
-    #   nipype
-    #   sdcflows
+traits==6.4.3
+    # via nipype
 transforms3d==0.4.2
     # via niworkflows
 typing-extensions==4.12.2
     # via
     #   formulaic
     #   nibabel
+    #   referencing
     #   sqlalchemy
-tzdata==2024.2
+tzdata==2025.1
     # via pandas
 universal-pathlib==0.2.6
     # via pybids
-urllib3==2.2.3
+urllib3==2.3.0
     # via
     #   botocore
     #   requests
-wrapt==1.17.0
+wrapt==1.17.2
     # via formulaic
-xyzservices==2024.9.0
+xyzservices==2025.1.0
     # via bokeh
 zipp==3.21.0
     # via importlib-metadata
