@@ -118,7 +118,7 @@ def init_nibabies_wf(subworkflows_list: list[SubjectSession]):
                 freesurfer_home=os.getenv('FREESURFER_HOME'),
                 spaces=execution_spaces.get_fs_spaces(),
             ),
-            name=f"fsdir_run_{config.execution.run_uuid.replace('-', '_')}",
+            name=f'fsdir_run_{config.execution.run_uuid.replace("-", "_")}',
             run_without_submitting=True,
         )
         if config.execution.fs_subjects_dir is not None:
@@ -291,9 +291,9 @@ It is released under the [CC0]\
 
     if subject_data['roi']:
         warnings.warn(
-            f"Lesion mask {subject_data['roi']} found. "
-            "Future versions of NiBabies will use alternative conventions. "
-            "Please refer to the documentation before upgrading.",
+            f'Lesion mask {subject_data["roi"]} found. '
+            'Future versions of NiBabies will use alternative conventions. '
+            'Please refer to the documentation before upgrading.',
             FutureWarning,
             stacklevel=1,
         )
@@ -939,7 +939,7 @@ def map_fieldmap_estimation(
     for bold_file, estimator_key in all_estimators.items():
         if len(estimator_key) > 1:
             config.loggers.workflow.warning(
-                f"Several fieldmaps <{', '.join(estimator_key)}> are "
+                f'Several fieldmaps <{", ".join(estimator_key)}> are '
                 f"'IntendedFor' <{bold_file}>, using {estimator_key[0]}"
             )
             estimator_key[1:] = []

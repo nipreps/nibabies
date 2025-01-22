@@ -78,8 +78,7 @@ class MetricDilateInputSpec(CommandLineInputSpec):
         argstr='-exponent %f ',
         position=9,
         default=6.0,
-        desc='exponent n to use in (area / (distance ^ n)) as the '
-        'weighting function (default 6)',
+        desc='exponent n to use in (area / (distance ^ n)) as the weighting function (default 6)',
     )
 
     corrected_areas = File(
@@ -246,16 +245,14 @@ class MetricResample(WBCommand):
     def _format_arg(self, opt, spec, val):
         if opt in ['current_area', 'new_area']:
             if not self.inputs.area_surfs and not self.inputs.area_metrics:
-                raise ValueError(
-                    f'{opt} was set but neither area_surfs or' ' area_metrics were set'
-                )
+                raise ValueError(f'{opt} was set but neither area_surfs or area_metrics were set')
         if opt == 'method':
             if (
                 val == 'ADAP_BARY_AREA'
                 and not self.inputs.area_surfs
                 and not self.inputs.area_metrics
             ):
-                raise ValueError('Exactly one of area_surfs or area_metrics' ' must be specified')
+                raise ValueError('Exactly one of area_surfs or area_metrics must be specified')
         if opt == 'valid_roi_out' and val:
             # generate a filename and add it to argstr
             roi_out = self._gen_filename(self.inputs.in_file, suffix='_roi')

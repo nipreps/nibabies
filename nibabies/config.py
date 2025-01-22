@@ -413,7 +413,7 @@ class execution(_Config):
     """Force usage of this anatomical scan as the structural reference."""
     reports_only = False
     """Only build the reports, based on the reportlets found in a cached working directory."""
-    run_uuid = f"{strftime('%Y%m%d-%H%M%S')}_{uuid4()}"
+    run_uuid = f'{strftime("%Y%m%d-%H%M%S")}_{uuid4()}'
     """Unique identifier of this particular run."""
     segmentation_atlases_dir = None
     """Directory with atlases to use for JLF segmentations"""
@@ -622,7 +622,7 @@ class workflow(_Config):
 class loggers:
     """Keep loggers easily accessible (see :py:func:`init`)."""
 
-    _fmt = '%(asctime)s,%(msecs)d %(name)-2s ' '%(levelname)-2s:\n\t %(message)s'
+    _fmt = '%(asctime)s,%(msecs)d %(name)-2s %(levelname)-2s:\n\t %(message)s'
     _datefmt = '%y%m%d-%H:%M:%S'
 
     default = logging.getLogger()

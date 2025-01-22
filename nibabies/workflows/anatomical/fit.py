@@ -170,11 +170,11 @@ def init_infant_anat_fit_wf(
 
     # Stage 2 - Anatomicals
     t1w_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t1w_preproc', 't1w_mask' 't1w_brain']),
+        niu.IdentityInterface(fields=['t1w_preproc', 't1w_maskt1w_brain']),
         name='t1w_buffer',
     )
     t2w_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t2w_preproc', 't2w_mask' 't2w_brain', 't2w_probmap']),
+        niu.IdentityInterface(fields=['t2w_preproc', 't2w_maskt2w_brain', 't2w_probmap']),
         name='t2w_buffer',
     )
     anat_buffer = pe.Node(
