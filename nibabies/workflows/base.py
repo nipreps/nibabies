@@ -846,6 +846,13 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
     if not spaces.is_cached():
         spaces.checkpoint()
 
+    # Ensure one cohort of MNIInfant is always available as an internal space
+    if not any(
+        space.startswith('MNIInfant') for space in spaces.get_spaces(nonstandard=False, dim=(3,))
+    ):
+        cohort = cohort_by_months('MNIInfant', age_months)
+        spaces.add(Reference('MNIInfant', {'cohort': cohort}))
+
     if config.workflow.cifti_output:
         # CIFTI grayordinates to corresponding FSL-MNI resolutions.
         vol_res = '2' if config.workflow.cifti_output == '91k' else '1'
