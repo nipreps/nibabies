@@ -453,7 +453,7 @@ def init_infant_anat_fit_wf(
     t2w_mask = precomputed.get('t2w_mask')
     anat_mask = precomputed.get(f'{anat}_mask')
     refine_mask = False
-    # T1w masking - define pre-emptively
+    # T1w masking - define preemptively
     apply_t1w_mask = pe.Node(ApplyMask(), name='apply_t1w_mask')
     apply_t2w_mask = apply_t1w_mask.clone(name='apply_t2w_mask')
 
