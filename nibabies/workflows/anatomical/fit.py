@@ -988,8 +988,8 @@ def init_infant_anat_fit_wf(
             (concat_std2anat_buffer, select_infant_mni, [('out', 'std2anat_xfm')]),
             (select_infant_mni, concat_reg_wf, [
                 ('key', 'inputnode.intermediate'),
-                ('anat2std_xfm', 'inputnode.anat2std_xfm'),
-                ('std2anat_xfm', 'inputnode.std2anat_xfm'),
+                ('anat2std_xfm', 'inputnode.anat2int_xfm'),
+                ('std2anat_xfm', 'inputnode.int2anat_xfm'),
             ]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
@@ -1905,8 +1905,8 @@ def init_infant_single_anat_fit_wf(
             (concat_std2anat_buffer, select_infant_mni, [('out', 'std2anat_xfm')]),
             (select_infant_mni, concat_reg_wf, [
                 ('key', 'inputnode.intermediate'),
-                ('anat2std_xfm', 'inputnode.anat2std_xfm'),
-                ('std2anat_xfm', 'inputnode.std2anat_xfm'),
+                ('anat2std_xfm', 'inputnode.anat2int_xfm'),
+                ('std2anat_xfm', 'inputnode.int2anat_xfm'),
             ]),
             (sourcefile_buffer, ds_concat_reg_wf, [
                 ('anat_source_files', 'inputnode.source_files')
