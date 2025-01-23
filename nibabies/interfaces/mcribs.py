@@ -47,14 +47,20 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
 
     # MCRIBS options
     conform = traits.Bool(
+        False,
+        usedefault=True,
         argstr='--conform',
         desc='Reorients to radiological, axial slice orientation. Resamples to isotropic voxels',
     )
     tissueseg = traits.Bool(
+        False,
+        usedefault=True,
         argstr='--tissueseg',
         desc='Perform tissue type segmentation',
     )
     surfrecon = traits.Bool(
+        False,
+        usedefault=True,
         argstr='--surfrecon',
         desc='Reconstruct surfaces',
     )
@@ -75,6 +81,8 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
         desc='Use Deformable fast collision test',
     )
     autorecon_after_surf = traits.Bool(
+        False,
+        usedefault=True,
         argstr='--autoreconaftersurf',
         desc='Do all steps after surface reconstruction',
     )
@@ -108,12 +116,13 @@ class MCRIBReconAll(CommandLine):
             # Check MIRTK surface recon deformable
             if self.inputs.surfrecon:
                 surfrecon_dir = Path(self.inputs.outdir) / sid / 'SurfReconDeformable' / sid
-                if self._verify_surfrecon_outputs(surfrecon_dir, error=False):
+                if self._verify_surfrecon_outputs(surfrecon_dir):
+                    self.inputs.surfrecon = False
                     self._no_run = True
             # Check FS directory population
-            elif self.inputs.autorecon_after_surf:
+            if self.inputs.autorecon_after_surf:
                 fs_dir = Path(self.inputs.outdir) / sid / 'freesurfer' / sid
-                if self._verify_autorecon_outputs(fs_dir, error=False):
+                if self._verify_autorecon_outputs(fs_dir):
                     self._no_run = True
 
             if self._no_run:
@@ -242,14 +251,14 @@ class MCRIBReconAll(CommandLine):
         return outputs
 
     @staticmethod
-    def _verify_surfrecon_outputs(surfrecon_dir: Path, error: bool) -> bool:
+    def _verify_surfrecon_outputs(surfrecon_dir: Path, error: bool = False) -> bool:
         """
         Sanity check to ensure the surface reconstruction was successful.
 
         MCRIBReconAll does not return a failing exit code if a step failed, which leads
         this interface to be marked as completed without error in such cases.
         """
-        # fmt:off
+
         surfrecon_files = {
             'meshes': (
                 'pial-lh-reordered.vtp',
@@ -257,8 +266,8 @@ class MCRIBReconAll(CommandLine):
                 'white-rh.vtp',
                 'white-lh.vtp',
             )
-        }
-        # fmt:on
+        }  # fmt:skip
+
         for d, fls in surfrecon_files.items():
             for fl in fls:
                 if not (surfrecon_dir / d / fl).exists():
@@ -268,14 +277,14 @@ class MCRIBReconAll(CommandLine):
         return True
 
     @staticmethod
-    def _verify_autorecon_outputs(fs_dir: Path, error: bool) -> bool:
+    def _verify_autorecon_outputs(fs_dir: Path, error: bool = False) -> bool:
         """
         Sanity check to ensure the necessary FreeSurfer files have been created.
 
         MCRIBReconAll does not return a failing exit code if a step failed, which leads
         this interface to be marked as completed without error in such cases.
         """
-        # fmt:off
+
         fs_files = {
             'mri': ('T2.mgz', 'aseg.presurf.mgz', 'ribbon.mgz', 'brain.mgz'),
             'label': ('lh.cortex.label', 'rh.cortex.label'),
@@ -285,8 +294,8 @@ class MCRIBReconAll(CommandLine):
                 'lh.white', 'rh.white',
                 'lh.curv', 'rh.curv',
                 'lh.thickness', 'rh.thickness'),
-        }
-        # fmt:on
+        }  # fmt:skip
+
         for d, fls in fs_files.items():
             for fl in fls:
                 if not (fs_dir / d / fl).exists():
