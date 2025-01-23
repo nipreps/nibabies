@@ -373,6 +373,7 @@ It is released under the [CC0]\
             anat_only=config.workflow.anat_only,
             anat_derivatives=anatomical_cache or None,
             subject_id=subject_id,
+            require_t1w=False,
         ),
         name='bidssrc',
     )
