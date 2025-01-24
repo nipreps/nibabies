@@ -35,8 +35,9 @@ from smriprep.workflows.surfaces import (
 )
 
 from nibabies import config
+from nibabies.interfaces import DerivativesDataSink
 from nibabies.workflows.anatomical.brain_extraction import init_infant_brain_extraction_wf
-from nibabies.workflows.anatomical.outputs import init_anat_reports_wf
+from nibabies.workflows.anatomical.outputs import init_anat_reports_wf, init_coreg_report_wf
 from nibabies.workflows.anatomical.preproc import init_anat_preproc_wf, init_csf_norm_wf
 from nibabies.workflows.anatomical.registration import (
     init_concat_registrations_wf,
@@ -741,36 +742,33 @@ def init_infant_anat_fit_wf(
             probmap=probmap,
         )
 
-        # TODO: Currently the XFMs are transform0GenericAffine.mat, transform1Warp.nii.gz
-        # The coregistration should be changed to instead save
-        # 'composite_transform' and 'inverse_composite_transform'
-        # from antsRegistration (single h5 files)
-        #
-        # ds_t1w2t2w_xfm = pe.Node(
-        #     DerivativesDataSink(
-        #         base_directory=output_dir,
-        #         to='T2w',
-        #         mode='image',
-        #         suffix='xfm',
-        #         dismiss_entites=('desc', 'echo'),
-        #         **{'from': 'T1w'}
-        #     ),
-        #     name='ds_t1w2t2w_xfm',
-        #     run_without_submitting=True,
-        # )
+        ds_t1w2t2w_xfm = pe.Node(
+            DerivativesDataSink(
+                base_directory=output_dir,
+                to='T2w',
+                mode='image',
+                suffix='xfm',
+                dismiss_entities=('desc', 'echo'),
+                **{'from': 'T1w'},
+            ),
+            name='ds_t1w2t2w_xfm',
+            run_without_submitting=True,
+        )
 
-        # ds_t2w2t1w_xfm = pe.Node(
-        #     DerivativesDataSink(
-        #         base_directory=output_dir,
-        #         to='T1w',
-        #         mode='image',
-        #         suffix='xfm',
-        #         dismiss_entites=('desc', 'echo'),
-        #         **{'from': 'T2w'}
-        #     ),
-        #     name='ds_t2w2t1w_xfm',
-        #     run_without_submitting=True,
-        # )
+        ds_t2w2t1w_xfm = pe.Node(
+            DerivativesDataSink(
+                base_directory=output_dir,
+                to='T1w',
+                mode='image',
+                suffix='xfm',
+                dismiss_entities=('desc', 'echo'),
+                **{'from': 'T2w'},
+            ),
+            name='ds_t2w2t1w_xfm',
+            run_without_submitting=True,
+        )
+
+        coreg_report_wf = init_coreg_report_wf(output_dir=output_dir)
 
         workflow.connect([
             (t1w_validate, coregistration_wf, [
@@ -780,22 +778,28 @@ def init_infant_anat_fit_wf(
                 ('t2w_preproc', 'inputnode.in_t2w'),
                 ('t2w_mask', 'inputnode.in_mask'),
             ]),
-            # (coregistration_wf, ds_t1w2t2w_xfm, [
-            #     ('outputnode.t1w2t2w_xfm', 'in_file'),
-            # ]),
-            # (sourcefile_buffer, ds_t1w2t2w_xfm, [
-            #     ('t1w_source_files', 'source_file'),
-            # ]),
-            # (coregistration_wf, ds_t2w2t1w_xfm, [
-            #     ('outputnode.t2w2t1w_xfm', 'in_file'),
-            # ]),
-            # (sourcefile_buffer, ds_t2w2t1w_xfm, [
-            #     ('t2w_source_files', 'source_file'),
-            # ]),
+            (coregistration_wf, ds_t1w2t2w_xfm, [
+                ('outputnode.t1w2t2w_xfm', 'in_file'),
+            ]),
+            (sourcefile_buffer, ds_t1w2t2w_xfm, [
+                ('t1w_source_files', 'source_file'),
+            ]),
+            (coregistration_wf, ds_t2w2t1w_xfm, [
+                ('outputnode.t2w2t1w_xfm', 'in_file'),
+            ]),
+            (sourcefile_buffer, ds_t2w2t1w_xfm, [
+                ('t2w_source_files', 'source_file'),
+            ]),
             (coregistration_wf, coreg_buffer, [
                 ('outputnode.t1w2t2w_xfm', 't1w2t2w_xfm'),
                 ('outputnode.t2w2t1w_xfm', 't2w2t1w_xfm'),
             ]),
+            (coregistration_wf, coreg_report_wf, [
+                ('outputnode.t1w_preproc', 'inputnode.t1w_preproc'),
+                ('outputnode.t2w_preproc', 'inputnode.t2w_preproc'),
+                ('outputnode.t1w_mask', 'inputnode.in_mask'),
+            ]),
+            (sourcefile_buffer, coreg_report_wf, [('anat_source_files', 'inputnode.source_file')]),
         ])  # fmt:skip
 
         if probmap:
