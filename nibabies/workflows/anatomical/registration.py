@@ -177,15 +177,14 @@ def init_coregistration_wf(
             ('in_t2w', 'input_image')]),
         (fixed_masks_arg, coreg, [('out', 'fixed_image_masks')]),
         (coreg, map_t2w, [
-            ('reverse_transforms', 'transforms'),
-            ('reverse_invert_flags', 'invert_transform_flags'),
+            ('inverse_composite_transform', 'transforms'),
         ]),
         (final_n4, apply_mask, [('output_image', 'in_file')]),
         (final_n4, outputnode, [('output_image', 't1w_preproc')]),
         (map_t2w, outputnode, [('output_image', 't2w_preproc')]),
         (apply_mask, outputnode, [('out_file', 't1w_brain')]),
-        (coreg, outputnode, [('forward_transforms', 't1w2t2w_xfm')]),
-        (coreg, outputnode, [('reverse_transforms', 't2w2t1w_xfm')]),
+        (coreg, outputnode, [('composite_transform', 't1w2t2w_xfm')]),
+        (coreg, outputnode, [('inverse_composite_transform', 't2w2t1w_xfm')]),
     ])
     # fmt: on
 
@@ -218,8 +217,8 @@ def init_coregistration_wf(
                 ('in_t1w', 'reference_image'),
                 ('in_probmap', 'input_image')]),
             (coreg, map_mask, [
-                ('reverse_transforms', 'transforms'),
-                ('reverse_invert_flags', 'invert_transform_flags')]),
+                ('inverse_composite_transform', 'transforms'),
+            ]),
             (map_mask, thr_mask, [('output_image', 'in_file')]),
             (map_mask, final_n4, [('output_image', 'weight_image')]),
             (thr_mask, outputnode, [('out_mask', 't1w_mask')]),
@@ -240,8 +239,8 @@ def init_coregistration_wf(
             ('in_t1w', 'reference_image'),
             ('in_mask', 'input_image')]),
         (coreg, map_precomp_mask, [
-            ('reverse_transforms', 'transforms'),
-            ('reverse_invert_flags', 'invert_transform_flags')]),
+            ('inverse_composite_transform', 'transforms'),
+        ]),
         (map_precomp_mask, final_n4, [('output_image', 'weight_image')]),
         (map_precomp_mask, outputnode, [('output_image', 't1w_mask')]),
         (map_precomp_mask, apply_mask, [('output_image', 'in_mask')]),
