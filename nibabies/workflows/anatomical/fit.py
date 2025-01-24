@@ -37,7 +37,7 @@ from smriprep.workflows.surfaces import (
 from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.workflows.anatomical.brain_extraction import init_infant_brain_extraction_wf
-from nibabies.workflows.anatomical.outputs import init_anat_reports_wf
+from nibabies.workflows.anatomical.outputs import init_anat_reports_wf, init_coreg_report_wf
 from nibabies.workflows.anatomical.preproc import init_anat_preproc_wf, init_csf_norm_wf
 from nibabies.workflows.anatomical.registration import (
     init_concat_registrations_wf,
@@ -768,6 +768,8 @@ def init_infant_anat_fit_wf(
             run_without_submitting=True,
         )
 
+        coreg_report_wf = init_coreg_report_wf(output_dir=output_dir)
+
         workflow.connect([
             (t1w_validate, coregistration_wf, [
                 ('out_file', 'inputnode.in_t1w'),
@@ -792,6 +794,12 @@ def init_infant_anat_fit_wf(
                 ('outputnode.t1w2t2w_xfm', 't1w2t2w_xfm'),
                 ('outputnode.t2w2t1w_xfm', 't2w2t1w_xfm'),
             ]),
+            (coregistration_wf, coreg_report_wf, [
+                ('outputnode.t1w_preproc', 'inputnode.t1w_preproc'),
+                ('outputnode.t2w_preproc', 'inputnode.t2w_preproc'),
+                ('outputnode.t1w_mask', 'inputnode.in_mask'),
+            ]),
+            (sourcefile_buffer, coreg_report_wf, [('anat_source_files', 'inputnode.source_file')]),
         ])  # fmt:skip
 
         if probmap:
