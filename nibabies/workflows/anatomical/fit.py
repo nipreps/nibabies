@@ -1030,7 +1030,6 @@ def init_infant_anat_fit_wf(
         surface_recon_wf = init_mcribs_surface_recon_wf(
             omp_nthreads=omp_nthreads,
             use_aseg=bool(anat_aseg),
-            use_mask=True,
             precomputed=precomputed,
             mcribs_dir=str(config.execution.mcribs_dir),
         )
@@ -1040,10 +1039,8 @@ def init_infant_anat_fit_wf(
                 ('subject_id', 'inputnode.subject_id'),
                 ('subjects_dir', 'inputnode.subjects_dir'),
             ]),
-            (t2w_buffer, surface_recon_wf, [
-                ('t2w_preproc', 'inputnode.t2w'),
-                ('t2w_mask', 'inputnode.in_mask'),
-            ]),
+            (t2w_validate, surface_recon_wf, [('out_file', 'inputnode.t2w')]),
+            (t2w_buffer, surface_recon_wf, [('t2w_mask', 'inputnode.in_mask'),]),
             (aseg_buffer, surface_recon_wf, [
                 ('anat_aseg', 'inputnode.in_aseg'),
             ]),
@@ -1950,7 +1947,6 @@ def init_infant_single_anat_fit_wf(
         surface_recon_wf = init_mcribs_surface_recon_wf(
             omp_nthreads=omp_nthreads,
             use_aseg=bool(anat_aseg),
-            use_mask=True,
             precomputed=precomputed,
             mcribs_dir=str(config.execution.mcribs_dir),
         )
@@ -1960,10 +1956,8 @@ def init_infant_single_anat_fit_wf(
                 ('subject_id', 'inputnode.subject_id'),
                 ('subjects_dir', 'inputnode.subjects_dir'),
             ]),
-            (anat_buffer, surface_recon_wf, [
-                ('anat_preproc', 'inputnode.t2w'),
-                ('anat_mask', 'inputnode.in_mask'),
-            ]),
+            (anat_validate, surface_recon_wf, [('out_file', 'inputnode.t2w')]),
+            (anat_buffer, surface_recon_wf, [('anat_mask', 'inputnode.in_mask')]),
             (aseg_buffer, surface_recon_wf, [
                 ('anat_aseg', 'inputnode.in_aseg'),
             ]),
