@@ -122,21 +122,6 @@ def init_mcribs_surface_recon_wf(
     t2w_las = pe.Node(ReorientImage(target_orientation='LAS'), name='t2w_las')
     seg_las = pe.Node(ReorientImage(target_orientation='LAS'), name='seg_las')
 
-    mcribs_recon = pe.Node(
-        MCRIBReconAll(
-            surfrecon=True,
-            surfrecon_method='Deformable',
-            join_thresh=1.0,
-            fast_collision=True,
-            nthreads=omp_nthreads,
-        ),
-        name='mcribs_recon',
-        mem_gb=5,
-    )
-    if mcribs_dir:
-        mcribs_recon.inputs.outdir = mcribs_dir
-        mcribs_recon.config = {'execution': {'remove_unnecessary_outputs': False}}
-
     # dilated mask and use in recon-neonatal-cortex
     mask_dil = pe.Node(BinaryDilation(radius=3), name='mask_dil')
     mask_las = pe.Node(ReorientImage(target_orientation='LAS'), name='mask_las')
@@ -157,11 +142,26 @@ def init_mcribs_surface_recon_wf(
         name='n4_mcribs',
     )
 
+    mcribs_recon = pe.Node(
+        MCRIBReconAll(
+            surfrecon=True,
+            surfrecon_method='Deformable',
+            join_thresh=1.0,
+            fast_collision=True,
+            nthreads=omp_nthreads,
+            outdir=mcribs_dir,
+        ),
+        name='mcribs_recon',
+        mem_gb=5,
+    )
+    mcribs_recon.config = {'execution': {'remove_unnecessary_outputs': False}}
+
     mcribs_postrecon = pe.Node(
         MCRIBReconAll(autorecon_after_surf=True, nthreads=omp_nthreads),
         name='mcribs_postrecon',
         mem_gb=5,
     )
+    mcribs_postrecon.config = {'execution': {'remove_unnecessary_outputs': False}}
 
     fssource = pe.Node(FreeSurferSource(), name='fssource', run_without_submitting=True)
     midthickness_wf = init_make_midthickness_wf(omp_nthreads=omp_nthreads)
