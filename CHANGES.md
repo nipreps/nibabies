@@ -4,16 +4,21 @@ A new minor release with some improvements to anatomical to template spatial nor
 
 Registration will now prioritize the same modality as the anatomical template, if available.
 
-A new flag `--norm-csf` performs CSF normalization on the anatomical template prior to template registration.
+A new flag `--norm-csf` performs normalization on the lower bound of CSF values prior to template registration.
 
 A new flag `--multi-step-reg` adds an intermediate step when registering to MNI152NLin6Asym, first performing anatomical -> MNIInfant:cohort-X (age matched by default), and then concatenates the transform with an already computed MNIInfant -> MNI152NLin6Asym.
 
 Both of these flags are experimental and disabled unless requested, but comparisons and feedback with your data are helpful for future determinations!
 
 
-  * ENH: Add flag for multi-step registration to adult templates (#415)
-  * FEAT: Option to normalize CSF prior to template registration (#419)
+  * ENH: Output anatomical coregistration transform + report (#437)
+  * ENH: Minimize clipping prior to surface reconstruction with MCRIBS (#436)
+  * ENH: Output fsLR meshes on subject surfaces (#427)
+  * ENH: Add flag for multi-step registration to adult templates (#415) (#425) (#430) (#433)
+  * ENH: Option to normalize CSF prior to template registration (#419)
   * ENH: Expand template registration to use either anatomical modality (#418)
+  * FIX: Reduce range that `--surface-recon-method auto` recommends MCRIBS (#438)
+  * FIX: Allow T2 only without the use of `--derivatives`
   * FIX: New styling catches (#417)
   * FIX: Default surface recon method should be None (#416)
   * TST: Build workflow across different conditions (#409)
