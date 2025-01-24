@@ -73,7 +73,7 @@ if ty.TYPE_CHECKING:
     SubjectSession = tuple[str, str | None]
 
 
-AUTO_T2W_MAX_AGE = 8
+MCRIBS_RECOMMEND_AGE_CAP = 3
 
 
 def init_nibabies_wf(subworkflows_list: list[SubjectSession]):
@@ -332,7 +332,7 @@ It is released under the [CC0]\
     # Determine some session level options here, as we should have
     # all the required information
     if recon_method == 'auto':
-        if age <= AUTO_T2W_MAX_AGE and anatomical_cache.get('t2w_aseg'):
+        if age <= MCRIBS_RECOMMEND_AGE_CAP and anatomical_cache.get('t2w_aseg'):
             # do not force mcribs without a vetted segmentation
             recon_method = 'mcribs'
         elif age <= 24:
@@ -355,7 +355,12 @@ It is released under the [CC0]\
     elif (reference_anat := requested_anat) is None:  # Both available with no preference
         reference_anat = (
             'T2w'
-            if any((recon_method == 'none' and age <= AUTO_T2W_MAX_AGE, recon_method == 'mcribs'))
+            if any(
+                (
+                    recon_method is None and age <= MCRIBS_RECOMMEND_AGE_CAP,
+                    recon_method == 'mcribs',
+                )
+            )
             else 'T1w'
         )
 
