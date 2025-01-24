@@ -32,7 +32,7 @@ class MCRIBReconAllInputSpec(CommandLineInputSpec):
     t1w_file = File(
         exists=True,
         copyfile=True,
-        desc='T1w to be used for deformable (must be registered to T2w image)',
+        desc='T1w to be used for deformable (must be in register with T2w image)',
     )
     t2w_file = File(
         exists=True,
@@ -107,26 +107,51 @@ class MCRIBReconAll(CommandLine):
     output_spec = MCRIBReconAllOutputSpec
     _no_run = False
 
+    _expected_files = {
+        'surfrecon': {
+            'meshes': (
+                'pial-lh-reordered.vtp',
+                'pial-rh-reordered.vtp',
+                'white-rh.vtp',
+                'white-lh.vtp',
+            )
+        },
+        'autorecon': {
+            'mri': ('T2.mgz', 'aseg.presurf.mgz', 'ribbon.mgz', 'brain.mgz'),
+            'label': ('lh.cortex.label', 'rh.cortex.label'),
+            'stats': ('aseg.stats', 'brainvol.stats', 'lh.aparc.stats', 'rh.curv.stats'),
+            'surf': (
+                'lh.pial', 'rh.pial',
+                'lh.white', 'rh.white',
+                'lh.curv', 'rh.curv',
+                'lh.thickness', 'rh.thickness'),
+        }
+    }  # fmt:skip
+
     @property
     def cmdline(self):
         cmd = super().cmdline
-        # Avoid processing if valid
+        if self.inputs.surfrecon and not self.inputs.t2w_file:
+            raise AttributeError('Missing `t2w_file` input.')
+
+        # If an output directory is provided, check if we can skip the run
         if self.inputs.outdir:
             sid = self.inputs.subject_id
             # Check MIRTK surface recon deformable
             if self.inputs.surfrecon:
                 surfrecon_dir = Path(self.inputs.outdir) / sid / 'SurfReconDeformable' / sid
-                if self._verify_surfrecon_outputs(surfrecon_dir):
-                    self.inputs.surfrecon = False
+                if self._verify_outputs('surfrecon', surfrecon_dir):
                     self._no_run = True
             # Check FS directory population
             if self.inputs.autorecon_after_surf:
                 fs_dir = Path(self.inputs.outdir) / sid / 'freesurfer' / sid
-                if self._verify_autorecon_outputs(fs_dir):
+                if self._verify_outputs('autorecon', fs_dir):
                     self._no_run = True
+                else:
+                    self._no_run = False
 
             if self._no_run:
-                return 'echo MCRIBSReconAll: nothing to do'
+                return 'echo MCRIBReconAll: nothing to do'
         return cmd
 
     def _setup_directory_structure(self, mcribs_dir: Path) -> None:
@@ -213,8 +238,6 @@ class MCRIBReconAll(CommandLine):
         mcribs_dir = self.inputs.outdir or Path(runtime.cwd) / 'mcribs'
         self._mcribs_dir = Path(mcribs_dir)
         if self.inputs.surfrecon:
-            if not self.inputs.t2w_file:
-                raise AttributeError('Missing T2w input')
             self._setup_directory_structure(self._mcribs_dir)
         # overwrite CWD to be in MCRIB subject's directory
         runtime.cwd = str(self._mcribs_dir / self.inputs.subject_id)
@@ -226,11 +249,11 @@ class MCRIBReconAll(CommandLine):
         if self.inputs.surfrecon:
             # verify surface reconstruction was successful
             surfrecon_dir = self._mcribs_dir / sid / 'SurfReconDeformable' / sid
-            self._verify_surfrecon_outputs(surfrecon_dir, error=True)
+            self._verify_outputs('surfrecon', surfrecon_dir, error=True)
 
         mcribs_fs = self._mcribs_dir / sid / 'freesurfer' / sid
         if self.inputs.autorecon_after_surf:
-            self._verify_autorecon_outputs(mcribs_fs, error=True)
+            self._verify_outputs('autorecon', mcribs_fs, error=True)
 
         outputs['mcribs_dir'] = str(self._mcribs_dir)
         if self.inputs.autorecon_after_surf and self.inputs.subjects_dir:
@@ -250,56 +273,19 @@ class MCRIBReconAll(CommandLine):
 
         return outputs
 
-    @staticmethod
-    def _verify_surfrecon_outputs(surfrecon_dir: Path, error: bool = False) -> bool:
+    def _verify_outputs(self, step: str, root: Path, error: bool = False) -> bool:
         """
-        Sanity check to ensure the surface reconstruction was successful.
+        Method to check to ensure the expected files are present successful.
 
         MCRIBReconAll does not return a failing exit code if a step failed, which leads
         this interface to be marked as completed without error in such cases.
         """
 
-        surfrecon_files = {
-            'meshes': (
-                'pial-lh-reordered.vtp',
-                'pial-rh-reordered.vtp',
-                'white-rh.vtp',
-                'white-lh.vtp',
-            )
-        }  # fmt:skip
-
-        for d, fls in surfrecon_files.items():
-            for fl in fls:
-                if not (surfrecon_dir / d / fl).exists():
+        expected = self._expected_files[step]
+        for d, files in expected.items():
+            for fl in files:
+                if not (root / d / fl).exists():
                     if error:
-                        raise FileNotFoundError(f'SurfReconDeformable missing: {fl}')
-                    return False
-        return True
-
-    @staticmethod
-    def _verify_autorecon_outputs(fs_dir: Path, error: bool = False) -> bool:
-        """
-        Sanity check to ensure the necessary FreeSurfer files have been created.
-
-        MCRIBReconAll does not return a failing exit code if a step failed, which leads
-        this interface to be marked as completed without error in such cases.
-        """
-
-        fs_files = {
-            'mri': ('T2.mgz', 'aseg.presurf.mgz', 'ribbon.mgz', 'brain.mgz'),
-            'label': ('lh.cortex.label', 'rh.cortex.label'),
-            'stats': ('aseg.stats', 'brainvol.stats', 'lh.aparc.stats', 'rh.curv.stats'),
-            'surf': (
-                'lh.pial', 'rh.pial',
-                'lh.white', 'rh.white',
-                'lh.curv', 'rh.curv',
-                'lh.thickness', 'rh.thickness'),
-        }  # fmt:skip
-
-        for d, fls in fs_files.items():
-            for fl in fls:
-                if not (fs_dir / d / fl).exists():
-                    if error:
-                        raise FileNotFoundError(f'FreeSurfer directory missing: {fl}')
+                        raise FileNotFoundError(f'{step.capitalize()} missing: {fl}')
                     return False
         return True
