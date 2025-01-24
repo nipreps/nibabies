@@ -134,7 +134,7 @@ def init_coregistration_wf(
 
     # Set up T1w -> T2w within-subject registration
     coreg = pe.Node(
-        Registration(from_file=get_file('nibabies', 'data/within_subject_t1t2.json')),
+        Registration(from_file=get_file('nibabies', 'data/t1-t2-coreg.json')),
         name='coreg',
         n_procs=omp_nthreads,
         mem_gb=mem_gb,
