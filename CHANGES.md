@@ -1,6 +1,6 @@
-25.0.0 (TBD)
-============
-A new minor release with some improvements to anatomical to template spatial normalization.
+25.0.0 (January 28, 2025)
+=========================
+A new minor release with improvements to anatomical to template spatial normalization.
 
 Registration will now prioritize the same modality as the anatomical template, if available.
 
@@ -8,14 +8,24 @@ A new flag `--norm-csf` performs CSF normalization on the anatomical template pr
 
 A new flag `--multi-step-reg` adds an intermediate step when registering to MNI152NLin6Asym, first performing anatomical -> MNIInfant:cohort-X (age matched by default), and then concatenates the transform with an already computed MNIInfant -> MNI152NLin6Asym.
 
-Both of these flags are experimental and disabled unless requested, but comparisons and feedback with your data are helpful for future determinations!
+Both of the new flags above are disabled by default, but have shown promise and may become defaults in the next release. Please experiment with your data, and any feedback on the results would be greatly appreciated!
 
 
-  * ENH: Add flag for multi-step registration to adult templates (#415)
-  * FEAT: Option to normalize CSF prior to template registration (#419)
+### Enhancements
+  * ENH: Output anatomical coregistration transform + report (#437)
+  * ENH: Minimize clipping prior to surface reconstruction with MCRIBS (#436)
+  * ENH: Output fsLR meshes on subject surfaces (#427)
+  * ENH: Add flag for multi-step registration to adult templates (#415) (#425) (#430) (#433)
+  * ENH: Option to normalize CSF prior to template registration (#419)
   * ENH: Expand template registration to use either anatomical modality (#418)
+
+### Bug Fixes
+  * FIX: Reduce range that --surface-recon-method auto recommends MCRIBS (#438)
+  * FIX: Allow T2 only without the use of --derivatives
   * FIX: New styling catches (#417)
   * FIX: Default surface recon method should be None (#416)
+
+### Internals / Maintenance
   * TST: Build workflow across different conditions (#409)
   * MAINT: Remove deprecated parser arguments (#407)
 
