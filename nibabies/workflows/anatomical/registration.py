@@ -503,6 +503,7 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
 
 
 def _load_intermediate_xfms(intermediate, std):
+    """Fetch transforms from the OSF repository (https://osf.io/y763j/)."""
     import json
     from pathlib import Path
 
