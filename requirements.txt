@@ -33,13 +33,13 @@ bidsschematools==1.0.0
     # via bids-validator
 bokeh==3.5.2
     # via tedana
-boto3==1.36.8
+boto3==1.36.13
     # via datalad
-botocore==1.36.8
+botocore==1.36.13
     # via
     #   boto3
     #   s3transfer
-certifi==2024.12.14
+certifi==2025.1.31
     # via requests
 chardet==5.2.0
     # via datalad
@@ -79,11 +79,11 @@ fasteners==0.19
     # via datalad
 filelock==3.17.0
     # via nipype
-fonttools==4.55.7
+fonttools==4.55.8
     # via matplotlib
 formulaic==0.5.2
     # via pybids
-fsspec==2024.12.0
+fsspec==2025.2.0
     # via universal-pathlib
 h5py==3.12.1
     # via nitransforms
@@ -335,7 +335,7 @@ python-dateutil==2.9.0.post0
     #   prov
 python-gitlab==5.6.0
     # via datalad
-pytz==2024.2
+pytz==2025.1
     # via pandas
 pyyaml==6.0.2
     # via

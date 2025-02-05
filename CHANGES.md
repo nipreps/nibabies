@@ -1,3 +1,10 @@
+25.0.1 (February 5, 2025)
+-------------------------
+A bug-fix release to address an issue when using a precomputed mask for MCRIBS surface reconstruction without an anatomical template.
+
+  * FIX: Match mask header prior to n4 correction (#443)
+
+
 25.0.0 (January 28, 2025)
 =========================
 A new minor release with improvements to anatomical to template spatial normalization.
