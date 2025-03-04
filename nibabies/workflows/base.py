@@ -43,6 +43,7 @@ NiBabies base processing workflows
 from __future__ import annotations
 
 import os
+import pprint
 import sys
 import typing as ty
 import warnings
@@ -365,6 +366,13 @@ It is released under the [CC0]\
         )
 
     anat = reference_anat.lower()  # To be used for workflow connections
+
+    config.loggers.workflow.info(
+        'Collected the following data for %s:\nRaw:\n%s\n\nDerivatives:\n\n%s\n',
+        f'sub-{subject_id}' if not session_id else f'sub-{subject_id}_ses-{session_id}',
+        pprint.pformat(subject_data),
+        pprint.pformat(anatomical_cache),
+    )
 
     bids_root = str(config.execution.bids_dir)
     output_dir = str(config.execution.nibabies_dir)
