@@ -604,6 +604,7 @@ It is released under the [CC0]\
             omp_nthreads=omp_nthreads,
             output_dir=output_dir,
             subject=subject_id,
+            sd_prior=False,  # No priors for infants yet
         )
         fmap_wf.__desc__ = f"""
 
@@ -618,17 +619,18 @@ BIDS structure for this particular subject.
             if node.split('.')[-1].startswith('ds_'):
                 fmap_wf.get_node(node).interface.out_path_base = ''
 
-        fmap_select_std = pe.Node(
-            KeySelect(fields=['std2anat_xfm'], key='MNI152NLin2009cAsym'),
-            name='fmap_select_std',
-            run_without_submitting=True,
-        )
-        if any(estimator.method == fm.EstimatorType.ANAT for estimator in fmap_estimators):
-            workflow.connect([
-                (anat_fit_wf, fmap_select_std, [
-                    ('outputnode.std2anat_xfm', 'std2anat_xfm'),
-                    ('outputnode.template', 'keys')]),
-            ])  # fmt:skip
+        # MG: No prior is used ATM, so no need for xfm
+        # fmap_select_std = pe.Node(
+        #     KeySelect(fields=['std2anat_xfm'], key='MNI152NLin2009cAsym'),
+        #     name='fmap_select_std',
+        #     run_without_submitting=True,
+        # )
+        # if any(estimator.method == fm.EstimatorType.ANAT for estimator in fmap_estimators):
+        #     workflow.connect([
+        #         (anat_fit_wf, fmap_select_std, [
+        #             ('outputnode.std2anat_xfm', 'std2anat_xfm'),
+        #             ('outputnode.template', 'keys')]),
+        #     ])  # fmt:skip
 
         for estimator in fmap_estimators:
             config.loggers.workflow.info(
@@ -663,6 +665,7 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
                     debug=config.execution.sloppy,
                     auto_bold_nss=True,
                     t1w_inversion=False,
+                    sd_prior=False,
                     name=f'syn_preprocessing_{estimator.bids_id}',
                 )
                 syn_preprocessing_wf.inputs.inputnode.in_epis = sources
@@ -673,9 +676,10 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
                         ('outputnode.anat_preproc', 'inputnode.in_anat'),
                         ('outputnode.anat_mask', 'inputnode.mask_anat'),
                     ]),
-                    (fmap_select_std, syn_preprocessing_wf, [
-                        ('std2anat_xfm', 'inputnode.std2anat_xfm'),
-                    ]),
+                    # MG: No prior is used ATM, so no need for xfm
+                    # (fmap_select_std, syn_preprocessing_wf, [
+                    #     ('std2anat_xfm', 'inputnode.std2anat_xfm'),
+                    # ]),
                     (syn_preprocessing_wf, fmap_wf, [
                         ('outputnode.epi_ref', f'in_{estimator.bids_id}.epi_ref'),
                         ('outputnode.epi_mask', f'in_{estimator.bids_id}.epi_mask'),
@@ -920,6 +924,7 @@ def map_fieldmap_estimation(
         fmapless=bool(use_syn) or ignore_fieldmaps and force_syn,
         force_fmapless=force_syn or ignore_fieldmaps and use_syn,
         bids_filters=filters,
+        anat_suffix=['T1w', 'T2w'],
     )
 
     if not fmap_estimators:
@@ -933,12 +938,16 @@ def map_fieldmap_estimation(
                 raise ValueError(message)
         return [], {}
 
-    if ignore_fieldmaps and any(f.method == fm.EstimatorType.ANAT for f in fmap_estimators):
-        config.loggers.workflow.info(
-            'Option "--ignore fieldmaps" was set, but either "--use-syn-sdc" '
-            'or "--force-syn" were given, so fieldmap-less estimation will be executed.'
-        )
-        fmap_estimators = [f for f in fmap_estimators if f.method == fm.EstimatorType.ANAT]
+    if ignore_fieldmaps:
+        if any(f.method == fm.EstimatorType.ANAT for f in fmap_estimators):
+            config.loggers.workflow.info(
+                'Option "--ignore fieldmaps" was set, but either "--use-syn-sdc" '
+                'or "--force-syn" were given, so fieldmap-less estimation will be executed.'
+            )
+            fmap_estimators = [f for f in fmap_estimators if f.method == fm.EstimatorType.ANAT]
+        else:
+            config.loggers.workflow.info('Ignoring fieldmaps - no estimators will be used.')
+            return [], {}
 
     # Pare down estimators to those that are actually used
     # If fmap_estimators == [], all loops/comprehensions terminate immediately
