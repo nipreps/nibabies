@@ -34,7 +34,7 @@ dependencies = [
     "pybids >= 0.15.0",
     "requests",
     "SimpleITK",
-    "sdcflows >= 2.10.0",
+    "sdcflows @ git+https://github.com/nipreps/sdcflows.git@master",
     "smriprep >= 0.17.0",
     "tedana >= 23.0.2",
     "templateflow >= 24.2.0",
