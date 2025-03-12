@@ -1,12 +1,10 @@
 """
 This script restructures workflow outputs to be ingested by the HBCD database.
 
-WARNING: This alters the directories in place into a structure that the underlying software used
-to create them will not recognize. Use with caution.
-
 The following changes are made to the outputs:
 
-1. FreeSurfer output is changed to follow the BIDS hierarchy:
+- FreeSurfer output is changed to follow the BIDS hierarchy:
+
     freesurfer/
         sub-<subject>
             ses-<session>/
@@ -14,7 +12,8 @@ The following changes are made to the outputs:
                 surf/
                 ...
 
-2. MCRIBS output is changed to follow the BIDS hierarchy:
+- MCRIBS output is changed to follow the BIDS hierarchy:
+
     mcribs/
         sub-<subject>
             ses-<session>/
@@ -22,7 +21,10 @@ The following changes are made to the outputs:
                 TissueSegDrawEM/
                 ...
 
-3. Symbolic links are followed and copied.
+- Symbolic links are replaced with the files they point to.
+
+WARNING: This alters the directories in place into a structure that the
+underlying software used to create them will not recognize. Use with caution.
 """
 
 import argparse
@@ -35,22 +37,23 @@ def _parser():
 
     from .parser import _path_exists
 
-    parser = argparse.ArgumentParser(description='Prepare outputs for HBCD database ingestion.')
+    parser = argparse.ArgumentParser(
+        prog='nibabies-hbcd',
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
     PathExists = partial(_path_exists, parser=parser)
 
     parser.add_argument(
-        'deriv_dir', type=PathExists, help='Path to the BIDS derivatives directory'
+        '--fs',
+        type=PathExists,
+        help='Path to the FreeSurfer output directory',
     )
     parser.add_argument(
-        '--fs-dir',
+        '--mcribs',
         type=PathExists,
-        help='Path to the FreeSurfer directory. If not provided, will look for in derivatives.',
-    )
-    parser.add_argument(
-        '--mcribs-dir',
-        type=PathExists,
-        help='Path to the MCRIBS directory. If not provided, will look for in the derivatives.',
+        help='Path to the MCRIBS output directory.',
     )
     return parser
 
@@ -67,11 +70,10 @@ def copy_symlinks(directory: Path):
 def restructure(directory: Path):
     """Change the structure of a directory in place to resemble BIDS hierarchy."""
     for sid in directory.glob('sub-*'):
-        print(sid)
         try:
             subject, session = sid.name.split('_', 1)
+            print(sid)
         except ValueError:
-            print(f'Could not split {sid} into subject and session')
             continue
 
         if not subject.startswith('sub-'):
@@ -89,30 +91,22 @@ def restructure(directory: Path):
         print(f'Copying {sid} to {target_directory}')
         shutil.copytree(sid, target_directory, dirs_exist_ok=True)
         shutil.rmtree(sid)
+    print(f'Completed restructuring {directory}')
 
 
 def main(argv=None):
     """Entry point `nibabies-hbcd`."""
     parser = _parser()
-    args = parser.parse_args(argv)
+    pargs = parser.parse_args(argv)
 
-    derivatives = args.deriv_dir
-    fs_dir = args.fs_dir
-    mcribs_dir = args.mcribs_dir
+    fs = pargs.fs
+    if fs is None:
+        print('FreeSurfer directory not provided. Skipping')
+    else:
+        restructure(fs)
 
-    if fs_dir is None:
-        fs_dir = derivatives / 'nibabies' / 'sourcedata' / 'freesurfer'
-        if not fs_dir.exists():
-            raise FileNotFoundError(
-                f'Could not find FreeSurfer directory at {fs_dir} - use `--fs-dir`.'
-            )
-
-    if mcribs_dir is None:
-        mcribs_dir = derivatives / 'nibabies' / 'sourcedata' / 'mcribs'
-        if not fs_dir.exists():
-            raise FileNotFoundError(
-                f'Could not find FreeSurfer directory at {mcribs_dir} - use `--mcribs-dir`.'
-            )
-
-    restructure(fs_dir)
-    restructure(mcribs_dir)
+    mcribs = pargs.mcribs
+    if mcribs is None:
+        print('MCRIBS directory not provided. Skipping')
+    else:
+        restructure(mcribs)
