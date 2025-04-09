@@ -284,7 +284,7 @@ Coregistration outputs are part of the *minimal* processing level.
 
 If a fieldmap is used for the correction of a BOLD series, then a registration
 is calculated between the BOLD series and the fieldmap. If, for example, the fieldmap
-is identified with `"B0Identifier": "TOPUP"`, the generated transform will be named
+is identified with `"B0FieldIdentifier": "TOPUP"`, the generated transform will be named
 
 ```
 sub-<subject_label>/[ses-<session_label>/]
