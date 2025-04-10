@@ -89,6 +89,7 @@ all = ["nibabies[dev,doc,maint,telemetry,test]"]
 [project.scripts]
 nibabies = "nibabies.cli.run:main"
 nibabies-mcribs = "nibabies.cli.mcribs:main"
+nibabies-hbcd = "nibabies.cli.hbcd:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true

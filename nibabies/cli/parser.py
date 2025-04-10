@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import sys
 import typing as ty
+from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
+from pathlib import Path
 
 from .. import config
 
@@ -13,143 +15,156 @@ if ty.TYPE_CHECKING:
     from bids.layout import BIDSLayout
 
 
+DEPRECATIONS = {
+    # parser attribute name: (replacement flag, version slated to be removed in)
+}
+
+
+class DeprecatedAction(Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        new_opt, rem_vers = DEPRECATIONS.get(self.dest, (None, None))
+        msg = (
+            f'{self.option_strings} has been deprecated and will be removed in '
+            f'{rem_vers or "a later version"}.'
+        )
+        if new_opt:
+            msg += f' Please use `{new_opt}` instead.'
+        print(msg, file=sys.stderr)
+        delattr(namespace, self.dest)
+
+
+class DerivToDict(Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        d = {}
+        for spec in values:
+            try:
+                name, loc = spec.split('=')
+                loc = Path(loc)
+            except ValueError:
+                loc = Path(spec)
+                name = loc.name
+
+            if name in d:
+                raise ValueError(f'Received duplicate derivative name: {name}')
+
+            d[name] = loc
+        setattr(namespace, self.dest, d)
+
+
+def _path_exists(path, parser):
+    """Ensure a given path exists."""
+    if path is None:
+        raise parser.error('No value provided!')
+    path = Path(path).absolute()
+    if not path.exists():
+        raise parser.error(f'Path does not exist: <{path}>.')
+    return path
+
+
+def _dir_not_empty(path, parser):
+    path = _path_exists(path, parser)
+    if not path.is_dir():
+        raise parser.error(f'Path is not a directory <{path}>.')
+    for _ in path.iterdir():
+        return path
+    raise parser.error(f'Directory found with no contents <{path}>.')
+
+
+def _is_file(path, parser):
+    """Ensure a given path exists and it is a file."""
+    path = _path_exists(path, parser)
+    if not path.is_file():
+        raise parser.error(f'Path should point to a file (or symlink of file): <{path}>.')
+    return path
+
+
+def _min_one(value, parser):
+    """Ensure an argument is not lower than 1."""
+    value = int(value)
+    if value < 1:
+        raise parser.error("Argument can't be less than one.")
+    return value
+
+
+def _to_gb(value):
+    scale = {'G': 1, 'T': 10**3, 'M': 1e-3, 'K': 1e-6, 'B': 1e-9}
+    digits = ''.join([c for c in value if c.isdigit()])
+    units = value[len(digits) :] or 'M'
+    return int(digits) * scale[units[0]]
+
+
+def _drop_sub(value):
+    return value[4:] if value.startswith('sub-') else value
+
+
+def _drop_ses(value):
+    return value[4:] if value.startswith('ses-') else value
+
+
+def _process_value(value):
+    import bids
+
+    if value is None:
+        return bids.layout.Query.NONE
+    elif value == '*':
+        return bids.layout.Query.ANY
+    else:
+        return value
+
+
+def _filter_pybids_none_any(dct):
+    d = {}
+    for k, v in dct.items():
+        if isinstance(v, list):
+            d[k] = [_process_value(val) for val in v]
+        else:
+            d[k] = _process_value(v)
+    return d
+
+
+def _bids_filter(value, parser):
+    from json import JSONDecodeError, loads
+
+    if value:
+        if Path(value).exists():
+            try:
+                return loads(Path(value).read_text(), object_hook=_filter_pybids_none_any)
+            except JSONDecodeError as e:
+                raise parser.error(f'JSON syntax error in: <{value}>.') from e
+        else:
+            raise parser.error(f'Path does not exist: <{value}>.')
+
+
+def _slice_time_ref(value, parser):
+    if value == 'start':
+        value = 0
+    elif value == 'middle':
+        value = 0.5
+    try:
+        value = float(value)
+    except ValueError as e:
+        raise parser.error(
+            f"Slice time reference must be number, 'start', or 'middle'. Received {value}."
+        ) from e
+    if not 0 <= value <= 1:
+        raise parser.error(f'Slice time reference must be in range 0-1. Received {value}.')
+    return value
+
+
+def _str_none(val):
+    if not isinstance(val, str):
+        return val
+    return None if val.lower() == 'none' else val
+
+
 def _build_parser():
     """Build parser object."""
-    from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
     from functools import partial
-    from pathlib import Path
 
     from niworkflows.utils.spaces import OutputReferencesAction, Reference
     from packaging.version import Version
 
     from .version import check_latest, is_flagged
-
-    deprecations = {
-        # parser attribute name: (replacement flag, version slated to be removed in)
-    }
-
-    class DeprecatedAction(Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            new_opt, rem_vers = deprecations.get(self.dest, (None, None))
-            msg = (
-                f'{self.option_strings} has been deprecated and will be removed in '
-                f'{rem_vers or "a later version"}.'
-            )
-            if new_opt:
-                msg += f' Please use `{new_opt}` instead.'
-            print(msg, file=sys.stderr)
-            delattr(namespace, self.dest)
-
-    class DerivToDict(Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            d = {}
-            for spec in values:
-                try:
-                    name, loc = spec.split('=')
-                    loc = Path(loc)
-                except ValueError:
-                    loc = Path(spec)
-                    name = loc.name
-
-                if name in d:
-                    raise ValueError(f'Received duplicate derivative name: {name}')
-
-                d[name] = loc
-            setattr(namespace, self.dest, d)
-
-    def _path_exists(path, parser):
-        """Ensure a given path exists."""
-        if path is None:
-            raise parser.error('No value provided!')
-        path = Path(path).absolute()
-        if not path.exists():
-            raise parser.error(f'Path does not exist: <{path}>.')
-        return path
-
-    def _dir_not_empty(path, parser):
-        path = _path_exists(path, parser)
-        if not path.is_dir():
-            raise parser.error(f'Path is not a directory <{path}>.')
-        for _ in path.iterdir():
-            return path
-        raise parser.error(f'Directory found with no contents <{path}>.')
-
-    def _is_file(path, parser):
-        """Ensure a given path exists and it is a file."""
-        path = _path_exists(path, parser)
-        if not path.is_file():
-            raise parser.error(f'Path should point to a file (or symlink of file): <{path}>.')
-        return path
-
-    def _min_one(value, parser):
-        """Ensure an argument is not lower than 1."""
-        value = int(value)
-        if value < 1:
-            raise parser.error("Argument can't be less than one.")
-        return value
-
-    def _to_gb(value):
-        scale = {'G': 1, 'T': 10**3, 'M': 1e-3, 'K': 1e-6, 'B': 1e-9}
-        digits = ''.join([c for c in value if c.isdigit()])
-        units = value[len(digits) :] or 'M'
-        return int(digits) * scale[units[0]]
-
-    def _drop_sub(value):
-        return value[4:] if value.startswith('sub-') else value
-
-    def _drop_ses(value):
-        return value[4:] if value.startswith('ses-') else value
-
-    def _process_value(value):
-        import bids
-
-        if value is None:
-            return bids.layout.Query.NONE
-        elif value == '*':
-            return bids.layout.Query.ANY
-        else:
-            return value
-
-    def _filter_pybids_none_any(dct):
-        d = {}
-        for k, v in dct.items():
-            if isinstance(v, list):
-                d[k] = [_process_value(val) for val in v]
-            else:
-                d[k] = _process_value(v)
-        return d
-
-    def _bids_filter(value, parser):
-        from json import JSONDecodeError, loads
-
-        if value:
-            if Path(value).exists():
-                try:
-                    return loads(Path(value).read_text(), object_hook=_filter_pybids_none_any)
-                except JSONDecodeError as e:
-                    raise parser.error(f'JSON syntax error in: <{value}>.') from e
-            else:
-                raise parser.error(f'Path does not exist: <{value}>.')
-
-    def _slice_time_ref(value, parser):
-        if value == 'start':
-            value = 0
-        elif value == 'middle':
-            value = 0.5
-        try:
-            value = float(value)
-        except ValueError as e:
-            raise parser.error(
-                f"Slice time reference must be number, 'start', or 'middle'. Received {value}."
-            ) from e
-        if not 0 <= value <= 1:
-            raise parser.error(f'Slice time reference must be in range 0-1. Received {value}.')
-        return value
-
-    def _str_none(val):
-        if not isinstance(val, str):
-            return val
-        return None if val.lower() == 'none' else val
 
     verstr = f'NiBabies v{config.environment.version}'
     currentv = Version(config.environment.version)
