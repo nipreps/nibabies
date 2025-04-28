@@ -15,7 +15,6 @@ from niworkflows.interfaces.freesurfer import (
 from niworkflows.interfaces.freesurfer import (
     PatchedRobustRegister as RobustRegister,
 )
-from niworkflows.interfaces.header import MatchHeader
 from niworkflows.interfaces.morphology import BinaryDilation
 from niworkflows.interfaces.patches import FreeSurferSource
 from smriprep.interfaces.freesurfer import MakeMidthickness
@@ -128,9 +127,6 @@ def init_mcribs_surface_recon_wf(
     mask_dil = pe.Node(BinaryDilation(radius=3), name='mask_dil')
     mask_las = pe.Node(ReorientImage(target_orientation='LAS'), name='mask_las')
 
-    # N4 has low tolerance for mismatch between input / mask
-    match_header = pe.Node(MatchHeader(), name='match_header')
-
     # N4BiasCorrection occurs in MCRIBTissueSegMCRIBS (which is skipped)
     # Run it (with mask to rescale intensities) prior injection
     n4_mcribs = pe.Node(
@@ -182,9 +178,7 @@ def init_mcribs_surface_recon_wf(
             ('subjects_dir', 'subjects_dir'),
             ('subject_id', 'subject_id')]),
         (t2w_las, n4_mcribs, [('out_file', 'input_image')]),
-        (mask_las, match_header, [('out_file', 'in_file')]),
-        (t2w_las, match_header, [('out_file', 'reference')]),
-        (match_header, n4_mcribs, [('out_file', 'mask_image')]),
+        (mask_las, n4_mcribs, [('out_file', 'mask_image')]),
         (n4_mcribs, mcribs_recon, [('output_image', 't2w_file')]),
         (seg_las, mcribs_recon, [('out_file', 'segmentation_file')]),
         (inputnode, mcribs_postrecon, [
