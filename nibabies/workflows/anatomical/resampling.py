@@ -5,7 +5,7 @@ import nipype.pipeline.engine as pe
 import templateflow.api as tf
 from niworkflows.engine.workflows import LiterateWorkflow
 from smriprep.interfaces.workbench import SurfaceResample
-from smriprep.workflows.surfaces import _collate, init_morph_grayords_wf
+from smriprep.workflows.surfaces import init_morph_grayords_wf
 
 from nibabies.config import DEFAULT_MEMORY_MIN_GB
 from nibabies.data import load as load_data
@@ -296,3 +296,7 @@ def _get_surf(surfaces, name, mult=1):
 
 def _triple(in_list):
     return in_list * 3
+
+
+def _collate(files):
+    return [files[i : i + 2] for i in range(0, len(files), 2)]
