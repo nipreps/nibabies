@@ -2,6 +2,7 @@ import typing as ty
 
 import nipype.interfaces.utility as niu
 import nipype.pipeline.engine as pe
+from niworkflows.engine import tag
 from smriprep.workflows.outputs import (
     init_ds_anat_volumes_wf,
     init_ds_grayord_metrics_wf,
@@ -25,6 +26,7 @@ if ty.TYPE_CHECKING:
 LOGGER = config.loggers.workflow
 
 
+@tag('anat.apply')
 def init_infant_anat_apply_wf(
     *,
     bids_root: str,

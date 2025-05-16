@@ -8,7 +8,7 @@ from nipype.interfaces import io as nio
 from nipype.interfaces import utility as niu
 from nipype.interfaces.ants import N4BiasFieldCorrection
 from nipype.pipeline import engine as pe
-from niworkflows.engine.workflows import LiterateWorkflow
+from niworkflows.engine import Workflow, tag
 from niworkflows.interfaces.freesurfer import (
     PatchedLTAConvert as LTAConvert,
 )
@@ -41,6 +41,7 @@ SURFACE_OUTPUTS = [
 ]
 
 
+@tag('anat.recon')
 def init_mcribs_surface_recon_wf(
     *,
     omp_nthreads: int,
@@ -67,7 +68,7 @@ def init_mcribs_surface_recon_wf(
     inputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_INPUTS), name='inputnode')
     outputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_OUTPUTS), name='outputnode')
 
-    workflow = LiterateWorkflow(name=name)
+    workflow = Workflow(name=name)
     workflow.__desc__ = (
         'Brain surfaces were reconstructed with a modified `MCRIBReconAll` [M-CRIB-S, @mcribs]'
         'workflow, using the reference T2w and a pre-computed anatomical segmentation'
@@ -224,6 +225,7 @@ def init_mcribs_surface_recon_wf(
     return workflow
 
 
+@tag('anat.fslr-reg')
 def init_mcribs_dhcp_wf(*, name='mcribs_dhcp_wf'):
     """
     Generate GIFTI registration files to dhcp (42-week) space.
@@ -233,7 +235,7 @@ def init_mcribs_dhcp_wf(*, name='mcribs_dhcp_wf'):
     """
     from smriprep.interfaces.workbench import SurfaceSphereProjectUnproject
 
-    workflow = LiterateWorkflow(name=name)
+    workflow = Workflow(name=name)
 
     inputnode = pe.Node(
         niu.IdentityInterface(['sphere_reg', 'sulc']),
@@ -294,6 +296,7 @@ def init_mcribs_dhcp_wf(*, name='mcribs_dhcp_wf'):
     return workflow
 
 
+@tag('anat.recon')
 def init_infantfs_surface_recon_wf(
     *,
     age_months: int,
@@ -304,7 +307,7 @@ def init_infantfs_surface_recon_wf(
 ):
     from nibabies.interfaces.freesurfer import InfantReconAll
 
-    workflow = LiterateWorkflow(name=name)
+    workflow = Workflow(name=name)
     inputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_INPUTS), name='inputnode')
     outputnode = pe.Node(niu.IdentityInterface(fields=SURFACE_OUTPUTS), name='outputnode')
 
@@ -382,6 +385,7 @@ def init_infantfs_surface_recon_wf(
     return workflow
 
 
+@tag('anat.midthickness')
 def init_make_midthickness_wf(
     *, omp_nthreads: int, name: str = 'make_midthickness_wf'
 ) -> pe.Workflow:
@@ -435,6 +439,7 @@ def init_make_midthickness_wf(
     return workflow
 
 
+@tag('anat.resample-surfs')
 def init_resample_surfaces_dhcp_wf(
     surfaces: list[str],
     grayord_density: ty.Literal['91k', '170k'],
@@ -470,7 +475,7 @@ def init_resample_surfaces_dhcp_wf(
     midthickness
         GIFTI surface mesh corresponding to the midthickness surface, resampled to fsLR
     """
-    workflow = LiterateWorkflow(name=name)
+    workflow = Workflow(name=name)
 
     fslr_density = '32k' if grayord_density == '91k' else '59k'
 

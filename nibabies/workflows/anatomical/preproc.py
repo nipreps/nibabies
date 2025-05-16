@@ -1,13 +1,14 @@
 import nipype.interfaces.utility as niu
 import nipype.pipeline.engine as pe
-from niworkflows.engine.workflows import LiterateWorkflow
+from niworkflows.engine import Workflow, tag
 
 
+@tag('anat.preproc')
 def init_anat_preproc_wf(
     *,
     bspline_fitting_distance: int = 200,
     name: str = 'anat_preproc_wf',
-) -> LiterateWorkflow:
+) -> Workflow:
     """Polish up raw anatomical data.
 
     This workflow accepts T1w/T2w images as inputs (either raw or a merged template) and performs:
@@ -30,7 +31,7 @@ def init_anat_preproc_wf(
     from niworkflows.interfaces.header import ValidateImage
     from niworkflows.interfaces.nibabel import IntensityClip
 
-    wf = LiterateWorkflow(name=name)
+    wf = Workflow(name=name)
     inputnode = pe.Node(
         niu.IdentityInterface(fields=['in_anat']),
         name='inputnode',
@@ -68,10 +69,11 @@ def init_anat_preproc_wf(
     return wf
 
 
-def init_csf_norm_wf(name: str = 'csf_norm_wf') -> LiterateWorkflow:
+@tag('anat.csf_norm')
+def init_csf_norm_wf(name: str = 'csf_norm_wf') -> Workflow:
     """Replace low intensity voxels within the CSF mask with the median value."""
 
-    workflow = LiterateWorkflow(name=name)
+    workflow = Workflow(name=name)
     workflow.__desc__ = (
         'The CSF mask was used to normalize the anatomical template by the median of voxels '
         'within the mask.'
