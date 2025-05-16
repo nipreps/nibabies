@@ -25,7 +25,7 @@ dependencies = [
     "nireports >= 23.2.0",
     "nitime",
     "nitransforms >= 24.1.1",
-    "niworkflows >= 1.12.2",
+    "niworkflows >= 1.13.1",
     "numpy >= 1.21.0",
     "packaging",
     "pandas",

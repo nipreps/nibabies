@@ -4,8 +4,9 @@
 #
 #    pip-compile --extra=container --output-file=requirements.txt --strip-extras pyproject.toml
 #
-acres==0.2.0
+acres==0.3.0
     # via
+    #   bidsschematools
     #   nibabies (pyproject.toml)
     #   nipype
     #   nireports
@@ -17,44 +18,40 @@ annexremote==1.6.6
     #   datalad
     #   datalad-next
     #   datalad-osf
-astor==0.8.1
-    # via formulaic
-attrs==25.1.0
+attrs==25.3.0
     # via
-    #   jsonschema
     #   niworkflows
-    #   referencing
     #   sdcflows
 backports-tarfile==1.2.0
     # via jaraco-context
 bids-validator==1.14.7.post0
     # via pybids
-bidsschematools==1.0.0
+bidsschematools==1.0.7
     # via bids-validator
-bokeh==3.5.2
+bokeh==3.6.3
     # via tedana
-boto3==1.36.13
+boto3==1.38.17
     # via datalad
-botocore==1.36.13
+botocore==1.38.17
     # via
     #   boto3
     #   s3transfer
-certifi==2025.1.31
+certifi==2025.4.26
     # via requests
 chardet==5.2.0
     # via datalad
-charset-normalizer==3.4.1
+charset-normalizer==3.4.2
     # via requests
 ci-info==0.3.0
     # via
     #   etelemetry
     #   migas
-click==8.1.8
+click==8.2.0
     # via
     #   bidsschematools
     #   nipype
     #   pybids
-contourpy==1.3.1
+contourpy==1.3.2
     # via
     #   bokeh
     #   matplotlib
@@ -77,17 +74,19 @@ etelemetry==0.3.1
     # via nipype
 fasteners==0.19
     # via datalad
-filelock==3.17.0
+filelock==3.18.0
     # via nipype
-fonttools==4.55.8
+fonttools==4.58.0
     # via matplotlib
-formulaic==0.5.2
+formulaic==1.1.1
     # via pybids
-fsspec==2025.2.0
+frozendict==2.4.6
+    # via pybids
+fsspec==2025.3.2
     # via universal-pathlib
-h5py==3.12.1
+h5py==3.13.0
     # via nitransforms
-humanize==4.11.0
+humanize==4.12.3
     # via
     #   datalad
     #   datalad-next
@@ -95,12 +94,10 @@ idna==3.10
     # via requests
 imageio==2.37.0
     # via scikit-image
-importlib-metadata==8.6.1
+importlib-metadata==8.7.0
     # via keyring
 importlib-resources==6.5.2
-    # via
-    #   nibabel
-    #   nireports
+    # via nibabel
 indexed-gzip==1.9.4
     # via smriprep
 interface-meta==1.3.0
@@ -119,7 +116,7 @@ jaraco-context==6.0.1
     #   keyrings-alt
 jaraco-functools==4.1.0
     # via keyring
-jinja2==3.1.5
+jinja2==3.1.6
     # via
     #   bokeh
     #   niworkflows
@@ -127,15 +124,11 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
-joblib==1.4.2
+joblib==1.5.0
     # via
     #   nilearn
     #   robustica
     #   scikit-learn
-jsonschema==4.23.0
-    # via bidsschematools
-jsonschema-specifications==2024.10.1
-    # via jsonschema
 keyring==25.6.0
     # via datalad
 keyrings-alt==5.0.2
@@ -154,16 +147,17 @@ looseversion==1.3.0
     #   nipype
     #   niworkflows
     #   smriprep
-lxml==5.3.0
+lxml==5.4.0
     # via
     #   nilearn
+    #   nireports
     #   prov
     #   svgutils
 mapca==0.0.5
     # via tedana
 markupsafe==3.0.2
     # via jinja2
-matplotlib==3.10.0
+matplotlib==3.10.3
     # via
     #   nireports
     #   nitime
@@ -175,7 +169,7 @@ migas==0.4.0
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
-more-itertools==10.6.0
+more-itertools==10.7.0
     # via
     #   datalad-next
     #   jaraco-classes
@@ -187,7 +181,7 @@ networkx==3.4.2
     #   nipype
     #   prov
     #   scikit-image
-nibabel==5.2.1
+nibabel==5.3.2
     # via
     #   mapca
     #   nibabies (pyproject.toml)
@@ -200,21 +194,23 @@ nibabel==5.2.1
     #   sdcflows
     #   smriprep
     #   tedana
-nilearn==0.10.4
+nilearn==0.11.1
     # via
     #   mapca
     #   nireports
     #   niworkflows
     #   tedana
-nipype==1.9.2
+nipype==1.10.0
     # via
     #   nibabies (pyproject.toml)
     #   nireports
     #   niworkflows
     #   sdcflows
     #   smriprep
-nireports==24.1.0
-    # via nibabies (pyproject.toml)
+nireports==25.0.1
+    # via
+    #   nibabies (pyproject.toml)
+    #   sdcflows
 nitime==0.11
     # via nibabies (pyproject.toml)
 nitransforms==24.1.1
@@ -222,14 +218,14 @@ nitransforms==24.1.1
     #   nibabies (pyproject.toml)
     #   niworkflows
     #   sdcflows
-niworkflows==1.12.2
+niworkflows==1.13.3
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
     #   smriprep
 num2words==0.5.14
     # via pybids
-numpy==2.1.1
+numpy==2.2.4
     # via
     #   bokeh
     #   contourpy
@@ -260,7 +256,7 @@ numpy==2.1.1
     #   transforms3d
 osfclient==0.0.5
     # via datalad-osf
-packaging==24.2
+packaging==25.0
     # via
     #   bokeh
     #   datalad
@@ -275,7 +271,7 @@ packaging==24.2
     #   pooch
     #   scikit-image
     #   smriprep
-pandas==2.2.2
+pandas==2.2.3
     # via
     #   bokeh
     #   formulaic
@@ -287,15 +283,15 @@ pandas==2.2.2
     #   robustica
     #   seaborn
     #   tedana
-patool==3.1.0
+patool==4.0.1
     # via datalad
-pillow==11.1.0
+pillow==11.2.1
     # via
     #   bokeh
     #   imageio
     #   matplotlib
     #   scikit-image
-platformdirs==4.3.6
+platformdirs==4.3.8
     # via
     #   datalad
     #   pooch
@@ -303,11 +299,11 @@ pooch==1.8.2
     # via nibabies (pyproject.toml)
 prov==2.0.1
     # via nipype
-psutil==6.1.1
+psutil==7.0.0
     # via nibabies (pyproject.toml)
-puremagic==1.28
+puremagic==1.29
     # via nipype
-pybids==0.18.1
+pybids==0.19.0
     # via
     #   nibabies (pyproject.toml)
     #   nireports
@@ -319,9 +315,9 @@ pybtex==0.24.0
     # via tedana
 pybtex-apa-style==1.3
     # via tedana
-pydot==3.0.4
+pydot==4.0.0
     # via nipype
-pyparsing==3.2.1
+pyparsing==3.2.3
     # via
     #   matplotlib
     #   pydot
@@ -335,7 +331,7 @@ python-dateutil==2.9.0.post0
     #   prov
 python-gitlab==5.6.0
     # via datalad
-pytz==2025.1
+pytz==2025.2
     # via pandas
 pyyaml==6.0.2
     # via
@@ -349,10 +345,6 @@ rdflib==6.3.2
     # via
     #   nipype
     #   prov
-referencing==0.36.2
-    # via
-    #   jsonschema
-    #   jsonschema-specifications
 requests==2.32.3
     # via
     #   datalad
@@ -368,23 +360,19 @@ requests-toolbelt==1.0.0
     # via python-gitlab
 robustica==0.1.4
     # via tedana
-rpds-py==0.22.3
-    # via
-    #   jsonschema
-    #   referencing
-s3transfer==0.11.2
+s3transfer==0.12.0
     # via boto3
-scikit-image==0.25.1
+scikit-image==0.25.2
     # via
     #   niworkflows
     #   sdcflows
-scikit-learn==1.5.2
+scikit-learn==1.6.1
     # via
     #   mapca
     #   nilearn
     #   robustica
     #   tedana
-scipy==1.14.1
+scipy==1.15.2
     # via
     #   formulaic
     #   mapca
@@ -399,15 +387,15 @@ scipy==1.14.1
     #   scikit-learn
     #   sdcflows
     #   tedana
-sdcflows==2.11.0
+sdcflows @ git+https://github.com/nipreps/sdcflows.git@main
     # via nibabies (pyproject.toml)
 seaborn==0.13.2
     # via
     #   nireports
     #   niworkflows
-simpleitk==2.4.1
+simpleitk==2.5.0
     # via nibabies (pyproject.toml)
-simplejson==3.19.3
+simplejson==3.20.1
     # via nipype
 six==1.17.0
     # via
@@ -415,15 +403,13 @@ six==1.17.0
     #   osfclient
     #   pybtex
     #   python-dateutil
-smriprep==0.17.0
+smriprep==0.18.0
     # via nibabies (pyproject.toml)
-sqlalchemy==2.0.37
+sqlalchemy==2.0.41
     # via pybids
 svgutils==0.3.4
-    # via
-    #   nireports
-    #   niworkflows
-tedana==24.0.2
+    # via niworkflows
+tedana==25.0.0
     # via nibabies (pyproject.toml)
 templateflow==24.2.2
     # via
@@ -432,17 +418,17 @@ templateflow==24.2.2
     #   niworkflows
     #   sdcflows
     #   smriprep
-threadpoolctl==3.5.0
+threadpoolctl==3.6.0
     # via
     #   scikit-learn
     #   tedana
-tifffile==2025.1.10
+tifffile==2025.5.10
     # via scikit-image
 toml==0.10.2
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
-tornado==6.4.2
+tornado==6.5
     # via bokeh
 tqdm==4.67.1
     # via
@@ -455,23 +441,22 @@ traits==7.0.2
     # via nipype
 transforms3d==0.4.2
     # via niworkflows
-typing-extensions==4.12.2
+typing-extensions==4.13.2
     # via
     #   formulaic
     #   nibabel
-    #   referencing
     #   sqlalchemy
-tzdata==2025.1
+tzdata==2025.2
     # via pandas
 universal-pathlib==0.2.6
     # via pybids
-urllib3==2.3.0
+urllib3==2.4.0
     # via
     #   botocore
     #   requests
 wrapt==1.17.2
     # via formulaic
-xyzservices==2025.1.0
+xyzservices==2025.4.0
     # via bokeh
 zipp==3.21.0
     # via importlib-metadata
