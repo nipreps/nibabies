@@ -7,7 +7,7 @@ from nipype.interfaces import utility as niu
 from nipype.interfaces.ants.segmentation import JointFusion
 from nipype.pipeline import engine as pe
 from niworkflows.data import load as load_nwf
-from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+from niworkflows.engine import Workflow, tag
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.fixes import FixHeaderRegistration as Registration
 from niworkflows.utils.connections import listify
@@ -23,6 +23,7 @@ from nibabies import config
 LOGGER = config.loggers.workflow
 
 
+@tag('anat.segmentation')
 def init_segmentation_wf(
     *,
     sloppy: bool,
@@ -129,6 +130,7 @@ def init_segmentation_wf(
     return workflow
 
 
+@tag('anat.segmentation.jlf')
 def init_jlf_wf(
     jlf_template_dir: Path,
     sloppy: bool,

@@ -3,7 +3,7 @@ import typing as ty
 import nipype.interfaces.utility as niu
 import nipype.pipeline.engine as pe
 import templateflow.api as tf
-from niworkflows.engine.workflows import LiterateWorkflow
+from niworkflows.engine import Workflow, tag
 from smriprep.interfaces.workbench import SurfaceResample
 from smriprep.workflows.surfaces import init_morph_grayords_wf
 
@@ -12,11 +12,12 @@ from nibabies.data import load as load_data
 from nibabies.interfaces.utils import CiftiSelect
 
 
+@tag('anat.resample-surfs')
 def init_anat_fsLR_resampling_wf(
     grayord_density: ty.Literal['91k'], mcribs: bool, name='anat_fsLR_resampling_wf'
-) -> LiterateWorkflow:
+) -> Workflow:
     """Resample the surfaces into fsLR space"""
-    workflow = LiterateWorkflow(name=name)
+    workflow = Workflow(name=name)
     fslr_density = '32k' if grayord_density == '91k' else '59k'
 
     workflow.__desc__ = """\
@@ -93,7 +94,7 @@ The BOLD time-series were resampled onto the left/right-symmetric template
     # resample surfaces / morphometrics to 32k
     if mcribs:
         morph_grayords_wf = init_mcribs_morph_grayords_wf(grayord_density)
-        # fmt:off
+
         workflow.connect([
             (inputnode, morph_grayords_wf, [
                 ('morphometrics', 'inputnode.morphometrics'),
@@ -101,12 +102,10 @@ The BOLD time-series were resampled onto the left/right-symmetric template
                 ('sphere_reg_fsLR', 'inputnode.sphere_reg')]),
             (joinnode, morph_grayords_wf, [
                 ('midthickness_fsLR', 'inputnode.midthickness_fsLR')]),
-        ])
-        # fmt:on
+        ])  # fmt:skip
     else:
         morph_grayords_wf = init_morph_grayords_wf(grayord_density)
 
-    # fmt:off
     workflow.connect([
         (inputnode, select_surfaces, [
             ('surfaces', 'surfaces'),
@@ -126,11 +125,11 @@ The BOLD time-series were resampled onto the left/right-symmetric template
         (morph_grayords_wf, outputnode, [
             ('outputnode.cifti_morph', 'cifti_morph'),
             ('outputnode.cifti_metadata', 'cifti_metadata')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
     return workflow
 
 
+@tag('anat.resample-morphs-grayords')
 def init_mcribs_morph_grayords_wf(
     grayord_density: ty.Literal['91k'],  # Only 91k supported ATM
     name: str = 'morph_grayords_wf',
@@ -174,7 +173,6 @@ def init_mcribs_morph_grayords_wf(
 
     """
     from nipype.interfaces.workbench import MetricResample
-    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from smriprep.interfaces.cifti import GenerateDScalar
 
     from nibabies.interfaces.workbench import SurfaceVertexAreas

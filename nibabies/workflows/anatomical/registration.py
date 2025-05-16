@@ -11,7 +11,7 @@ from nipype.interfaces import (
 )
 from nipype.interfaces.ants.base import Info as ANTsInfo
 from nipype.pipeline import engine as pe
-from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+from niworkflows.engine import Workflow, tag
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from smriprep.workflows.fit.registration import (
     TemplateDesc,
@@ -21,6 +21,7 @@ from smriprep.workflows.fit.registration import (
 )
 
 
+@tag('anat.coreg')
 def init_coregistration_wf(
     *,
     bspline_fitting_distance: int = 200,
@@ -249,6 +250,7 @@ def init_coregistration_wf(
     return workflow
 
 
+@tag('anat.coreg-derivatives')
 def init_coregister_derivatives_wf(
     *, t1w_mask: bool, t1w_aseg: bool, t2w_aseg: bool, name: str = 'coregister_derivatives_wf'
 ):
@@ -301,6 +303,7 @@ def init_coregister_derivatives_wf(
     return workflow
 
 
+@tag('anat.concat-reg')
 def init_concat_registrations_wf(
     *,
     templates,

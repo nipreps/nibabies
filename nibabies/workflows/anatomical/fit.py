@@ -5,7 +5,7 @@ from pathlib import Path
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.anat.ants import init_n4_only_wf
-from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+from niworkflows.engine import Workflow, tag
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nibabel import ApplyMask, Binarize
@@ -53,6 +53,7 @@ if ty.TYPE_CHECKING:
 LOGGER = logging.getLogger('nipype.workflow')
 
 
+@tag('anat.fit')
 def init_infant_anat_fit_wf(
     *,
     age_months: int,
@@ -1374,6 +1375,7 @@ def init_infant_anat_fit_wf(
     return workflow
 
 
+@tag('anat.fit')
 def init_infant_single_anat_fit_wf(
     *,
     age_months: int,

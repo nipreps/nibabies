@@ -4,8 +4,10 @@
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
+from niworkflows.engine import tag
 
 
+@tag('anat.brain-extraction')
 def init_infant_brain_extraction_wf(
     *,
     omp_nthreads: int,

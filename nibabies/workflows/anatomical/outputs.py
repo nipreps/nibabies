@@ -9,7 +9,7 @@ from pathlib import Path
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
-from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+from niworkflows.engine import Workflow, tag
 from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 from smriprep.workflows.outputs import init_template_iterator_wf
 
@@ -21,6 +21,7 @@ if ty.TYPE_CHECKING:
 BIDS_TISSUE_ORDER = ('GM', 'WM', 'CSF')
 
 
+@tag('anat.coreg-report')
 def init_coreg_report_wf(*, output_dir, name='coreg_report_wf'):
     """
     Generate and store a report in the right location.
@@ -85,6 +86,7 @@ def init_coreg_report_wf(*, output_dir, name='coreg_report_wf'):
     return workflow
 
 
+@tag('anat.reports')
 def init_anat_reports_wf(
     *,
     spaces: SpatialReferences,
@@ -283,6 +285,7 @@ def init_anat_reports_wf(
     return workflow
 
 
+@tag('anat.derivatives')
 def init_anat_derivatives_wf(
     *,
     bids_root: Path | str,
