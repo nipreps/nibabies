@@ -1,3 +1,26 @@
+25.0.2 (May 19, 2025)
+---------------------
+A patch release including a couple key bug fixes:
+ - Adds missing dependency to Docker image when BOLD coregistration falls back to FSL
+ - Fixes connections to allow fieldmap-less SDC
+
+Thanks to @joey-scanga for the contribution!
+
+### Documentation
+  * DOC: Changed "B0Identifier" -> "B0FieldIdentifier" (#456)
+
+### Enhancements
+  * ENH: Add message to show which files are to be used (#452)
+  * ENH: Tag anatomical workflows (#463)
+
+### Bug Fixes
+  * FIX: SyN workflow (#453)
+  * FIX: Add Convert3d to Docker image (#461)
+
+### Internals / Maintenance
+  * MAINT: Support sdcflows@main and smriprep >=0.18 (#462)
+
+
 25.0.1 (February 5, 2025)
 -------------------------
 A bug-fix release to address an issue when using a precomputed mask for MCRIBS surface reconstruction without an anatomical template.
