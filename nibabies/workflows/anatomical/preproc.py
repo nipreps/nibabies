@@ -98,6 +98,41 @@ def init_csf_norm_wf(name: str = 'csf_norm_wf') -> Workflow:
     return workflow
 
 
+def init_conform_derivative_wf(
+    *, in_file: str = None, name: str = 'conform_derivative_wf'
+) -> pe.Workflow:
+    """
+    Ensure derivatives share the same space as anatomical references.
+
+    This workflow is used when a derivative is provided without a reference.
+    """
+    from niworkflows.interfaces.header import MatchHeader
+    from niworkflows.interfaces.images import Conform, TemplateDimensions
+
+    workflow = pe.Workflow(name=name)
+    inputnode = pe.Node(niu.IdentityInterface(fields=['in_file', 'ref_file']), name='inputnode')
+    inputnode.inputs.in_file = in_file
+    outputnode = pe.Node(niu.IdentityInterface(fields=['out_file']), name='outputnode')
+
+    ref_dims = pe.Node(TemplateDimensions(), name='ref_dims')
+    conform = pe.Node(Conform(), name='conform')
+    # Avoid mismatch tolerance from input
+    match_header = pe.Node(MatchHeader(), name='match_header')
+
+    workflow.connect([
+        (inputnode, ref_dims, [('ref_file', 'anat_list')]),
+        (ref_dims, conform, [
+            ('target_zooms', 'target_zooms'),
+            ('target_shape', 'target_shape'),
+        ]),
+        (inputnode, conform, [('in_file', 'in_file')]),
+        (conform, match_header, [('out_file', 'in_file')]),
+        (inputnode, match_header, [('ref_file', 'reference')]),
+        (match_header, outputnode, [('out_file', 'out_file')]),
+    ])  # fmt:skip
+    return workflow
+
+
 def _normalize_roi(in_file, mask_file, threshold=0.2, out_file=None):
     """Normalize low intensity voxels that fall within a given mask."""
     import nibabel as nb
