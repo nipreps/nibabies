@@ -38,7 +38,11 @@ from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.workflows.anatomical.brain_extraction import init_infant_brain_extraction_wf
 from nibabies.workflows.anatomical.outputs import init_anat_reports_wf, init_coreg_report_wf
-from nibabies.workflows.anatomical.preproc import init_anat_preproc_wf, init_csf_norm_wf
+from nibabies.workflows.anatomical.preproc import (
+    init_anat_preproc_wf,
+    init_conform_derivative_wf,
+    init_csf_norm_wf,
+)
 from nibabies.workflows.anatomical.registration import (
     init_concat_registrations_wf,
     init_coregistration_wf,
@@ -172,11 +176,11 @@ def init_infant_anat_fit_wf(
 
     # Stage 2 - Anatomicals
     t1w_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t1w_preproc', 't1w_maskt1w_brain']),
+        niu.IdentityInterface(fields=['t1w_preproc', 't1w_mask', 't1w_brain']),
         name='t1w_buffer',
     )
     t2w_buffer = pe.Node(
-        niu.IdentityInterface(fields=['t2w_preproc', 't2w_maskt2w_brain', 't2w_probmap']),
+        niu.IdentityInterface(fields=['t2w_preproc', 't2w_mask', 't2w_brain', 't2w_probmap']),
         name='t2w_buffer',
     )
     anat_buffer = pe.Node(
@@ -323,6 +327,7 @@ def init_infant_anat_fit_wf(
 
     t1w_preproc = precomputed.get('t1w_preproc')
     t2w_preproc = precomputed.get('t2w_preproc')
+    anat_preproc = precomputed.get(f'{anat}_preproc')
 
     # Stage 1: Conform & valid T1w/T2w images
     # Note: Since stage 1 & 2 are tightly knit together, it may be more intuitive
@@ -575,14 +580,20 @@ def init_infant_anat_fit_wf(
                 'A pre-computed T1w brain mask was provided as input and used throughout the '
                 'workflow.'
             )
-        t1w_buffer.inputs.t1w_mask = t1w_mask
-        apply_t1w_mask.inputs.in_mask = t1w_mask
         workflow.connect(apply_t1w_mask, 'out_file', t1w_buffer, 't1w_brain')
 
         if not t1w_preproc:
+            # Ensure compatibility with T1w template
+            conform_t1w_mask_wf = init_conform_derivative_wf(
+                in_file=t1w_mask, name='conform_t1w_mask_wf'
+            )
+
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
             t1w_n4_wf = init_anat_preproc_wf(name='t1w_n4_wf')
             workflow.connect([
+                (t1w_validate, conform_t1w_mask_wf, [('out_file', 'inputnode.ref_file')]),
+                (conform_t1w_mask_wf, t1w_buffer, [('outputnode.out_file', 't1w_mask')]),
+                (conform_t1w_mask_wf, apply_t1w_mask, [('outputnode.out_file', 'in_mask')]),
                 (t1w_validate, t1w_n4_wf, [('out_file', 'inputnode.in_anat')]),
                 (t1w_n4_wf, t1w_buffer, [('outputnode.anat_preproc', 't1w_preproc')]),
                 (t1w_n4_wf, apply_t1w_mask, [('outputnode.anat_preproc', 'in_file')]),
@@ -590,6 +601,8 @@ def init_infant_anat_fit_wf(
         else:
             LOGGER.info('ANAT Skipping T1w masking')
             workflow.connect(t1w_validate, 'out_file', apply_t1w_mask, 'in_file')
+            t1w_buffer.inputs.t1w_mask = t1w_mask
+            apply_t1w_mask.inputs.in_mask = t1w_mask
 
     # T2w masking logic:
     #
@@ -701,14 +714,21 @@ def init_infant_anat_fit_wf(
                 'A pre-computed T2w brain mask was provided as input and used throughout the '
                 'workflow.'
             )
-        t2w_buffer.inputs.t2w_mask = t2w_mask
-        apply_t2w_mask.inputs.in_mask = t2w_mask
         workflow.connect(apply_t2w_mask, 'out_file', t2w_buffer, 't2w_brain')
 
         if not t2w_preproc:
+            # Ensure compatibility with T2w template
+            conform_t2w_mask_wf = init_conform_derivative_wf(
+                in_file=t2w_mask,
+                name='conform_t2w_mask_wf',
+            )
+
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
             t2w_n4_wf = init_anat_preproc_wf(name='t2w_n4_wf')
             workflow.connect([
+                (t2w_validate, conform_t2w_mask_wf, [('out_file', 'inputnode.ref_file')]),
+                (conform_t2w_mask_wf, t2w_buffer, [('outputnode.out_file', 't2w_mask')]),
+                (conform_t2w_mask_wf, apply_t2w_mask, [('outputnode.out_file', 'in_mask')]),
                 (t2w_validate, t2w_n4_wf, [('out_file', 'inputnode.in_anat')]),
                 (t2w_n4_wf, t2w_buffer, [('outputnode.anat_preproc', 't2w_preproc')]),
                 (t2w_n4_wf, apply_t2w_mask, [('outputnode.anat_preproc', 'in_file')]),
@@ -716,6 +736,8 @@ def init_infant_anat_fit_wf(
         else:
             LOGGER.info('ANAT Skipping T2w masking')
             workflow.connect(t2w_validate, 'out_file', apply_t2w_mask, 'in_file')
+            t2w_buffer.inputs.t2w_mask = t2w_mask
+            apply_t2w_mask.inputs.in_mask = t2w_mask
 
     # Stage 3: Coregistration
     t1w2t2w_xfm = precomputed.get('t1w2t2w_xfm')
@@ -819,7 +841,19 @@ def init_infant_anat_fit_wf(
 
     if anat_aseg:
         LOGGER.info('ANAT Found precomputed anatomical segmentation')
-        aseg_buffer.inputs.anat_aseg = anat_aseg
+        # Ensure compatibility with anatomical template
+        if not anat_preproc:
+            conform_aseg_wf = init_conform_derivative_wf(
+                in_file=anat_aseg,
+                name='conform_aseg_wf',
+            )
+
+            workflow.connect([
+                (anat_buffer, conform_aseg_wf, [('anat_preproc', 'inputnode.ref_file')]),
+                (conform_aseg_wf, aseg_buffer, [('outputnode.out_file', 'anat_aseg')]),
+            ])  # fmt:skip
+        else:
+            aseg_buffer.inputs.anat_aseg = anat_aseg
 
     if not (anat_dseg and anat_tpms):
         LOGGER.info('ANAT Stage 4: Tissue segmentation')
@@ -1714,14 +1748,20 @@ def init_infant_single_anat_fit_wf(
     else:
         LOGGER.info(f'ANAT Found {reference_anat} brain mask')
         desc += 'A pre-computed brain mask was provided as input and used throughout the workflow.'
-        anat_buffer.inputs.anat_mask = anat_mask
-        apply_mask.inputs.in_mask = anat_mask
         workflow.connect(apply_mask, 'out_file', anat_buffer, 'anat_brain')
 
         if not anat_preproc:
+            conform_anat_mask_wf = init_conform_derivative_wf(
+                in_file=anat_mask,
+                name='conform_anat_mask_wf',
+            )
+
             LOGGER.info('ANAT Skipping skull-strip, INU-correction only')
             anat_n4_wf = init_anat_preproc_wf(name='anat_n4_wf')
             workflow.connect([
+                (anat_validate, conform_anat_mask_wf, [('out_file', 'inputnode.ref_file')]),
+                (conform_anat_mask_wf, anat_buffer, [('outputnode.out_file', 'anat_mask')]),
+                (conform_anat_mask_wf, apply_mask, [('outputnode.out_file', 'in_mask')]),
                 (anat_validate, anat_n4_wf, [('out_file', 'inputnode.in_anat')]),
                 (anat_n4_wf, anat_buffer, [('outputnode.anat_preproc', 'anat_preproc')]),
                 (anat_n4_wf, apply_mask, [('outputnode.anat_preproc', 'in_file')]),
@@ -1729,12 +1769,26 @@ def init_infant_single_anat_fit_wf(
         else:
             LOGGER.info(f'ANAT Skipping {reference_anat} masking')
             workflow.connect(anat_validate, 'out_file', apply_mask, 'in_file')
+            anat_buffer.inputs.anat_mask = anat_mask
+            apply_mask.inputs.in_mask = anat_mask
 
     # Stage 3: Segmentation
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
     if anat_aseg:
         LOGGER.info('ANAT Found precomputed anatomical segmentation')
-        aseg_buffer.inputs.anat_aseg = anat_aseg
+        # Ensure compatibility with anatomical template
+        if not anat_preproc:
+            conform_aseg_wf = init_conform_derivative_wf(
+                in_file=anat_aseg,
+                name='conform_aseg_wf',
+            )
+
+            workflow.connect([
+                (anat_buffer, conform_aseg_wf, [('anat_preproc', 'inputnode.ref_file')]),
+                (conform_aseg_wf, aseg_buffer, [('outputnode.out_file', 'anat_aseg')]),
+            ])  # fmt:skip
+        else:
+            aseg_buffer.inputs.anat_aseg = anat_aseg
 
     if not (anat_dseg and anat_tpms):
         LOGGER.info('ANAT Stage 3: Tissue segmentation')
