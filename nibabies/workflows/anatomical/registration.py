@@ -345,6 +345,7 @@ def init_concat_registrations_wf(
         further use in downstream nodes.
 
     """
+    from nibabies.interfaces.download import RetrievePoochFiles
     from nibabies.interfaces.patches import CompositeTransformUtil
 
     ntpls = len(templates)
@@ -405,11 +406,9 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
     outputnode = pe.Node(niu.IdentityInterface(fields=out_fields), name='outputnode')
 
     intermed_xfms = pe.MapNode(
-        niu.Function(
-            function=_load_intermediate_xfms, output_names=['int2std_xfm', 'std2int_xfm']
-        ),
-        name='intermed_xfms',
-        iterfield=['std'],
+        RetrievePoochFiles(),
+        name='retrieve_xfms',
+        iterfield=['target'],
         run_without_submitting=True,
     )
 
@@ -464,10 +463,10 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         # Transform concatenation
         (inputnode, dis_anat2int, [('anat2int_xfm', 'in_file')]),
         (inputnode, dis_int2anat, [('int2anat_xfm', 'in_file')]),
-        (inputnode, intermed_xfms, [('intermediate', 'intermediate')]),
-        (inputnode, intermed_xfms, [('template', 'std')]),
-        (intermed_xfms, dis_int2std, [('int2std_xfm', 'in_file')]),
-        (intermed_xfms, dis_std2int, [('std2int_xfm', 'in_file')]),
+        (inputnode, intermed_xfms, [('intermediate', 'intermediate'),
+                                    ('template', 'target')]),
+        (intermed_xfms, dis_int2std, [('int2tgt_xfm', 'in_file')]),
+        (intermed_xfms, dis_std2int, [('tgt2int_xfm', 'in_file')]),
         (dis_anat2int, order_anat2std, [
             ('affine_transform', 'in1'),
             ('displacement_field', 'in2'),
@@ -503,40 +502,6 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
     ])  # fmt:skip
 
     return workflow
-
-
-def _load_intermediate_xfms(intermediate, std):
-    """Fetch transforms from the OSF repository (https://osf.io/y763j/)."""
-    import json
-    from pathlib import Path
-
-    import pooch
-
-    from nibabies.data import load
-
-    xfms = json.loads(load('xfm_manifest.json').read_text())
-    # MNIInfant:cohort-1 -> MNIInfant+1
-    intmed = intermediate.replace(':cohort-', '+')
-
-    int2std_name = f'from-{intmed}_to-{std}_xfm.h5'
-    int2std_meta = xfms[int2std_name]
-    int2std = pooch.retrieve(
-        url=int2std_meta['url'],
-        path=Path.cwd(),
-        known_hash=int2std_meta['hash'],
-        fname=int2std_name,
-    )
-
-    std2int_name = f'from-{std}_to-{intmed}_xfm.h5'
-    std2int_meta = xfms[std2int_name]
-    std2int = pooch.retrieve(
-        url=std2int_meta['url'],
-        path=Path.cwd(),
-        known_hash=std2int_meta['hash'],
-        fname=std2int_name,
-    )
-
-    return int2std, std2int
 
 
 def _create_inverse_composite(in_file, out_file='inverse_composite.h5'):
