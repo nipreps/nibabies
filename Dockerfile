@@ -89,7 +89,8 @@ WORKDIR /tmp
 RUN micromamba create -y -f /tmp/env.yml && \
     micromamba clean -y -a
 
-ENV PATH="/opt/conda/envs/nibabies/bin:$PATH"
+ENV PATH="/opt/conda/envs/nibabies/bin:$PATH" \
+    UV_USE_IO_URING=0
 RUN npm install -g svgo@^3.2.0 bids-validator@1.14.10 && \
     rm -r ~/.npm
 
