@@ -2,10 +2,10 @@ name: Pytest
 
 on:
   push:
-    branches: ['*']
-    tags: ['*']
+    branches: [ '*' ]
+    tags: [ '*' ]
   pull_request:
-    branches: [master, 'maint/*']
+    branches: [ master, 'maint/*' ]
 
 defaults:
   run:
@@ -26,12 +26,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ['ubuntu-latest']
-        python-version: ['3.10', '3.11', '3.12']
-        dependencies: ['latest', 'pre']
+        os: [ 'ubuntu-latest' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+        dependencies: [ 'latest', 'pre' ]
         include:
         - os: ubuntu-latest
-          python-version: '3.10'
+          python-version: '3.13'
           dependencies: 'min'
 
     env:
