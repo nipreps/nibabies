@@ -26,12 +26,10 @@
 ARG BASE_IMAGE=ubuntu:jammy-20240405
 
 # NiBabies wheel
-FROM python:slim AS src
-RUN pip install build
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git
+FROM ghcr.io/astral-sh/uv:python3.12-alpine AS src
+RUN apk add git
 COPY . /src
-RUN python -m build /src
+RUN uvx --from build pyproject-build --installer uv -w /src
 
 # Older Python to support legacy MCRIBS
 FROM python:3.6.15-slim as pyenv
@@ -54,7 +52,7 @@ FROM downloader as afni
 # The download link can point to newer releases
 # As a safeguard, take advantage of Docker caching, and
 # Bump the date to current to update AFNI
-RUN echo "2023.06.09"
+RUN echo "2025.06.12"
 RUN mkdir -p /opt/afni-latest \
     && curl -fsSL --retry 5 https://afni.nimh.nih.gov/pub/dist/tgz/linux_openmp_64.tgz \
     | tar -xz -C /opt/afni-latest --strip-components 1 \
@@ -72,22 +70,6 @@ RUN mkdir -p /opt/afni-latest \
         -name "3dAutomask" -or \
         -name "3dvolreg" \) -delete
 
-# ANTs 2.5.4
-FROM downloader as ants
-RUN mkdir -p /opt && \
-    curl -sSLO "https://github.com/ANTsX/ANTs/releases/download/v2.5.4/ants-2.5.4-ubuntu-22.04-X64-gcc.zip" && \
-    unzip ants-2.5.4-ubuntu-22.04-X64-gcc.zip -d /opt && \
-    rm ants-2.5.4-ubuntu-22.04-X64-gcc.zip
-
-# Connectome Workbench 1.5.0
-FROM downloader as workbench
-RUN mkdir /opt/workbench && \
-    curl -sSLO https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v1.5.0.zip && \
-    unzip workbench-linux64-v1.5.0.zip -d /opt && \
-    rm workbench-linux64-v1.5.0.zip && \
-    rm -rf /opt/workbench/libs_linux64_software_opengl /opt/workbench/plugins_linux64 && \
-    strip --remove-section=.note.ABI-tag /opt/workbench/libs_linux64/libQt5Core.so.5
-
 # Micromamba
 FROM downloader as micromamba
 
@@ -99,7 +81,7 @@ RUN apt-get update && \
 
 WORKDIR /
 # Bump the date to current to force update micromamba
-RUN echo "2024.04.25" && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+RUN echo "2025.06.12" && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
 ENV MAMBA_ROOT_PREFIX="/opt/conda"
 COPY env.yml /tmp/env.yml
 COPY requirements.txt /tmp/requirements.txt
@@ -107,7 +89,8 @@ WORKDIR /tmp
 RUN micromamba create -y -f /tmp/env.yml && \
     micromamba clean -y -a
 
-ENV PATH="/opt/conda/envs/nibabies/bin:$PATH"
+ENV PATH="/opt/conda/envs/nibabies/bin:$PATH" \
+    UV_USE_IO_URING=0
 RUN npm install -g svgo@^3.2.0 bids-validator@1.14.10 && \
     rm -r ~/.npm
 
@@ -180,22 +163,11 @@ RUN apt-get update -qq \
     && ldconfig
 
 COPY --from=afni /opt/afni-latest /opt/afni-latest
-COPY --from=ants /opt/ants-2.5.4 /opt/ants
-COPY --from=workbench /opt/workbench /opt/workbench
 
 # AFNI config
 ENV PATH="/opt/afni-latest:$PATH" \
     AFNI_IMSAVE_WARNINGS="NO" \
     AFNI_PLUGINPATH="/opt/afni-latest"
-
-# ANTs config
-ENV ANTSPATH="/opt/ants" \
-    PATH="/opt/ants/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/ants/lib:$LD_LIBRARY_PATH"
-
-# Workbench config
-ENV PATH="/opt/workbench/bin_linux64:$PATH" \
-    LD_LIBRARY_PATH="/opt/workbench/lib_linux64:$LD_LIBRARY_PATH"
 
 # Install FreeSurfer (with Infant Module)
 COPY --from=nipreps/freesurfer@sha256:3b895fc732a7080374a15c4f976510f39c0c48dc76c030ab27316febd5e419ee /opt/freesurfer /opt/freesurfer
@@ -278,8 +250,8 @@ ARG BUILD_DATE
 ARG VCS_REF
 ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.name="NiBabies" \
-      org.label-schema.description="NiBabies - NeuroImaging tools for babies" \
+      org.label-schema.name="fMRIPrep Lifespan" \
+      org.label-schema.description="fMRIPrep Lifespan - fMRI processing tool from birth and on" \
       org.label-schema.url="https://github.com/nipreps/nibabies" \
       org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.vcs-url="https://github.com/nipreps/nibabies" \
