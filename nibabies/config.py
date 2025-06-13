@@ -578,7 +578,7 @@ class workflow(_Config):
     """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
     medial_surface_nan = None
     """Fill medial surface with :abbr:`NaNs (not-a-number)` when sampling."""
-    multi_step_reg = False
+    multi_step_reg = True
     """Perform multiple registrations (native -> MNIInfant -> template) and concatenate into a
     single transform"""
     norm_csf = False

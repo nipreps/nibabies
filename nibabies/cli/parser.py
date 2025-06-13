@@ -15,7 +15,12 @@ if ty.TYPE_CHECKING:
 
 def _build_parser():
     """Build parser object."""
-    from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
+    from argparse import (
+        Action,
+        ArgumentDefaultsHelpFormatter,
+        ArgumentParser,
+        BooleanOptionalAction,
+    )
     from functools import partial
     from pathlib import Path
 
@@ -759,7 +764,8 @@ discourage its usage.""",
     )
     g_baby.add_argument(
         '--multi-step-reg',
-        action='store_true',
+        action=BooleanOptionalAction,
+        default=True,
         help='For certain adult templates (MNI152NLin6Asym), perform two step '
         'registrations (native -> MNIInfant -> template) and concatenate into a single xfm',
     )
