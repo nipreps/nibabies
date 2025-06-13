@@ -451,11 +451,8 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         CompositeTransformUtil(process='assemble', out_file='anat2std.h5'),
         name='assemble_anat2std',
     )
-    # https://github.com/ANTsX/ANTs/issues/1827
-    # Until CompositeTransformUtil accepts warps as first transform,
-    # Use SimpleITK to concatenate
     assemble_std2anat = pe.Node(
-        niu.Function(function=_create_inverse_composite, output_names=['out_file']),
+        CompositeTransformUtil(process='assemble', out_file='std2anat.h5'),
         name='assemble_std2anat',
     )
 
@@ -502,42 +499,3 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
     ])  # fmt:skip
 
     return workflow
-
-
-def _create_inverse_composite(in_file, out_file='inverse_composite.h5'):
-    """
-    Build a composite transform with SimpleITK.
-
-    This serves as a workaround for a bug in ANTs's CompositeTransformUtil
-    https://github.com/ANTsX/ANTs/issues/1827
-    where composite transforms cannot be created with a displacement field placed first.
-
-    Parameters
-    ----------
-    in_file : list of str
-        List of input transforms to concatenate into a composite transform.
-    out_file : str, optional
-        File to write the composite transform to.
-
-    Returns
-    -------
-    out_file : str
-        Absolute path to the composite transform.
-    """
-
-    from pathlib import Path
-
-    import SimpleITK as sitk
-
-    composite = sitk.CompositeTransform(3)
-    for xfm_file in in_file:
-        if xfm_file.endswith('mat'):
-            xfm = sitk.ReadTransform(xfm_file)
-        else:
-            xfm = sitk.DisplacementFieldTransform(sitk.ReadImage(xfm_file))
-
-        composite.AddTransform(xfm)
-
-    out_file = str(Path(out_file).absolute())
-    sitk.WriteTransform(composite, out_file)
-    return out_file

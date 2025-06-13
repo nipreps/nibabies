@@ -33,7 +33,6 @@ dependencies = [
     "psutil >= 5.4",
     "pybids >= 0.15.0",
     "requests",
-    "SimpleITK",
     "sdcflows >= 2.13.0",
     "smriprep >= 0.17.0",
     "tedana >= 23.0.2",
