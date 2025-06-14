@@ -297,7 +297,6 @@ jobs:
     - DATASET: bcp
     - CHECK_BCP: true
     - MIGAS_OPTOUT: "1"
-    - NIBABIES_POOCH_DIR: /tmp/pooch
     steps:
     - checkout
     - run: *check_skip_job
@@ -348,7 +347,8 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-              --output-layout bids --anat-only
+              --output-layout bids --anat-only \
+              --pooch-cache-dir /tmp/pooch
     - run:
         name: Checking outputs of anatomical nibabies run
         command: |
@@ -377,7 +377,8 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-              --output-layout bids
+              --output-layout bids \
+              --pooch-cache-dir /tmp/pooch
     - run:
         name: Checking outputs of full nibabies run
         command: |
@@ -423,7 +424,8 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
-              --output-layout bids --anat-only --cifti-output
+              --output-layout bids --anat-only --cifti-output \
+              --pooch-cache-dir /tmp/pooch
     - run:
         name: Checking outputs of T2-only nibabies anat
         command: |
