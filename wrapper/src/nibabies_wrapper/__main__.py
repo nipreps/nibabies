@@ -29,7 +29,7 @@ __bugreports__ = 'https://github.com/nipreps/nibabies/issues'
 MISSING = """
 Image '{}' is missing
 Would you like to download? [Y/n] """
-PKG_PATH = '/opt/conda/envs/nibabies/lib/python3.13/site-packages'
+PKG_PATH = '/opt/conda/envs/nibabies/lib/python3.12/site-packages'
 TF_TEMPLATES = (
     'MNI152Lin',
     'MNI152NLin2009cAsym',
@@ -187,7 +187,7 @@ class ContainerManager:
         self.add_envvar((version_env, version))
 
     def add_envvar(self, envtuple):
-        """Set an environmental variable
+        """Set an environment variable
 
         Inputs
         ------
@@ -197,7 +197,7 @@ class ContainerManager:
             env = '='.join(envtuple)
             self.add_cmd(['-e', env])
         elif self.service == 'singularity':
-            # singularity will transfer over environmental variables
+            # singularity will transfer over environment variables
             # with the prefix: SINGULARITYENV_
             envvar, value = envtuple
             envvar = 'SINGULARITYENV_' + envvar
@@ -476,6 +476,12 @@ the spatial normalization."""
         type=os.path.abspath,
         help='Filter file',
     )
+    g_wrap.add_argument(
+        '--pooch-cache-dir',
+        metavar='DIR',
+        type=os.path.abspath,
+        help='Directory to serve as cache for pooch files'
+    )
 
     # Developer patch/shell options
     g_dev = parser.add_argument_group(
@@ -643,6 +649,9 @@ def main():
     if opts.deriv_filter_file:
         container.add_mount(opts.deriv_filter_file, '/opt/derivative_filters.json')
         unknown_args.extend(['--deriv-filter-file', '/opt/derivative_filters.json'])
+    if opts.pooch_cache_dir:
+        container.add_mount(opts.pooch_cache_dir, '/tmp/pooch_cache', read_only=False)
+        container.add_envvar(('NIBABIES_POOCH_DIR', '/tmp/pooch_cache'))
     # Patch derivatives for searching
     if opts.derivatives:
         deriv_args = ['--derivatives']

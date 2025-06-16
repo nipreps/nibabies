@@ -31,7 +31,7 @@ jobs:
         dependencies: [ 'latest', 'pre' ]
         include:
         - os: ubuntu-latest
-          python-version: '3.13'
+          python-version: '3.12'
           dependencies: 'min'
 
     env:

@@ -211,11 +211,25 @@ jobs:
           printf "[execution]\nstop_on_first_crash = true\n" > /tmp/bcp/nipype.cfg
           echo "poll_sleep_duration = 0.01" >> /tmp/bcp/nipype.cfg
           echo "hash_method = content" >> /tmp/bcp/nipype.cfg
+    - run:
+        name: Get intermediate transforms
+        command: |
+          mkdir -p /tmp/pooch
+          cd /tmp/pooch
+          # Caching intermediate templates so no need to constantly fetch
+          XFM="from-MNI152NLin6Asym_to-MNIInfant+1_xfm.h5"
+          echo "Downloading $XFM"
+          curl -Lo "$XFM" https://osf.io/download/kx7ny
+          XFM="from-MNIInfant+1_to-MNI152NLin6Asym_xfm.h5"
+          echo "Downloading $XFM"
+          curl -Lo "$XFM" https://osf.io/download/7ge2b
+
     - persist_to_workspace:
         root: /tmp
         paths:
         - fslicense
         - bcp/nipype.cfg
+        - pooch/*
 
   test_pytest:
     !!merge <<: *machine_defaults
@@ -334,7 +348,8 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-              --output-layout bids --anat-only
+              --output-layout bids --anat-only \
+              --pooch-cache-dir /tmp/pooch
     - run:
         name: Checking outputs of anatomical nibabies run
         command: |
@@ -363,7 +378,8 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-              --output-layout bids
+              --output-layout bids \
+              --pooch-cache-dir /tmp/pooch
     - run:
         name: Checking outputs of full nibabies run
         command: |
@@ -409,7 +425,8 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
-              --output-layout bids --anat-only --cifti-output
+              --output-layout bids --anat-only --cifti-output \
+              --pooch-cache-dir /tmp/pooch
     - run:
         name: Checking outputs of T2-only nibabies anat
         command: |
