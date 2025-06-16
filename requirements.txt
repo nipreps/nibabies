@@ -28,13 +28,13 @@ bidsschematools==1.0.10
     # via bids-validator
 bokeh==3.6.3
     # via tedana
-boto3==1.38.35
+boto3==1.38.36
     # via datalad
-botocore==1.38.35
+botocore==1.38.36
     # via
     #   boto3
     #   s3transfer
-certifi==2025.4.26
+certifi==2025.6.15
     # via requests
 chardet==5.2.0
     # via datalad
@@ -74,7 +74,7 @@ fasteners==0.19
     # via datalad
 filelock==3.18.0
     # via nipype
-fonttools==4.58.2
+fonttools==4.58.4
     # via matplotlib
 formulaic==1.1.1
     # via pybids
@@ -165,7 +165,7 @@ more-itertools==10.7.0
     #   datalad-next
     #   jaraco-classes
     #   jaraco-functools
-msgpack==1.1.0
+msgpack==1.1.1
     # via datalad
 networkx==3.5
     # via
@@ -385,7 +385,7 @@ seaborn==0.13.2
     #   nireports
     #   niworkflows
     #   tedana
-simpleitk==2.5.0
+simpleitk==2.5.2
     # via nibabies (pyproject.toml)
 simplejson==3.20.1
     # via nipype
