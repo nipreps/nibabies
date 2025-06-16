@@ -219,16 +219,17 @@ jobs:
           # Caching intermediate templates so no need to constantly fetch
           XFM="from-MNI152NLin6Asym_to-MNIInfant+1_xfm.h5"
           echo "Downloading $XFM"
-          curl -Lo "XFM" https://osf.io/download/kx7ny
+          curl -Lo "$XFM" https://osf.io/download/kx7ny
           XFM="from-MNIInfant+1_to-MNI152NLin6Asym_xfm.h5"
           echo "Downloading $XFM"
-          curl -Lo "XFM" https://osf.io/download/7ge2b
+          curl -Lo "$XFM" https://osf.io/download/7ge2b
 
     - persist_to_workspace:
         root: /tmp
         paths:
         - fslicense
         - bcp/nipype.cfg
+        - pooch/*
 
   test_pytest:
     !!merge <<: *machine_defaults
