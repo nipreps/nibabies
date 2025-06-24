@@ -31,6 +31,8 @@ def _build_parser():
 
     deprecations = {
         # parser attribute name: (replacement flag, version slated to be removed in)
+        'clean_workdir',
+        (None, '26.0.0'),
     }
 
     class DeprecatedAction(Action):
@@ -633,10 +635,9 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_other.add_argument(
         '--clean-workdir',
-        action='store_true',
+        action=DeprecatedAction,
         default=False,
-        help='Clears working directory of contents. Use of this flag is not'
-        'recommended when running concurrent processes of NiBabies.',
+        help='Deprecated and has no effect.',
     )
     g_other.add_argument(
         '--resource-monitor',
@@ -856,14 +857,6 @@ applied."""
             config.execution.mcribs_dir = output_dir / 'mcribs'
         # Ensure the directory is created
         config.execution.mcribs_dir.mkdir(exist_ok=True, parents=True)
-
-    # Wipe out existing work_dir
-    if opts.clean_workdir and work_dir.exists():
-        from niworkflows.utils.misc import clean_directory
-
-        build_log.info(f'Clearing previous NiBabies working directory: {work_dir}')
-        if not clean_directory(work_dir):
-            build_log.warning(f'Could not clear all contents of working directory: {work_dir}')
 
     # Ensure input and output folders are not the same
     if output_dir == bids_dir:
