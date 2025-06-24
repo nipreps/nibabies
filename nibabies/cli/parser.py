@@ -779,6 +779,11 @@ def parse_args(args=None, namespace=None):
     parser = _build_parser()
     opts = parser.parse_args(args, namespace)
 
+    if opts.sloppy:
+        config.loggers.cli.warning('Sloppy mode enabled: expect low-quality results')
+        # disable multi-step registration as it expects a warp
+        opts.multi_step_reg = False
+
     if opts.config_file:
         skip = {} if opts.reports_only else {'execution': ('run_uuid',)}
         config.load(opts.config_file, skip=skip)
