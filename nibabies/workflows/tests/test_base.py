@@ -138,7 +138,7 @@ def _make_params(
     ignore: list[str] = None,
     bids_filters: dict = None,
     norm_csf: bool = False,
-    multi_step_reg: bool = False,
+    multi_step_reg: bool = True,
 ):
     if ignore is None:
         ignore = []
@@ -219,6 +219,7 @@ def _make_params(
         _make_params(bids_filters={'sbref': {'suffix': 'sbref'}}),
         _make_params(norm_csf=True),
         _make_params(multi_step_reg=True),
+        _make_params(multi_step_reg=False),
     ],
 )
 def test_init_nibabies_wf(

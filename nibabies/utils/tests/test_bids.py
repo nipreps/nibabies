@@ -78,5 +78,5 @@ def test_get_age_from_tsv_warning(tmp_path):
     dual_participants = {'participant_id': ['sub-1', 'sub-2', 'sub-2']}
     create_tsv({**dual_participants, **age_months}, tsv_file)
 
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning, match='Multiple matches for participant_id:sub-2'):
         _get_age_from_tsv(tsv_file, 'participant_id', 'sub-2')

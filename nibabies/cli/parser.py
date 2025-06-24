@@ -15,7 +15,12 @@ if ty.TYPE_CHECKING:
 
 def _build_parser():
     """Build parser object."""
-    from argparse import Action, ArgumentDefaultsHelpFormatter, ArgumentParser
+    from argparse import (
+        Action,
+        ArgumentDefaultsHelpFormatter,
+        ArgumentParser,
+        BooleanOptionalAction,
+    )
     from functools import partial
     from pathlib import Path
 
@@ -759,7 +764,8 @@ discourage its usage.""",
     )
     g_baby.add_argument(
         '--multi-step-reg',
-        action='store_true',
+        action=BooleanOptionalAction,
+        default=True,
         help='For certain adult templates (MNI152NLin6Asym), perform two step '
         'registrations (native -> MNIInfant -> template) and concatenate into a single xfm',
     )
@@ -772,6 +778,11 @@ def parse_args(args=None, namespace=None):
 
     parser = _build_parser()
     opts = parser.parse_args(args, namespace)
+
+    if opts.sloppy:
+        config.loggers.cli.warning('Sloppy mode enabled: expect low-quality results')
+        # disable multi-step registration as it expects a warp
+        opts.multi_step_reg = False
 
     if opts.config_file:
         skip = {} if opts.reports_only else {'execution': ('run_uuid',)}
