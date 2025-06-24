@@ -1,3 +1,20 @@
+25.1.0 (June 24, 2025)
+======================
+First release of the 25.1.x series. A few key changes include a new workflow
+for derivatives compatibility when an anatomical template is not present, and performing
+a two step registration (currently only for MNI152NLin6Asym) is now the default behavior.
+This can be disabled by adding `--no-multi-step-reg` to the command.
+
+### Enhancements
+  * ENH: Verify derivatives are compatible with anatomical reference (#459)
+  * ENH: Make `--multi-step-reg` a boolean action, enable by default (#470)
+  * ENH: Convert pooch retrieval to interface, allow setting cache dir (#467)
+
+### Internals / Maintenance
+  * MAINT: bump dependencies, test on python 3.13 (#468)
+  * MAINT: deprecate `--clean-workdir` (#473)
+
+
 25.0.2 (May 19, 2025)
 ---------------------
 A patch release including a couple key bug fixes:
