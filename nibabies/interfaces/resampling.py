@@ -679,6 +679,18 @@ def reconstruct_fieldmap(
             target.__class__(target.dataobj, projected_affine, target.header),
         )
     else:
+        # Below if statement was taken from fmriprep pull request #3439,
+        # along with the same explanation:
+        #
+        # Hack. Sometimes the reference array is rotated relative to the fieldmap
+        # and coefficient grids. As far as I know, coefficients are always RAS,
+        # but good to check before doing this.
+        if (
+            nb.aff2axcodes(coefficients[-1].affine)
+                == ('R', 'A', 'S')
+                != nb.aff2axcodes(fmap_reference.affine)
+        ):
+            fmap_reference = nb.as_closest_canonical(fmap_reference)
         if not aligned(fmap_reference.affine, coefficients[-1].affine):
             raise ValueError('Reference passed is not aligned with spline grids')
         reference, _ = ensure_positive_cosines(fmap_reference)
