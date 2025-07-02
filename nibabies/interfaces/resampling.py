@@ -687,8 +687,8 @@ def reconstruct_fieldmap(
         # but good to check before doing this.
         if (
             nb.aff2axcodes(coefficients[-1].affine)
-                == ('R', 'A', 'S')
-                != nb.aff2axcodes(fmap_reference.affine)
+            == ('R', 'A', 'S')
+            != nb.aff2axcodes(fmap_reference.affine)
         ):
             fmap_reference = nb.as_closest_canonical(fmap_reference)
         if not aligned(fmap_reference.affine, coefficients[-1].affine):
