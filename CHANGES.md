@@ -1,3 +1,15 @@
+25.1.1 (July 2, 2025)
+=====================
+A patch release in the 25.1.x series.
+
+Includes a fix to the fieldmap reference orientation to match the B-spline coefficients.
+
+Thanks to @joey-scanga for the contribution!
+
+### Bug Fixes
+  * FIX: Orient fieldmap before checking spline fit (#475)
+
+
 25.1.0 (June 24, 2025)
 ======================
 First release of the 25.1.x series. A few key changes include a new workflow
