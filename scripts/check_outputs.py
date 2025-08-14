@@ -162,7 +162,7 @@ def _check_xfms(xfms):
         if xfm.name.endswith(".txt"):
             assert nt.linear.load(xfm, fmt='itk')
         elif xfm.name.endswith('.h5'):
-            assert nt.manip.load(xfm)
+            assert nt.manip.load(xfm, fmt='itk')
         elif xfm.name.endswith('.json'):
             meta = json.loads(xfm.read_text())
             assert 'Sources' in meta
