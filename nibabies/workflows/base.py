@@ -67,6 +67,8 @@ from nibabies.workflows.anatomical.fit import (
 )
 from nibabies.workflows.bold.base import init_bold_wf
 
+LOGGER = config.loggers.workflow
+
 if ty.TYPE_CHECKING:
     from bids.layout import BIDSLayout
     from niworkflows.utils.spaces import SpatialReferences
@@ -321,7 +323,7 @@ It is released under the [CC0]\
         if config.execution.copy_derivatives:
             from nibabies.utils.derivatives import copy_derivatives
 
-            config.loggers.workflow.info('Copying found anat derivatives into output directory')
+            LOGGER.info('Copying found anat derivatives into output directory')
             copy_derivatives(
                 derivs=anatomical_cache,
                 outdir=config.execution.nibabies_dir,
@@ -367,7 +369,7 @@ It is released under the [CC0]\
 
     anat = reference_anat.lower()  # To be used for workflow connections
 
-    config.loggers.workflow.info(
+    LOGGER.info(
         'Collected the following data for %s:\nRaw:\n%s\n\nDerivatives:\n\n%s\n',
         f'sub-{subject_id}' if not session_id else f'sub-{subject_id}_ses-{session_id}',
         pprint.pformat(subject_data),
@@ -589,7 +591,7 @@ It is released under the [CC0]\
     )
 
     if fmap_estimators:
-        config.loggers.workflow.info(
+        LOGGER.info(
             'B0 field inhomogeneity map will be estimated with the following '
             f'{len(fmap_estimators)} estimator(s): '
             f'{[e.method for e in fmap_estimators]}.'
@@ -633,7 +635,7 @@ BIDS structure for this particular subject.
         #     ])  # fmt:skip
 
         for estimator in fmap_estimators:
-            config.loggers.workflow.info(
+            LOGGER.info(
                 f"""\
 Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
 <{', '.join(s.path.name for s in estimator.sources)}>"""
@@ -730,9 +732,7 @@ tasks and sessions), the following preprocessing was performed.
             if config.execution.copy_derivatives:
                 from nibabies.utils.derivatives import copy_derivatives
 
-                config.loggers.workflow.info(
-                    'Copying found func derivatives into output directory'
-                )
+                LOGGER.info('Copying found func derivatives into output directory')
                 copy_derivatives(
                     derivs=functional_cache,
                     outdir=config.execution.nibabies_dir,
@@ -860,6 +860,7 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
         # Ensure age specific template is added if nothing is present
         cohort = cohort_by_months('MNIInfant', age_months)
         spaces.add(('MNIInfant', {'res': 'native', 'cohort': cohort}))
+        LOGGER.debug('No references specified, MNIInfant:cohort-%s as default', cohort)
 
     if not spaces.is_cached():
         spaces.checkpoint()
@@ -870,6 +871,7 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
     ):
         cohort = cohort_by_months('MNIInfant', age_months)
         spaces.add(Reference('MNIInfant', {'cohort': cohort}))
+        LOGGER.debug('Missing internal space, adding MNIInfant:cohort-%s', cohort)
 
     if config.workflow.cifti_output:
         # CIFTI grayordinates to corresponding FSL-MNI resolutions.
@@ -878,7 +880,14 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
         # Ensure a non-native version of MNIInfant is added as a target
         cohort = cohort_by_months('MNIInfant', age_months)
         spaces.add(Reference('MNIInfant', {'cohort': cohort, 'res': vol_res}))
+        LOGGER.debug(
+            'Adding MNI152NLin6Asym:res-%s, MNIInfant:cohort-%s:res-%s',
+            vol_res,
+            cohort,
+            vol_res,
+        )
 
+    LOGGER.debug('Workflow spaces: %s', spaces.get_spaces())
     return spaces
 
 
@@ -895,6 +904,7 @@ def init_execution_spaces():
         spaces = SpatialReferences(
             [ref for s in spaces.split(' ') for ref in Reference.from_string(s)]
         )
+    LOGGER.debug('Execution spaces: %s', spaces.get_spaces())
     return spaces
 
 
@@ -933,20 +943,20 @@ def map_fieldmap_estimation(
                 'Fieldmap-less (SyN) estimation was requested, but PhaseEncodingDirection '
                 'information appears to be absent.'
             )
-            config.loggers.workflow.error(message)
+            LOGGER.error(message)
             if use_syn == 'error':
                 raise ValueError(message)
         return [], {}
 
     if ignore_fieldmaps:
         if any(f.method == fm.EstimatorType.ANAT for f in fmap_estimators):
-            config.loggers.workflow.info(
+            LOGGER.info(
                 'Option "--ignore fieldmaps" was set, but either "--use-syn-sdc" '
                 'or "--force-syn" were given, so fieldmap-less estimation will be executed.'
             )
             fmap_estimators = [f for f in fmap_estimators if f.method == fm.EstimatorType.ANAT]
         else:
-            config.loggers.workflow.info('Ignoring fieldmaps - no estimators will be used.')
+            LOGGER.info('Ignoring fieldmaps - no estimators will be used.')
             return [], {}
 
     # Pare down estimators to those that are actually used
@@ -961,7 +971,7 @@ def map_fieldmap_estimation(
 
     for bold_file, estimator_key in all_estimators.items():
         if len(estimator_key) > 1:
-            config.loggers.workflow.warning(
+            LOGGER.warning(
                 f'Several fieldmaps <{", ".join(estimator_key)}> are '
                 f"'IntendedFor' <{bold_file}>, using {estimator_key[0]}"
             )
