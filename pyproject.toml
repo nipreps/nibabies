@@ -28,7 +28,7 @@ dependencies = [
     "niworkflows >= 1.13.1",
     "numpy >= 1.21.0",
     "packaging",
-    "pandas",
+    "pandas < 3",
     "pooch",
     "psutil >= 5.4",
     "pybids >= 0.15.0",
