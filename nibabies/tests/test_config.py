@@ -146,3 +146,19 @@ def _load_spaces(age):
     # Conditional based on workflow necessities
     spaces = init_workflow_spaces(init_execution_spaces(), age)
     return spaces
+
+
+def test_hash_config():
+    # This may change with changes to config defaults / new attributes!
+    expected = '1fd5c50e'
+    assert config.hash_config(config.get()) == expected
+    _reset_config()
+
+    config.execution.log_level = 5  # non-vital attributes do not matter
+    assert config.hash_config(config.get()) == expected
+    _reset_config()
+
+    # but altering a vital attribute will create a new hash
+    config.workflow.surface_recon_method = 'mcribs'
+    assert config.hash_config(config.get()) != expected
+    _reset_config()
