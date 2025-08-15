@@ -1008,7 +1008,7 @@ def init_infant_anat_fit_wf(
 
     if concat_xfms and intermediate is None:
         LOGGER.error(
-            'Intermediate is not set - skipping concatenation workflow.' ' Spaces: %s',
+            'Intermediate is not set - skipping concatenation workflow. Spaces: %s',
             ' Intermediate targets: %s',
             spaces.get_spaces(nonstandard=False, dim=(3,)),
             intermediate_targets,
@@ -1949,7 +1949,7 @@ def init_infant_single_anat_fit_wf(
 
     if concat_xfms and intermediate is None:
         LOGGER.error(
-            'Intermediate is not set - skipping concatenation workflow.\n' 'Spaces: %s\n',
+            'Intermediate is not set - skipping concatenation workflow.\nSpaces: %s\n',
             'Intermediate targets: %s',
             spaces.get_spaces(nonstandard=False, dim=(3,)),
             intermediate_targets,
