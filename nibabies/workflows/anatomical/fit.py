@@ -1006,7 +1006,14 @@ def init_infant_anat_fit_wf(
             (register_template_wf, concat_anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
         ])  # fmt:skip
 
-    if concat_xfms:
+    if concat_xfms and intermediate is None:
+        LOGGER.error(
+            'Intermediate is not set - skipping concatenation workflow.' ' Spaces: %s',
+            ' Intermediate targets: %s',
+            spaces.get_spaces(nonstandard=False, dim=(3,)),
+            intermediate_targets,
+        )
+    elif concat_xfms:
         LOGGER.info(f'ANAT Stage 5b: Concatenating normalization for {concat_xfms}')
 
         select_infant_mni = pe.Node(
@@ -1940,7 +1947,14 @@ def init_infant_single_anat_fit_wf(
             (register_template_wf, concat_anat2std_buffer, [('outputnode.anat2std_xfm', 'in2')]),
         ])  # fmt:skip
 
-    if concat_xfms:
+    if concat_xfms and intermediate is None:
+        LOGGER.error(
+            'Intermediate is not set - skipping concatenation workflow.\n' 'Spaces: %s\n',
+            'Intermediate targets: %s',
+            spaces.get_spaces(nonstandard=False, dim=(3,)),
+            intermediate_targets,
+        )
+    elif concat_xfms:
         LOGGER.info(f'ANAT Stage 5b: Concatenating normalization for {concat_xfms}')
 
         select_infant_mni = pe.Node(
