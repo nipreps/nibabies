@@ -89,6 +89,7 @@ The :py:mod:`config` is responsible for other conveniency actions.
 """
 
 import os
+import typing as ty
 from multiprocessing import set_start_method
 
 from templateflow.conf import TF_LAYOUT
@@ -804,3 +805,63 @@ def dismiss_echo(entities: list | None = None):
 
 
 DEFAULT_DISMISS_ENTITIES = dismiss_echo()
+
+DEFAULT_CONFIG_HASH_FIELDS = {
+    'execution': [
+        'sloppy',
+        'echo_idx',
+        'reference_anat',
+    ],
+    'workflow': [
+        'surface_recon_method',
+        'bold2anat_dof',
+        'bold2anat_init',
+        'dummy_scans',
+        'fd_radius',
+        'fmap_bspline',
+        'fmap_demean',
+        'force_syn',
+        'hmc_bold_frame',
+        'longitudinal',
+        'medial_surface_nanmulti_step_reg',
+        'norm_csf',
+        'project_goodvoxels',
+        'regressors_dvars_th',
+        'regressors_fd_th',
+        'skull_strip_fixed_seed',
+        'skull_strip_template',
+        'skull_strip_anat',
+        'slice_time_ref',
+        'surface_recon_method',
+        'use_bbr',
+        'use_syn_sdc',
+        'me_t2s_fit_method',
+    ],
+}
+
+
+def hash_config(
+    conf: dict[str, ty.Any],
+    *,
+    fields_required: dict[str, list[str]] = DEFAULT_CONFIG_HASH_FIELDS,
+    version: str = None,
+    digest_size: int = 4,
+) -> str:
+    """
+    Generate a unique BLAKE2b hash of configuration attributes.
+
+    By default, uses a preselected list of workflow-altering parameters.
+    """
+    import json
+    from hashlib import blake2b
+
+    if version is None:
+        from nibabies import __version__ as version
+
+    data = {}
+    for level, fields in fields_required.items():
+        for f in fields:
+            data[f] = conf[level].get(f, None)
+
+    datab = json.dumps(data, sort_keys=True).encode()
+    return blake2b(datab, digest_size=digest_size).hexdigest()
