@@ -433,6 +433,7 @@ class execution(_Config):
     write_graph = False
     """Write out the computational graph corresponding to the planned preprocessing."""
     _layout = None
+    _config_hash = None
 
     _paths = (
         'anat_derivatives',

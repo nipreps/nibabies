@@ -619,11 +619,12 @@ Useful for further Tedana processing post-NiBabies.""",
         '--output-layout',
         action='store',
         default='bids',
-        choices=('bids', 'legacy'),
+        choices=('bids', 'legacy', 'multiverse'),
         help='Organization of outputs. bids (default) places NiBabies derivatives '
         'directly in the output directory, and defaults to placing FreeSurfer '
         'derivatives in <output-dir>/sourcedata/freesurfer. legacy creates derivative '
-        'datasets as subdirectories of outputs.',
+        'datasets as subdirectories of outputs. multiverse appends the version and a hash '
+        'of parameters used to the output folder - the hash is also applied to the output files.',
     )
     g_other.add_argument(
         '-w',
@@ -834,22 +835,29 @@ mention this particular variant of NiBabies listing the participants for which i
 applied."""
         )
 
+    config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
+
     bids_dir = config.execution.bids_dir
     output_dir = config.execution.output_dir
     work_dir = config.execution.work_dir
     version = config.environment.version
     output_layout = config.execution.output_layout
+    config.execution._config_hash = config.hash_config(config.get())
+    if output_layout == 'multiverse':
+        output_dir += f'-{version.split("+", 1)[0]}-{config.execution.config_hash}'
 
     if config.execution.fs_subjects_dir is None:
         if output_layout == 'bids':
             config.execution.fs_subjects_dir = output_dir / 'sourcedata' / 'freesurfer'
         elif output_layout == 'legacy':
             config.execution.fs_subjects_dir = output_dir / 'freesurfer'
+
     if config.execution.nibabies_dir is None:
         if output_layout == 'bids':
             config.execution.nibabies_dir = output_dir
         elif output_layout == 'legacy':
             config.execution.nibabies_dir = output_dir / 'nibabies'
+
     if config.workflow.surface_recon_method == 'mcribs':
         if output_layout == 'bids':
             config.execution.mcribs_dir = output_dir / 'sourcedata' / 'mcribs'
@@ -909,7 +917,6 @@ applied."""
         participant_ids=config.execution.participant_label,
         session_ids=config.execution.session_id,
     )
-    config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
 
     # finally, write config to file
     config_file = config.execution.work_dir / config.execution.run_uuid / 'config.toml'
