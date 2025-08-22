@@ -154,6 +154,7 @@ def main():
                 config.execution.bids_dir,
                 config.execution.nibabies_dir,
                 config.execution.dataset_links,
+                config.execution._config_hash,
             )
             write_bidsignore(config.execution.nibabies_dir)
 
