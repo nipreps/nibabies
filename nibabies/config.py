@@ -793,18 +793,21 @@ def _process_initializer(cwd, omp_nthreads):
     os.environ['OMP_NUM_THREADS'] = f'{omp_nthreads}'
 
 
-def dismiss_echo(entities: list | None = None):
+def dismiss_entities(entities: list | None = None) -> list:
     """Set entities to dismiss in a DerivativesDataSink."""
     from niworkflows.utils.connections import listify
 
-    entities = entities or []
+    entities = set(entities or [])
     echo_idx = execution.echo_idx
     if echo_idx is None or len(listify(echo_idx)) > 2:
-        entities.append('echo')
-    return entities
+        entities.add('echo')
+    output_layout = execution.output_layout
+    if output_layout != 'multiverse':
+        entities.add('hash')
+    return list(entities)
 
 
-DEFAULT_DISMISS_ENTITIES = dismiss_echo()
+DEFAULT_DISMISS_ENTITIES = dismiss_entities()
 
 DEFAULT_CONFIG_HASH_FIELDS = {
     'execution': [
