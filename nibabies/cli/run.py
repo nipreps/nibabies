@@ -144,11 +144,14 @@ def main():
         finally:
             from ..reports.core import generate_reports
 
+            add_hash = config.execution.output_layout == 'multiverse'
+
             # Generate reports phase
             generate_reports(
                 config.execution.unique_labels,
                 config.execution.nibabies_dir,
                 config.execution.run_uuid,
+                config.execution._config_hash if add_hash else None,
             )
             write_derivative_description(
                 config.execution.bids_dir,
