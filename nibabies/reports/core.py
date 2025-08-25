@@ -24,6 +24,7 @@ def run_reports(
         session=session,
         bootstrap_file=load_data.readable('reports-spec.yml'),
         reportlets_dir=reportlets_dir,
+        out_filename=out_filename,
     ).generate_report()
 
 
@@ -33,6 +34,7 @@ def generate_reports(
     run_uuid,
     work_dir=None,
     packagename=None,
+    config_hash=None,
 ):
     """Execute run_reports on a list of subjects."""
     reportlets_dir = None
@@ -41,6 +43,14 @@ def generate_reports(
 
     report_errors = []
     for subject, session in sub_ses_list:
+        # Determine the output filename
+        out_filename = f'sub-{subject}'
+        if session is not None:
+            out_filename += f'_ses-{session}'
+        if config_hash is not None:
+            out_filename += f'_{config_hash}'
+        out_filename += '.html'
+
         report_errors.append(
             run_reports(
                 output_dir,
@@ -49,6 +59,7 @@ def generate_reports(
                 session=session,
                 packagename=packagename,
                 reportlets_dir=reportlets_dir,
+                out_filename=out_filename,
             )
         )
 
