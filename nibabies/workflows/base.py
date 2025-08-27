@@ -836,6 +836,10 @@ def clean_datasinks(workflow: pe.Workflow) -> pe.Workflow:
     for node in workflow.list_node_names():
         if node.split('.')[-1].startswith('ds_'):
             workflow.get_node(node).interface.out_path_base = ''
+            workflow.get_node(node).interface.inputs.base_directory = config.execution.output_dir
+
+            if config.execution.output_layout == 'multiverse':
+                workflow.get_node(node).interface.inputs.hash = config.execution.parameters_hash
     return workflow
 
 
