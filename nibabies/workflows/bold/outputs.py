@@ -32,7 +32,7 @@ from niworkflows.utils.images import dseg_label
 
 from nibabies import config
 from nibabies._types import Anatomical
-from nibabies.config import DEFAULT_DISMISS_ENTITIES, DEFAULT_MEMORY_MIN_GB, dismiss_echo
+from nibabies.config import DEFAULT_DISMISS_ENTITIES, DEFAULT_MEMORY_MIN_GB, dismiss_entities
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.bids import BIDSURI
 
@@ -487,7 +487,7 @@ def init_ds_registration_wf(
             mode='image',
             suffix='xfm',
             extension='.txt',
-            dismiss_entities=dismiss_echo(['part']),
+            dismiss_entities=dismiss_entities(['part']),
             **{'from': source, 'to': dest},
         ),
         name='ds_xform',

@@ -368,7 +368,6 @@ It is released under the [CC0]\
         )
 
     anat = reference_anat.lower()  # To be used for workflow connections
-
     LOGGER.info(
         'Collected the following data for %s:\nRaw:\n%s\n\nDerivatives:\n\n%s\n',
         f'sub-{subject_id}' if not session_id else f'sub-{subject_id}_ses-{session_id}',
