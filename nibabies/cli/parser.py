@@ -843,23 +843,29 @@ applied."""
     version = config.environment.version
     output_layout = config.execution.output_layout
     config.execution._config_hash = config.hash_config(config.get())
-    if output_layout == 'multiverse':
-        output_dir += f'-{version.split("+", 1)[0]}-{config.execution.config_hash}'
 
     if config.execution.fs_subjects_dir is None:
-        if output_layout == 'bids':
+        if output_layout in ('bids', 'multiverse'):
             config.execution.fs_subjects_dir = output_dir / 'sourcedata' / 'freesurfer'
         elif output_layout == 'legacy':
             config.execution.fs_subjects_dir = output_dir / 'freesurfer'
 
     if config.execution.nibabies_dir is None:
-        if output_layout == 'bids':
+        if output_layout in 'bids':
             config.execution.nibabies_dir = output_dir
         elif output_layout == 'legacy':
             config.execution.nibabies_dir = output_dir / 'nibabies'
+        elif output_layout == 'multiverse':
+            config.loggers.cli.warning(
+                'Multiverse output selected - assigning output directory based on version'
+                ' and configuration hash.'
+            )
+            config.execution.nibabies_dir = (
+                output_dir / f'nibabies-{version.split("+", 1)[0]}-{config.execution._config_hash}'
+            )
 
     if config.workflow.surface_recon_method == 'mcribs':
-        if output_layout == 'bids':
+        if output_layout in ('bids', 'multiverse'):
             config.execution.mcribs_dir = output_dir / 'sourcedata' / 'mcribs'
         elif output_layout == 'legacy':
             config.execution.mcribs_dir = output_dir / 'mcribs'
