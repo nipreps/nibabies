@@ -1,3 +1,15 @@
+25.1.2 (August 28, 2025)
+========================
+A patch release in the 25.1.x series.
+
+Fixes compatibility with Python 3.12 when running MCRIBS.
+
+### Bug Fixes
+  * FIX: MCRIBS compatibility (#483)
+
+### Internals / Maintenance
+  * MAINT: Fix outputs check (#479)
+
 25.1.1 (July 2, 2025)
 =====================
 A patch release in the 25.1.x series.
