@@ -410,6 +410,8 @@ class execution(_Config):
     output_spaces = None
     """List of (non)standard spaces designated (with the ``--output-spaces`` flag of
     the command line) as spatial references for outputs."""
+    parameters_hash = None
+    """Unique hash of the current configuration parameters."""
     reference_anat = None
     """Force usage of this anatomical scan as the structural reference."""
     reports_only = False
@@ -433,7 +435,6 @@ class execution(_Config):
     write_graph = False
     """Write out the computational graph corresponding to the planned preprocessing."""
     _layout = None
-    _config_hash = None
 
     _paths = (
         'anat_derivatives',
