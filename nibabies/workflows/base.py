@@ -888,6 +888,13 @@ def init_workflow_spaces(execution_spaces: SpatialReferences, age_months: int):
         )
 
     LOGGER.debug('Workflow spaces: %s', spaces.get_spaces())
+    if not any(
+        space.startswith('MNIInfant') for space in spaces.get_spaces(nonstandard=False, dim=(3,))
+    ):
+        raise RuntimeError(
+            'MNIInfant space is required but not found, likely due to a stale templateflow cache. '
+            'Clear the cache (default: $HOME/.cache/templateflow) and retry.'
+        )
     return spaces
 
 
