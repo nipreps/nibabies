@@ -330,6 +330,9 @@ It is released under the [CC0]\
                 modality='anat',
                 subject_id=f'sub-{subject_id}',
                 session_id=f'ses-{session_id}' if session_id else None,
+                config_hash=config.execution.parameters_hash
+                if config.execution.output_layout == 'multiverse'
+                else None,
             )
 
     # Determine some session level options here, as we should have
@@ -738,6 +741,9 @@ tasks and sessions), the following preprocessing was performed.
                     modality='func',
                     subject_id=f'sub-{subject_id}',
                     session_id=f'ses-{session_id}' if session_id else None,
+                    config_hash=config.execution.parameters_hash
+                    if config.execution.output_layout == 'multiverse'
+                    else None,
                 )
 
         bold_wf = init_bold_wf(
