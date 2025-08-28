@@ -842,33 +842,51 @@ applied."""
     work_dir = config.execution.work_dir
     version = config.environment.version
     output_layout = config.execution.output_layout
-    config.execution._config_hash = config.hash_config(config.get())
+    config.execution.parameters_hash = config.hash_config(config.get())
+
+    # Multiverse behaves as a cross between bids and legacy
+    if config.execution.nibabies_dir is None:
+        match output_layout:
+            case 'bids':
+                config.execution.nibabies_dir = output_dir
+            case 'legacy':
+                config.execution.nibabies_dir = output_dir / 'nibabies'
+            case 'multiverse':
+                config.loggers.cli.warning(
+                    'Multiverse output selected - assigning output directory based on version'
+                    ' and configuration hash.'
+                )
+                config.execution.nibabies_dir = (
+                    output_dir
+                    / f'nibabies-{version.split("+", 1)[0]}-{config.execution.parameters_hash}'
+                )
+            case _:
+                config.loggers.cli.warning('Unknown output layout %s', output_layout)
+                pass
+
+    nibabies_dir = config.execution.nibabies_dir
 
     if config.execution.fs_subjects_dir is None:
-        if output_layout in ('bids', 'multiverse'):
-            config.execution.fs_subjects_dir = output_dir / 'sourcedata' / 'freesurfer'
-        elif output_layout == 'legacy':
-            config.execution.fs_subjects_dir = output_dir / 'freesurfer'
-
-    if config.execution.nibabies_dir is None:
-        if output_layout in 'bids':
-            config.execution.nibabies_dir = output_dir
-        elif output_layout == 'legacy':
-            config.execution.nibabies_dir = output_dir / 'nibabies'
-        elif output_layout == 'multiverse':
-            config.loggers.cli.warning(
-                'Multiverse output selected - assigning output directory based on version'
-                ' and configuration hash.'
-            )
-            config.execution.nibabies_dir = (
-                output_dir / f'nibabies-{version.split("+", 1)[0]}-{config.execution._config_hash}'
-            )
+        match output_layout:
+            case 'bids':
+                config.execution.fs_subjects_dir = output_dir / 'sourcedata' / 'freesurfer'
+            case 'legacy':
+                config.execution.fs_subjects_dir = output_dir / 'freesurfer'
+            case 'multiverse':
+                config.execution.fs_subjects_dir = nibabies_dir / 'sourcedata' / 'freesurfer'
+            case _:
+                pass
 
     if config.workflow.surface_recon_method == 'mcribs':
-        if output_layout in ('bids', 'multiverse'):
-            config.execution.mcribs_dir = output_dir / 'sourcedata' / 'mcribs'
-        elif output_layout == 'legacy':
-            config.execution.mcribs_dir = output_dir / 'mcribs'
+        match output_layout:
+            case 'bids':
+                config.execution.mcribs_dir = output_dir / 'sourcedata' / 'mcribs'
+            case 'legacy':
+                config.execution.mcribs_dir = output_dir / 'mcribs'
+            case 'multiverse':
+                config.execution.mcribs_dir = nibabies_dir / 'sourcedata' / 'mcribs'
+            case _:
+                pass
         # Ensure the directory is created
         config.execution.mcribs_dir.mkdir(exist_ok=True, parents=True)
 

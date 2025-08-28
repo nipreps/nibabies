@@ -151,13 +151,13 @@ def main():
                 config.execution.unique_labels,
                 config.execution.nibabies_dir,
                 config.execution.run_uuid,
-                config.execution._config_hash if add_hash else None,
+                config_hash=config.execution.parameters_hash if add_hash else None,
             )
             write_derivative_description(
                 config.execution.bids_dir,
                 config.execution.nibabies_dir,
                 config.execution.dataset_links,
-                config.execution._config_hash,
+                config.execution.parameters_hash,
             )
             write_bidsignore(config.execution.nibabies_dir)
 
