@@ -136,6 +136,7 @@ def copy_derivatives(
     modality: str,
     subject_id: str,
     session_id: str | None = None,
+    config_hash: str | None = None,
 ) -> None:
     """
     Creates a copy of any found derivatives into output directory.
@@ -154,8 +155,19 @@ def copy_derivatives(
         if not isinstance(deriv, str):
             continue
         deriv = Path(deriv)
+        outname = deriv.name
 
-        shutil.copy2(deriv, outpath / deriv.name)
+        if config_hash:
+            ents = outname.split('_')
+            if any(ent.startswith('hash-') for ent in ents):
+                # Avoid adding another hash
+                pass
+            else:
+                idx = 2 if ents[1].startswith('ses-') else 1
+                ents.insert(idx, f'hash-{config_hash}')
+                outname = '_'.join(ents)
+
+        shutil.copy2(deriv, outpath / outname)
         json = deriv.parent / (deriv.name.split('.')[0] + '.json')
         if json.exists():
             shutil.copy2(json, outpath / json.name)

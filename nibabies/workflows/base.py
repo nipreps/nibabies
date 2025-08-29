@@ -330,6 +330,9 @@ It is released under the [CC0]\
                 modality='anat',
                 subject_id=f'sub-{subject_id}',
                 session_id=f'ses-{session_id}' if session_id else None,
+                config_hash=config.execution.parameters_hash
+                if config.execution.output_layout == 'multiverse'
+                else None,
             )
 
     # Determine some session level options here, as we should have
@@ -368,7 +371,6 @@ It is released under the [CC0]\
         )
 
     anat = reference_anat.lower()  # To be used for workflow connections
-
     LOGGER.info(
         'Collected the following data for %s:\nRaw:\n%s\n\nDerivatives:\n\n%s\n',
         f'sub-{subject_id}' if not session_id else f'sub-{subject_id}_ses-{session_id}',
@@ -739,6 +741,9 @@ tasks and sessions), the following preprocessing was performed.
                     modality='func',
                     subject_id=f'sub-{subject_id}',
                     session_id=f'ses-{session_id}' if session_id else None,
+                    config_hash=config.execution.parameters_hash
+                    if config.execution.output_layout == 'multiverse'
+                    else None,
                 )
 
         bold_wf = init_bold_wf(
@@ -837,6 +842,10 @@ def clean_datasinks(workflow: pe.Workflow) -> pe.Workflow:
     for node in workflow.list_node_names():
         if node.split('.')[-1].startswith('ds_'):
             workflow.get_node(node).interface.out_path_base = ''
+            workflow.get_node(node).interface.inputs.base_directory = config.execution.nibabies_dir
+
+            if config.execution.output_layout == 'multiverse':
+                workflow.get_node(node).interface.inputs.hash = config.execution.parameters_hash
     return workflow
 
 
