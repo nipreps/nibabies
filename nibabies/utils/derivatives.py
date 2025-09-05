@@ -168,6 +168,6 @@ def copy_derivatives(
                 outname = '_'.join(ents)
 
         shutil.copy2(deriv, outpath / outname)
-        json = deriv.parent / (deriv.name.split('.')[0] + '.json')
+        json = deriv.parent / (outname.split('.')[0] + '.json')
         if json.exists():
             shutil.copy2(json, outpath / json.name)
