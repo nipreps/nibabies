@@ -619,11 +619,12 @@ Useful for further Tedana processing post-NiBabies.""",
         '--output-layout',
         action='store',
         default='bids',
-        choices=('bids', 'legacy'),
+        choices=('bids', 'legacy', 'multiverse'),
         help='Organization of outputs. bids (default) places NiBabies derivatives '
         'directly in the output directory, and defaults to placing FreeSurfer '
         'derivatives in <output-dir>/sourcedata/freesurfer. legacy creates derivative '
-        'datasets as subdirectories of outputs.',
+        'datasets as subdirectories of outputs. multiverse appends the version and a hash '
+        'of parameters used to the output folder - the hash is also applied to the output files.',
     )
     g_other.add_argument(
         '-w',
@@ -834,27 +835,62 @@ mention this particular variant of NiBabies listing the participants for which i
 applied."""
         )
 
+    config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
+
     bids_dir = config.execution.bids_dir
     output_dir = config.execution.output_dir
     work_dir = config.execution.work_dir
     version = config.environment.version
     output_layout = config.execution.output_layout
+    config.execution.parameters_hash = config.hash_config(config.get())
+
+    # Multiverse behaves as a cross between bids and legacy
+    if config.execution.nibabies_dir is None:
+        match output_layout:
+            case 'bids':
+                config.execution.nibabies_dir = output_dir
+            case 'legacy':
+                config.execution.nibabies_dir = output_dir / 'nibabies'
+            case 'multiverse':
+                config.loggers.cli.warning(
+                    'Multiverse output selected - assigning output directory based on version'
+                    ' and configuration hash.'
+                )
+                config.execution.nibabies_dir = (
+                    output_dir
+                    / f'nibabies-{version.split("+", 1)[0]}-{config.execution.parameters_hash}'
+                )
+            case _:
+                config.loggers.cli.warning('Unknown output layout %s', output_layout)
+                pass
+
+    nibabies_dir = config.execution.nibabies_dir
 
     if config.execution.fs_subjects_dir is None:
-        if output_layout == 'bids':
-            config.execution.fs_subjects_dir = output_dir / 'sourcedata' / 'freesurfer'
-        elif output_layout == 'legacy':
-            config.execution.fs_subjects_dir = output_dir / 'freesurfer'
-    if config.execution.nibabies_dir is None:
-        if output_layout == 'bids':
-            config.execution.nibabies_dir = output_dir
-        elif output_layout == 'legacy':
-            config.execution.nibabies_dir = output_dir / 'nibabies'
+        match output_layout:
+            case 'bids':
+                config.execution.fs_subjects_dir = output_dir / 'sourcedata' / 'freesurfer'
+            case 'legacy':
+                config.execution.fs_subjects_dir = output_dir / 'freesurfer'
+            case 'multiverse':
+                config.execution.fs_subjects_dir = (
+                    nibabies_dir / 'sourcedata' / f'freesurfer-{config.execution.parameters_hash}'
+                )
+            case _:
+                pass
+
     if config.workflow.surface_recon_method == 'mcribs':
-        if output_layout == 'bids':
-            config.execution.mcribs_dir = output_dir / 'sourcedata' / 'mcribs'
-        elif output_layout == 'legacy':
-            config.execution.mcribs_dir = output_dir / 'mcribs'
+        match output_layout:
+            case 'bids':
+                config.execution.mcribs_dir = output_dir / 'sourcedata' / 'mcribs'
+            case 'legacy':
+                config.execution.mcribs_dir = output_dir / 'mcribs'
+            case 'multiverse':
+                config.execution.mcribs_dir = (
+                    nibabies_dir / 'sourcedata' / f'mcribs-{config.execution.parameters_hash}'
+                )
+            case _:
+                pass
         # Ensure the directory is created
         config.execution.mcribs_dir.mkdir(exist_ok=True, parents=True)
 
@@ -909,7 +945,6 @@ applied."""
         participant_ids=config.execution.participant_label,
         session_ids=config.execution.session_id,
     )
-    config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
 
     # finally, write config to file
     config_file = config.execution.work_dir / config.execution.run_uuid / 'config.toml'

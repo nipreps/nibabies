@@ -40,7 +40,7 @@ def write_bidsignore(deriv_dir):
     ignore_file.write_text('\n'.join(bids_ignore) + '\n')
 
 
-def write_derivative_description(bids_dir, deriv_dir, dataset_links=None):
+def write_derivative_description(bids_dir, deriv_dir, dataset_links=None, config_hash=None):
     from nibabies import __version__
 
     DOWNLOAD_URL = f'https://github.com/nipreps/nibabies/archive/{__version__}.tar.gz'
@@ -56,6 +56,7 @@ def write_derivative_description(bids_dir, deriv_dir, dataset_links=None):
                 'Name': 'NiBabies',
                 'Version': __version__,
                 'CodeURL': DOWNLOAD_URL,
+                'ConfigurationHash': config_hash,
             }
         ],
         'HowToAcknowledge': 'TODO',
