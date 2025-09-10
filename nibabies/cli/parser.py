@@ -873,7 +873,9 @@ applied."""
             case 'legacy':
                 config.execution.fs_subjects_dir = output_dir / 'freesurfer'
             case 'multiverse':
-                config.execution.fs_subjects_dir = nibabies_dir / 'sourcedata' / 'freesurfer'
+                config.execution.fs_subjects_dir = (
+                    nibabies_dir / 'sourcedata' / f'freesurfer-{config.execution.parameters_hash}'
+                )
             case _:
                 pass
 
@@ -884,7 +886,9 @@ applied."""
             case 'legacy':
                 config.execution.mcribs_dir = output_dir / 'mcribs'
             case 'multiverse':
-                config.execution.mcribs_dir = nibabies_dir / 'sourcedata' / 'mcribs'
+                config.execution.mcribs_dir = (
+                    nibabies_dir / 'sourcedata' / f'mcribs-{config.execution.parameters_hash}'
+                )
             case _:
                 pass
         # Ensure the directory is created
