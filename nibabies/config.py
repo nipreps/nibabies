@@ -89,6 +89,7 @@ The :py:mod:`config` is responsible for other conveniency actions.
 """
 
 import os
+import typing as ty
 from multiprocessing import set_start_method
 
 from templateflow.conf import TF_LAYOUT
@@ -409,6 +410,8 @@ class execution(_Config):
     output_spaces = None
     """List of (non)standard spaces designated (with the ``--output-spaces`` flag of
     the command line) as spatial references for outputs."""
+    parameters_hash = None
+    """Unique hash of the current configuration parameters."""
     reference_anat = None
     """Force usage of this anatomical scan as the structural reference."""
     reports_only = False
@@ -792,15 +795,79 @@ def _process_initializer(cwd, omp_nthreads):
     os.environ['OMP_NUM_THREADS'] = f'{omp_nthreads}'
 
 
-def dismiss_echo(entities: list | None = None):
+def dismiss_entities(entities: list | None = None) -> list:
     """Set entities to dismiss in a DerivativesDataSink."""
     from niworkflows.utils.connections import listify
 
-    entities = entities or []
+    entities = set(entities or [])
     echo_idx = execution.echo_idx
     if echo_idx is None or len(listify(echo_idx)) > 2:
-        entities.append('echo')
-    return entities
+        entities.add('echo')
+    output_layout = execution.output_layout
+    if output_layout != 'multiverse':
+        entities.add('hash')
+    return list(entities)
 
 
-DEFAULT_DISMISS_ENTITIES = dismiss_echo()
+DEFAULT_DISMISS_ENTITIES = dismiss_entities()
+
+DEFAULT_CONFIG_HASH_FIELDS = {
+    'execution': [
+        'sloppy',
+        'echo_idx',
+        'reference_anat',
+    ],
+    'workflow': [
+        'surface_recon_method',
+        'bold2anat_dof',
+        'bold2anat_init',
+        'dummy_scans',
+        'fd_radius',
+        'fmap_bspline',
+        'fmap_demean',
+        'force_syn',
+        'hmc_bold_frame',
+        'longitudinal',
+        'medial_surface_nan',
+        'multi_step_reg',
+        'norm_csf',
+        'project_goodvoxels',
+        'regressors_dvars_th',
+        'regressors_fd_th',
+        'skull_strip_fixed_seed',
+        'skull_strip_template',
+        'skull_strip_anat',
+        'slice_time_ref',
+        'surface_recon_method',
+        'use_bbr',
+        'use_syn_sdc',
+        'me_t2s_fit_method',
+    ],
+}
+
+
+def hash_config(
+    conf: dict[str, ty.Any],
+    *,
+    fields_required: dict[str, list[str]] = DEFAULT_CONFIG_HASH_FIELDS,
+    version: str = None,
+    digest_size: int = 4,
+) -> str:
+    """
+    Generate a unique BLAKE2b hash of configuration attributes.
+
+    By default, uses a preselected list of workflow-altering parameters.
+    """
+    import json
+    from hashlib import blake2b
+
+    if version is None:
+        from nibabies import __version__ as version
+
+    data = {}
+    for level, fields in fields_required.items():
+        for f in fields:
+            data[f] = conf[level].get(f, None)
+
+    datab = json.dumps(data, sort_keys=True).encode()
+    return blake2b(datab, digest_size=digest_size).hexdigest()
