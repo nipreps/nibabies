@@ -22,6 +22,12 @@ Specifically, these two files will be checked:
 Either file should include `age` (or if you wish to be more explicit: `age_months`) columns, and it is
 recommended to have an accompanying JSON file to further describe these fields, and explicitly state the values are in months.
 
+Age is used to choose the optimal surface reconstruction method when the flag `--surface-recon-method auto` is employed for surface reconstruction:
+
+ - M-CRIB-S: 0-3 months old (only if T2w and segmentation in T2w space is present)
+ - infant FreeSurfer: 4-24 months old (or 0-24 months old if no T2w/T2w segmentation is present)
+ - FreeSurfer (standard FreeSurfer developed from adult data): >24 months old
+
 ## The FreeSurfer license
 
 *NiBabies* uses FreeSurfer tools, which require a license to run.

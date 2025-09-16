@@ -194,7 +194,7 @@ TODO: FSDERIVS? .. _fsderivs:
 
 ### Surface Reconstruction
 
-If any of the surface reconstruction methods are enabled,
+If any of the surface reconstruction methods (M-CRIB-S, infant FreeSurfer, or FreeSurfer) are enabled,
 then a FreeSurfer-like subjects directory is created in
 `<output dir>/sourcedata/freesurfer` or the directory indicated with the
 `--fs-subjects-dir` flag.
@@ -228,6 +228,8 @@ the NiBabies workflow.
 This is strictly true when pre-computed FreeSurfer derivatives are provided either in
 the `sourcedata/` directory or passed via the `--fs-subjects-dir` flag;
 if NiBabies runs FreeSurfer, then there is a mutual dependency.
+
+ **If M-CRIB-S is used** for surface reconstruction, an additional folder is created in `<output dir>/sourcedata/mcribs`. M-CRIB-S converts and organizes its output into a FreeSurfer-compatible format, i.e. following the structure of FreeSurfer’s [recon-all](https://surfer.nmr.mgh.harvard.edu/fswiki/ReconAllOutputFiles), to `mcribs/sub-<label>_ses-<label>/freesurfer/`. This is then mapped by Infant fMRIPrep into the `sourcedata/freesurfer/` folder for further processing.
 
 ### Functional derivatives
 
