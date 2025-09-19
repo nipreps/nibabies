@@ -13,7 +13,6 @@ from niworkflows.interfaces.utility import KeySelect
 from niworkflows.utils.connections import pop_file
 from smriprep.workflows.anatomical import (
     _is_skull_stripped,
-    init_anat_ribbon_wf,
     init_anat_template_wf,
 )
 from smriprep.workflows.fit.registration import init_register_template_wf
@@ -21,6 +20,7 @@ from smriprep.workflows.outputs import (
     init_ds_dseg_wf,
     init_ds_fs_registration_wf,
     init_ds_mask_wf,
+    init_ds_surface_masks_wf,
     init_ds_surface_metrics_wf,
     init_ds_surfaces_wf,
     init_ds_template_registration_wf,
@@ -28,6 +28,8 @@ from smriprep.workflows.outputs import (
     init_ds_tpms_wf,
 )
 from smriprep.workflows.surfaces import (
+    init_anat_ribbon_wf,
+    init_cortex_masks_wf,
     init_fsLR_reg_wf,
     init_gifti_morphometrics_wf,
     init_gifti_surfaces_wf,
@@ -147,6 +149,7 @@ def init_infant_anat_fit_wf(
                 'sphere_reg',
                 'sphere_reg_fsLR',
                 'sphere_reg_msm',
+                'cortex_mask',
                 'anat_ribbon',
                 # Reverse transform; not computable from forward transform
                 'std2anat_xfm',
@@ -1413,6 +1416,32 @@ def init_infant_anat_fit_wf(
         else:
             LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
             fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+
+    # Stage 10: Cortical surface mask
+    if len(precomputed.get('cortex_mask', [])) < 2:
+        LOGGER.info('ANAT Stage 11: Creating cortical surface mask')
+
+        cortex_masks_wf = init_cortex_masks_wf()
+        ds_cortex_masks_wf = init_ds_surface_masks_wf(
+            output_dir=output_dir,
+            mask_type='cortex',
+            name='ds_cortex_masks_wf',
+        )
+
+        workflow.connect([
+            (surfaces_buffer, cortex_masks_wf, [
+                ('midthickness', 'inputnode.midthickness'),
+                ('thickness', 'inputnode.thickness'),
+            ]),
+            (cortex_masks_wf, ds_cortex_masks_wf, [
+                ('outputnode.cortex_masks', 'inputnode.mask_files'),
+                ('outputnode.source_files', 'inputnode.source_files'),
+            ]),
+            (ds_cortex_masks_wf, outputnode, [('outputnode.mask_files', 'cortex_mask')]),
+        ])  # fmt:skip
+    else:
+        LOGGER.info('ANAT Stage 11: Found pre-computed cortical surface mask')
+        outputnode.inputs.cortex_mask = sorted(precomputed['cortex_mask'])
     return workflow
 
 
@@ -1476,6 +1505,7 @@ def init_infant_single_anat_fit_wf(
                 'sphere_reg',
                 'sphere_reg_fsLR',
                 'sphere_reg_msm',
+                'cortex_mask',
                 'anat_ribbon',
                 # Reverse transform; not computable from forward transform
                 'std2anat_xfm',
@@ -2342,4 +2372,30 @@ def init_infant_single_anat_fit_wf(
         else:
             LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
             fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+
+    # Stage 10: Cortical surface mask
+    if len(precomputed.get('cortex_mask', [])) < 2:
+        LOGGER.info('ANAT Stage 11: Creating cortical surface mask')
+
+        cortex_masks_wf = init_cortex_masks_wf()
+        ds_cortex_masks_wf = init_ds_surface_masks_wf(
+            output_dir=output_dir,
+            mask_type='cortex',
+            name='ds_cortex_masks_wf',
+        )
+
+        workflow.connect([
+            (surfaces_buffer, cortex_masks_wf, [
+                ('midthickness', 'inputnode.midthickness'),
+                ('thickness', 'inputnode.thickness'),
+            ]),
+            (cortex_masks_wf, ds_cortex_masks_wf, [
+                ('outputnode.cortex_masks', 'inputnode.mask_files'),
+                ('outputnode.source_files', 'inputnode.source_files'),
+            ]),
+            (ds_cortex_masks_wf, outputnode, [('outputnode.mask_files', 'cortex_mask')]),
+        ])  # fmt:skip
+    else:
+        LOGGER.info('ANAT Stage 11: Found pre-computed cortical surface mask')
+        outputnode.inputs.cortex_mask = sorted(precomputed['cortex_mask'])
     return workflow

@@ -75,7 +75,7 @@ def init_infant_anat_apply_wf(
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['anat_aseg', 'anat_aparc', 'midthickness_fsLR', 'roi']),
+        niu.IdentityInterface(fields=['anat_aseg', 'anat_aparc', 'midthickness_fsLR']),
         name='outputnode',
     )
 
@@ -242,10 +242,6 @@ def init_infant_anat_apply_wf(
                     ('outputnode.curv', 'inputnode.curv'),
                     ('outputnode.sulc', 'inputnode.sulc'),
                     ('outputnode.thickness', 'inputnode.thickness'),
-                    ('outputnode.roi', 'inputnode.roi'),
-                ]),
-                (hcp_morphometrics_wf, outputnode, [
-                    ('outputnode.roi', 'roi'),
                 ]),
                 (resample_surfaces_wf, morph_grayords_wf, [
                     ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),

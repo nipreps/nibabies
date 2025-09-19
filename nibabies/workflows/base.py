@@ -809,8 +809,10 @@ tasks and sessions), the following preprocessing was performed.
 
             if config.workflow.cifti_output:
                 workflow.connect([
+                    (anat_fit_wf, bold_wf, [
+                        ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
+                    ]),
                     (anat_apply_wf, bold_wf, [
-                        ('outputnode.roi', 'inputnode.cortex_mask'),
                         ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
                         ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
                     ]),
