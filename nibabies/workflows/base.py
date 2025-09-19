@@ -534,6 +534,7 @@ It is released under the [CC0]\
                 ('outputnode.white', 'inputnode.white'),
                 ('outputnode.pial', 'inputnode.pial'),
                 ('outputnode.midthickness', 'inputnode.midthickness'),
+                ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
                 (f'outputnode.{reg_sphere}', f'inputnode.{reg_sphere}'),
                 ('outputnode.sulc', 'inputnode.sulc'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),

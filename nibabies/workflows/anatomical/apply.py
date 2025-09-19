@@ -62,6 +62,7 @@ def init_infant_anat_apply_wf(
                 'white',
                 'pial',
                 'midthickness',
+                'cortex_mask',
                 reg_sphere,
                 # template workflow inputs
                 'std_t1w',
@@ -235,6 +236,7 @@ def init_infant_anat_apply_wf(
                     (reg_sphere, 'inputnode.sphere_reg_fsLR'),
                 ]),
                 (inputnode, morph_grayords_wf, [
+                    ('cortex_mask', 'inputnode.roi'),
                     ('midthickness', 'inputnode.midthickness'),
                     (reg_sphere, 'inputnode.sphere_reg_fsLR'),
                 ]),
