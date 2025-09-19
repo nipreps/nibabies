@@ -21,6 +21,8 @@ sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_from-T1w_to-fsnative_mode-image_xfm.t
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_from-T2w_to-T1w_mode-image_xfm.h5
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_from-fsnative_to-T1w_mode-image_xfm.txt
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_curv.shape.gii
+sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_desc-cortex_mask.json
+sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_desc-cortex_mask.label.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_inflated.surf.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_midthickness.surf.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_pial.surf.gii
@@ -31,6 +33,8 @@ sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_sulc.shape.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_thickness.shape.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-L_white.surf.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-R_curv.shape.gii
+sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-R_desc-cortex_mask.json
+sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-R_desc-cortex_mask.label.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-R_inflated.surf.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-R_midthickness.surf.gii
 sub-01/ses-1mo/anat/sub-01_ses-1mo_run-001_hemi-R_pial.surf.gii

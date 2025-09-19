@@ -62,6 +62,7 @@ def init_infant_anat_apply_wf(
                 'white',
                 'pial',
                 'midthickness',
+                'cortex_mask',
                 reg_sphere,
                 # template workflow inputs
                 'std_t1w',
@@ -75,7 +76,7 @@ def init_infant_anat_apply_wf(
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['anat_aseg', 'anat_aparc', 'midthickness_fsLR', 'roi']),
+        niu.IdentityInterface(fields=['anat_aseg', 'anat_aparc', 'midthickness_fsLR']),
         name='outputnode',
     )
 
@@ -235,6 +236,7 @@ def init_infant_anat_apply_wf(
                     (reg_sphere, 'inputnode.sphere_reg_fsLR'),
                 ]),
                 (inputnode, morph_grayords_wf, [
+                    ('cortex_mask', 'inputnode.roi'),
                     ('midthickness', 'inputnode.midthickness'),
                     (reg_sphere, 'inputnode.sphere_reg_fsLR'),
                 ]),
@@ -242,10 +244,6 @@ def init_infant_anat_apply_wf(
                     ('outputnode.curv', 'inputnode.curv'),
                     ('outputnode.sulc', 'inputnode.sulc'),
                     ('outputnode.thickness', 'inputnode.thickness'),
-                    ('outputnode.roi', 'inputnode.roi'),
-                ]),
-                (hcp_morphometrics_wf, outputnode, [
-                    ('outputnode.roi', 'roi'),
                 ]),
                 (resample_surfaces_wf, morph_grayords_wf, [
                     ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
