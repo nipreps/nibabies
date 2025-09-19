@@ -561,7 +561,7 @@ def resample_image(
         hmc = []
 
     # Retrieve the RAS coordinates of the target space
-    coordinates = nt.base.SpatialReference.factory(target).ndcoords.astype('f4').T
+    coordinates = nt.base.SpatialReference.factory(target).ndcoords.astype('f4')
 
     # We will operate in voxel space, so get the source affine
     vox2ras = source.affine
