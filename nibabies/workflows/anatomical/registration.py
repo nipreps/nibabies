@@ -345,7 +345,6 @@ def init_concat_registrations_wf(
         further use in downstream nodes.
 
     """
-    from nibabies.interfaces.download import RetrievePoochFiles
     from nibabies.interfaces.patches import CompositeTransformUtil
 
     ntpls = len(templates)
@@ -405,9 +404,9 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
     ]
     outputnode = pe.Node(niu.IdentityInterface(fields=out_fields), name='outputnode')
 
-    intermed_xfms = pe.MapNode(
-        RetrievePoochFiles(),
-        name='retrieve_xfms',
+    fetch_tf_xfms = pe.MapNode(
+        niu.Function(function=_get_intermediate_xfms, output_names=['int2tgt_xfm', 'tgt2int_xfm']),
+        name='fetch_tf_xfms',
         iterfield=['target'],
         run_without_submitting=True,
     )
@@ -460,10 +459,10 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
         # Transform concatenation
         (inputnode, dis_anat2int, [('anat2int_xfm', 'in_file')]),
         (inputnode, dis_int2anat, [('int2anat_xfm', 'in_file')]),
-        (inputnode, intermed_xfms, [('intermediate', 'intermediate'),
+        (inputnode, fetch_tf_xfms, [('intermediate', 'intermediate'),
                                     ('template', 'target')]),
-        (intermed_xfms, dis_int2std, [('int2tgt_xfm', 'in_file')]),
-        (intermed_xfms, dis_std2int, [('tgt2int_xfm', 'in_file')]),
+        (fetch_tf_xfms, dis_int2std, [('int2tgt_xfm', 'in_file')]),
+        (fetch_tf_xfms, dis_std2int, [('tgt2int_xfm', 'in_file')]),
         (dis_anat2int, order_anat2std, [
             ('affine_transform', 'in1'),
             ('displacement_field', 'in2'),
@@ -499,3 +498,28 @@ stored for reuse and accessed with *TemplateFlow* [{tf_ver}, @templateflow]:
     ])  # fmt:skip
 
     return workflow
+
+
+def _get_intermediate_xfms(intermediate, target):
+    import templateflow.api as tf
+
+    # Native -> MNIInfant:cohort-X (int) -> Target (std)
+    ispace, _, icohort = intermediate.partition(':cohort-')
+    ispaceid = f'{ispace}+{icohort}' if icohort else ispace
+
+    int2std = tf.get(
+        target,
+        suffix='xfm',
+        **{'from': ispaceid},
+        raise_empty=True,
+    )
+
+    std2int = tf.get(
+        ispace,
+        cohort=icohort or None,
+        suffix='xfm',
+        **{'from': target},
+        raise_empty=True,
+    )
+
+    return int2std, std2int
