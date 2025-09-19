@@ -1276,12 +1276,12 @@ def init_infant_anat_fit_wf(
             (fsnative_buffer, gifti_surfaces_wf, [
                 ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
-            (gifti_surfaces_wf, surfaces_buffer, [
-                (f'outputnode.{surf}', surf) for surf in surfs
-            ]),
             (sourcefile_buffer, ds_surfaces_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_surfaces_wf, ds_surfaces_wf, [
                 (f'outputnode.{surf}', f'inputnode.{surf}') for surf in surfs
+            ]),
+            (ds_surfaces_wf, surfaces_buffer, [
+                (f'outputnode.{surf}', surf) for surf in surfs
             ]),
         ])  # fmt:skip
     if spheres:
@@ -1300,12 +1300,12 @@ def init_infant_anat_fit_wf(
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 # No transform for spheres, following HCP pipelines' lead
             ]),
-            (gifti_spheres_wf, surfaces_buffer, [
-                (f'outputnode.{sphere}', sphere) for sphere in spheres
-            ]),
             (sourcefile_buffer, ds_spheres_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_spheres_wf, ds_spheres_wf, [
                 (f'outputnode.{sphere}', f'inputnode.{sphere}') for sphere in spheres
+            ]),
+            (ds_spheres_wf, surfaces_buffer, [
+                (f'outputnode.{sphere}', sphere) for sphere in spheres
             ]),
         ])  # fmt:skip
     metrics = [metric for metric in needed_metrics if metric not in found_surfs]
@@ -1324,12 +1324,12 @@ def init_infant_anat_fit_wf(
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
             ]),
-            (gifti_morph_wf, surfaces_buffer, [
-                (f'outputnode.{metric}', metric) for metric in metrics
-            ]),
             (sourcefile_buffer, ds_morph_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_morph_wf, ds_morph_wf, [
                 (f'outputnode.{metric}', f'inputnode.{metric}') for metric in metrics
+            ]),
+            (ds_morph_wf, surfaces_buffer, [
+                (f'outputnode.{metric}', metric) for metric in metrics
             ]),
         ])  # fmt:skip
 
@@ -2232,12 +2232,12 @@ def init_infant_single_anat_fit_wf(
             (fsnative_buffer, gifti_surfaces_wf, [
                 ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
-            (gifti_surfaces_wf, surfaces_buffer, [
-                (f'outputnode.{surf}', surf) for surf in surfs
-            ]),
             (sourcefile_buffer, ds_surfaces_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_surfaces_wf, ds_surfaces_wf, [
                 (f'outputnode.{surf}', f'inputnode.{surf}') for surf in surfs
+            ]),
+            (ds_surfaces_wf, surfaces_buffer, [
+                (f'outputnode.{surf}', surf) for surf in surfs
             ]),
         ])  # fmt:skip
     if spheres:
@@ -2256,12 +2256,12 @@ def init_infant_single_anat_fit_wf(
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 # No transform for spheres, following HCP pipelines' lead
             ]),
-            (gifti_spheres_wf, surfaces_buffer, [
-                (f'outputnode.{sphere}', sphere) for sphere in spheres
-            ]),
             (sourcefile_buffer, ds_spheres_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_spheres_wf, ds_spheres_wf, [
                 (f'outputnode.{sphere}', f'inputnode.{sphere}') for sphere in spheres
+            ]),
+            (ds_spheres_wf, surfaces_buffer, [
+                (f'outputnode.{sphere}', sphere) for sphere in spheres
             ]),
         ])  # fmt:skip
     metrics = [metric for metric in needed_metrics if metric not in found_surfs]
@@ -2280,12 +2280,12 @@ def init_infant_single_anat_fit_wf(
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
             ]),
-            (gifti_morph_wf, surfaces_buffer, [
-                (f'outputnode.{metric}', metric) for metric in metrics
-            ]),
             (sourcefile_buffer, ds_morph_wf, [('anat_source_files', 'inputnode.source_files')]),
             (gifti_morph_wf, ds_morph_wf, [
                 (f'outputnode.{metric}', f'inputnode.{metric}') for metric in metrics
+            ]),
+            (ds_morph_wf, surfaces_buffer, [
+                (f'outputnode.{metric}', metric) for metric in metrics
             ]),
         ])  # fmt:skip
 
