@@ -62,8 +62,15 @@ class ResampleSeriesInputSpec(TraitedSpec):
     num_threads = traits.Int(1, usedefault=True, desc='Number of threads to use for resampling')
     output_data_type = traits.Str('float32', usedefault=True, desc='Data type of output image')
     order = traits.Int(3, usedefault=True, desc='Order of interpolation (0=nearest, 3=cubic)')
-    mode = traits.Str(
+    mode = traits.Enum(
+        'grid-constant',
+        'nearest',
         'constant',
+        'mirror',
+        'reflect',
+        'wrap',
+        'grid-mirror',
+        'grid-wrap',
         usedefault=True,
         desc='How data is extended beyond its boundaries. '
         'See scipy.ndimage.map_coordinates for more details.',
