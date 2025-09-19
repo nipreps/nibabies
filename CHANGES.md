@@ -1,3 +1,23 @@
+25.2.0 (September 22, 2025)
+===========================
+The first release of the 25.2.x series.
+
+This release synchronizes with downstream dependencies, as well as
+leverages TemplateFlow to retrieve intermediate xfms used during multi-step registration.
+
+Thanks to @LuciMoore for the contribution!
+
+### Documentation
+  * DOC: MCRIBS and surf recon methods chosen based on age (#485)
+
+### Enhancements
+  * ENH: Retrieve transforms with templateflow (#486)
+  * ENH: Save cortex mask (#487)
+  * ENH: Add multiverse output layout (#481)
+
+### Bug Fixes
+  * FIX: Default to grid-constant when resampling BOLD to output spaces
+
 25.1.2 (August 28, 2025)
 ========================
 A patch release in the 25.1.x series.

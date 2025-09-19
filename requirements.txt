@@ -204,18 +204,20 @@ nipype==1.10.0
     #   niworkflows
     #   sdcflows
     #   smriprep
-nireports==25.2.0
+nireports==25.3.0
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
+    #   smriprep
 nitime==0.11
     # via nibabies (pyproject.toml)
-nitransforms==24.1.2
+nitransforms==25.0.1
     # via
     #   nibabies (pyproject.toml)
     #   niworkflows
     #   sdcflows
-niworkflows==1.13.4
+    #   smriprep
+niworkflows==1.14.1
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
@@ -265,7 +267,6 @@ packaging==25.0
     #   nilearn
     #   nipype
     #   niworkflows
-    #   pooch
     #   scikit-image
     #   smriprep
 pandas==2.2.3
@@ -289,11 +290,7 @@ pillow==11.2.1
     #   matplotlib
     #   scikit-image
 platformdirs==4.3.8
-    # via
-    #   datalad
-    #   pooch
-pooch==1.8.2
-    # via nibabies (pyproject.toml)
+    # via datalad
 prov==2.0.2
     # via nipype
 psutil==7.0.0
@@ -351,7 +348,6 @@ requests==2.32.4
     #   etelemetry
     #   nilearn
     #   osfclient
-    #   pooch
     #   python-gitlab
     #   requests-toolbelt
     #   templateflow
@@ -402,7 +398,7 @@ six==1.17.0
     #   osfclient
     #   pybtex
     #   python-dateutil
-smriprep==0.18.0
+smriprep==0.19.1
     # via nibabies (pyproject.toml)
 sqlalchemy==2.0.41
     # via pybids
@@ -410,7 +406,7 @@ svgutils==0.3.4
     # via niworkflows
 tedana==25.0.1
     # via nibabies (pyproject.toml)
-templateflow==24.2.2
+templateflow==25.0.3
     # via
     #   nibabies (pyproject.toml)
     #   nireports
