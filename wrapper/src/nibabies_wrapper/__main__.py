@@ -476,12 +476,6 @@ the spatial normalization."""
         type=os.path.abspath,
         help='Filter file',
     )
-    g_wrap.add_argument(
-        '--pooch-cache-dir',
-        metavar='DIR',
-        type=os.path.abspath,
-        help='Directory to serve as cache for pooch files'
-    )
 
     # Developer patch/shell options
     g_dev = parser.add_argument_group(
@@ -649,9 +643,6 @@ def main():
     if opts.deriv_filter_file:
         container.add_mount(opts.deriv_filter_file, '/opt/derivative_filters.json')
         unknown_args.extend(['--deriv-filter-file', '/opt/derivative_filters.json'])
-    if opts.pooch_cache_dir:
-        container.add_mount(opts.pooch_cache_dir, '/tmp/pooch_cache', read_only=False)
-        container.add_envvar(('NIBABIES_POOCH_DIR', '/tmp/pooch_cache'))
     # Patch derivatives for searching
     if opts.derivatives:
         deriv_args = ['--derivatives']

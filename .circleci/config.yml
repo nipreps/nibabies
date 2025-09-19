@@ -214,8 +214,6 @@ jobs:
     - run:
         name: Get intermediate transforms
         command: |
-          mkdir -p /tmp/pooch
-          cd /tmp/pooch
           # Caching intermediate templates so no need to constantly fetch
           XFM="from-MNI152NLin6Asym_to-MNIInfant+1_xfm.h5"
           echo "Downloading $XFM"
@@ -229,7 +227,6 @@ jobs:
         paths:
         - fslicense
         - bcp/nipype.cfg
-        - pooch/*
 
   test_pytest:
     !!merge <<: *machine_defaults
@@ -348,8 +345,7 @@ jobs:
               --nthreads 4 -vv --age-months 2 --sloppy \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-              --output-layout bids --anat-only \
-              --pooch-cache-dir /tmp/pooch
+              --output-layout bids --anat-only
     - run:
         name: Checking outputs of anatomical nibabies run
         command: |
@@ -378,8 +374,7 @@ jobs:
               --nthreads 4 -vv --age-months 2 \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-              --output-layout bids \
-              --pooch-cache-dir /tmp/pooch
+              --output-layout bids
     - run:
         name: Checking outputs of full nibabies run
         command: |
@@ -425,8 +420,7 @@ jobs:
               --nthreads 4 -vv --age-months 2 \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
-              --output-layout bids --anat-only --cifti-output \
-              --pooch-cache-dir /tmp/pooch
+              --output-layout bids --anat-only --cifti-output
     - run:
         name: Checking outputs of T2-only nibabies anat
         command: |
