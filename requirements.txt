@@ -382,7 +382,7 @@ scipy==1.15.2
     #   scikit-learn
     #   sdcflows
     #   tedana
-sdcflows==2.13.1
+sdcflows==2.14.0
     # via nibabies (pyproject.toml)
 seaborn==0.13.2
     # via
