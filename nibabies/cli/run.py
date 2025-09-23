@@ -104,6 +104,7 @@ def main():
             nibabies_wf.run(**_plugin)
         except Exception as e:
             config.loggers.workflow.critical('nibabies failed: %s', e)
+            exitcode = 1
             raise
         else:
             config.loggers.workflow.log(25, 'nibabies finished successfully!')
@@ -147,7 +148,7 @@ def main():
             add_hash = config.execution.output_layout == 'multiverse'
 
             # Generate reports phase
-            generate_reports(
+            failed_reports = generate_reports(
                 config.execution.unique_labels,
                 config.execution.nibabies_dir,
                 config.execution.run_uuid,
@@ -160,6 +161,16 @@ def main():
                 config.execution.parameters_hash,
             )
             write_bidsignore(config.execution.nibabies_dir)
+
+            if failed_reports:
+                msg = (
+                    'Report generation was not successful for the following participants '
+                    f': {", ".join(failed_reports)}.'
+                )
+                config.loggers.cli.error(msg)
+
+            if int(exitcode) or failed_reports:
+                sys.exit(1)
 
 
 if __name__ == '__main__':
