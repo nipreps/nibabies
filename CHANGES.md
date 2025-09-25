@@ -1,3 +1,28 @@
+25.2.0 (September 25, 2025)
+===========================
+The first release of the 25.2.x series.
+
+This release synchronizes with downstream dependencies, as well as
+leverages TemplateFlow to retrieve intermediate transforms used during multi-step registration.
+
+If you are reusing a previous TemplateFlow cache (which may be the case if running with
+Apptainer / Singularity), you will need to clear or update your cache to ensure these new files
+are available.
+
+Thanks to @LuciMoore for the contribution!
+
+### Documentation
+  * DOC: MCRIBS and surf recon methods chosen based on age (#485)
+
+### Enhancements
+  * ENH: Retrieve transforms with templateflow (#486)
+  * ENH: Save cortex mask (#487)
+  * ENH: Add multiverse output layout (#481)
+
+### Bug Fixes
+  * FIX: Default to grid-constant when resampling BOLD to output spaces
+  * FIX: Propagate error code if pipeline run is unsuccessful
+
 25.1.2 (August 28, 2025)
 ========================
 A patch release in the 25.1.x series.

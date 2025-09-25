@@ -211,11 +211,12 @@ def plot_carpet(
         legend = False
 
     else:  # Volumetric NIfTI
-        from nilearn._utils import check_niimg_4d
         from nilearn._utils.niimg import _safe_get_data
+        from nilearn._utils.niimg_conversions import check_niimg
 
-        img_nii = check_niimg_4d(
+        img_nii = check_niimg(
             img,
+            ensure_ndim=4,
             dtype='auto',
         )
         func_data = _safe_get_data(img_nii, ensure_finite=True)
