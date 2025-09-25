@@ -1,9 +1,13 @@
-25.2.0 (September 22, 2025)
+25.2.0 (September 25, 2025)
 ===========================
 The first release of the 25.2.x series.
 
 This release synchronizes with downstream dependencies, as well as
-leverages TemplateFlow to retrieve intermediate xfms used during multi-step registration.
+leverages TemplateFlow to retrieve intermediate transforms used during multi-step registration.
+
+If you are reusing a previous TemplateFlow cache (which may be the case if running with
+Apptainer / Singularity), you will need to clear or update your cache to ensure these new files
+are available.
 
 Thanks to @LuciMoore for the contribution!
 
@@ -17,6 +21,7 @@ Thanks to @LuciMoore for the contribution!
 
 ### Bug Fixes
   * FIX: Default to grid-constant when resampling BOLD to output spaces
+  * FIX: Propagate error code if pipeline run is unsuccessful
 
 25.1.2 (August 28, 2025)
 ========================
