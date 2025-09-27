@@ -704,7 +704,7 @@ A component-based noise correction method (CompCor) for BOLD and perfusion-based
 doi:[10.1016/j.neuroimage.2007.04.042](https://doi.org/10.1016/j.neuroimage.2007.04.042)
 
 [^Ciric2017]: Ciric R, Wolf DH, Power JD, Roalf DR, Baum GL, Ruparel K, Shinohara RT, Elliott MA, Eickhoff SB, Davatzikos C., Gur RC, Gur RE, Bassett DS, Satterthwaite TD.
-Benchmarking of participant-level confound regression strategies for the control of motion artifact in studies of functional connectivity. 
+Benchmarking of participant-level confound regression strategies for the control of motion artifact in studies of functional connectivity.
 Neuroimage. 2017.
 doi:[10.1016/j.neuroimage.2017.03.020](https://doi.org/10.1016/j.neuroimage.2017.03.020)
 
