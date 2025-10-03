@@ -148,11 +148,18 @@ def _load_spaces(age):
     return spaces
 
 
-def test_hash_config():
+def test_hash_config(monkeypatch):
     # This may change with changes to config defaults / new attributes!
     expected = 'cfee5aaf'
     assert config.hash_config(config.get()) == expected
     _reset_config()
+
+    with monkeypatch.context() as m:  # when version is requested, it will alter the hash
+        import nibabies
+
+        m.setattr(nibabies, '__version__', '0.0.1')
+        assert config.hash_config(config.get(), version=True) != expected
+        _reset_config()
 
     config.execution.log_level = 5  # non-vital attributes do not matter
     assert config.hash_config(config.get()) == expected

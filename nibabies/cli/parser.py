@@ -842,7 +842,7 @@ applied."""
     work_dir = config.execution.work_dir
     version = config.environment.version
     output_layout = config.execution.output_layout
-    config.execution.parameters_hash = config.hash_config(config.get())
+    config.execution.parameters_hash = config.hash_config(config.get(), version=True)
 
     # Multiverse behaves as a cross between bids and legacy
     if config.execution.nibabies_dir is None:

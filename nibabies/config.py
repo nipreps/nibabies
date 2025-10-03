@@ -849,8 +849,8 @@ DEFAULT_CONFIG_HASH_FIELDS = {
 def hash_config(
     conf: dict[str, ty.Any],
     *,
-    fields_required: dict[str, list[str]] = DEFAULT_CONFIG_HASH_FIELDS,
-    version: str = None,
+    fields_required: dict[str, list[str]] | None = None,
+    version: bool = False,
     digest_size: int = 4,
 ) -> str:
     """
@@ -861,10 +861,15 @@ def hash_config(
     import json
     from hashlib import blake2b
 
-    if version is None:
-        from nibabies import __version__ as version
+    if fields_required is None:
+        fields_required = DEFAULT_CONFIG_HASH_FIELDS
 
     data = {}
+    if version:
+        from nibabies import __version__
+
+        data['version'] = __version__
+
     for level, fields in fields_required.items():
         for f in fields:
             data[f] = conf[level].get(f, None)
