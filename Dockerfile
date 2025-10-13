@@ -32,12 +32,12 @@ COPY . /src
 RUN uvx --from build pyproject-build --installer uv -w /src
 
 # Older Python to support legacy MCRIBS
-FROM python:3.6.15-slim as pyenv
+FROM python:3.6.15-slim AS pyenv
 RUN pip install --no-cache-dir numpy nibabel scipy pandas numexpr contextlib2 \
     && cp /usr/lib/x86_64-linux-gnu/libffi.so.7* /usr/local/lib
 
 # Intermediate step with utilities for downloading packages
-FROM ${BASE_IMAGE} as downloader
+FROM ${BASE_IMAGE} AS downloader
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
                     binutils \
@@ -48,7 +48,7 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # AFNI
-FROM downloader as afni
+FROM downloader AS afni
 # The download link can point to newer releases
 # As a safeguard, take advantage of Docker caching, and
 # Bump the date to current to update AFNI
@@ -71,7 +71,7 @@ RUN mkdir -p /opt/afni-latest \
         -name "3dvolreg" \) -delete
 
 # Micromamba
-FROM downloader as micromamba
+FROM downloader AS micromamba
 
 # Install a C compiler to build extensions when needed.
 # traits<6.4 wheels are not available for Python 3.11+, but build easily.
@@ -95,7 +95,7 @@ RUN npm install -g svgo@^3.2.0 bids-validator@1.14.10 && \
     rm -r ~/.npm
 
 # Main container
-FROM ${BASE_IMAGE} as nibabies
+FROM ${BASE_IMAGE} AS nibabies
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
     LC_ALL="en_US.UTF-8"
@@ -179,7 +179,6 @@ ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
     MINC_BIN_DIR="$FREESURFER_HOME/mni/bin" \
     MINC_LIB_DIR="$FREESURFER_HOME/mni/lib" \
     MNI_DATAPATH="$FREESURFER_HOME/mni/data" \
-    FSL_DIR=${FSLDIR} \
     FREESURFER="/opt/freesurfer"
 ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
@@ -191,7 +190,7 @@ COPY --from=pyenv /usr/local/lib/ /usr/local/lib/
 ENV PATH="/opt/MCRIBS/bin:/opt/MCRIBS/MIRTK/MIRTK-install/bin:/opt/MCRIBS/MIRTK/MIRTK-install/lib/tools:${PATH}" \
     LD_LIBRARY_PATH="/opt/MCRIBS/lib:/opt/MCRIBS/ITK/ITK-install/lib:/opt/MCRIBS/VTK/VTK-install/lib:/opt/MCRIBS/MIRTK/MIRTK-install/lib:/usr/local/lib:${LD_LIBRARY_PATH}" \
     MCRIBS_HOME="/opt/MCRIBS" \
-    PYTHONPATH="/opt/MCRIBS/lib/python:$PYTHONPATH"
+    PYTHONPATH="/opt/MCRIBS/lib/python"
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users nibabies && chmod -R 777 /home/nibabies
@@ -205,8 +204,8 @@ ENV MAMBA_ROOT_PREFIX="/opt/conda"
 RUN micromamba shell init -s bash && \
     echo "micromamba activate nibabies" >> $HOME/.bashrc
 ENV PATH="/opt/conda/envs/nibabies/bin:$PATH" \
-    CPATH="/opt/conda/envs/nibabies/include:$CPATH" \
-    LD_LIBRARY_PATH="/opt/conda/envs/nibabies/lib:$LD_LIBRARY_PATH" \
+    CPATH="/opt/conda/envs/nibabies/include" \
+    LD_LIBRARY_PATH="/opt/conda/envs/nibabies/lib" \
     CONDA_PYTHON="/opt/conda/envs/nibabies/bin/python"
 
 # FSL environment
