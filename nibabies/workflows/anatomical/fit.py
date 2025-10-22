@@ -406,7 +406,7 @@ def init_infant_anat_fit_wf(
 
         t2w_template_wf = init_anat_template_wf(
             image_type='T2w',
-            num_files=num_t1w,
+            num_files=num_t2w,
             longitudinal=longitudinal,
             omp_nthreads=omp_nthreads,
             name='t2w_template_wf',
