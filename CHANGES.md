@@ -1,3 +1,12 @@
+25.2.1 (October 22, 2025)
+=========================
+Patch release in the 25.2.x series.
+
+Fixes an issue where when both T1w and T2w anatomical images were present, there was a potential incorrect count of T2w images - leading to downstream crashes.
+
+### Bug Fixes
+  * FIX: Incorrect number of found T2w scans (#498)
+
 25.2.0 (September 25, 2025)
 ===========================
 The first release of the 25.2.x series.
