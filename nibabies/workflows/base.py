@@ -65,7 +65,7 @@ from nibabies.workflows.anatomical.fit import (
     init_infant_anat_fit_wf,
     init_infant_single_anat_fit_wf,
 )
-from nibabies.workflows.bold.base import init_bold_wf
+from nibabies.workflows.bold.fit import init_bold_fit_wf
 
 LOGGER = config.loggers.workflow
 
@@ -712,6 +712,7 @@ tasks and sessions), the following preprocessing was performed.
             )
         config.workflow.bold2anat_init = 't2w' if has_t2w else 't1w'
 
+    bold_fit_wfs = {}
     for bold_series in bold_runs:
         bold_file = bold_series[0]
         fieldmap_id = estimator_map.get(bold_file)
@@ -747,15 +748,62 @@ tasks and sessions), the following preprocessing was performed.
                     else None,
                 )
 
-        bold_wf = init_bold_wf(
-            reference_anat=reference_anat,
+        # check if boldref is already present
+        # bold_wf = init_bold_wf(
+        #     reference_anat=reference_anat,
+        #     bold_series=bold_series,
+        #     precomputed=functional_cache,
+        #     fieldmap_id=fieldmap_id,
+        #     spaces=spaces,
+        # )
+
+        # HMC + BOLD run sbref (if subject level not present)
+
+        bold_fit_wf = init_bold_fit_wf(
             bold_series=bold_series,
+            reference_anat=reference_anat,
             precomputed=functional_cache,
             fieldmap_id=fieldmap_id,
-            spaces=spaces,
+            omp_nthreads=omp_nthreads,
         )
+
+        workflow.connect([
+            (anat_fit_wf, bold_fit_wf, [
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+            ]),
+        ])  # fmt:skip
+        if fieldmap_id:
+            workflow.connect([
+                (fmap_wf, bold_fit_wf, [
+                    ('outputnode.fmap', 'inputnode.fmap'),
+                    ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
+                    ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
+                    ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
+                    ('outputnode.fmap_id', 'inputnode.fmap_id'),
+                    ('outputnode.method', 'inputnode.sdc_method'),
+                ]),
+            ])  # fmt:skip
+
+        # Outputs -------
+        # 'dummy_scans',
+        # 'hmc_boldref',
+        # 'coreg_boldref',
+        # 'bold_mask',
+        # 'motion_xfm',
+        # 'boldref2anat_xfm',
+        # 'boldref2fmap_xfm',
+        # 'movpar_file',
+        # 'rmsd_file',
+
         if bold_wf is None:
             continue
+
+        bold_ref_wfs[bold_file] = bold_wf
 
         bold_wf.__desc__ = func_pre_desc + (bold_wf.__desc__ or '')
 
