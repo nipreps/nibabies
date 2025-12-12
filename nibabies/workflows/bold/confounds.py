@@ -31,6 +31,11 @@ Calculate BOLD confounds
 from nipype.algorithms import confounds as nac
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
+from niworkflows.interfaces.confounds import (
+    FramewiseDisplacement,
+    FSLMotionParams,
+    FSLRMSDeviation,
+)
 
 from nibabies.config import DEFAULT_DISMISS_ENTITIES, DEFAULT_MEMORY_MIN_GB
 from nibabies.interfaces import DerivativesDataSink
@@ -118,10 +123,10 @@ def init_bold_confs_wf(
         when available.
     bold_mask
         BOLD series mask
-    movpar_file
-        SPM-formatted motion parameters file
-    rmsd_file
-        Root mean squared deviation as measured by ``fsl_motion_outliers`` [Jenkinson2002]_.
+    motion_xfm
+        ITK-formatted head motion transforms
+    hmc_boldref
+        BOLD volume after HMC
     skip_vols
         number of non steady state volumes
     anat_mask
@@ -219,8 +224,8 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
             fields=[
                 'bold',
                 'bold_mask',
-                'movpar_file',
-                'rmsd_file',
+                'motion_xfm',
+                'hmc_boldref',
                 'skip_vols',
                 'anat_mask',
                 'anat_tpms',
@@ -260,8 +265,12 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         mem_gb=mem_gb,
     )
 
+    # Motion parameters
+    motion_params = pe.Node(FSLMotionParams(), name='motion_params')
+
     # Frame displacement
-    fdisp = pe.Node(nac.FramewiseDisplacement(parameter_source='SPM'), name='fdisp', mem_gb=mem_gb)
+    fdisp = pe.Node(FramewiseDisplacement(), name='fdisp')
+    rmsd = pe.Node(FSLRMSDeviation(), name='rmsd')
 
     # Generate aCompCor probseg maps
     acc_masks = pe.Node(aCompCorMasks(is_aseg=freesurfer), name='acc_masks')
@@ -362,18 +371,6 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
     add_std_dvars_header = pe.Node(
         AddTSVHeader(columns=['std_dvars']),
         name='add_std_dvars_header',
-        mem_gb=0.01,
-        run_without_submitting=True,
-    )
-    add_motion_headers = pe.Node(
-        AddTSVHeader(columns=['trans_x', 'trans_y', 'trans_z', 'rot_x', 'rot_y', 'rot_z']),
-        name='add_motion_headers',
-        mem_gb=0.01,
-        run_without_submitting=True,
-    )
-    add_rmsd_header = pe.Node(
-        AddTSVHeader(columns=['rmsd']),
-        name='add_rmsd_header',
         mem_gb=0.01,
         run_without_submitting=True,
     )
@@ -529,7 +526,11 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         # connect inputnode to each non-anatomical confound node
         (inputnode, dvars, [('bold', 'in_file'),
                             ('bold_mask', 'in_mask')]),
-        (inputnode, fdisp, [('movpar_file', 'in_file')]),
+        (inputnode, motion_params, [('motion_xfm', 'xfm_file'),
+                                    ('hmc_boldref', 'boldref_file')]),
+        (inputnode, rmsd, [('motion_xfm', 'xfm_file'),
+                           ('hmc_boldref', 'boldref_file')]),
+        (motion_params, fdisp, [('out_file', 'in_file')]),
         # Brain mask
         (inputnode, anat_mask_tfm, [('anat_mask', 'input_image'),
                                    ('bold_mask', 'reference_image'),
@@ -572,8 +573,6 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         (merge_rois, signals, [('out', 'label_files')]),
 
         # Collate computed confounds together
-        (inputnode, add_motion_headers, [('movpar_file', 'in_file')]),
-        (inputnode, add_rmsd_header, [('rmsd_file', 'in_file')]),
         (dvars, add_dvars_header, [('out_nstd', 'in_file')]),
         (dvars, add_std_dvars_header, [('out_std', 'in_file')]),
         (signals, concat, [('out_file', 'signals')]),
@@ -582,8 +581,8 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
                             ('pre_filter_file', 'cos_basis')]),
         (rename_acompcor, concat, [('components_file', 'acompcor')]),
         (crowncompcor, concat, [('components_file', 'crowncompcor')]),
-        (add_motion_headers, concat, [('out_file', 'motion')]),
-        (add_rmsd_header, concat, [('out_file', 'rmsd')]),
+        (motion_params, concat, [('out_file', 'motion')]),
+        (rmsd, concat, [('out_file', 'rmsd')]),
         (add_dvars_header, concat, [('out_file', 'dvars')]),
         (add_std_dvars_header, concat, [('out_file', 'std_dvars')]),
 

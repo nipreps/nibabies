@@ -459,6 +459,7 @@ def init_ds_boldref_wf(
 
 def init_ds_registration_wf(
     *,
+    source_file: str,
     output_dir: str,
     source: str,
     dest: str,
@@ -467,7 +468,7 @@ def init_ds_registration_wf(
     workflow = pe.Workflow(name=name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['source_files', 'xform']),
+        niu.IdentityInterface(fields=['source_files', 'xform', 'metadata']),
         name='inputnode',
     )
     outputnode = pe.Node(niu.IdentityInterface(fields=['xform']), name='outputnode')
@@ -476,13 +477,14 @@ def init_ds_registration_wf(
         BIDSURI(
             numinputs=1,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.output_dir.absolute()),
+            out_dir=str(output_dir),
         ),
         name='sources',
     )
 
     ds_xform = pe.Node(
         DerivativesDataSink(
+            source_file=source_file,
             base_directory=output_dir,
             mode='image',
             suffix='xfm',
@@ -495,15 +497,13 @@ def init_ds_registration_wf(
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
-    # fmt:off
     workflow.connect([
         (inputnode, sources, [('source_files', 'in1')]),
         (inputnode, ds_xform, [('xform', 'in_file'),
-                               ('source_files', 'source_file')]),
+                               ('metadata', 'meta_dict')]),
         (sources, ds_xform, [('out', 'Sources')]),
         (ds_xform, outputnode, [('out_file', 'xform')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
 
     return workflow
 
