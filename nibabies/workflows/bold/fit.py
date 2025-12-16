@@ -49,6 +49,7 @@ if ty.TYPE_CHECKING:
 # BOLD workflows
 from nibabies.workflows.bold.hmc import init_bold_hmc_wf
 from nibabies.workflows.bold.outputs import (
+    init_ds_boldmask_wf,
     init_ds_boldref_wf,
     init_ds_hmc_wf,
     init_ds_registration_wf,
@@ -99,6 +100,7 @@ def init_bold_fit_wf(
     reference_anat: Anatomical,
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
+    jacobian: bool = False,
     omp_nthreads: int = 1,
     name: str = 'bold_fit_wf',
 ) -> pe.Workflow:
@@ -363,11 +365,7 @@ def init_bold_fit_wf(
             ('boldmask', 'bold_mask'),
         ]),
         (fmapreg_buffer, outputnode, [('boldref2fmap_xfm', 'boldref2fmap_xfm')]),
-        (hmc_buffer, outputnode, [
-            ('hmc_xforms', 'motion_xfm'),
-            ('movpar_file', 'movpar_file'),
-            ('rmsd_file', 'rmsd_file'),
-        ]),
+        (hmc_buffer, outputnode, [('hmc_xforms', 'motion_xfm')]),
         (inputnode, func_fit_reports_wf, [
             ('bold_file', 'inputnode.source_file'),
             ('anat_preproc', 'inputnode.anat_preproc'),

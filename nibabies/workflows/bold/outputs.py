@@ -964,3 +964,53 @@ def init_bold_preproc_report_wf(
     # fmt:on
 
     return workflow
+
+
+def init_ds_boldmask_wf(
+    *,
+    source_file: str,
+    output_dir,
+    desc: str,
+    name='ds_boldmask_wf',
+) -> pe.Workflow:
+    """Write out a BOLD mask."""
+    workflow = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['source_files', 'boldmask']),
+        name='inputnode',
+    )
+    outputnode = pe.Node(niu.IdentityInterface(fields=['boldmask']), name='outputnode')
+
+    sources = pe.Node(
+        BIDSURI(
+            numinputs=1,
+            dataset_links=config.execution.dataset_links,
+            out_dir=str(output_dir),
+        ),
+        name='sources',
+    )
+
+    ds_boldmask = pe.Node(
+        DerivativesDataSink(
+            source_file=source_file,
+            base_directory=output_dir,
+            desc=desc,
+            suffix='mask',
+            compress=True,
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+        ),
+        name='ds_boldmask',
+        run_without_submitting=True,
+    )
+
+    workflow.connect([
+        (inputnode, sources, [('source_files', 'in1')]),
+        (inputnode, ds_boldmask, [
+            ('boldmask', 'in_file'),
+        ]),
+        (sources, ds_boldmask, [('out', 'Sources')]),
+        (ds_boldmask, outputnode, [('out_file', 'boldmask')]),
+    ])  # fmt:skip
+
+    return workflow
