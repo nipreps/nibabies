@@ -21,6 +21,7 @@
 #     https://www.nipreps.org/community/licensing/
 #
 import os
+import re
 import typing as ty
 
 import nibabel as nb
@@ -55,7 +56,7 @@ from nibabies.workflows.bold.outputs import (
     init_ds_registration_wf,
     init_func_fit_reports_wf,
 )
-from nibabies.workflows.bold.reference import init_raw_boldref_wf
+from nibabies.workflows.bold.reference import init_raw_boldref_wf, init_validation_and_dummies_wf
 from nibabies.workflows.bold.registration import init_bold_reg_wf
 from nibabies.workflows.bold.stc import init_bold_stc_wf
 from nibabies.workflows.bold.t2s import init_bold_t2s_wf
@@ -399,19 +400,20 @@ def init_bold_fit_wf(
         hmc_boldref_wf.inputs.inputnode.dummy_scans = config.workflow.dummy_scans
 
         ds_hmc_boldref_wf = init_ds_boldref_wf(
-            output_dir=config.execution.output_dir,
+            source_file=bold_file,
+            output_dir=config.execution.nibabies_dir,
             desc='hmc',
             name='ds_hmc_boldref_wf',
         )
         ds_hmc_boldref_wf.inputs.inputnode.source_files = [bold_file]
 
         workflow.connect([
+            (hmc_boldref_wf, ds_hmc_boldref_wf, [('outputnode.boldref', 'inputnode.boldref')]),
+            (ds_hmc_boldref_wf, hmcref_buffer, [('outputnode.boldref', 'boldref')]),
             (hmc_boldref_wf, hmcref_buffer, [
                 ('outputnode.bold_file', 'bold_file'),
-                ('outputnode.boldref', 'boldref'),
                 ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (hmcref_buffer, ds_hmc_boldref_wf, [('boldref', 'inputnode.boldref')]),
             (hmc_boldref_wf, summary, [('outputnode.algo_dummy_scans', 'algo_dummy_scans')]),
             (hmc_boldref_wf, func_fit_reports_wf, [
                 ('outputnode.validation_report', 'inputnode.validation_report'),
@@ -423,14 +425,16 @@ def init_bold_fit_wf(
     else:
         config.loggers.workflow.info('Found HMC boldref - skipping Stage 1')
 
-        validate_bold = pe.Node(ValidateImage(), name='validate_bold')
-        validate_bold.inputs.in_file = bold_file
-
-        hmcref_buffer.inputs.boldref = precomputed['hmc_boldref']
+        validation_and_dummies_wf = init_validation_and_dummies_wf(bold_file=bold_file)
 
         workflow.connect([
-            (validate_bold, hmcref_buffer, [('out_file', 'bold_file')]),
-            (validate_bold, func_fit_reports_wf, [('out_report', 'inputnode.validation_report')]),
+            (validation_and_dummies_wf, hmcref_buffer, [
+                ('outputnode.bold_file', 'bold_file'),
+                ('outputnode.skip_vols', 'dummy_scans'),
+            ]),
+            (validation_and_dummies_wf, func_fit_reports_wf, [
+                ('outputnode.validation_report', 'inputnode.validation_report'),
+            ]),
             (hmcref_buffer, hmc_boldref_source_buffer, [('boldref', 'in_file')]),
         ])  # fmt:skip
 
@@ -441,7 +445,10 @@ def init_bold_fit_wf(
             name='bold_hmc_wf', mem_gb=mem_gb['filesize'], omp_nthreads=omp_nthreads
         )
 
-        ds_hmc_wf = init_ds_hmc_wf(output_dir=config.execution.output_dir)
+        ds_hmc_wf = init_ds_hmc_wf(
+            source_file=bold_file,
+            output_dir=config.execution.nibabies_dir,
+        )
         ds_hmc_wf.inputs.inputnode.source_files = [bold_file]
 
         workflow.connect([
@@ -454,7 +461,6 @@ def init_bold_fit_wf(
         ])  # fmt:skip
     else:
         config.loggers.workflow.info('Found motion correction transforms - skipping Stage 2')
-        hmc_buffer.inputs.hmc_xforms = hmc_xforms
 
     # Stage 3: Register fieldmap to boldref and reconstruct in BOLD space
     if fieldmap_id:
@@ -503,23 +509,31 @@ def init_bold_fit_wf(
             )
 
             itk_mat2txt = pe.Node(ConcatenateXFMs(out_fmt='itk'), name='itk_mat2txt')
+            fmapreg_source_files = pe.Node(
+                niu.Merge(2), name='fmapreg_source_files', run_without_submitting=True
+            )
 
             ds_fmapreg_wf = init_ds_registration_wf(
-                bids_root=layout.root,
+                source_file=bold_file,
                 output_dir=config.execution.nibabies_dir,
                 source='boldref',
-                dest=fieldmap_id.replace('_', ''),
+                dest=re.sub(r'[^a-zA-Z0-9]', '', fieldmap_id),
+                desc='fmap',
                 name='ds_fmapreg_wf',
             )
-            ds_fmapreg_wf.inputs.inputnode.source_files = [bold_file]
 
             workflow.connect([
                 (fmap_select, fmapreg_wf, [
                     ('fmap_ref', 'inputnode.fmap_ref'),
                     ('fmap_mask', 'inputnode.fmap_mask'),
                 ]),
+                (fmapref_buffer, fmapreg_source_files, [('out', 'in1')]),
+                (fmap_select, fmapreg_source_files, [
+                    ('fmap_ref', 'in2'),
+                ]),
                 (fmapreg_wf, itk_mat2txt, [('outputnode.target2fmap_xfm', 'in_xfms')]),
                 (itk_mat2txt, ds_fmapreg_wf, [('out_xfm', 'inputnode.xform')]),
+                (fmapreg_source_files, ds_fmapreg_wf, [('out', 'inputnode.source_files')]),
                 (ds_fmapreg_wf, fmapreg_buffer, [('outputnode.xform', 'boldref2fmap_xfm')]),
             ])  # fmt:skip
         else:
@@ -539,6 +553,7 @@ def init_bold_fit_wf(
                 name='raw_sbref_wf',
                 bold_file=sbref_files[0],
                 multiecho=len(sbref_files) > 1,
+                ref_frame_start=config.workflow.hmc_bold_frame,
             )
             workflow.connect(raw_sbref_wf, 'outputnode.boldref', fmapref_buffer, 'sbref_files')
 
@@ -550,7 +565,6 @@ def init_bold_fit_wf(
 
         ds_coreg_boldref_wf = init_ds_boldref_wf(
             source_file=bold_file,
-            bids_root=layout.root,
             output_dir=config.execution.nibabies_dir,
             desc='coreg',
             name='ds_coreg_boldref_wf',
@@ -576,8 +590,10 @@ def init_bold_fit_wf(
                 DistortionParameters(
                     metadata=metadata,
                     in_file=bold_file,
-                    fallback=config.workflow.fallback_total_readout_time,
-                )
+                    # TODO: Estimate fallback readout time
+                ),
+                name='distortion_params',
+                run_without_submitting=True,
             )
             unwarp_boldref = pe.Node(
                 ResampleSeries(jacobian=jacobian),
@@ -641,18 +657,11 @@ def init_bold_fit_wf(
 
     if not boldref2anat_xform:
         config.loggers.workflow.info('Stage 5: Adding coregistration workflow')
-        use_bbr = (
-            True
-            if 'bbr' in config.workflow.force
-            else False
-            if 'no-bbr' in config.workflow.force
-            else None
-        )
         # calculate BOLD registration to T1w
         bold_reg_wf = init_bold_reg_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
             bold2anat_init=config.workflow.bold2anat_init,
-            use_bbr=use_bbr,
+            use_bbr=config.workflow.use_bbr,
             freesurfer=use_fs,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb['resampled'],
@@ -682,7 +691,7 @@ def init_bold_fit_wf(
             # Incomplete sources
             (regref_buffer, ds_boldreg_wf, [('boldref', 'inputnode.source_files')]),
             (bold_reg_wf, ds_boldreg_wf, [
-                ('outputnode.itk_bold_to_t1', 'inputnode.xform'),
+                ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
                 ('outputnode.metadata', 'inputnode.metadata'),
             ]),
             (ds_boldreg_wf, outputnode, [('outputnode.xform', 'boldref2anat_xfm')]),
