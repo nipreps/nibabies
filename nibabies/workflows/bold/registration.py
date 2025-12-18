@@ -15,7 +15,7 @@ import logging
 import os
 import typing as ty
 
-from nipype.interfaces import c3, fsl
+from nipype.interfaces import fsl
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
@@ -107,6 +107,8 @@ def init_bold_reg_wf(
         Affine transform from anatomical space to BOLD space (ITK format)
     fallback
         Boolean indicating whether BBR was rejected (mri_coreg registration returned)
+    metadata
+        Output metadata from the registration workflow
 
     See Also
     --------
@@ -133,7 +135,9 @@ def init_bold_reg_wf(
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['itk_bold_to_anat', 'itk_anat_to_bold', 'fallback']),
+        niu.IdentityInterface(
+            fields=['itk_bold_to_anat', 'itk_anat_to_bold', 'fallback', 'metadata']
+        ),
         name='outputnode',
     )
 
@@ -168,6 +172,7 @@ def init_bold_reg_wf(
             ('outputnode.itk_bold_to_anat', 'itk_bold_to_anat'),
             ('outputnode.itk_anat_to_bold', 'itk_anat_to_bold'),
             ('outputnode.fallback', 'fallback'),
+            ('outputnode.metadata', 'metadata'),
         ]),
     ])  # fmt:skip
 
@@ -249,12 +254,15 @@ def init_bbreg_wf(
         Affine transform from anatomical space to BOLD space (ITK format)
     fallback
         Boolean indicating whether BBR was rejected (mri_coreg registration returned)
+    metadata
+        Output metadata from the registration workflow
 
     """
     from nipype.interfaces.freesurfer import BBRegister
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.nitransforms import ConcatenateXFMs
     from niworkflows.interfaces.patches import FreeSurferSource
+    from niworkflows.interfaces.utility import DictMerge
 
     from nibabies.interfaces.patches import MRICoreg
 
@@ -291,7 +299,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         name='inputnode',
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(['itk_bold_to_anat', 'itk_anat_to_bold', 'fallback']),
+        niu.IdentityInterface(['itk_bold_to_anat', 'itk_anat_to_bold', 'fallback', 'metadata']),
         name='outputnode',
     )
 
@@ -339,6 +347,12 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
     merge_ltas = pe.Node(niu.Merge(2), name='merge_ltas', run_without_submitting=True)
     concat_xfm = pe.Node(ConcatenateXFMs(inverse=True), name='concat_xfm')
 
+    # Set up GeneratedBy metadata and add a merge node for cost, if available
+    gen_by = pe.Node(niu.Merge(2), run_without_submitting=True, name='gen_by')
+    select_gen = pe.Node(niu.Select(index=0), run_without_submitting=True, name='select_gen')
+    metadata = pe.Node(niu.Merge(2), run_without_submitting=True, name='metadata')
+    merge_meta = pe.Node(DictMerge(), run_without_submitting=True, name='merge_meta')
+
     workflow.connect([
         (inputnode, merge_ltas, [('fsnative2anat_xfm', 'in2')]),
         # Wire up the co-registration alternatives
@@ -347,10 +361,20 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         (merge_ltas, concat_xfm, [('out', 'in_xfms')]),
         (concat_xfm, outputnode, [('out_xfm', 'itk_bold_to_anat')]),
         (concat_xfm, outputnode, [('out_inv', 'itk_anat_to_bold')]),
+        # Wire up the metadata alternatives
+        (gen_by, select_gen, [('out', 'inlist')]),
+        (select_gen, metadata, [('out', 'in1')]),
+        (metadata, merge_meta, [('out', 'in_dicts')]),
+        (merge_meta, outputnode, [('out_dict', 'metadata')]),
     ])  # fmt:skip
 
     # Do not initialize with header, use mri_coreg
     if bold2anat_init != 'header':
+        gen_by.inputs.in2 = {
+            'GeneratedBy': [
+                {'Name': 'mri_coreg', 'Version': mri_coreg.interface.version or '<unknown>'}
+            ]
+        }
         workflow.connect([
             (inputnode, mri_coreg, [('subjects_dir', 'subjects_dir'),
                                     ('subject_id', 'subject_id'),
@@ -380,6 +404,26 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
                                  ('subject_id', 'subject_id'),
                                  ('in_file', 'source_file')]),
         (bbregister, transforms, [('out_lta_file', 'in1')]),
+    ])  # fmt:skip
+
+    gen_by.inputs.in1 = {
+        'GeneratedBy': [
+            {'Name': 'bbregister', 'Version': bbregister.interface.version or '<unknown>'}
+        ]
+    }
+
+    costs = pe.Node(niu.Merge(2), run_without_submitting=True, name='costs')
+    select_cost = pe.Node(niu.Select(index=0), run_without_submitting=True, name='select_cost')
+    read_cost = pe.Node(niu.Function(function=_read_cost), name='read_cost')
+
+    workflow.connect([
+        (bbregister, costs, [
+            ('min_cost_file', 'in1'),
+            ('init_cost_file', 'in2'),
+        ]),
+        (costs, select_cost, [('out', 'inlist')]),
+        (select_cost, read_cost, [('out', 'cost_file')]),
+        (read_cost, metadata, [('out', 'in2')]),
     ])  # fmt:skip
 
     # Short-circuit workflow building, use boundary-based registration
@@ -475,12 +519,15 @@ def init_fsl_bbr_wf(
         Affine transform from anatomical space to BOLD space (ITK format)
     fallback
         Boolean indicating whether BBR was rejected (rigid FLIRT registration returned)
+    metadata
+        Output metadata from the registration workflow
 
     """
     from nipype.interfaces.freesurfer import MRICoreg
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.freesurfer import PatchedLTAConvert as LTAConvert
     from niworkflows.interfaces.nibabel import ApplyMask
+    from niworkflows.interfaces.nitransforms import ConvertAffine
     from niworkflows.utils.images import dseg_label as _dseg_label
 
     workflow = Workflow(name=name)
@@ -514,7 +561,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         name='inputnode',
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(['itk_bold_to_anat', 'itk_anat_to_bold', 'fallback']),
+        niu.IdentityInterface(['itk_bold_to_anat', 'itk_anat_to_bold', 'fallback', 'metadata']),
         name='outputnode',
     )
 
@@ -533,6 +580,9 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
             'T2w intermediate for FSL is not implemented, registering with T1w instead.'
         )
 
+    metadata = pe.Node(niu.Merge(2), run_without_submitting=True, name='metadata')
+    select_meta = pe.Node(niu.Select(index=0), run_without_submitting=True, name='select_meta')
+
     # Mask T1w_preproc with T1w_mask to make T1w_brain
     mask_anat_brain = pe.Node(ApplyMask(), name='mask_anat_brain')
 
@@ -543,51 +593,46 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         mem_gb=5,
     )
 
-    lta_to_fsl = pe.Node(LTAConvert(out_fsl=True), name='lta_to_fsl', mem_gb=DEFAULT_MEMORY_MIN_GB)
-
-    invt_bbr = pe.Node(
-        fsl.ConvertXFM(invert_xfm=True), name='invt_bbr', mem_gb=DEFAULT_MEMORY_MIN_GB
-    )
-
-    # BOLD to anat transform matrix is from fsl, using c3 tools to convert to
-    # something ANTs will like.
-    fsl2itk_fwd = pe.Node(
-        c3.C3dAffineTool(fsl2ras=True, itk_transform=True),
-        name='fsl2itk_fwd',
+    xfm2itk = pe.Node(
+        ConvertAffine(in_fmt='fsl', out_fmt='itk', inverse=True),
+        name='xfm2itk',
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
-    fsl2itk_inv = pe.Node(
-        c3.C3dAffineTool(fsl2ras=True, itk_transform=True),
-        name='fsl2itk_inv',
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-    # fmt:off
+
+    metadata.inputs.in2 = {
+        'GeneratedBy': [
+            {'Name': 'mri_coreg', 'Version': mri_coreg.interface.version or '<unknown>'}
+        ]
+    }
+
     workflow.connect([
-        (inputnode, mask_anat_brain, [('anat_preproc', 'in_file'),
-                                      ('anat_mask', 'in_mask')]),
+        (inputnode, mask_anat_brain, [
+            ('anat_preproc', 'in_file'),
+            ('anat_mask', 'in_mask'),
+        ]),
         (inputnode, mri_coreg, [('in_file', 'source_file')]),
-        (inputnode, fsl2itk_fwd, [('in_file', 'source_file')]),
-        (inputnode, fsl2itk_inv, [('in_file', 'reference_file')]),
+        (inputnode, xfm2itk, [('in_file', 'moving')]),
         (mask_anat_brain, mri_coreg, [('out_file', 'reference_file')]),
-        (mask_anat_brain, fsl2itk_fwd, [('out_file', 'reference_file')]),
-        (mask_anat_brain, fsl2itk_inv, [('out_file', 'source_file')]),
-        (mri_coreg, lta_to_fsl, [('out_lta_file', 'in_lta')]),
-        (invt_bbr, fsl2itk_inv, [('out_file', 'transform_file')]),
-        (fsl2itk_fwd, outputnode, [('itk_transform', 'itk_bold_to_anat')]),
-        (fsl2itk_inv, outputnode, [('itk_transform', 'itk_anat_to_bold')]),
+        (mask_anat_brain, xfm2itk, [('out_file', 'reference')]),
+        (xfm2itk, outputnode, [
+            ('out_xfm', 'itk_bold_to_anat'),
+            ('out_inv', 'itk_anat_to_bold'),
+        ]),
+        # Wire up the metadata alternatives
+        (metadata, select_meta, [('out', 'inlist')]),
+        (select_meta, outputnode, [('out', 'metadata')]),
     ])  # fmt:skip
 
     # Short-circuit workflow building, use rigid registration
     if use_bbr is False:
-        # fmt:off
-        workflow.connect([
-            (lta_to_fsl, invt_bbr, [('out_fsl', 'in_file')]),
-            (lta_to_fsl, fsl2itk_fwd, [('out_fsl', 'transform_file')]),
-        ])
-        # fmt:on
+        xfm2itk.inputs.in_fmt = 'fs'  # Override
+        workflow.connect(mri_coreg, 'out_lta_file', xfm2itk, 'in_xfm')
+
         outputnode.inputs.fallback = True
 
         return workflow
+
+    lta_to_fsl = pe.Node(LTAConvert(out_fsl=True), name='lta_to_fsl', mem_gb=DEFAULT_MEMORY_MIN_GB)
 
     flt_bbr = pe.Node(
         fsl.FLIRT(cost_func='bbr', dof=bold2anat_dof, args='-basescale 1'),
@@ -601,13 +646,18 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         # Should mostly be hit while building docs
         LOGGER.warning('FSLDIR unset - using packaged BBR schedule')
         flt_bbr.inputs.schedule = data.load('flirtsch/bbr.sch')
-    # fmt:off
+
+    metadata.inputs.in1 = {
+        'GeneratedBy': [{'Name': 'flirt', 'Version': flt_bbr.interface.version or '<unknown>'}]
+    }
+
     workflow.connect([
         (inputnode, wm_mask, [('anat_dseg', 'in_seg')]),
         (inputnode, flt_bbr, [('in_file', 'in_file')]),
+        (mri_coreg, lta_to_fsl, [('out_lta_file', 'in_lta')]),
         (lta_to_fsl, flt_bbr, [('out_fsl', 'in_matrix_file')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
+
     if sloppy is True:
         downsample = pe.Node(
             niu.Function(
@@ -615,35 +665,25 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
             ),
             name='downsample',
         )
-        # fmt:off
         workflow.connect([
             (mask_anat_brain, downsample, [('out_file', 'in_file')]),
             (wm_mask, downsample, [('out', 'in_mask')]),
             (downsample, flt_bbr, [('out_file', 'reference'),
                                    ('out_mask', 'wm_seg')]),
-        ])
-        # fmt:on
+        ])  # fmt:skip
     else:
-        # fmt:off
         workflow.connect([
             (mask_anat_brain, flt_bbr, [('out_file', 'reference')]),
             (wm_mask, flt_bbr, [('out', 'wm_seg')]),
-        ])
-        # fmt:on
+        ])  # fmt:skip
 
     # Short-circuit workflow building, use boundary-based registration
     if use_bbr is True:
-        # fmt:off
-        workflow.connect([
-            (flt_bbr, invt_bbr, [('out_matrix_file', 'in_file')]),
-            (flt_bbr, fsl2itk_fwd, [('out_matrix_file', 'transform_file')]),
-        ])
-        # fmt:on
+        workflow.connect(flt_bbr, 'out_matrix_file', xfm2itk, 'in_xfm')
         outputnode.inputs.fallback = False
 
         return workflow
 
-    # Reached only if use_bbr is None
     transforms = pe.Node(niu.Merge(2), run_without_submitting=True, name='transforms')
 
     compare_transforms = pe.Node(niu.Function(function=compare_xforms), name='compare_transforms')
@@ -651,7 +691,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
     select_transform = pe.Node(niu.Select(), run_without_submitting=True, name='select_transform')
 
     fsl_to_lta = pe.MapNode(LTAConvert(out_lta=True), iterfield=['in_fsl'], name='fsl_to_lta')
-    # fmt:off
+
     workflow.connect([
         (flt_bbr, transforms, [('out_matrix_file', 'in1')]),
         (lta_to_fsl, transforms, [('out_fsl', 'in2')]),
@@ -664,10 +704,10 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         # Select output transform
         (transforms, select_transform, [('out', 'inlist')]),
         (compare_transforms, select_transform, [('out', 'index')]),
-        (select_transform, invt_bbr, [('out', 'in_file')]),
-        (select_transform, fsl2itk_fwd, [('out', 'transform_file')]),
-    ])
-    # fmt:on
+        (select_transform, xfm2itk, [('out', 'in_xfm')]),
+        # Select metadata
+        (compare_transforms, select_meta, [('out', 'index')]),
+    ])  # fmt:skip
 
     return workflow
 
@@ -757,3 +797,10 @@ def _conditional_downsampling(in_file, in_mask, zoom_th=4.0):
     nb.Nifti1Image(newmaskdata, newmask.affine, hdr).to_filename(out_mask)
 
     return str(out_file), str(out_mask)
+
+
+def _read_cost(cost_file) -> dict[str, float]:
+    """Read a cost from a file."""
+    # Cost file contains mincost, WM intensity, Ctx intensity, Pct Contrast
+    with open(cost_file) as fobj:
+        return {'FinalCost': float(fobj.read().split()[0])}
