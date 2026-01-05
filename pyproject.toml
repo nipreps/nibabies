@@ -26,7 +26,7 @@ dependencies = [
     "nitime",
     "nitransforms >= 25.0.1",
     #"niworkflows >= 1.14.1",
-    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@add/nitransforms-convertaffine",
+    "niworkflows @ git+https://github.com/nipreps/niworkflows.git@master",
     "numpy >= 2.0",
     "packaging",
     "pandas < 3",
