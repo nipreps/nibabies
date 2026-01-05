@@ -2,12 +2,11 @@
 
 import asyncio
 import os
-from collections.abc import Callable
 from functools import partial
-from typing import TypeVar
 
 import nibabel as nb
 import nitransforms as nt
+import nitransforms.resampling
 import numpy as np
 from nipype.interfaces.base import (
     File,
@@ -22,15 +21,8 @@ from scipy.sparse import hstack as sparse_hstack
 from sdcflows.transform import grid_bspline_weights
 from sdcflows.utils.tools import ensure_positive_cosines
 
-from nibabies.utils.transforms import load_transforms
-
-R = TypeVar('R')
-
-
-async def worker(job: Callable[[], R], semaphore: asyncio.Semaphore) -> R:
-    async with semaphore:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, job)
+from ..utils.asynctools import worker
+from ..utils.transforms import load_transforms
 
 
 class ResampleSeriesInputSpec(TraitedSpec):
@@ -38,7 +30,6 @@ class ResampleSeriesInputSpec(TraitedSpec):
     ref_file = File(exists=True, mandatory=True, desc='File to resample in_file to')
     transforms = InputMultiObject(
         File(exists=True),
-        mandatory=True,
         desc='Transform files, from in_file to ref_file (image mode)',
     )
     inverse = InputMultiObject(
@@ -100,7 +91,8 @@ class ResampleSeries(SimpleInterface):
 
         nvols = source.shape[3] if source.ndim > 3 else 1
 
-        transforms = load_transforms(self.inputs.transforms, self.inputs.inverse)
+        # No transforms appear Undefined, pass as empty list
+        transforms = load_transforms(self.inputs.transforms or [], self.inputs.inverse)
 
         pe_dir = self.inputs.pe_dir
         ro_time = self.inputs.ro_time
@@ -199,6 +191,13 @@ class ReconstructFieldmap(SimpleInterface):
 class DistortionParametersInputSpec(TraitedSpec):
     in_file = File(exists=True, desc='EPI image corresponding to the metadata')
     metadata = traits.Dict(mandatory=True, desc='metadata corresponding to the inputs')
+    fallback = traits.Either(
+        None,
+        'estimated',
+        traits.Float,
+        usedefault=True,
+        desc='Fallback value for missing metadata',
+    )
 
 
 class DistortionParametersOutputSpec(TraitedSpec):
@@ -223,6 +222,8 @@ class DistortionParameters(SimpleInterface):
             self._results['readout_time'] = get_trt(
                 self.inputs.metadata,
                 self.inputs.in_file or None,
+                use_estimate=self.inputs.fallback == 'estimated',
+                fallback=self.inputs.fallback if isinstance(self.inputs.fallback, float) else None,
             )
             self._results['pe_direction'] = self.inputs.metadata['PhaseEncodingDirection']
         except (KeyError, ValueError):
@@ -686,9 +687,6 @@ def reconstruct_fieldmap(
             target.__class__(target.dataobj, projected_affine, target.header),
         )
     else:
-        # Below if statement was taken from fmriprep pull request #3439,
-        # along with the same explanation:
-        #
         # Hack. Sometimes the reference array is rotated relative to the fieldmap
         # and coefficient grids. As far as I know, coefficients are always RAS,
         # but good to check before doing this.
@@ -717,7 +715,7 @@ def reconstruct_fieldmap(
     )
 
     if not direct:
-        fmap_img = nt.apply(transforms, fmap_img, reference=target)
+        fmap_img = nt.resampling.apply(transforms, fmap_img, reference=target)
 
     fmap_img.header.set_intent('estimate', name='fieldmap Hz')
     fmap_img.header.set_data_dtype('float32')

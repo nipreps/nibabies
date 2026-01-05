@@ -300,7 +300,7 @@ fieldmap metadata, then the transform will be given an auto-generated name
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
-    sub-<subject_label>_[specifiers]_from-boldref_to-auto000XX_mode-image_xfm.txt
+    sub-<subject_label>_[specifiers]_from-boldref_to-auto000XX_mode-image_desc-fmap_xfm.txt
 ```
 
 :::{note}

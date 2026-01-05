@@ -411,6 +411,7 @@ def init_func_fit_reports_wf(
 
 def init_ds_boldref_wf(
     *,
+    source_file: str,
     output_dir,
     desc: str,
     name='ds_boldref_wf',
@@ -427,13 +428,14 @@ def init_ds_boldref_wf(
         BIDSURI(
             numinputs=1,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.output_dir.absolute()),
+            out_dir=str(output_dir),
         ),
         name='sources',
     )
 
     ds_boldref = pe.Node(
         DerivativesDataSink(
+            source_file=source_file,
             base_directory=output_dir,
             desc=desc,
             suffix='boldref',
@@ -444,30 +446,29 @@ def init_ds_boldref_wf(
         run_without_submitting=True,
     )
 
-    # fmt:off
     workflow.connect([
         (inputnode, sources, [('source_files', 'in1')]),
-        (inputnode, ds_boldref, [('boldref', 'in_file'),
-                                 ('source_files', 'source_file')]),
+        (inputnode, ds_boldref, [('boldref', 'in_file')]),
         (sources, ds_boldref, [('out', 'Sources')]),
         (ds_boldref, outputnode, [('out_file', 'boldref')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
 
     return workflow
 
 
 def init_ds_registration_wf(
     *,
+    source_file: str,
     output_dir: str,
     source: str,
     dest: str,
     name: str,
+    desc: str | None = None,
 ) -> pe.Workflow:
     workflow = pe.Workflow(name=name)
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['source_files', 'xform']),
+        niu.IdentityInterface(fields=['source_files', 'xform', 'metadata']),
         name='inputnode',
     )
     outputnode = pe.Node(niu.IdentityInterface(fields=['xform']), name='outputnode')
@@ -476,15 +477,17 @@ def init_ds_registration_wf(
         BIDSURI(
             numinputs=1,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.output_dir.absolute()),
+            out_dir=str(output_dir),
         ),
         name='sources',
     )
 
     ds_xform = pe.Node(
         DerivativesDataSink(
+            source_file=source_file,
             base_directory=output_dir,
             mode='image',
+            desc=desc,
             suffix='xfm',
             extension='.txt',
             dismiss_entities=dismiss_entities(['part']),
@@ -495,21 +498,22 @@ def init_ds_registration_wf(
         mem_gb=DEFAULT_MEMORY_MIN_GB,
     )
 
-    # fmt:off
     workflow.connect([
         (inputnode, sources, [('source_files', 'in1')]),
-        (inputnode, ds_xform, [('xform', 'in_file'),
-                               ('source_files', 'source_file')]),
+        (inputnode, ds_xform, [
+            ('xform', 'in_file'),
+            ('metadata', 'meta_dict'),
+        ]),
         (sources, ds_xform, [('out', 'Sources')]),
         (ds_xform, outputnode, [('out_file', 'xform')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
 
     return workflow
 
 
 def init_ds_hmc_wf(
     *,
+    source_file: str,
     output_dir,
     name='ds_hmc_wf',
 ) -> pe.Workflow:
@@ -525,13 +529,14 @@ def init_ds_hmc_wf(
         BIDSURI(
             numinputs=1,
             dataset_links=config.execution.dataset_links,
-            out_dir=str(config.execution.output_dir.absolute()),
+            out_dir=str(output_dir),
         ),
         name='sources',
     )
 
     ds_xforms = pe.Node(
         DerivativesDataSink(
+            source_file=source_file,
             base_directory=output_dir,
             desc='hmc',
             suffix='xfm',
@@ -544,15 +549,12 @@ def init_ds_hmc_wf(
         run_without_submitting=True,
     )
 
-    # fmt:off
     workflow.connect([
         (inputnode, sources, [('source_files', 'in1')]),
-        (inputnode, ds_xforms, [('xforms', 'in_file'),
-                                ('source_files', 'source_file')]),
+        (inputnode, ds_xforms, [('xforms', 'in_file')]),
         (sources, ds_xforms, [('out', 'Sources')]),
         (ds_xforms, outputnode, [('out_file', 'xforms')]),
-    ])
-    # fmt:on
+    ])  # fmt:skip
 
     return workflow
 
@@ -962,5 +964,55 @@ def init_bold_preproc_report_wf(
         (bold_rpt, ds_report_bold, [('out_report', 'in_file')]),
     ])
     # fmt:on
+
+    return workflow
+
+
+def init_ds_boldmask_wf(
+    *,
+    source_file: str,
+    output_dir,
+    desc: str,
+    name='ds_boldmask_wf',
+) -> pe.Workflow:
+    """Write out a BOLD mask."""
+    workflow = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['source_files', 'boldmask']),
+        name='inputnode',
+    )
+    outputnode = pe.Node(niu.IdentityInterface(fields=['boldmask']), name='outputnode')
+
+    sources = pe.Node(
+        BIDSURI(
+            numinputs=1,
+            dataset_links=config.execution.dataset_links,
+            out_dir=str(output_dir),
+        ),
+        name='sources',
+    )
+
+    ds_boldmask = pe.Node(
+        DerivativesDataSink(
+            source_file=source_file,
+            base_directory=output_dir,
+            desc=desc,
+            suffix='mask',
+            compress=True,
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+        ),
+        name='ds_boldmask',
+        run_without_submitting=True,
+    )
+
+    workflow.connect([
+        (inputnode, sources, [('source_files', 'in1')]),
+        (inputnode, ds_boldmask, [
+            ('boldmask', 'in_file'),
+        ]),
+        (sources, ds_boldmask, [('out', 'Sources')]),
+        (ds_boldmask, outputnode, [('out_file', 'boldmask')]),
+    ])  # fmt:skip
 
     return workflow
