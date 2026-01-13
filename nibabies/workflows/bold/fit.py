@@ -102,6 +102,7 @@ def init_bold_fit_wf(
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
     jacobian: bool = False,
+    run_registration: bool = True,
     omp_nthreads: int = 1,
     name: str = 'bold_fit_wf',
 ) -> pe.Workflow:
@@ -655,7 +656,7 @@ def init_bold_fit_wf(
             (skullstrip_precomp_ref_wf, regref_buffer, [('outputnode.mask_file', 'boldmask')])
         ])  # fmt:skip
 
-    if not boldref2anat_xform:
+    if run_registration and not boldref2anat_xform:
         config.loggers.workflow.info('Stage 5: Adding coregistration workflow')
         # calculate BOLD registration to T1w
         bold_reg_wf = init_bold_reg_wf(

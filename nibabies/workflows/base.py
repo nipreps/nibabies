@@ -65,7 +65,6 @@ from nibabies.workflows.anatomical.fit import (
     init_infant_anat_fit_wf,
     init_infant_single_anat_fit_wf,
 )
-from nibabies.workflows.bold.fit import init_bold_fit_wf
 
 LOGGER = config.loggers.workflow
 
@@ -712,10 +711,14 @@ tasks and sessions), the following preprocessing was performed.
             )
         config.workflow.bold2anat_init = 't2w' if has_t2w else 't1w'
 
-    bold_fit_wfs = {}
+    # Collect BOLD run information for the bundled session workflow
+    precomputed_list = []
+    fieldmap_id_list = []
+
     for bold_series in bold_runs:
         bold_file = bold_series[0]
-        fieldmap_id = estimator_map.get(bold_file)
+        fmap_id = estimator_map.get(bold_file)
+        fieldmap_id_list.append(fmap_id)
 
         functional_cache = {}
         if config.execution.derivatives:
@@ -729,7 +732,7 @@ tasks and sessions), the following preprocessing was performed.
                     collect_functional_derivatives(
                         derivatives_dir=deriv_dir,
                         entities=entities,
-                        fieldmap_id=fieldmap_id,
+                        fieldmap_id=fmap_id,
                     )
                 )
 
@@ -747,125 +750,81 @@ tasks and sessions), the following preprocessing was performed.
                     if config.execution.output_layout == 'multiverse'
                     else None,
                 )
+        precomputed_list.append(functional_cache)
 
-        # check if boldref is already present
-        # bold_wf = init_bold_wf(
-        #     reference_anat=reference_anat,
-        #     bold_series=bold_series,
-        #     precomputed=functional_cache,
-        #     fieldmap_id=fieldmap_id,
-        #     spaces=spaces,
-        # )
+    # Initialize the bundled BOLD session workflow
+    bold_session_wf = init_bold_session_wf(
+        bold_runs=bold_runs,
+        precomputed=precomputed_list,
+        fieldmap_id=fieldmap_id_list,
+        spaces=spaces,
+        reference_anat=reference_anat,
+        omp_nthreads=omp_nthreads,
+    )
+    bold_session_wf.__desc__ = func_pre_desc
 
-        # HMC + BOLD run sbref (if subject level not present)
+    workflow.connect([
+        (anat_fit_wf, bold_session_wf, [
+            ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+            ('outputnode.anat_mask', 'inputnode.anat_mask'),
+            ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+            ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+            ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+            ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+            ('outputnode.subject_id', 'inputnode.subject_id'),
+            ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+            ('outputnode.white', 'inputnode.white'),
+            ('outputnode.pial', 'inputnode.pial'),
+            ('outputnode.midthickness', 'inputnode.midthickness'),
+            ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
+            (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
+        ]),
+    ])  # fmt:skip
 
-        bold_fit_wf = init_bold_fit_wf(
-            bold_series=bold_series,
-            reference_anat=reference_anat,
-            precomputed=functional_cache,
-            fieldmap_id=fieldmap_id,
-            omp_nthreads=omp_nthreads,
-        )
-
+    # Connect fieldmap outputs if available
+    if fmap_estimators:
         workflow.connect([
-            (anat_fit_wf, bold_fit_wf, [
-                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
-                ('outputnode.anat_mask', 'inputnode.anat_mask'),
-                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-                ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+            (fmap_wf, bold_session_wf, [
+                ('outputnode.fmap', 'inputnode.fmap'),
+                ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
+                ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
+                ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
+                ('outputnode.fmap_id', 'inputnode.fmap_id'),
+                ('outputnode.method', 'inputnode.sdc_method'),
             ]),
         ])  # fmt:skip
-        if fieldmap_id:
+
+    if config.workflow.level == 'full':
+        if template_iterator_wf is not None:
             workflow.connect([
-                (fmap_wf, bold_fit_wf, [
-                    ('outputnode.fmap', 'inputnode.fmap'),
-                    ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
-                    ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
-                    ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
-                    ('outputnode.fmap_id', 'inputnode.fmap_id'),
-                    ('outputnode.method', 'inputnode.sdc_method'),
+                (template_iterator_wf, bold_session_wf, [
+                    ('outputnode.space', 'inputnode.std_space'),
+                    ('outputnode.resolution', 'inputnode.std_resolution'),
+                    ('outputnode.cohort', 'inputnode.std_cohort'),
+                    ('outputnode.std_t1w', 'inputnode.std_t1w'),
+                    ('outputnode.std_mask', 'inputnode.std_mask'),
+                    ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ]),
             ])  # fmt:skip
 
-        # Outputs -------
-        # 'dummy_scans',
-        # 'hmc_boldref',
-        # 'coreg_boldref',
-        # 'bold_mask',
-        # 'motion_xfm',
-        # 'boldref2anat_xfm',
-        # 'boldref2fmap_xfm',
-        # 'movpar_file',
-        # 'rmsd_file',
-
-        if bold_wf is None:
-            continue
-
-        bold_ref_wfs[bold_file] = bold_wf
-
-        bold_wf.__desc__ = func_pre_desc + (bold_wf.__desc__ or '')
-
-        workflow.connect([
-            (anat_fit_wf, bold_wf, [
-                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
-                ('outputnode.anat_mask', 'inputnode.anat_mask'),
-                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-                ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                ('outputnode.white', 'inputnode.white'),
-                ('outputnode.pial', 'inputnode.pial'),
-                ('outputnode.midthickness', 'inputnode.midthickness'),
-                ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
-                (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
-            ]),
-        ])  # fmt:skip
-        if fieldmap_id:
+        if select_MNIInfant_xfm is not None:
             workflow.connect([
-                (fmap_wf, bold_wf, [
-                    ('outputnode.fmap', 'inputnode.fmap'),
-                    ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
-                    ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
-                    ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
-                    ('outputnode.fmap_id', 'inputnode.fmap_id'),
-                    ('outputnode.method', 'inputnode.sdc_method'),
+                (select_MNIInfant_xfm, bold_session_wf, [
+                    ('std2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
+                    ('anat2std_xfm', 'inputnode.anat2mniinfant_xfm')
                 ]),
             ])  # fmt:skip
 
-        if config.workflow.level == 'full':
-            if template_iterator_wf is not None:
-                workflow.connect([
-                    (template_iterator_wf, bold_wf, [
-                        ('outputnode.space', 'inputnode.std_space'),
-                        ('outputnode.resolution', 'inputnode.std_resolution'),
-                        ('outputnode.cohort', 'inputnode.std_cohort'),
-                        ('outputnode.std_t1w', 'inputnode.std_t1w'),
-                        ('outputnode.std_mask', 'inputnode.std_mask'),
-                        ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
-                    ]),
-                ])  # fmt:skip
-
-            if select_MNIInfant_xfm is not None:
-                workflow.connect([
-                    (select_MNIInfant_xfm, bold_wf, [
-                        ('std2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
-                        ('anat2std_xfm', 'inputnode.anat2mniinfant_xfm')
-                    ]),
-                ])  # fmt:skip
-
-            if config.workflow.cifti_output:
-                workflow.connect([
-                    (anat_fit_wf, bold_wf, [
-                        ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
-                    ]),
-                    (anat_apply_wf, bold_wf, [
-                        ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
-                        ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
-                    ]),
-                ])  # fmt:skip
+        if config.workflow.cifti_output:
+            workflow.connect([
+                (anat_fit_wf, bold_session_wf, [
+                    ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
+                ]),
+                (anat_apply_wf, bold_session_wf, [
+                    ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
+                    ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+                ]),
+            ])  # fmt:skip
 
     return clean_datasinks(workflow)
 
