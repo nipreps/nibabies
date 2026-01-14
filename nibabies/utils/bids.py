@@ -359,4 +359,4 @@ def age_to_months(age: int | float, units: ty.Literal['weeks', 'months', 'years'
         age *= WEEKS_TO_MONTH
     elif units == 'years':
         age *= YEARS_TO_MONTH
-    return int(round(age))
+    return round(age)
