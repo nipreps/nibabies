@@ -850,7 +850,7 @@ def hash_config(
     conf: dict[str, ty.Any],
     *,
     fields_required: dict[str, list[str]] = DEFAULT_CONFIG_HASH_FIELDS,
-    version: str = None,
+    version: str | None = None,
     digest_size: int = 4,
 ) -> str:
     """

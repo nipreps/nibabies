@@ -37,7 +37,11 @@ class ReorientImage(SimpleInterface):
 
 
 def reorient_image(
-    in_file: str, *, target_file: str = None, target_ornt: str = None, newpath: str = None
+    in_file: str,
+    *,
+    target_file: str | None = None,
+    target_ornt: str | None = None,
+    newpath: str | None = None,
 ) -> str:
     """
     Reorient an image.
