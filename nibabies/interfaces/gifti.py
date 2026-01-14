@@ -63,7 +63,7 @@ def _mask_gifti(in_file, mask_file, *, threshold=None, metadata=None, newpath=No
     if isinstance(data, tuple):
         try:
             data = np.vstack(data)
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             raise NotImplementedError(f'Tricky GIFTI: {in_file} not supported.') from err
     else:
         data = data.T
