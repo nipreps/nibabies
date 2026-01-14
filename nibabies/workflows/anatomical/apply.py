@@ -34,7 +34,7 @@ def init_infant_anat_apply_wf(
     msm_sulc: bool,
     omp_nthreads: int,
     output_dir: str,
-    recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs', None],
+    recon_method: ty.Literal['freesurfer', 'infantfs', 'mcribs'] | None,
     reference_anat: ty.Literal['T1w', 'T2w'],
     precomputed: dict,
     spaces: 'SpatialReferences',
