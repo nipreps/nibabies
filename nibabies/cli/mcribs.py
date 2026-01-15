@@ -21,7 +21,7 @@ def _parser():
     return parser
 
 
-def main(argv: list = None):
+def main(argv: list | None = None):
     pargs = _parser().parse_args(argv)
 
     t2w_file = _check_file(pargs.t2w)

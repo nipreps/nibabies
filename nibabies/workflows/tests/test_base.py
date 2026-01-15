@@ -135,8 +135,8 @@ def _make_params(
     use_syn_sdc: str | bool = False,
     force_syn: bool = False,
     surface_recon_method: str | None = 'auto',
-    ignore: list[str] = None,
-    bids_filters: dict = None,
+    ignore: list[str] | None = None,
+    bids_filters: dict | None = None,
     norm_csf: bool = False,
     multi_step_reg: bool = True,
 ):
