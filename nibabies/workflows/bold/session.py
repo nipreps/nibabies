@@ -29,12 +29,12 @@ from niworkflow.data import load as load_nwf_data
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
 
-def init_bold_coreg_runs_wf(
+def init_coreg_bolds_wf(
     *,
     bold_runs: list[str],
     unbiased: bool = False,
     omp_nthreads: int = 1,
-    name: str = 'bold_coreg_runs_wf',
+    name: str = 'coreg_bolds_wf',
 ) -> pe.Workflow:
     """
     Register all BOLD runs of a session to a single session-reference.
@@ -77,18 +77,18 @@ def init_bold_coreg_runs_wf(
     boldref_iterable = pe.Node(niu.IdentityInterface(fields=['boldref']), name='boldref_iterable')
     boldref_iterable.iterables = [('boldref', bold_runs)]
 
-    ds_session_boldref_wf = init_ds_registration_wf(
-        name='ds_session_boldref_wf',
-        source='rboldref',  # run-boldref
-        dest='sboldref',  # session-boldref
-    )
+    # ds_session_boldref_wf = init_ds_registration_wf(
+    #     name='ds_session_boldref_wf',
+    #     source='rboldref',  # run-boldref
+    #     dest='sboldref',  # session-boldref
+    # )
 
-    boldref_join = pe.JoinNode(
-        niu.IdentityInterface(fields=['boldref2session_xfm']),
-        joinsource='boldref_iterable',
-        joinfield='boldref2session_xfm',
-        name='boldref_join',
-    )
+    # boldref_join = pe.JoinNode(
+    #     niu.IdentityInterface(fields=['boldref2session_xfm']),
+    #     joinsource='boldref_iterable',
+    #     joinfield='boldref2session_xfm',
+    #     name='boldref_join',
+    # )
 
     # Use identity matrix for single runs
     if len(bold_runs) == 1:

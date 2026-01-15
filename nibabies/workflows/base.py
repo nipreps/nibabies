@@ -65,6 +65,7 @@ from nibabies.workflows.anatomical.fit import (
     init_infant_anat_fit_wf,
     init_infant_single_anat_fit_wf,
 )
+from nibabies.workflows.bold.session import init_coreg_bolds_wf
 
 LOGGER = config.loggers.workflow
 
@@ -715,6 +716,18 @@ tasks and sessions), the following preprocessing was performed.
     precomputed_list = []
     fieldmap_id_list = []
 
+    # Common space for all BOLD runs in this session
+    coreg_bolds_wf = init_coreg_bolds_wf(
+        bold_runs=bold_runs,
+        precomputed=precomputed_list,
+        fieldmap_id=fieldmap_id_list,
+        spaces=spaces,
+        reference_anat=reference_anat,
+        omp_nthreads=omp_nthreads,
+    )
+
+    bold_wfs = {}
+
     for bold_series in bold_runs:
         bold_file = bold_series[0]
         fmap_id = estimator_map.get(bold_file)
@@ -753,7 +766,7 @@ tasks and sessions), the following preprocessing was performed.
         precomputed_list.append(functional_cache)
 
     # Initialize the bundled BOLD session workflow
-    bold_session_wf = init_bold_session_wf(
+    fit_boldref_wf = init_fit_boldref_wf(
         bold_runs=bold_runs,
         precomputed=precomputed_list,
         fieldmap_id=fieldmap_id_list,
@@ -761,10 +774,10 @@ tasks and sessions), the following preprocessing was performed.
         reference_anat=reference_anat,
         omp_nthreads=omp_nthreads,
     )
-    bold_session_wf.__desc__ = func_pre_desc
+    fit_boldref_wf.__desc__ = func_pre_desc
 
     workflow.connect([
-        (anat_fit_wf, bold_session_wf, [
+        (anat_fit_wf, fit_boldref_wf, [
             ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
             ('outputnode.anat_mask', 'inputnode.anat_mask'),
             ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
@@ -779,7 +792,12 @@ tasks and sessions), the following preprocessing was performed.
             ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
             (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
         ]),
+        (fit_boldref_wf, coreg_bolds_wf, [
+            ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
+        ])
     ])  # fmt:skip
+
+    # Connect to BOLD session
 
     # Connect fieldmap outputs if available
     if fmap_estimators:
