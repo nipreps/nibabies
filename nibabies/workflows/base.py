@@ -65,7 +65,6 @@ from nibabies.workflows.anatomical.fit import (
     init_infant_anat_fit_wf,
     init_infant_single_anat_fit_wf,
 )
-from nibabies.workflows.bold.session import init_coreg_bolds_wf
 
 LOGGER = config.loggers.workflow
 
@@ -717,18 +716,73 @@ tasks and sessions), the following preprocessing was performed.
     fieldmap_id_list = []
 
     # Common space for all BOLD runs in this session
-    coreg_bolds_wf = init_coreg_bolds_wf(
-        bold_runs=bold_runs,
-        precomputed=precomputed_list,
-        fieldmap_id=fieldmap_id_list,
-        spaces=spaces,
-        reference_anat=reference_anat,
-        omp_nthreads=omp_nthreads,
-    )
+    if config.workflow.coreg_bolds:
+        from nibabies.workflows.bold.outputs import init_ds_registration_wf
+        from nibabies.workflows.bold.registration import init_bold_reg_wf
+        from nibabies.workflows.bold.session import init_coreg_bolds_wf
+
+        LOGGER.info('Coregistering all BOLD runs to a common space')
+
+        merge_run_boldrefs = pe.Node(niu.Merge(len(bold_runs)), name='merge_run_boldrefs')
+        merge_run_masks = pe.Node(niu.Merge(len(bold_runs)), name='merge_run_masks')
+
+        coreg_bolds_wf = init_coreg_bolds_wf(
+            bold_runs=bold_runs,
+            precomputed=precomputed_list,
+            fieldmap_id=fieldmap_id_list,
+            spaces=spaces,
+            reference_anat=reference_anat,
+            omp_nthreads=omp_nthreads,
+        )
+
+        # session BOLD reference to anatomical registration
+        bold_reg_wf = init_bold_reg_wf(
+            bold2anat_dof=config.workflow.bold2anat_dof,
+            bold2anat_init=config.workflow.bold2anat_init,
+            use_bbr=config.workflow.use_bbr,
+            freesurfer=config.workflow.surface_recon_method is not None,
+            omp_nthreads=omp_nthreads,
+            mem_gb=2,
+            # mem_gb=mem_gb['resampled'],
+            sloppy=config.execution.sloppy,
+            name='session_boldref_to_anat_reg_wf',
+        )
+
+        # Save transform as: from-sboldref_to-<anat>
+        ds_sboldreg_wf = init_ds_registration_wf(
+            # TODO: create a "source_file" from common entities
+            # i.e., sub-X_ses-Y_from-sboldref_to-T2w.txt
+            # source_file=bold_file,
+            output_dir=config.execution.nibabies_dir,
+            source='sboldref',
+            dest=reference_anat,
+            desc='coreg',
+            name='ds_sboldreg_wf',
+        )
+
+        workflow.connect([
+            (anat_fit_wf, bold_reg_wf, [
+                ('anat_preproc', 'inputnode.anat_preproc'),
+                ('anat_mask', 'inputnode.anat_mask'),
+                ('anat_dseg', 'inputnode.anat_dseg'),
+                # Undefined if --fs-no-reconall, but this is safe
+                ('subjects_dir', 'inputnode.subjects_dir'),
+                ('subject_id', 'inputnode.subject_id'),
+                ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+            ]),
+            (coreg_bolds_wf, bold_reg_wf, [
+                ('outputnode.boldref', 'inputnode.ref_bold_brain')],
+            ),
+            (bold_reg_wf, ds_sboldreg_wf, [
+                ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
+                ('outputnode.metadata', 'inputnode.metadata'),
+            ]),
+            # TODO: xform is session2anat_xfm
+    ])  # fmt:skip
 
     bold_wfs = {}
 
-    for bold_series in bold_runs:
+    for i, bold_series in enumerate(bold_runs, 1):
         bold_file = bold_series[0]
         fmap_id = estimator_map.get(bold_file)
         fieldmap_id_list.append(fmap_id)
@@ -765,44 +819,47 @@ tasks and sessions), the following preprocessing was performed.
                 )
         precomputed_list.append(functional_cache)
 
-    # Initialize the bundled BOLD session workflow
-    fit_boldref_wf = init_fit_boldref_wf(
-        bold_runs=bold_runs,
-        precomputed=precomputed_list,
-        fieldmap_id=fieldmap_id_list,
-        spaces=spaces,
-        reference_anat=reference_anat,
-        omp_nthreads=omp_nthreads,
-    )
-    fit_boldref_wf.__desc__ = func_pre_desc
+        # HMC, STC, and SDC
+        bold_fit_wf = init_bold_fit_wf(
+            bold_runs=bold_runs,
+            precomputed=precomputed_list,
+            fieldmap_id=fieldmap_id_list,
+            spaces=spaces,
+            reference_anat=reference_anat,
+            omp_nthreads=omp_nthreads,
+        )
+        bold_fit_wf.__desc__ = func_pre_desc
 
-    workflow.connect([
-        (anat_fit_wf, fit_boldref_wf, [
-            ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
-            ('outputnode.anat_mask', 'inputnode.anat_mask'),
-            ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-            ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-            ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
-            ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-            ('outputnode.subject_id', 'inputnode.subject_id'),
-            ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-            ('outputnode.white', 'inputnode.white'),
-            ('outputnode.pial', 'inputnode.pial'),
-            ('outputnode.midthickness', 'inputnode.midthickness'),
-            ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
-            (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
-        ]),
-        (fit_boldref_wf, coreg_bolds_wf, [
-            ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
-        ])
-    ])  # fmt:skip
+        workflow.connect([
+            (anat_fit_wf, bold_fit_wf, [
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                ('outputnode.white', 'inputnode.white'),
+                ('outputnode.pial', 'inputnode.pial'),
+                ('outputnode.midthickness', 'inputnode.midthickness'),
+                ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
+                (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
+            ]),
+            (bold_fit_wf, merge_run_boldrefs, [
+                ('outputnode.coreg_boldref', f'in{i}'),
+            ]),
+            (bold_fit_wf, merge_run_masks, [
+                ('outputnode.bold_mask', f'in{i}')
+            ]),
+        ])  # fmt:skip
 
     # Connect to BOLD session
 
     # Connect fieldmap outputs if available
     if fmap_estimators:
         workflow.connect([
-            (fmap_wf, bold_session_wf, [
+            (fmap_wf, fit_boldref_wf, [
                 ('outputnode.fmap', 'inputnode.fmap'),
                 ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
                 ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),

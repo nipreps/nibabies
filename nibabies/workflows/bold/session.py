@@ -25,8 +25,8 @@ Session-level BOLD workflows
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
-from niworkflow.data import load as load_nwf_data
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+from niworkflows.func.util import init_skullstrip_bold_wf
 
 
 def init_coreg_bolds_wf(
@@ -50,12 +50,16 @@ def init_coreg_bolds_wf(
     ------
     boldrefs
         List of coregistered boldref images (one per run).
+    bold_masks
+        List of brain masks corresponding to each boldref. Unused if only one run.
 
     Outputs
     -------
-    session_boldref
+    boldref
         The calculated session-level BOLD reference.
-    boldref2session_xfms
+    bold_mask
+        The brain mask for the session-level BOLD reference.
+    run2session_xfms
         Transforms from each run's boldref to the session boldref.
 
     """
@@ -64,40 +68,30 @@ def init_coreg_bolds_wf(
     workflow = Workflow(name=name)
     workflow.__desc__ = 'All BOLD runs were coregistered to create a session-level BOLD reference.'
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=['boldrefs']), name='inputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=['boldrefs', 'bold_masks'],
+        ),
+        name='inputnode',
+    )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['session_boldref', 'boldref2session_xfms']),
+        niu.IdentityInterface(fields=['boldref', 'bold_mask', 'run2session_xfms']),
         name='outputnode',
     )
 
     # TODO?: Do we want to denoise as well?
     # https://neurostars.org/t/ants-denoiseimage-for-fmri-epis/3091/2
 
-    boldref_iterable = pe.Node(niu.IdentityInterface(fields=['boldref']), name='boldref_iterable')
-    boldref_iterable.iterables = [('boldref', bold_runs)]
-
-    # ds_session_boldref_wf = init_ds_registration_wf(
-    #     name='ds_session_boldref_wf',
-    #     source='rboldref',  # run-boldref
-    #     dest='sboldref',  # session-boldref
-    # )
-
-    # boldref_join = pe.JoinNode(
-    #     niu.IdentityInterface(fields=['boldref2session_xfm']),
-    #     joinsource='boldref_iterable',
-    #     joinfield='boldref2session_xfm',
-    #     name='boldref_join',
-    # )
-
-    # Use identity matrix for single runs
     if len(bold_runs) == 1:
-        identity_xfm = load_nwf_data('itkIdentityTransform.txt')
-        outputnode.inputs.boldref2session_xfms = identity_xfm
+        from niworkflows.data import load as niw_load
 
+        identity_xfm = niw_load('identity_xfm')
+        outputnode.inputs.run2session_xfms = [identity_xfm]
         workflow.connect([
             (inputnode, outputnode, [
-                (('boldrefs', _first), 'session_boldref'),
+                (('boldrefs', _first), 'boldref'),
+                (('bold_masks', _first), 'bold_mask'),
             ]),
         ])  # fmt:skip
         return workflow
@@ -117,12 +111,16 @@ def init_coreg_bolds_wf(
         n_procs=omp_nthreads,
     )
 
+    skullstrip_sboldref_wf = init_skullstrip_bold_wf(name='skullstrip_sboldref_wf')
+
     workflow.connect([
         (inputnode, boldref_template, [('boldrefs', 'in_files')]),
         (boldref_template, outputnode, [
             ('out_file', 'session_boldref'),
             ('transform_outputs', 'boldref2session_xfms'),
         ]),
+        (boldref_template, skullstrip_sboldref_wf, [('out_file', 'inputnode.bold_file')]),
+        (skullstrip_sboldref_wf, outputnode, [('outputnode.bold_mask', 'bold_mask')]),
     ])  # fmt:skip
 
     return workflow
