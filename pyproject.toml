@@ -127,7 +127,7 @@ per-file-ignores = [
 [tool.pytest.ini_options]
 minversion = "6"
 testpaths = ["nibabies"]
-log_cli_level = "INFO"
+log_level = "INFO"
 xfail_strict = true
 norecursedirs = [".git"]
 addopts = [
