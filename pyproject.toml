@@ -114,16 +114,6 @@ version-file = "nibabies/_version.py"
 [tool.black]
 exclude = ".*"
 
-[tool.flake8]
-max-line-length = "99"
-doctests = "False"
-exclude = "*build/"
-ignore = ["W503", "E203"]
-per-file-ignores = [
-    "**/__init__.py : F401",
-    "docs/conf.py : E265",
-]
-
 [tool.pytest.ini_options]
 minversion = "6"
 testpaths = ["nibabies"]
