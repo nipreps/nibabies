@@ -15,7 +15,7 @@ repos:
   rev: v0.13.2
   hooks:
   - id: ruff-check
-    args: [--fix]
+    args: [ --fix, --show-fixes ]
   - id: ruff-format
 - repo: https://github.com/codespell-project/codespell
   rev: v2.3.0
@@ -23,3 +23,5 @@ repos:
   - id: codespell
     additional_dependencies:
     - tomli
+ci:
+  autoupdate_schedule: monthly
