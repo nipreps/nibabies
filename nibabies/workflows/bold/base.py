@@ -45,7 +45,7 @@ from nibabies.utils.misc import estimate_bold_mem_usage
 # BOLD workflows
 from nibabies.workflows.bold.apply import init_bold_volumetric_resample_wf
 from nibabies.workflows.bold.confounds import init_bold_confs_wf, init_carpetplot_wf
-from nibabies.workflows.bold.fit import init_bold_fit_wf, init_bold_native_wf
+from nibabies.workflows.bold.fit import init_bold_native_wf
 from nibabies.workflows.bold.outputs import (
     init_ds_bold_native_wf,
     init_ds_volumes_wf,
@@ -75,16 +75,109 @@ def init_bold_wf(
     It expects that `init_bold_fit_wf` and `init_bold_coreg_runs_wf` (if applicable)
     have already been run.
 
+    Workflow Graph
+        .. workflow::
+            :graph2use: orig
+            :simple_form: yes
+
+            from fmriprep.workflows.tests import mock_config
+            from fmriprep import config
+            from fmriprep.workflows.bold.base import init_bold_wf
+            with mock_config():
+                bold_file = config.execution.bids_dir / "sub-01" / "func" \
+                    / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
+                wf = init_bold_wf(
+                    bold_series=[str(bold_file)],
+                )
+
     Parameters
     ----------
     bold_series
         List of paths to NIfTI files.
+    precomputed
+        Dictionary containing precomputed derivatives to reuse, if possible.
     fieldmap_id
-        ID of the fieldmap to use to correct this BOLD series.
-    spaces
-        SpatialReferences instance.
-    reference_anat
-        Reference anatomy type.
+        ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
+        no correction will be applied.
+
+    Inputs
+    ------
+    anat_preproc
+        Bias-corrected structural template image
+    anat_mask
+        Mask of the skull-stripped template image
+    anat_dseg
+        Segmentation of preprocessed structural image, including
+        gray-matter (GM), white-matter (WM) and cerebrospinal fluid (CSF)
+    anat_tpms
+        List of tissue probability maps in anatomical space
+    subjects_dir
+        FreeSurfer SUBJECTS_DIR
+    subject_id
+        FreeSurfer subject ID
+    fsnative2anat_xfm
+        LTA-style affine matrix translating from FreeSurfer-conformed subject space to anatomical
+    white
+        FreeSurfer white matter surfaces, in anat space, collated left, then right
+    midthickness
+        FreeSurfer mid-thickness surfaces, in anat space, collated left, then right
+    pial
+        FreeSurfer pial surfaces, in anat space, collated left, then right
+    sphere_reg_fsLR
+        Registration spheres from fsnative to fsLR space, collated left, then right
+    anat_ribbon
+        Binary cortical ribbon mask in anat space
+    fmap_id
+        Unique identifiers to select fieldmap files
+    fmap
+        List of estimated fieldmaps (collated with fmap_id)
+    fmap_ref
+        List of fieldmap reference files (collated with fmap_id)
+    fmap_coeff
+        List of lists of spline coefficient files (collated with fmap_id)
+    fmap_mask
+        List of fieldmap masks (collated with fmap_id)
+    sdc_method
+        List of fieldmap correction method names (collated with fmap_id)
+    anat2std_xfm
+        Transform from anatomical space to standard space
+    std_t1w
+        T1w reference image in standard space
+    std_mask
+        Brain (binary) mask of the standard reference image
+    std_space
+        Value of space entity to be used in standard space output filenames
+    std_resolution
+        Value of resolution entity to be used in standard space output filenames
+    std_cohort
+        Value of cohort entity to be used in standard space output filenames
+    anat2mni6_xfm
+        Transform from anatomical space to MNI152NLin6Asym space
+    mni6_mask
+        Brain (binary) mask of the MNI152NLin6Asym reference image
+    mni2009c2anat_xfm
+        Transform from MNI152NLin2009cAsym to anatomical space
+
+    Note that ``anat2std_xfm``, ``std_space``, ``std_resolution``,
+    ``std_cohort``, ``std_t1w`` and ``std_mask`` are treated as single
+    inputs. In order to resample to multiple target spaces, connect
+    these fields to an iterable.
+
+    See Also
+    --------
+
+    * :func:`~nibabies.workflows.bold.fit.init_bold_fit_wf`
+    * :func:`~nibabies.workflows.bold.fit.init_bold_native_wf`
+    * :func:`~nibabies.workflows.bold.apply.init_bold_volumetric_resample_wf`
+    * :func:`~nibabies.workflows.bold.outputs.init_ds_bold_native_wf`
+    * :func:`~nibabies.workflows.bold.outputs.init_ds_volumes_wf`
+    * :func:`~nibabies.workflows.bold.t2s.init_t2s_reporting_wf`
+    * :func:`~nibabies.workflows.bold.resampling.init_bold_surf_wf`
+    * :func:`~nibabies.workflows.bold.resampling.init_bold_fsLR_resampling_wf`
+    * :func:`~nibabies.workflows.bold.resampling.init_bold_grayords_wf`
+    * :func:`~nibabies.workflows.bold.confounds.init_bold_confs_wf`
+    * :func:`~nibabies.workflows.bold.confounds.init_carpetplot_wf`
+
     """
     if fieldmap_id is None:
         fieldmap_id = None
@@ -708,255 +801,3 @@ def get_MNIInfant_mask(spaces: 'SpatialReferences', res: str | int) -> str:
             )
 
     raise FileNotFoundError(f'MNIInfant mask (resolution {res}) not found.')
-
-
-def init_bold_session_wf(
-    *,
-    bold_runs: list[list[str]],
-    precomputed: list[dict],
-    fieldmap_id: list[str | None],
-    spaces: 'SpatialReferences',
-    reference_anat: Anatomical,
-    omp_nthreads: int,
-    name: str = 'bold_session_wf',
-) -> pe.Workflow:
-    """
-    This workflow orchestrates the processing of all BOLD runs in a session.
-    It performs BOLD fitting for each run, creates a session-level coregistration,
-    registers that to anatomy, and then runs the post-fit workflow for each run.
-
-    Parameters
-    ----------
-    bold_runs
-        List of lists of paths to NIfTI files (one list per run).
-    precomputed
-        List of dictionaries containing precomputed derivatives for each run.
-    fieldmap_id
-        List of fieldmap IDs for each run.
-    spaces
-        SpatialReferences instance.
-    reference_anat
-        Reference anatomy type.
-    omp_nthreads
-        Number of threads.
-    """
-    from niworkflows.interfaces.nitransforms import ConcatenateXFMs
-
-    from nibabies.workflows.bold.registration import init_bold_reg_wf
-    from nibabies.workflows.bold.session import init_bold_coreg_runs_wf
-
-    workflow = Workflow(name=name)
-
-    inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=[
-                # Anatomical inputs
-                'anat_preproc',
-                'anat_mask',
-                'anat_dseg',
-                'anat_tpms',
-                'anat_aseg',
-                'subjects_dir',
-                'subject_id',
-                'fsnative2anat_xfm',
-                'white',
-                'midthickness',
-                'pial',
-                'sphere_reg_fsLR',
-                'midthickness_fsLR',
-                'cortex_mask',
-                'anat_ribbon',
-                # Fieldmap inputs (connected from fmap_wf)
-                'fmap',
-                'fmap_ref',
-                'fmap_coeff',
-                'fmap_mask',
-                'fmap_id',
-                'sdc_method',
-                # Volumetric templates
-                'anat2std_xfm',
-                'std_t1w',
-                'std_mask',
-                'std_space',
-                'std_resolution',
-                'std_cohort',
-                # MNIInfant <cohort> warp, for CIFTI use
-                'anat2mniinfant_xfm',
-                'mniinfant2anat_xfm',
-                'mniinfant_mask',
-            ],
-        ),
-        name='inputnode',
-    )
-
-    outputnode = pe.Node(
-        niu.IdentityInterface(fields=['bold_mask', 'confounds_file']), name='outputnode'
-    )
-
-    # Stage 1: BOLD Fit for each run
-    bold_fit_wfs = []
-    collect_boldrefs = pe.Node(
-        niu.Merge(len(bold_runs)), name='collect_boldrefs', run_without_submitting=True
-    )
-
-    for i, (bold_series, run_precomputed, run_fmap_id) in enumerate(
-        zip(bold_runs, precomputed, fieldmap_id, strict=False)
-    ):
-        fit_wf = init_bold_fit_wf(
-            bold_series=bold_series,
-            precomputed=run_precomputed,
-            fieldmap_id=run_fmap_id,
-            reference_anat=reference_anat,
-            omp_nthreads=omp_nthreads,
-            run_registration=False,
-            name=f'bold_fit_wf_{i}',
-        )
-        bold_fit_wfs.append(fit_wf)
-
-        workflow.connect(
-            [
-                (
-                    inputnode,
-                    fit_wf,
-                    [
-                        ('anat_preproc', 'inputnode.anat_preproc'),
-                        ('anat_mask', 'inputnode.anat_mask'),
-                        ('anat_dseg', 'inputnode.anat_dseg'),
-                        ('subjects_dir', 'inputnode.subjects_dir'),
-                        ('subject_id', 'inputnode.subject_id'),
-                        ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                        ('fmap', 'inputnode.fmap'),
-                        ('fmap_ref', 'inputnode.fmap_ref'),
-                        ('fmap_coeff', 'inputnode.fmap_coeff'),
-                        ('fmap_mask', 'inputnode.fmap_mask'),
-                        ('fmap_id', 'inputnode.fmap_id'),
-                        ('sdc_method', 'inputnode.sdc_method'),
-                    ],
-                ),
-                (fit_wf, collect_boldrefs, [('outputnode.coreg_boldref', f'in{i + 1}')]),
-            ]
-        )
-
-    # Stage 2: Session Coregistration
-    bold_coreg_runs_wf = init_bold_coreg_runs_wf(
-        bold_runs=[run[0] for run in bold_runs],
-        omp_nthreads=omp_nthreads,
-        name='bold_coreg_runs_wf',
-    )
-
-    bold_reg_wf = init_bold_reg_wf(
-        freesurfer=config.workflow.run_reconall,
-        use_bbr=config.workflow.use_bbr,
-        bold2anat_dof=config.workflow.bold2anat_dof,
-        bold2anat_init=config.workflow.bold2anat_init,
-        mem_gb=1,
-        omp_nthreads=omp_nthreads,
-        sloppy=config.execution.sloppy,
-        name='bold_reg_wf',
-    )
-
-    workflow.connect(
-        [
-            (collect_boldrefs, bold_coreg_runs_wf, [('out', 'inputnode.boldrefs')]),
-            (
-                bold_coreg_runs_wf,
-                bold_reg_wf,
-                [('outputnode.session_boldref', 'inputnode.ref_bold_brain')],
-            ),
-            (
-                inputnode,
-                bold_reg_wf,
-                [
-                    ('anat_preproc', 'inputnode.anat_preproc'),
-                    ('anat_mask', 'inputnode.anat_mask'),
-                    ('anat_dseg', 'inputnode.anat_dseg'),
-                    ('subjects_dir', 'inputnode.subjects_dir'),
-                    ('subject_id', 'inputnode.subject_id'),
-                    ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                ],
-            ),
-        ]
-    )
-
-    # Stage 3: Post-fit BOLD workflow for each run
-    for i, (bold_series, run_fmap_id, fit_wf) in enumerate(
-        zip(bold_runs, fieldmap_id, bold_fit_wfs, strict=False)
-    ):
-        post_fit_wf = init_bold_wf(
-            bold_series=bold_series,
-            fieldmap_id=run_fmap_id,
-            spaces=spaces,
-            reference_anat=reference_anat,
-            name=f'bold_post_fit_wf_{i}',
-        )
-
-        # Concatenate Transforms: Run -> Session -> Anatomy
-        select_run_xfm = pe.Node(
-            niu.Select(index=i), name=f'select_run_xfm_{i}', run_without_submitting=True
-        )
-        merge_xfms = pe.Node(niu.Merge(2), name=f'merge_xfms_{i}')
-        concat_xfm = pe.Node(ConcatenateXFMs(out_fmt='itk'), name=f'concat_xfm_{i}')
-
-        workflow.connect(
-            [
-                (
-                    inputnode,
-                    post_fit_wf,
-                    [
-                        ('anat_preproc', 'inputnode.anat_preproc'),
-                        ('anat_mask', 'inputnode.anat_mask'),
-                        ('anat_dseg', 'inputnode.anat_dseg'),
-                        ('anat_tpms', 'inputnode.anat_tpms'),
-                        ('anat_aseg', 'inputnode.anat_aseg'),
-                        ('subjects_dir', 'inputnode.subjects_dir'),
-                        ('subject_id', 'inputnode.subject_id'),
-                        ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                        ('white', 'inputnode.white'),
-                        ('midthickness', 'inputnode.midthickness'),
-                        ('pial', 'inputnode.pial'),
-                        ('sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR'),
-                        ('midthickness_fsLR', 'inputnode.midthickness_fsLR'),
-                        ('cortex_mask', 'inputnode.cortex_mask'),
-                        ('anat_ribbon', 'inputnode.anat_ribbon'),
-                        ('fmap', 'inputnode.fmap'),
-                        ('fmap_ref', 'inputnode.fmap_ref'),
-                        ('fmap_coeff', 'inputnode.fmap_coeff'),
-                        ('fmap_mask', 'inputnode.fmap_mask'),
-                        ('fmap_id', 'inputnode.fmap_id'),
-                        ('sdc_method', 'inputnode.sdc_method'),
-                        ('anat2std_xfm', 'inputnode.anat2std_xfm'),
-                        ('std_t1w', 'inputnode.std_t1w'),
-                        ('std_mask', 'inputnode.std_mask'),
-                        ('std_space', 'inputnode.std_space'),
-                        ('std_resolution', 'inputnode.std_resolution'),
-                        ('std_cohort', 'inputnode.std_cohort'),
-                        ('anat2mniinfant_xfm', 'inputnode.anat2mniinfant_xfm'),
-                        ('mniinfant2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
-                        ('mniinfant_mask', 'inputnode.mniinfant_mask'),
-                    ],
-                ),
-                (
-                    fit_wf,
-                    post_fit_wf,
-                    [
-                        ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
-                        ('outputnode.bold_mask', 'inputnode.bold_mask'),
-                        ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
-                        ('outputnode.boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
-                        ('outputnode.dummy_scans', 'inputnode.dummy_scans'),
-                    ],
-                ),
-                # Connect transforms
-                (
-                    bold_coreg_runs_wf,
-                    select_run_xfm,
-                    [('outputnode.boldref2session_xfms', 'inlist')],
-                ),
-                (select_run_xfm, merge_xfms, [('out', 'in1')]),
-                (bold_reg_wf, merge_xfms, [('outputnode.itk_bold_to_anat', 'in2')]),
-                (merge_xfms, concat_xfm, [('out', 'in_xfms')]),
-                (concat_xfm, post_fit_wf, [('out_xfm', 'inputnode.boldref2anat_xfm')]),
-            ]
-        )
-
-    return workflow
