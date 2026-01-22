@@ -823,6 +823,7 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'surface_recon_method',
         'bold2anat_dof',
         'bold2anat_init',
+        'coreg_bolds',
         'dummy_scans',
         'fd_radius',
         'fmap_bspline',
