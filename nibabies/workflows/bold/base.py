@@ -25,7 +25,6 @@ Orchestrating the BOLD-preprocessing workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: init_bold_wf
-.. autofunction:: init_bold_fit_wf
 .. autofunction:: init_bold_native_wf
 
 """
@@ -60,7 +59,7 @@ if ty.TYPE_CHECKING:
 DEFAULT_DISMISS_ENTITIES = config.DEFAULT_DISMISS_ENTITIES
 
 
-def init_bold_wf(
+def init_bold_apply_wf(
     *,
     bold_series: list[str],
     fieldmap_id: str | None = None,
@@ -166,7 +165,6 @@ def init_bold_wf(
     See Also
     --------
 
-    * :func:`~nibabies.workflows.bold.fit.init_bold_fit_wf`
     * :func:`~nibabies.workflows.bold.fit.init_bold_native_wf`
     * :func:`~nibabies.workflows.bold.apply.init_bold_volumetric_resample_wf`
     * :func:`~nibabies.workflows.bold.outputs.init_ds_bold_native_wf`
@@ -186,7 +184,7 @@ def init_bold_wf(
     output_dir = str(config.execution.nibabies_dir)
     omp_nthreads = config.nipype.omp_nthreads
     all_metadata = [config.execution.layout.get_metadata(file) for file in bold_series]
-    nvols, mem_gb = estimate_bold_mem_usage(bold_file)
+    _, mem_gb = estimate_bold_mem_usage(bold_file)
 
     workflow = Workflow(name=name)
 
@@ -721,26 +719,6 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             workflow.get_node(node).inputs.source_file = bold_file
 
     return workflow
-
-
-def _get_wf_name(bold_fname, prefix):
-    """
-    Derive the workflow name for supplied BOLD file.
-
-    >>> _get_wf_name("/completely/made/up/path/sub-01_task-nback_bold.nii.gz", "bold")
-    'bold_task_nback_wf'
-    >>> _get_wf_name(
-    ...     "/completely/made/up/path/sub-01_task-nback_run-01_echo-1_bold.nii.gz",
-    ...     "preproc",
-    ... )
-    'preproc_task_nback_run_01_echo_1_wf'
-
-    """
-    from nipype.utils.filemanip import split_filename
-
-    fname = split_filename(bold_fname)[1]
-    fname_nosub = '_'.join(fname.split('_')[1:-1])
-    return f'{prefix}_{fname_nosub.replace("-", "_")}_wf'
 
 
 def extract_entities(file_list):

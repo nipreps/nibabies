@@ -39,13 +39,13 @@ NiBabies base processing workflows
 .. autofunction:: init_single_subject_wf
 
 """
+
 import os
 import pprint
 import sys
 import typing as ty
 import warnings
 from copy import deepcopy
-from pathlib import Path
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -63,7 +63,7 @@ from nibabies.workflows.anatomical.fit import (
     init_infant_anat_fit_wf,
     init_infant_single_anat_fit_wf,
 )
-
+from nibabies.workflows.bold.base import init_bold_apply_wf
 from nibabies.workflows.bold.fit import init_bold_fit_wf
 
 LOGGER = config.loggers.workflow
@@ -771,7 +771,7 @@ tasks and sessions), the following preprocessing was performed.
             # TODO: xform is session2anat_xfm
     ])  # fmt:skip
 
-    bold_wfs = {}
+    # bold_wfs = {}
 
     for i, bold_series in enumerate(bold_runs, 1):
         bold_file = bold_series[0]
@@ -783,7 +783,7 @@ tasks and sessions), the following preprocessing was performed.
         #     )
         #     continue
 
-        fmap_id = estimator_map.get(bold_file)
+        fieldmap_id = estimator_map.get(bold_file)
 
         functional_cache = {}
         if config.execution.derivatives:
@@ -797,7 +797,7 @@ tasks and sessions), the following preprocessing was performed.
                     collect_functional_derivatives(
                         derivatives_dir=deriv_dir,
                         entities=entities,
-                        fieldmap_id=fmap_id,
+                        fieldmap_id=fieldmap_id,
                     )
                 )
 
@@ -816,21 +816,19 @@ tasks and sessions), the following preprocessing was performed.
                     else None,
                 )
 
-        run_id = Path(bold_file).name.split('.')[0]
-
         # HMC, STC, SDC
         # Coregistration to anatomical is not needed if coregistering all BOLDs together
         bold_fit_wf = init_bold_fit_wf(
             bold_runs=bold_runs,
             precomputed=functional_cache,
-            fieldmap_id=fmap_id,
+            fieldmap_id=fieldmap_id,
             spaces=spaces,
             reference_anat=reference_anat,
             omp_nthreads=omp_nthreads,
             coreg_anat=not bool(config.workflow.coreg_bolds),
-            name=f'fit_{run_id}_wf',
+            name=_get_wf_name(bold_file, 'fit'),
         )
-        bold_fit_wf.__desc__ = func_pre_desc
+        bold_fit_wf.__desc__ = func_pre_desc + (bold_fit_wf.__desc__ or '')
 
         workflow.connect([
             (anat_fit_wf, bold_fit_wf, [
@@ -848,7 +846,19 @@ tasks and sessions), the following preprocessing was performed.
                 ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
                 (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
             ]),
-        ])  #fmt:skip
+        ])  # fmt:skip
+
+        if fieldmap_id:
+            workflow.connect([
+                (fmap_wf, bold_fit_wf, [
+                    ('outputnode.fmap', 'inputnode.fmap'),
+                    ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
+                    ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
+                    ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
+                    ('outputnode.fmap_id', 'inputnode.fmap_id'),
+                    ('outputnode.method', 'inputnode.sdc_method'),
+                ]),
+            ])  # fmt:skip
 
         if config.workflow.coreg_bolds:
             # TODO: Concatenate XFM from bold_fit_wf and coreg_bolds_wf?
@@ -862,48 +872,23 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
             ])  # fmt:skip
 
-    # Connect fieldmap outputs if available
-    if fmap_estimators:
-        workflow.connect([
-            (fmap_wf, bold_fit_wf, [
-                ('outputnode.fmap', 'inputnode.fmap'),
-                ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
-                ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
-                ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
-                ('outputnode.fmap_id', 'inputnode.fmap_id'),
-                ('outputnode.method', 'inputnode.sdc_method'),
-            ]),
-        ])  # fmt:skip
+        if config.workflow.level == 'minimal':
+            continue
 
-    if config.workflow.level == 'minimal':
-        return clean_datasinks(workflow)
+        # apply...
+        bold_apply_wf = init_bold_apply_wf()
 
-    bold_apply_wf = init_bold_wf()
-
-        if config.workflow.coreg_bolds:
-            workflow.connect([
-                (bold_fit_wf, merge_run_boldrefs, [
-                    ('outputnode.coreg_boldref', f'in{i}'),
-                ]),
-                (bold_fit_wf, merge_run_masks, [
-                    ('outputnode.bold_mask', f'in{i}')
-                ]),
-            ])  # fmt:skip
-    else:
-        # Run level BOLD
         workflow.connect([
             (bold_fit_wf, bold_apply_wf, [
                 ('outputnode.coreg_boldref', 'inputnode.boldref'),
                 ('outputnode.bold_mask', 'inputnode.bold_mask'),
                 ('outputnode.itk_bold_to_anat', 'inputnode.itk_bold_to_anat'),
             ])
+        ])  # fmt:skip
 
-        ])
-
-    if config.workflow.level == 'full':
         if template_iterator_wf is not None:
             workflow.connect([
-                (template_iterator_wf, bold_session_wf, [
+                (template_iterator_wf, bold_apply_wf, [
                     ('outputnode.space', 'inputnode.std_space'),
                     ('outputnode.resolution', 'inputnode.std_resolution'),
                     ('outputnode.cohort', 'inputnode.std_cohort'),
@@ -915,7 +900,7 @@ tasks and sessions), the following preprocessing was performed.
 
         if select_MNIInfant_xfm is not None:
             workflow.connect([
-                (select_MNIInfant_xfm, bold_session_wf, [
+                (select_MNIInfant_xfm, bold_apply_wf, [
                     ('std2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
                     ('anat2std_xfm', 'inputnode.anat2mniinfant_xfm')
                 ]),
@@ -923,10 +908,10 @@ tasks and sessions), the following preprocessing was performed.
 
         if config.workflow.cifti_output:
             workflow.connect([
-                (anat_fit_wf, bold_session_wf, [
+                (anat_fit_wf, bold_apply_wf, [
                     ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
                 ]),
-                (anat_apply_wf, bold_session_wf, [
+                (anat_apply_wf, bold_apply_wf, [
                     ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
                     ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
                 ]),
@@ -1146,3 +1131,23 @@ def get_MNIInfant_key(spaces: SpatialReferences, res: str | int) -> str:
             return ref.fullname
 
     raise KeyError(f'MNIInfant (resolution {res}) not found in SpatialReferences: {spaces}')
+
+
+def _get_wf_name(bold_fname, prefix):
+    """
+    Derive the workflow name for supplied BOLD file.
+
+    >>> _get_wf_name("/completely/made/up/path/sub-01_task-nback_bold.nii.gz", "bold")
+    'bold_task_nback_wf'
+    >>> _get_wf_name(
+    ...     "/completely/made/up/path/sub-01_task-nback_run-01_echo-1_bold.nii.gz",
+    ...     "preproc",
+    ... )
+    'preproc_task_nback_run_01_echo_1_wf'
+
+    """
+    from nipype.utils.filemanip import split_filename
+
+    fname = split_filename(bold_fname)[1]
+    fname_nosub = '_'.join(fname.split('_')[1:-1])
+    return f'{prefix}_{fname_nosub.replace("-", "_")}_wf'
