@@ -221,7 +221,7 @@ def init_single_subject_wf(
     from niworkflows.utils.bids import collect_data
     from niworkflows.utils.spaces import Reference
 
-    from ..utils.misc import fix_multi_source_name
+    from ..utils.misc import estimate_bold_mem_usage, fix_multi_source_name
 
     subject_session_id = _subject_session_id(subject_id, session_id)
     workflow = Workflow(name=f'single_subject_{subject_session_id}_wf')
@@ -719,16 +719,13 @@ tasks and sessions), the following preprocessing was performed.
 
         LOGGER.info('Coregistering all BOLD runs to a common space')
 
-        merge_run_boldrefs = pe.Node(niu.Merge(len(bold_runs)), name='merge_run_boldrefs')
-        merge_run_masks = pe.Node(niu.Merge(len(bold_runs)), name='merge_run_masks')
-
         coreg_bolds_wf = init_coreg_bolds_wf(
             bold_runs=bold_runs,
             omp_nthreads=omp_nthreads,
         )
 
         # session BOLD reference to anatomical registration
-        bold_reg_wf = init_bold_reg_wf(
+        session_bold_reg_wf = init_bold_reg_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
             bold2anat_init=config.workflow.bold2anat_init,
             use_bbr=config.workflow.use_bbr,
@@ -739,20 +736,8 @@ tasks and sessions), the following preprocessing was performed.
             name='session_boldref_to_anat_reg_wf',
         )
 
-        # Save transform as: from-sboldref_to-<anat>
-        ds_sboldreg_wf = init_ds_registration_wf(
-            # TODO: create a "source_file" from common entities
-            # i.e., sub-X_ses-Y_from-sboldref_to-T2w.txt
-            # source_file=bold_file,
-            output_dir=config.execution.nibabies_dir,
-            source='sboldref',
-            dest=reference_anat,
-            desc='coreg',
-            name='ds_session_boldreg_wf',
-        )
-
         workflow.connect([
-            (anat_fit_wf, bold_reg_wf, [
+            (anat_fit_wf, session_bold_reg_wf, [
                 ('anat_preproc', 'inputnode.anat_preproc'),
                 ('anat_mask', 'inputnode.anat_mask'),
                 ('anat_dseg', 'inputnode.anat_dseg'),
@@ -761,29 +746,21 @@ tasks and sessions), the following preprocessing was performed.
                 ('subject_id', 'inputnode.subject_id'),
                 ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
-            (coreg_bolds_wf, bold_reg_wf, [
-                ('outputnode.boldref', 'inputnode.ref_bold_brain')],
-            ),
-            (bold_reg_wf, ds_sboldreg_wf, [
-                ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
-                ('outputnode.metadata', 'inputnode.metadata'),
+            (coreg_bolds_wf, session_bold_reg_wf, [
+                ('outputnode.boldref', 'inputnode.ref_bold_brain'),
             ]),
-            # TODO: xform is session2anat_xfm
     ])  # fmt:skip
 
-    # bold_wfs = {}
-
-    for i, bold_series in enumerate(bold_runs, 1):
+    for i, bold_series in enumerate(bold_runs):
         bold_file = bold_series[0]
-
-        # nvols, mem_gb = estimate_bold_mem_usage(bold_file)
-        # if nvols <= 5 - config.execution.sloppy:
-        #     config.loggers.workflow.warning(
-        #         f'Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>.'
-        #     )
-        #     continue
-
         fieldmap_id = estimator_map.get(bold_file)
+
+        nvols, _ = estimate_bold_mem_usage(bold_file)
+        if nvols <= 5 - config.execution.sloppy:
+            config.loggers.workflow.warning(
+                f'Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>.'
+            )
+            continue
 
         functional_cache = {}
         if config.execution.derivatives:
@@ -826,7 +803,7 @@ tasks and sessions), the following preprocessing was performed.
             reference_anat=reference_anat,
             omp_nthreads=omp_nthreads,
             coreg_anat=not bool(config.workflow.coreg_bolds),
-            name=_get_wf_name(bold_file, 'fit'),
+            name=_get_wf_name(bold_file, 'bold_fit'),
         )
         bold_fit_wf.__desc__ = func_pre_desc + (bold_fit_wf.__desc__ or '')
 
@@ -860,30 +837,76 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
             ])  # fmt:skip
 
+        boldref_buffer = pe.Node(
+            niu.IdentityInterface(fields=['boldref2anat_xfm', 'orig2boldref_xfm']),
+            name=f'boldref_buffer{i}',
+        )
         if config.workflow.coreg_bolds:
-            # TODO: Concatenate XFM from bold_fit_wf and coreg_bolds_wf?
+            select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm{i}')
+
+            ds_orig2boldref_xfm = init_ds_registration_wf(
+                source_file=bold_file,
+                output_dir=config.execution.nibabies_dir,
+                source='orig',
+                dest='boldref',
+                desc='coreg',
+                name='ds_orig2boldref_xfm{i}',
+            )
+
+            ds_boldref2anat_wf = init_ds_registration_wf(
+                source_file=bold_file,
+                output_dir=config.execution.nibabies_dir,
+                source='boldref',
+                dest=reference_anat,
+                desc='coreg',
+                name='ds_boldref2anat_wf{i}',
+            )
 
             workflow.connect([
-                (bold_fit_wf, merge_run_boldrefs, [
-                    ('outputnode.coreg_boldref', f'in{i}'),
+                (coreg_bolds_wf, select_coreg_xfm, [('outputnode.bold2sboldref_xfm', 'inlist')]),
+                (select_coreg_xfm, ds_orig2boldref_xfm, [('out', 'inputnode.xform')]),
+                (session_bold_reg_wf, ds_orig2boldref_xfm, [('outputnode.metadata', 'inputnode.metadata')]),
+                (coreg_bolds_wf, ds_orig2boldref_xfm, [('outputnode.bold_files', 'inputnode.source_files')]),
+                (ds_orig2boldref_xfm, boldref_buffer, [('outputnode.xform', 'orig2boldref_xfm')]),
+
+                (session_bold_reg_wf, ds_boldref2anat_wf, [
+                    ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
                 ]),
-                (bold_fit_wf, merge_run_masks, [
-                    ('outputnode.bold_mask', f'in{i}'),
+                (ds_boldref2anat_wf, boldref_buffer, [
+                    ('outputnode.xform', 'boldref2anat_xfm'),
                 ]),
+            ])  # fmt:skip
+        else:
+            from niworkflows.data import load as nwf_load
+
+            boldref_buffer.inputs.run2boldref_xfm = nwf_load('itkIdentityTransform.txt')
+            workflow.connect([
+                (bold_fit_wf, boldref_buffer, [('outputnode.boldref2anat_xfm', 'boldref2anat_xfm')]),
             ])  # fmt:skip
 
         if config.workflow.level == 'minimal':
             continue
 
-        # apply...
-        bold_apply_wf = init_bold_apply_wf()
+        bold_apply_wf = init_bold_apply_wf(
+            bold_series=bold_series,
+            fieldmap_id=fieldmap_id,
+            spaces=spaces,
+            reference_anat=reference_anat,
+            name=_get_wf_name(bold_file, 'bold_apply'),
+        )
 
         workflow.connect([
             (bold_fit_wf, bold_apply_wf, [
                 ('outputnode.coreg_boldref', 'inputnode.boldref'),
                 ('outputnode.bold_mask', 'inputnode.bold_mask'),
-                ('outputnode.itk_bold_to_anat', 'inputnode.itk_bold_to_anat'),
-            ])
+                ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
+                ('outputnode.boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
+                ('outputnode.dummy_scans', 'inputnode.dummy_scans'),
+            ]),
+            (boldref_buffer, bold_apply_wf, [
+                ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
+                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+            ]),
         ])  # fmt:skip
 
         if template_iterator_wf is not None:

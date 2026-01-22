@@ -61,11 +61,11 @@ DEFAULT_DISMISS_ENTITIES = config.DEFAULT_DISMISS_ENTITIES
 
 def init_bold_apply_wf(
     *,
+    reference_anat: Anatomical,
     bold_series: list[str],
     fieldmap_id: str | None = None,
     spaces: 'SpatialReferences',
-    reference_anat: Anatomical,
-    name: str = 'bold_wf',
+    name: str = 'bold_apply_wf',
 ) -> pe.Workflow:
     """
     This workflow controls the functional preprocessing stages of *NiBabies*
@@ -93,8 +93,6 @@ def init_bold_apply_wf(
     ----------
     bold_series
         List of paths to NIfTI files.
-    precomputed
-        Dictionary containing precomputed derivatives to reuse, if possible.
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
@@ -198,6 +196,7 @@ def init_bold_apply_wf(
                 'boldref2fmap_xfm',
                 'dummy_scans',
                 'boldref2anat_xfm',
+                'orig2boldref_xfm',  # identity if not coregistering across BOLDs
                 # Anatomical coregistration
                 'anat_preproc',
                 'anat_mask',

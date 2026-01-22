@@ -287,7 +287,7 @@ def init_bold_fit_wf(
                 'coreg_boldref',
                 'bold_mask',
                 'motion_xfm',
-                'boldref2anat_xfm',
+                'boldref2anat_xfm',  # Undefined if coreg_anat is False
                 'boldref2fmap_xfm',
             ],
         ),
