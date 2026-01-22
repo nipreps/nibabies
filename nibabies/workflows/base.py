@@ -40,6 +40,8 @@ NiBabies base processing workflows
 
 """
 
+from __future__ import annotations
+
 import os
 import pprint
 import sys
@@ -796,10 +798,9 @@ tasks and sessions), the following preprocessing was performed.
         # HMC, STC, SDC
         # Coregistration to anatomical is not needed if coregistering all BOLDs together
         bold_fit_wf = init_bold_fit_wf(
-            bold_runs=bold_runs,
+            bold_series=bold_series,
             precomputed=functional_cache,
             fieldmap_id=fieldmap_id,
-            spaces=spaces,
             reference_anat=reference_anat,
             omp_nthreads=omp_nthreads,
             coreg_anat=not bool(config.workflow.coreg_bolds),
@@ -812,16 +813,16 @@ tasks and sessions), the following preprocessing was performed.
                 ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
                 ('outputnode.anat_mask', 'inputnode.anat_mask'),
                 ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-                ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+                #('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                #('outputnode.anat_aseg', 'inputnode.anat_aseg'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                ('outputnode.white', 'inputnode.white'),
-                ('outputnode.pial', 'inputnode.pial'),
-                ('outputnode.midthickness', 'inputnode.midthickness'),
-                ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
-                (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
+                # ('outputnode.white', 'inputnode.white'),
+                # ('outputnode.pial', 'inputnode.pial'),
+                # ('outputnode.midthickness', 'inputnode.midthickness'),
+                # ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
+                # (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
             ]),
         ])  # fmt:skip
 
@@ -897,7 +898,7 @@ tasks and sessions), the following preprocessing was performed.
 
         workflow.connect([
             (bold_fit_wf, bold_apply_wf, [
-                ('outputnode.coreg_boldref', 'inputnode.boldref'),
+                ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
                 ('outputnode.bold_mask', 'inputnode.bold_mask'),
                 ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
                 ('outputnode.boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
