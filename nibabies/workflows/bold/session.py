@@ -26,11 +26,12 @@ Session-level BOLD workflows
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+from niworkflows.func.util import init_skullstrip_bold_wf
 
 
 def init_coreg_bolds_wf(
     *,
-    bold_runs: list[str],
+    num_bold_runs: int,
     unbiased: bool = False,
     omp_nthreads: int = 1,
     name: str = 'coreg_bolds_wf',
@@ -40,17 +41,26 @@ def init_coreg_bolds_wf(
 
     Parameters
     ----------
-    bold_runs : :obj:`list` of :obj:`str`
-        List of paths to BOLD files (used for names/metadata).
+    num_bolds : :obj:`int`
+        Number of BOLD runs
     omp_nthreads : :obj:`int`
         Number of threads.
     unbiased : :obj:`bool`
         Whether to use an unbiased registration strategy (default: False).
 
+    Inputs
+    ------
+    boldref_files
+        List of BOLD reference files to be coregistered.
+
     Outputs
     -------
-    bold_files
-        List of BOLD files (same as input).
+    boldref
+        The computed session-level BOLD reference.
+    bold_mask
+        Brain mask for the session-level BOLD reference.
+    boldref_files
+        List of BOLD reference files (same as input).
     orig2boldref_xfms
         Transforms from each run's original space to the session boldref
 
@@ -60,21 +70,27 @@ def init_coreg_bolds_wf(
     workflow = Workflow(name=name)
     workflow.__desc__ = 'All BOLD runs were coregistered to create a session-level BOLD reference.'
 
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['boldref_files']),
+        name='inputnode',
+    )
+
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['orig2boldref_xfms', 'bold_files']),
+        niu.IdentityInterface(
+            fields=['boldref', 'bold_mask', 'orig2boldref_xfms', 'boldref_files']
+        ),
         name='outputnode',
     )
-    outputnode.inputs.bold_files = bold_runs
 
     # TODO?: Do we want to denoise as well?
     # https://neurostars.org/t/ants-denoiseimage-for-fmri-epis/3091/2
 
-    if len(bold_runs) == 1:
-        from niworkflows.data import load as niw_load
+    # if len(bold_runs) == 1:
+    #     from niworkflows.data import load as niw_load
 
-        identity_xfm = niw_load('identity_xfm')
-        outputnode.inputs.orig2boldref_xfms = [identity_xfm]
-        return workflow
+    #     identity_xfm = niw_load('identity_xfm')
+    #     outputnode.inputs.orig2boldref_xfms = [identity_xfm]
+    #     return workflow
 
     boldref_template = pe.Node(
         StructuralReference(
@@ -86,20 +102,26 @@ def init_coreg_bolds_wf(
             no_iteration=not unbiased,
             transform_outputs=True,
         ),
-        mem_gb=2 * len(bold_runs) - 1,
+        mem_gb=2 * num_bold_runs - 1,
         name='boldref_template',
         n_procs=omp_nthreads,
     )
-    boldref_template.inputs.in_files = bold_runs
+
+    skullstrip_boldref_wf = init_skullstrip_bold_wf(name='skullstrip_boldref_wf')
 
     workflow.connect([
+        (inputnode, boldref_template, [
+            ('boldref_files', 'in_files'),
+        ]),
         (boldref_template, outputnode, [
+            ('out_file', 'boldref'),
             ('transform_outputs', 'orig2boldref_xfms'),
         ]),
+        (inputnode, outputnode, [
+            ('boldref_files', 'boldref_files'),
+        ]),
+        (boldref_template, skullstrip_boldref_wf, [('out_file', 'inputnode.in_file')]),
+        (skullstrip_boldref_wf, outputnode, [('outputnode.mask_file', 'bold_mask')]),
     ])  # fmt:skip
 
     return workflow
-
-
-def _first(inlist):
-    return inlist[0]

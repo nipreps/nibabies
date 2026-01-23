@@ -721,8 +721,13 @@ tasks and sessions), the following preprocessing was performed.
 
         LOGGER.info('Coregistering all BOLD runs to a common space')
 
+        merge_fit_boldrefs = pe.Node(
+            niu.Merge(len(bold_runs)),
+            name='merge_fit_boldrefs',
+        )
+
         coreg_bolds_wf = init_coreg_bolds_wf(
-            bold_runs=bold_runs,
+            num_bold_runs=len(bold_runs),
             omp_nthreads=omp_nthreads,
         )
 
@@ -739,14 +744,15 @@ tasks and sessions), the following preprocessing was performed.
         )
 
         workflow.connect([
+            (merge_fit_boldrefs, coreg_bolds_wf, [('out', 'inputnode.boldref_files')]),
             (anat_fit_wf, session_bold_reg_wf, [
-                ('anat_preproc', 'inputnode.anat_preproc'),
-                ('anat_mask', 'inputnode.anat_mask'),
-                ('anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
                 # Undefined if --fs-no-reconall, but this is safe
-                ('subjects_dir', 'inputnode.subjects_dir'),
-                ('subject_id', 'inputnode.subject_id'),
-                ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
             (coreg_bolds_wf, session_bold_reg_wf, [
                 ('outputnode.boldref', 'inputnode.ref_bold_brain'),
@@ -842,6 +848,7 @@ tasks and sessions), the following preprocessing was performed.
             niu.IdentityInterface(fields=['boldref2anat_xfm', 'orig2boldref_xfm']),
             name=f'boldref_buffer{i}',
         )
+
         if config.workflow.coreg_bolds:
             select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm{i}')
 
@@ -851,7 +858,7 @@ tasks and sessions), the following preprocessing was performed.
                 source='orig',
                 dest='boldref',
                 desc='coreg',
-                name='ds_orig2boldref_xfm{i}',
+                name=f'ds_orig2boldref_xfm{i}',
             )
 
             ds_boldref2anat_wf = init_ds_registration_wf(
@@ -860,14 +867,15 @@ tasks and sessions), the following preprocessing was performed.
                 source='boldref',
                 dest=reference_anat,
                 desc='coreg',
-                name='ds_boldref2anat_wf{i}',
+                name=f'ds_boldref2anat_wf{i}',
             )
 
             workflow.connect([
-                (coreg_bolds_wf, select_coreg_xfm, [('outputnode.bold2sboldref_xfm', 'inlist')]),
+                (bold_fit_wf, merge_fit_boldrefs, [('outputnode.coreg_boldref', f'in{i+1}')]),
+                (coreg_bolds_wf, select_coreg_xfm, [('outputnode.orig2boldref_xfms', 'inlist')]),
                 (select_coreg_xfm, ds_orig2boldref_xfm, [('out', 'inputnode.xform')]),
                 (session_bold_reg_wf, ds_orig2boldref_xfm, [('outputnode.metadata', 'inputnode.metadata')]),
-                (coreg_bolds_wf, ds_orig2boldref_xfm, [('outputnode.bold_files', 'inputnode.source_files')]),
+                (coreg_bolds_wf, ds_orig2boldref_xfm, [('outputnode.boldref_files', 'inputnode.source_files')]),
                 (ds_orig2boldref_xfm, boldref_buffer, [('outputnode.xform', 'orig2boldref_xfm')]),
 
                 (session_bold_reg_wf, ds_boldref2anat_wf, [
@@ -880,7 +888,7 @@ tasks and sessions), the following preprocessing was performed.
         else:
             from niworkflows.data import load as nwf_load
 
-            boldref_buffer.inputs.run2boldref_xfm = nwf_load('itkIdentityTransform.txt')
+            boldref_buffer.inputs.orig2boldref_xfm = nwf_load('itkIdentityTransform.txt')
             workflow.connect([
                 (bold_fit_wf, boldref_buffer, [('outputnode.boldref2anat_xfm', 'boldref2anat_xfm')]),
             ])  # fmt:skip
@@ -897,6 +905,20 @@ tasks and sessions), the following preprocessing was performed.
         )
 
         workflow.connect([
+            (anat_fit_wf, bold_apply_wf, [
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                ('outputnode.white', 'inputnode.white'),
+                ('outputnode.pial', 'inputnode.pial'),
+                ('outputnode.midthickness', 'inputnode.midthickness'),
+                ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
+                (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
+            ]),
             (bold_fit_wf, bold_apply_wf, [
                 ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
                 ('outputnode.bold_mask', 'inputnode.bold_mask'),
@@ -909,6 +931,18 @@ tasks and sessions), the following preprocessing was performed.
                 ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
             ]),
         ])  # fmt:skip
+
+        if fieldmap_id:
+            workflow.connect([
+                (fmap_wf, bold_apply_wf, [
+                    ('outputnode.fmap', 'inputnode.fmap'),
+                    ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
+                    ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
+                    ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
+                    ('outputnode.fmap_id', 'inputnode.fmap_id'),
+                    ('outputnode.method', 'inputnode.sdc_method'),
+                ]),
+            ])  # fmt:skip
 
         if template_iterator_wf is not None:
             workflow.connect([
