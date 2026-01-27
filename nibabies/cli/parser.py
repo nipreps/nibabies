@@ -464,6 +464,15 @@ Useful for further Tedana processing post-NiBabies.""",
         help='Number of non steady state volumes.',
     )
     g_conf.add_argument(
+        '--sdc-boldref-fd-threshold',
+        required=False,
+        action='store',
+        default=None,
+        type=float,
+        help='A framewise displacement (FD) threshold which masks high-motion frames '
+        'before creating an average BOLD reference image for use in SDC correction. '
+    )
+    g_conf.add_argument(
         '--random-seed',
         dest='_random_seed',
         action='store',

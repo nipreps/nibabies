@@ -596,6 +596,9 @@ class workflow(_Config):
     """Threshold for :abbr:`FD (frame-wise displacement)`."""
     run_reconall = True
     """Run FreeSurfer's surface reconstruction."""
+    sdc_boldref_fd_threshold = None
+    """A framewise displacement (FD) threshold which masks high-motion frames
+    before creating an average BOLD reference image for use in SDC correction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
     skull_strip_template = 'UNCInfant:cohort-1'
