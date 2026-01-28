@@ -60,7 +60,7 @@ from smriprep.workflows.outputs import init_template_iterator_wf
 from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.reports import AboutSummary, FunctionalSummary, SubjectSummary
-from nibabies.utils.bids import parse_bids_for_age_months
+from nibabies.utils.bids import extract_entities, parse_bids_for_age_months
 from nibabies.workflows.anatomical.apply import init_infant_anat_apply_wf
 from nibabies.workflows.anatomical.fit import (
     init_infant_anat_fit_wf,
@@ -765,6 +765,7 @@ tasks and sessions), the following preprocessing was performed.
 
     for i, bold_series in enumerate(bold_runs):
         bold_file = bold_series[0]
+        entities = extract_entities(bold_series)
         metadata = config.execution.layout.get_metadata(bold_file)
         fieldmap_id = estimator_map.get(bold_file)
 
@@ -777,10 +778,7 @@ tasks and sessions), the following preprocessing was performed.
 
         functional_cache = {}
         if config.execution.derivatives:
-            from nibabies.utils.bids import extract_entities
             from nibabies.utils.derivatives import collect_functional_derivatives
-
-            entities = extract_entities(bold_series)
 
             for deriv_dir in config.execution.derivatives.values():
                 functional_cache.update(

@@ -231,7 +231,6 @@ def init_bold_fit_wf(
     config.loggers.workflow.info(sbref_msg)
 
     # Get metadata from BOLD file(s)
-    entities = extract_entities(bold_series)
     metadata = layout.get_metadata(bold_file)
 
     _, mem_gb = estimate_bold_mem_usage(bold_file)
