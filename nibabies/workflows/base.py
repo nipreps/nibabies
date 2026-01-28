@@ -49,6 +49,7 @@ import typing as ty
 import warnings
 from copy import deepcopy
 
+import nibabel as nb
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.interfaces.utility import KeySelect
@@ -58,7 +59,7 @@ from smriprep.workflows.outputs import init_template_iterator_wf
 
 from nibabies import config
 from nibabies.interfaces import DerivativesDataSink
-from nibabies.interfaces.reports import AboutSummary, SubjectSummary
+from nibabies.interfaces.reports import AboutSummary, FunctionalSummary, SubjectSummary
 from nibabies.utils.bids import parse_bids_for_age_months
 from nibabies.workflows.anatomical.apply import init_infant_anat_apply_wf
 from nibabies.workflows.anatomical.fit import (
@@ -67,6 +68,7 @@ from nibabies.workflows.anatomical.fit import (
 )
 from nibabies.workflows.bold.base import init_bold_apply_wf
 from nibabies.workflows.bold.fit import init_bold_fit_wf
+from nibabies.workflows.bold.outputs import init_func_fit_reports_wf
 
 LOGGER = config.loggers.workflow
 
@@ -719,6 +721,8 @@ tasks and sessions), the following preprocessing was performed.
         from nibabies.workflows.bold.registration import init_bold_reg_wf
         from nibabies.workflows.bold.session import init_coreg_bolds_wf
 
+        # TODO: Check each BOLD file phase encoding
+        # only allow if homogeneous
         LOGGER.info('Coregistering all BOLD runs to a common space')
 
         merge_fit_boldrefs = pe.Node(
@@ -761,6 +765,7 @@ tasks and sessions), the following preprocessing was performed.
 
     for i, bold_series in enumerate(bold_runs):
         bold_file = bold_series[0]
+        metadata = config.execution.layout.get_metadata(bold_file)
         fieldmap_id = estimator_map.get(bold_file)
 
         nvols, _ = estimate_bold_mem_usage(bold_file)
@@ -810,29 +815,104 @@ tasks and sessions), the following preprocessing was performed.
             reference_anat=reference_anat,
             omp_nthreads=omp_nthreads,
             coreg_anat=not bool(config.workflow.coreg_bolds),
-            name=_get_wf_name(bold_file, 'bold_fit'),
+            name=_get_wf_name(bold_file, 'fit_bold'),
         )
         bold_fit_wf.__desc__ = func_pre_desc + (bold_fit_wf.__desc__ or '')
+
+        # Buffer for BOLD reference files regardless of `coreg_bolds`
+        boldref_buffer = pe.Node(
+            niu.IdentityInterface(
+                fields=[
+                    'bold_file',
+                    'boldref2anat_xfm',
+                    'orig2boldref_xfm',
+                    'coreg_boldref',
+                    'bold_mask',
+                ],
+            ),
+            name=f'boldref_buffer{i}',
+        )
+        boldref_buffer.inputs.bold_file = bold_file
+
+        # Summary - used for func fit reports
+        fit_summary = pe.Node(
+            FunctionalSummary(
+                distortion_correction='None',  # Can override with connection
+                registration='FreeSurfer' if config.workflow.surface_recon_method else 'FSL',
+                registration_dof=config.workflow.bold2anat_dof,
+                registration_init=config.workflow.bold2anat_init,
+                pe_direction=metadata.get('PhaseEncodingDirection'),
+                echo_idx=entities.get('echo', []),
+                tr=metadata['RepetitionTime'],
+                orientation=''.join(nb.aff2axcodes(nb.load(bold_file).affine)),
+                dummy_scans=config.workflow.dummy_scans,
+            ),
+            name=_get_wf_name(bold_file, 'fit_summary'),
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
+            run_without_submitting=True,
+        )
+        # Remaining connections:
+        # algo_dummy_scans (if hmc performed)
+        # distortion_correction
+        # fallback (anat registration)
+
+        fit_reports_wf = init_func_fit_reports_wf(
+            reference_anat=reference_anat,
+            sdc_correction=fieldmap_id is None,
+            output_dir=config.execution.output_dir,
+            name=_get_wf_name(bold_file, 'fit_reports'),
+        )
 
         workflow.connect([
             (anat_fit_wf, bold_fit_wf, [
                 ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
                 ('outputnode.anat_mask', 'inputnode.anat_mask'),
                 ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                #('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-                #('outputnode.anat_aseg', 'inputnode.anat_aseg'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                # ('outputnode.white', 'inputnode.white'),
-                # ('outputnode.pial', 'inputnode.pial'),
-                # ('outputnode.midthickness', 'inputnode.midthickness'),
-                # ('outputnode.anat_ribbon', 'inputnode.anat_ribbon'),
-                # (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
+            ]),
+            (bold_fit_wf, fit_summary, [
+                ('outputnode.distortion_correction', 'distortion_correction'),
+                ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
+            ]),
+            (fit_summary, fit_reports_wf, [
+                ('out_report', 'inputnode.summary_report'),
+            ]),
+            (anat_fit_wf, fit_reports_wf, [
+                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                ('outputnode.subject_id', 'inputnode.subject_id'),
+            ]),
+            (bold_fit_wf, fit_reports_wf, [
+                ('outputnode.validation_report', 'inputnode.validation_report'),
+                ('outputnode.sdc_boldref', 'inputnode.sdc_boldref'),
+                ('outputnode.fieldmap', 'inputnode.fieldmap'),
+                ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
+                ('outputnode.boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
+            ]),
+            (boldref_buffer, fit_reports_wf, [
+                ('bold_file', 'inputnode.source_file'),
+                ('coreg_boldref', 'inputnode.coreg_boldref'),
+                ('bold_mask', 'inputnode.bold_mask'),
+                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+                ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
             ]),
         ])  # fmt:skip
 
         if fieldmap_id:
+            # Select fieldmap files relevant to this run
+            fmap_select = pe.Node(
+                KeySelect(
+                    fields=['fmap_ref', 'fmap_coeff', 'fmap_mask', 'sdc_method'],
+                    key=fieldmap_id,
+                ),
+                name=f'fmap_select{i}',
+                run_without_submitting=True,
+            )
+
             workflow.connect([
                 (fmap_wf, bold_fit_wf, [
                     ('outputnode.fmap', 'inputnode.fmap'),
@@ -842,12 +922,8 @@ tasks and sessions), the following preprocessing was performed.
                     ('outputnode.fmap_id', 'inputnode.fmap_id'),
                     ('outputnode.method', 'inputnode.sdc_method'),
                 ]),
+                (fmap_wf, fit_summary, [('outputnode.method', 'distortion_correction')]),
             ])  # fmt:skip
-
-        boldref_buffer = pe.Node(
-            niu.IdentityInterface(fields=['boldref2anat_xfm', 'orig2boldref_xfm']),
-            name=f'boldref_buffer{i}',
-        )
 
         if config.workflow.coreg_bolds:
             select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm{i}')
@@ -872,6 +948,11 @@ tasks and sessions), the following preprocessing was performed.
 
             workflow.connect([
                 (bold_fit_wf, merge_fit_boldrefs, [('outputnode.coreg_boldref', f'in{i+1}')]),
+                (coreg_bolds_wf, boldref_buffer, [
+                    ('outputnode.boldref', 'coreg_boldref'),
+                    ('outputnode.bold_mask', 'bold_mask'),
+                ]),
+
                 (coreg_bolds_wf, select_coreg_xfm, [('outputnode.orig2boldref_xfms', 'inlist')]),
                 (select_coreg_xfm, ds_orig2boldref_xfm, [('out', 'inputnode.xform')]),
                 (session_bold_reg_wf, ds_orig2boldref_xfm, [('outputnode.metadata', 'inputnode.metadata')]),
@@ -884,17 +965,30 @@ tasks and sessions), the following preprocessing was performed.
                 (ds_boldref2anat_wf, boldref_buffer, [
                     ('outputnode.xform', 'boldref2anat_xfm'),
                 ]),
+                (session_bold_reg_wf, fit_summary, [('outputnode.fallback', 'fallback')]),
             ])  # fmt:skip
         else:
             from niworkflows.data import load as nwf_load
 
             boldref_buffer.inputs.orig2boldref_xfm = nwf_load('itkIdentityTransform.txt')
             workflow.connect([
-                (bold_fit_wf, boldref_buffer, [('outputnode.boldref2anat_xfm', 'boldref2anat_xfm')]),
+                (bold_fit_wf, boldref_buffer, [
+                    ('outputnode.boldref2anat_xfm', 'boldref2anat_xfm'),
+                    ('outputnode.coreg_boldref', 'coreg_boldref'),
+                    ('outputnode.bold_mask', 'bold_mask'),
+                ]),
+                (bold_fit_wf, fit_summary, [
+                    ('outputnode.fallback', 'fallback'),
+                ])
             ])  # fmt:skip
 
         if config.workflow.level == 'minimal':
             continue
+
+        # Slice timing correction will be present in outputs
+        fit_summary.inputs.slice_timing = (
+            bool(metadata.get('SliceTiming')) and 'slicetiming' not in config.workflow.ignore
+        )
 
         bold_apply_wf = init_bold_apply_wf(
             bold_series=bold_series,
@@ -920,8 +1014,8 @@ tasks and sessions), the following preprocessing was performed.
                 (f'outputnode.{reg_sphere}', 'inputnode.sphere_reg_fsLR'),
             ]),
             (bold_fit_wf, bold_apply_wf, [
-                ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
-                ('outputnode.bold_mask', 'inputnode.bold_mask'),
+                # ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
+                # ('outputnode.bold_mask', 'inputnode.bold_mask'),
                 ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
                 ('outputnode.boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
                 ('outputnode.dummy_scans', 'inputnode.dummy_scans'),
@@ -929,6 +1023,8 @@ tasks and sessions), the following preprocessing was performed.
             (boldref_buffer, bold_apply_wf, [
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+                ('coreg_boldref', 'inputnode.coreg_boldref'),
+                ('bold_mask', 'inputnode.bold_mask'),
             ]),
         ])  # fmt:skip
 

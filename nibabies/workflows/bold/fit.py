@@ -35,7 +35,6 @@ from sdcflows.workflows.apply.registration import init_coeff2epi_wf
 
 from nibabies import config
 from nibabies._types import Anatomical
-from nibabies.interfaces.reports import FunctionalSummary
 from nibabies.interfaces.resampling import (
     DistortionParameters,
     ReconstructFieldmap,
@@ -54,7 +53,6 @@ from nibabies.workflows.bold.outputs import (
     init_ds_boldref_wf,
     init_ds_hmc_wf,
     init_ds_registration_wf,
-    init_func_fit_reports_wf,
 )
 from nibabies.workflows.bold.reference import init_raw_boldref_wf, init_validation_and_dummies_wf
 from nibabies.workflows.bold.registration import init_bold_reg_wf
@@ -235,9 +233,8 @@ def init_bold_fit_wf(
     # Get metadata from BOLD file(s)
     entities = extract_entities(bold_series)
     metadata = layout.get_metadata(bold_file)
-    orientation = ''.join(nb.aff2axcodes(nb.load(bold_file).affine))
 
-    bold_tlen, mem_gb = estimate_bold_mem_usage(bold_file)
+    _, mem_gb = estimate_bold_mem_usage(bold_file)
 
     # Boolean used to update workflow self-descriptions
     multiecho = len(bold_series) > 1
@@ -289,6 +286,15 @@ def init_bold_fit_wf(
                 'motion_xfm',
                 'boldref2anat_xfm',  # Undefined if coreg_anat is False
                 'boldref2fmap_xfm',
+                # summary (can be undefined)
+                'distortion_correction',  # if fieldmap_id
+                'algo_dummy_scans',  # if hmc
+                'fallback',  # if run -> anat coregistration
+                # func fit reports wf
+                'validation_report',
+                'sdc_boldref',
+                'fieldmap',
+                'fmap_ref',
             ],
         ),
         name='outputnode',
@@ -324,38 +330,6 @@ def init_bold_fit_wf(
         config.loggers.workflow.debug(f'Reusing coregistration reference: {coreg_boldref}')
     fmapref_buffer.inputs.sbref_files = sbref_files
 
-    use_fs = config.workflow.surface_recon_method is not None
-    summary = pe.Node(
-        FunctionalSummary(
-            distortion_correction='None',  # Can override with connection
-            registration='FreeSurfer' if use_fs else 'FSL',
-            registration_dof=config.workflow.bold2anat_dof,
-            registration_init=config.workflow.bold2anat_init,
-            pe_direction=metadata.get('PhaseEncodingDirection'),
-            echo_idx=entities.get('echo', []),
-            tr=metadata['RepetitionTime'],
-            orientation=orientation,
-        ),
-        name='summary',
-        mem_gb=config.DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-    summary.inputs.dummy_scans = config.workflow.dummy_scans
-    if config.workflow.level == 'full':
-        # Hack. More pain than it's worth to connect this up at a higher level.
-        # We can consider separating out fit and transform summaries,
-        # or connect a bunch a bunch of summary parameters to outputnodes
-        # to make available to the base workflow.
-        summary.inputs.slice_timing = (
-            bool(metadata.get('SliceTiming')) and 'slicetiming' not in config.workflow.ignore
-        )
-
-    func_fit_reports_wf = init_func_fit_reports_wf(
-        reference_anat=reference_anat,
-        sdc_correction=fieldmap_id is None,
-        output_dir=config.execution.output_dir,
-    )
-
     workflow.connect([
         (hmcref_buffer, outputnode, [
             ('boldref', 'hmc_boldref'),
@@ -368,21 +342,6 @@ def init_bold_fit_wf(
         ]),
         (fmapreg_buffer, outputnode, [('boldref2fmap_xfm', 'boldref2fmap_xfm')]),
         (hmc_buffer, outputnode, [('hmc_xforms', 'motion_xfm')]),
-        (inputnode, func_fit_reports_wf, [
-            ('bold_file', 'inputnode.source_file'),
-            ('anat_preproc', 'inputnode.anat_preproc'),
-            # May not need all of these
-            ('anat_mask', 'inputnode.anat_mask'),
-            ('anat_dseg', 'inputnode.anat_dseg'),
-            ('subjects_dir', 'inputnode.subjects_dir'),
-            ('subject_id', 'inputnode.subject_id'),
-        ]),
-        (outputnode, func_fit_reports_wf, [
-            ('coreg_boldref', 'inputnode.coreg_boldref'),
-            ('bold_mask', 'inputnode.bold_mask'),
-            ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-        ]),
-        (summary, func_fit_reports_wf, [('out_report', 'inputnode.summary_report')]),
     ])  # fmt:skip
 
     # Stage 1: Generate motion correction boldref
@@ -415,9 +374,9 @@ def init_bold_fit_wf(
                 ('outputnode.bold_file', 'bold_file'),
                 ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (hmc_boldref_wf, summary, [('outputnode.algo_dummy_scans', 'algo_dummy_scans')]),
-            (hmc_boldref_wf, func_fit_reports_wf, [
-                ('outputnode.validation_report', 'inputnode.validation_report'),
+            (hmc_boldref_wf, outputnode, [
+                ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
+                ('outputnode.validation_report', 'validation_report'),
             ]),
             (ds_hmc_boldref_wf, hmc_boldref_source_buffer, [
                 ('outputnode.boldref', 'in_file'),
@@ -433,9 +392,7 @@ def init_bold_fit_wf(
                 ('outputnode.bold_file', 'bold_file'),
                 ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (validation_and_dummies_wf, func_fit_reports_wf, [
-                ('outputnode.validation_report', 'inputnode.validation_report'),
-            ]),
+            (validation_and_dummies_wf, outputnode, [('outputnode.validation_report', 'validation_report')]),
             (hmcref_buffer, hmc_boldref_source_buffer, [('boldref', 'in_file')]),
         ])  # fmt:skip
 
@@ -491,13 +448,18 @@ def init_bold_fit_wf(
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),
-            (fmap_select, func_fit_reports_wf, [('fmap_ref', 'inputnode.fmap_ref')]),
-            (fmap_select, summary, [('sdc_method', 'distortion_correction')]),
-            (fmapref_buffer, func_fit_reports_wf, [('out', 'inputnode.sdc_boldref')]),
-            (fmapreg_buffer, func_fit_reports_wf, [
-                ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
+            (fmap_select, outputnode, [
+                ('fmap_ref', 'fmap_ref'),
+                ('sdc_method', 'distortion_correction'),
             ]),
-            (boldref_fmap, func_fit_reports_wf, [('out_file', 'inputnode.fieldmap')]),
+            (fmapref_buffer, outputnode, [('out', 'sdc_boldref')]),
+            (boldref_fmap, outputnode, [('out_file', 'fieldmap')]),
+            # (fmap_select, func_fit_reports_wf, [('fmap_ref', 'inputnode.fmap_ref')]),
+            # (fmapref_buffer, func_fit_reports_wf, [('out', 'inputnode.sdc_boldref')]),
+            # (fmapreg_buffer, func_fit_reports_wf, [
+            #     ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
+            # ]),
+            # (boldref_fmap, func_fit_reports_wf, [('out_file', 'inputnode.fieldmap')]),
         ])  # fmt:skip
 
         if not boldref2fmap_xform:
@@ -663,7 +625,7 @@ def init_bold_fit_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
             bold2anat_init=config.workflow.bold2anat_init,
             use_bbr=config.workflow.use_bbr,
-            freesurfer=use_fs,
+            freesurfer=config.workflow.surface_recon_method is not None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb['resampled'],
             sloppy=config.execution.sloppy,
@@ -696,7 +658,6 @@ def init_bold_fit_wf(
                 ('outputnode.metadata', 'inputnode.metadata'),
             ]),
             (ds_boldreg_wf, outputnode, [('outputnode.xform', 'boldref2anat_xfm')]),
-            (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
         ])  # fmt:skip
     else:
         config.loggers.workflow.info('Found coregistration transform - skipping Stage 5')
