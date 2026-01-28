@@ -124,18 +124,16 @@ def init_bold_apply_wf(
         Registration spheres from fsnative to fsLR space, collated left, then right
     anat_ribbon
         Binary cortical ribbon mask in anat space
-    fmap_id
-        Unique identifiers to select fieldmap files
     fmap
-        List of estimated fieldmaps (collated with fmap_id)
+        Fieldmap file
     fmap_ref
-        List of fieldmap reference files (collated with fmap_id)
+        Fieldmap reference file
     fmap_coeff
-        List of lists of spline coefficient files (collated with fmap_id)
+        List of spline coefficient files
     fmap_mask
-        List of fieldmap masks (collated with fmap_id)
+        Fieldmap mask
     sdc_method
-        List of fieldmap correction method names (collated with fmap_id)
+        Fieldmap correction method name
     anat2std_xfm
         Transform from anatomical space to standard space
     std_t1w
@@ -219,7 +217,6 @@ def init_bold_apply_wf(
                 'fmap_ref',
                 'fmap_coeff',
                 'fmap_mask',
-                'fmap_id',
                 'sdc_method',
                 # Volumetric templates
                 'anat2std_xfm',
@@ -259,7 +256,6 @@ def init_bold_apply_wf(
         (inputnode, bold_native_wf, [
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
-            ('fmap_id', 'inputnode.fmap_id'),
             ('coreg_boldref', 'inputnode.boldref'),
             ('bold_mask', 'inputnode.bold_mask'),
             ('motion_xfm', 'inputnode.motion_xfm'),
@@ -357,7 +353,6 @@ def init_bold_apply_wf(
             ('anat_mask', 'inputnode.target_mask'),
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
-            ('fmap_id', 'inputnode.fmap_id'),
             ('coreg_boldref', 'inputnode.bold_ref_file'),
             ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
             ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
@@ -424,7 +419,6 @@ def init_bold_apply_wf(
                 ('std_resolution', 'inputnode.resolution'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
-                ('fmap_id', 'inputnode.fmap_id'),
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
@@ -583,7 +577,6 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('anat2mniinfant_xfm', 'inputnode.anat2std_xfm'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
-                ('fmap_id', 'inputnode.fmap_id'),
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),

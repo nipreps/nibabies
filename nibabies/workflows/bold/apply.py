@@ -3,7 +3,6 @@ from __future__ import annotations
 import nipype.interfaces.utility as niu
 import nipype.pipeline.engine as pe
 from niworkflows.interfaces.nibabel import GenerateSamplingReference
-from niworkflows.interfaces.utility import KeySelect
 
 from nibabies.interfaces.resampling import (
     DistortionParameters,
@@ -70,8 +69,6 @@ def init_bold_volumetric_resample_wf(
         Fieldmap reference image defining the valid field of view for the fieldmap.
     fmap_coeff
         B-Spline coefficients for the fieldmap.
-    fmap_id
-        Fieldmap identifier, to select correct fieldmap in case there are multiple.
     boldref2anat_xfm
         Affine transform from ``bold_ref_file`` to the anatomical reference image.
     anat2std_xfm
@@ -102,7 +99,6 @@ def init_bold_volumetric_resample_wf(
                 'boldref2fmap_xfm',
                 'fmap_ref',
                 'fmap_coeff',
-                'fmap_id',
                 # Anatomical
                 'boldref2anat_xfm',
                 # Template
@@ -153,11 +149,6 @@ def init_bold_volumetric_resample_wf(
     if not fieldmap_id:
         return workflow
 
-    fmap_select = pe.Node(
-        KeySelect(fields=['fmap_ref', 'fmap_coeff'], key=fieldmap_id),
-        name='fmap_select',
-        run_without_submitting=True,
-    )
     distortion_params = pe.Node(
         DistortionParameters(metadata=metadata),
         name='distortion_params',
@@ -173,17 +164,12 @@ def init_bold_volumetric_resample_wf(
     fmap_recon = pe.Node(ReconstructFieldmap(), name='fmap_recon', mem_gb=1)
 
     workflow.connect([
-        (inputnode, fmap_select, [
-            ('fmap_ref', 'fmap_ref'),
-            ('fmap_coeff', 'fmap_coeff'),
-            ('fmap_id', 'keys'),
-        ]),
         (inputnode, distortion_params, [('bold_file', 'in_file')]),
         (inputnode, fmap2target, [('boldref2fmap_xfm', 'in1')]),
         (gen_ref, fmap_recon, [('out_file', 'target_ref_file')]),
         (boldref2target, fmap2target, [('out', 'in2')]),
         (boldref2target, inverses, [('out', 'inlist')]),
-        (fmap_select, fmap_recon, [
+        (inputnode, fmap_recon, [
             ('fmap_coeff', 'in_coeffs'),
             ('fmap_ref', 'fmap_ref_file'),
         ]),

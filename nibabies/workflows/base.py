@@ -833,7 +833,7 @@ tasks and sessions), the following preprocessing was performed.
         boldref_buffer.inputs.bold_file = bold_file
 
         # Summary - used for func fit reports
-        fit_summary = pe.Node(
+        func_fit_summary = pe.Node(
             FunctionalSummary(
                 distortion_correction='None',  # Can override with connection
                 registration='FreeSurfer' if config.workflow.surface_recon_method else 'FSL',
@@ -845,20 +845,16 @@ tasks and sessions), the following preprocessing was performed.
                 orientation=''.join(nb.aff2axcodes(nb.load(bold_file).affine)),
                 dummy_scans=config.workflow.dummy_scans,
             ),
-            name=_get_wf_name(bold_file, 'fit_summary'),
+            name=_get_wf_name(bold_file, 'func_fit_summary'),
             mem_gb=config.DEFAULT_MEMORY_MIN_GB,
             run_without_submitting=True,
         )
-        # Remaining connections:
-        # algo_dummy_scans (if hmc performed)
-        # distortion_correction
-        # fallback (anat registration)
 
-        fit_reports_wf = init_func_fit_reports_wf(
+        func_fit_reports_wf = init_func_fit_reports_wf(
             reference_anat=reference_anat,
             sdc_correction=fieldmap_id is None,
             output_dir=config.execution.output_dir,
-            name=_get_wf_name(bold_file, 'fit_reports'),
+            name=_get_wf_name(bold_file, 'func_fit_reports'),
         )
 
         workflow.connect([
@@ -870,27 +866,26 @@ tasks and sessions), the following preprocessing was performed.
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
-            (bold_fit_wf, fit_summary, [
-                ('outputnode.distortion_correction', 'distortion_correction'),
+            (bold_fit_wf, func_fit_summary, [
                 ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
             ]),
-            (fit_summary, fit_reports_wf, [
+            (func_fit_summary, func_fit_reports_wf, [
                 ('out_report', 'inputnode.summary_report'),
             ]),
-            (anat_fit_wf, fit_reports_wf, [
+            (anat_fit_wf, func_fit_reports_wf, [
                 ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
                 ('outputnode.anat_mask', 'inputnode.anat_mask'),
                 ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
                 ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
                 ('outputnode.subject_id', 'inputnode.subject_id'),
             ]),
-            (bold_fit_wf, fit_reports_wf, [
+            (bold_fit_wf, func_fit_reports_wf, [
                 ('outputnode.validation_report', 'inputnode.validation_report'),
                 ('outputnode.sdc_boldref', 'inputnode.sdc_boldref'),
                 ('outputnode.fieldmap', 'inputnode.fieldmap'),
                 ('outputnode.boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
             ]),
-            (boldref_buffer, fit_reports_wf, [
+            (boldref_buffer, func_fit_reports_wf, [
                 ('bold_file', 'inputnode.source_file'),
                 ('coreg_boldref', 'inputnode.coreg_boldref'),
                 ('bold_mask', 'inputnode.bold_mask'),
@@ -919,8 +914,17 @@ tasks and sessions), the following preprocessing was performed.
                     ('outputnode.method', 'sdc_method'),
                     ('outputnode.fmap_id', 'keys'),
                 ]),
-                (fmap_select, fit_summary, [('sdc_method', 'distortion_correction')]),
-                (fmap_select, fit_reports_wf, [('fmap_ref', 'inputnode.fmap_ref')]),
+                (fmap_select, bold_fit_wf, [
+                    ('fmap_ref', 'inputnode.fmap_ref'),
+                    ('fmap_coeff', 'inputnode.fmap_coeff'),
+                    ('fmap_mask', 'inputnode.fmap_mask'),
+                ]),
+                (fmap_select, func_fit_summary, [
+                    ('sdc_method', 'distortion_correction'),
+                ]),
+                (fmap_select, func_fit_reports_wf, [
+                    ('fmap_ref', 'inputnode.fmap_ref'),
+                ]),
             ])  # fmt:skip
 
         if config.workflow.coreg_bolds:
@@ -963,7 +967,7 @@ tasks and sessions), the following preprocessing was performed.
                 (ds_boldref2anat_wf, boldref_buffer, [
                     ('outputnode.xform', 'boldref2anat_xfm'),
                 ]),
-                (session_bold_reg_wf, fit_summary, [('outputnode.fallback', 'fallback')]),
+                (session_bold_reg_wf, func_fit_summary, [('outputnode.fallback', 'fallback')]),
             ])  # fmt:skip
         else:
             from niworkflows.data import load as nwf_load
@@ -975,7 +979,7 @@ tasks and sessions), the following preprocessing was performed.
                     ('outputnode.coreg_boldref', 'coreg_boldref'),
                     ('outputnode.bold_mask', 'bold_mask'),
                 ]),
-                (bold_fit_wf, fit_summary, [
+                (bold_fit_wf, func_fit_summary, [
                     ('outputnode.fallback', 'fallback'),
                 ])
             ])  # fmt:skip
@@ -984,7 +988,7 @@ tasks and sessions), the following preprocessing was performed.
             continue
 
         # Slice timing correction will be present in outputs
-        fit_summary.inputs.slice_timing = (
+        func_fit_summary.inputs.slice_timing = (
             bool(metadata.get('SliceTiming')) and 'slicetiming' not in config.workflow.ignore
         )
 
@@ -1028,13 +1032,12 @@ tasks and sessions), the following preprocessing was performed.
 
         if fieldmap_id:
             workflow.connect([
-                (fmap_wf, bold_apply_wf, [
-                    ('outputnode.fmap', 'inputnode.fmap'),
-                    ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
-                    ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
-                    ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
-                    ('outputnode.fmap_id', 'inputnode.fmap_id'),
-                    ('outputnode.method', 'inputnode.sdc_method'),
+                (fmap_select, bold_apply_wf, [
+                    ('fmap', 'inputnode.fmap'),
+                    ('fmap_ref', 'inputnode.fmap_ref'),
+                    ('fmap_coeff', 'inputnode.fmap_coeff'),
+                    ('fmap_mask', 'inputnode.fmap_mask'),
+                    ('sdc_method', 'inputnode.sdc_method'),
                 ]),
             ])  # fmt:skip
 

@@ -30,7 +30,6 @@ from nipype.pipeline import engine as pe
 from niworkflows.func.util import init_enhance_and_skullstrip_bold_wf, init_skullstrip_bold_wf
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nitransforms import ConcatenateXFMs
-from niworkflows.interfaces.utility import KeySelect
 from sdcflows.workflows.apply.registration import init_coeff2epi_wf
 
 from nibabies import config
@@ -149,18 +148,16 @@ def init_bold_fit_wf(
         FreeSurfer subject ID
     fsnative2t1w_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed subject space to T1w
-    fmap_id
-        Unique identifiers to select fieldmap files
     fmap
-        List of estimated fieldmaps (collated with fmap_id)
+        Fieldmap file
     fmap_ref
-        List of fieldmap reference files (collated with fmap_id)
+        Fieldmap reference file
     fmap_coeff
-        List of lists of spline coefficient files (collated with fmap_id)
+        List of spline coefficient files
     fmap_mask
-        List of fieldmap masks (collated with fmap_id)
+        Fieldmap mask
     sdc_method
-        List of fieldmap correction method names (collated with fmap_id)
+        Fieldmap correction method name
 
     Outputs
     -------
@@ -256,7 +253,6 @@ def init_bold_fit_wf(
             fields=[
                 'bold_file',
                 # Fieldmap registration
-                'fmap',
                 'fmap_ref',
                 'fmap_coeff',
                 'fmap_mask',
@@ -284,14 +280,12 @@ def init_bold_fit_wf(
                 'boldref2anat_xfm',  # Undefined if coreg_anat is False
                 'boldref2fmap_xfm',
                 # summary (can be undefined)
-                'distortion_correction',  # if fieldmap_id
                 'algo_dummy_scans',  # if hmc
                 'fallback',  # if run -> anat coregistration
                 # func fit reports wf
                 'validation_report',
                 'sdc_boldref',
                 'fieldmap',
-                'fmap_ref',
             ],
         ),
         name='outputnode',
@@ -686,12 +680,10 @@ def init_bold_native_wf(
     boldref2fmap_xfm
         Affine transform mapping from BOLD reference space to the fieldmap
         space, if applicable.
-    fmap_id
-        Unique identifiers to select fieldmap files
     fmap_ref
-        List of fieldmap reference files (collated with fmap_id)
+        Fieldmap reference file
     fmap_coeff
-        List of lists of spline coefficient files (collated with fmap_id)
+        List of spline coefficient files
 
     Outputs
     -------
@@ -768,7 +760,6 @@ def init_bold_native_wf(
                 # Fieldmap fit
                 'fmap_ref',
                 'fmap_coeff',
-                'fmap_id',
             ],
         ),
         name='inputnode',
@@ -824,23 +815,12 @@ def init_bold_native_wf(
 
     # Prepare fieldmap metadata
     if fieldmap_id:
-        fmap_select = pe.Node(
-            KeySelect(fields=['fmap_ref', 'fmap_coeff'], key=fieldmap_id),
-            name='fmap_select',
-            run_without_submitting=True,
-        )
-
         distortion_params = pe.Node(
             DistortionParameters(metadata=metadata, in_file=bold_file),
             name='distortion_params',
             run_without_submitting=True,
         )
         workflow.connect([
-            (inputnode, fmap_select, [
-                ('fmap_ref', 'fmap_ref'),
-                ('fmap_coeff', 'fmap_coeff'),
-                ('fmap_id', 'keys'),
-            ]),
             (distortion_params, boldbuffer, [
                 ('readout_time', 'ro_time'),
                 ('pe_direction', 'pe_dir'),
@@ -876,8 +856,6 @@ def init_bold_native_wf(
             (inputnode, boldref_fmap, [
                 ('boldref', 'target_ref_file'),
                 ('boldref2fmap_xfm', 'transforms'),
-            ]),
-            (fmap_select, boldref_fmap, [
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),
