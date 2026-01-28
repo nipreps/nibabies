@@ -66,6 +66,7 @@ def init_coreg_bolds_wf(
 
     """
     from niworkflows.interfaces.freesurfer import StructuralReference
+    from niworkflows.interfaces.nitransforms import ConvertAffine
 
     workflow = Workflow(name=name)
     workflow.__desc__ = 'All BOLD runs were coregistered to create a session-level BOLD reference.'
@@ -101,10 +102,17 @@ def init_coreg_bolds_wf(
             fixed_timepoint=not unbiased,
             no_iteration=not unbiased,
             transform_outputs=True,
+            out_file='boldref_template.nii.gz',
         ),
         mem_gb=2 * num_bold_runs - 1,
         name='boldref_template',
         n_procs=omp_nthreads,
+    )
+
+    to_itk = pe.MapNode(
+        ConvertAffine(in_fmt='fs', out_fmt='itk'),
+        iterfield=['in_xfm'],
+        name='to_itk',
     )
 
     skullstrip_boldref_wf = init_skullstrip_bold_wf(name='skullstrip_boldref_wf')
@@ -115,7 +123,12 @@ def init_coreg_bolds_wf(
         ]),
         (boldref_template, outputnode, [
             ('out_file', 'boldref'),
-            ('transform_outputs', 'orig2boldref_xfms'),
+        ]),
+        (boldref_template, to_itk, [
+            ('transform_outputs', 'in_xfm'),
+        ]),
+        (to_itk, outputnode, [
+            ('out_xfm', 'orig2boldref_xfms'),
         ]),
         (inputnode, outputnode, [
             ('boldref_files', 'boldref_files'),
