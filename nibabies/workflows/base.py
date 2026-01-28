@@ -890,7 +890,6 @@ tasks and sessions), the following preprocessing was performed.
                 ('outputnode.validation_report', 'inputnode.validation_report'),
                 ('outputnode.sdc_boldref', 'inputnode.sdc_boldref'),
                 ('outputnode.fieldmap', 'inputnode.fieldmap'),
-                ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
                 ('outputnode.boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
             ]),
             (boldref_buffer, fit_reports_wf, [
@@ -906,7 +905,7 @@ tasks and sessions), the following preprocessing was performed.
             # Select fieldmap files relevant to this run
             fmap_select = pe.Node(
                 KeySelect(
-                    fields=['fmap_ref', 'fmap_coeff', 'fmap_mask', 'sdc_method'],
+                    fields=['fmap', 'fmap_ref', 'fmap_coeff', 'fmap_mask', 'sdc_method'],
                     key=fieldmap_id,
                 ),
                 name=f'fmap_select{i}',
@@ -914,15 +913,16 @@ tasks and sessions), the following preprocessing was performed.
             )
 
             workflow.connect([
-                (fmap_wf, bold_fit_wf, [
-                    ('outputnode.fmap', 'inputnode.fmap'),
-                    ('outputnode.fmap_ref', 'inputnode.fmap_ref'),
-                    ('outputnode.fmap_coeff', 'inputnode.fmap_coeff'),
-                    ('outputnode.fmap_mask', 'inputnode.fmap_mask'),
-                    ('outputnode.fmap_id', 'inputnode.fmap_id'),
-                    ('outputnode.method', 'inputnode.sdc_method'),
+                (fmap_wf, fmap_select, [
+                    ('outputnode.fmap', 'fmap'),
+                    ('outputnode.fmap_ref', 'fmap_ref'),
+                    ('outputnode.fmap_coeff', 'fmap_coeff'),
+                    ('outputnode.fmap_mask', 'fmap_mask'),
+                    ('outputnode.method', 'sdc_method'),
+                    ('outputnode.fmap_id', 'keys'),
                 ]),
-                (fmap_wf, fit_summary, [('outputnode.method', 'distortion_correction')]),
+                (fmap_select, fit_summary, [('sdc_method', 'distortion_correction')]),
+                (fmap_select, fit_reports_wf, [('fmap_ref', 'inputnode.fmap_ref')]),
             ])  # fmt:skip
 
         if config.workflow.coreg_bolds:

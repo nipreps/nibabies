@@ -261,8 +261,6 @@ def init_bold_fit_wf(
                 'fmap_ref',
                 'fmap_coeff',
                 'fmap_mask',
-                'fmap_id',
-                'sdc_method',
                 # Anatomical coregistration
                 'anat_preproc',
                 'anat_mask',
@@ -423,43 +421,18 @@ def init_bold_fit_wf(
     # Stage 3: Register fieldmap to boldref and reconstruct in BOLD space
     if fieldmap_id:
         config.loggers.workflow.info('Stage 3: Adding fieldmap reconstruction workflow')
-        fmap_select = pe.Node(
-            KeySelect(
-                fields=['fmap_ref', 'fmap_coeff', 'fmap_mask', 'sdc_method'],
-                key=fieldmap_id,
-            ),
-            name='fmap_select',
-            run_without_submitting=True,
-        )
 
         boldref_fmap = pe.Node(ReconstructFieldmap(inverse=[True]), name='boldref_fmap', mem_gb=1)
 
         workflow.connect([
-            (inputnode, fmap_select, [
-                ('fmap_ref', 'fmap_ref'),
-                ('fmap_coeff', 'fmap_coeff'),
-                ('fmap_mask', 'fmap_mask'),
-                ('sdc_method', 'sdc_method'),
-                ('fmap_id', 'keys'),
-            ]),
             (fmapref_buffer, boldref_fmap, [('out', 'target_ref_file')]),
             (fmapreg_buffer, boldref_fmap, [('boldref2fmap_xfm', 'transforms')]),
-            (fmap_select, boldref_fmap, [
+            (inputnode, boldref_fmap, [
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),
-            (fmap_select, outputnode, [
-                ('fmap_ref', 'fmap_ref'),
-                ('sdc_method', 'distortion_correction'),
-            ]),
             (fmapref_buffer, outputnode, [('out', 'sdc_boldref')]),
             (boldref_fmap, outputnode, [('out_file', 'fieldmap')]),
-            # (fmap_select, func_fit_reports_wf, [('fmap_ref', 'inputnode.fmap_ref')]),
-            # (fmapref_buffer, func_fit_reports_wf, [('out', 'inputnode.sdc_boldref')]),
-            # (fmapreg_buffer, func_fit_reports_wf, [
-            #     ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
-            # ]),
-            # (boldref_fmap, func_fit_reports_wf, [('out_file', 'inputnode.fieldmap')]),
         ])  # fmt:skip
 
         if not boldref2fmap_xform:
@@ -486,12 +459,12 @@ def init_bold_fit_wf(
             )
 
             workflow.connect([
-                (fmap_select, fmapreg_wf, [
+                (inputnode, fmapreg_wf, [
                     ('fmap_ref', 'inputnode.fmap_ref'),
                     ('fmap_mask', 'inputnode.fmap_mask'),
                 ]),
                 (fmapref_buffer, fmapreg_source_files, [('out', 'in1')]),
-                (fmap_select, fmapreg_source_files, [
+                (inputnode, fmapreg_source_files, [
                     ('fmap_ref', 'in2'),
                 ]),
                 (fmapreg_wf, itk_mat2txt, [('outputnode.target2fmap_xfm', 'in_xfms')]),
@@ -587,7 +560,7 @@ def init_bold_fit_wf(
                     ('outputnode.mask_file', 'inputnode.boldmask'),
                 ]),
                 (fmapreg_buffer, coreg_ref_source_files, [('boldref2fmap_xfm', 'in2')]),
-                (fmap_select, coreg_ref_source_files, [('fmap_coeff', 'in3')]),
+                (inputnode, coreg_ref_source_files, [('fmap_coeff', 'in3')]),
             ])  # fmt:skip
 
             if not boldref2fmap_xform:
