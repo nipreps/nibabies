@@ -514,7 +514,7 @@ It is released under the [CC0]\
     reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
     template_iterator_wf = None
     select_MNIInfant_xfm = None
-    if config.workflow.level == 'full':
+    if config.workflow.level != 'minimal':
         anat_apply_wf = init_infant_anat_apply_wf(
             bids_root=bids_root,
             cifti_output=cifti_output,
