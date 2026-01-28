@@ -175,6 +175,23 @@ def init_func_fit_reports_wf(
         Segmentation in anatomical reference space
     anat_mask
         Brain (binary) mask estimated by brain extraction.
+    coreg_boldref
+        BOLD reference image.
+    bold_mask
+        Reference BOLD brain mask.
+    sdc_boldref
+        SDC-corrected BOLD reference image.
+    boldref2anat_xfm
+        BOLD reference to anatomical transform.
+        orig2boldref_xfm
+        Original BOLD to BOLD reference transform
+    boldref2fmap_xfm
+        BOLD reference to fieldmap transform (optional)
+    fieldmap
+        Fieldmap image (optional)
+    fmap_ref
+        Fieldmap reference image (optional)
+
     """
     from nireports.interfaces.reporting.base import (
         SimpleBeforeAfterRPT as SimpleBeforeAfter,
@@ -190,6 +207,7 @@ def init_func_fit_reports_wf(
         'bold_mask',
         'boldref2anat_xfm',
         'boldref2fmap_xfm',
+        'orig2boldref_xfm',
         'anat_preproc',
         'anat_mask',
         'anat_dseg',
@@ -228,13 +246,20 @@ def init_func_fit_reports_wf(
         mem_gb=config.DEFAULT_MEMORY_MIN_GB,
     )
 
+    to_anat_xfm = pe.Node(
+        niu.Merge(2),
+        name='to_anat_xfm',
+        run_without_submitting=True,
+        mem_gb=config.DEFAULT_MEMORY_MIN_GB,
+    )
+
     # Resample anatomical references into BOLD space for plotting
     anat_boldref = pe.Node(
         ApplyTransforms(
             dimension=3,
             default_value=0,
             float=True,
-            invert_transform_flags=[True],
+            invert_transform_flags=[True, False],
             interpolation='LanczosWindowedSinc',
         ),
         name='anat_boldref',
@@ -272,8 +297,13 @@ def init_func_fit_reports_wf(
         (inputnode, anat_boldref, [
             ('anat_preproc', 'input_image'),
             ('coreg_boldref', 'reference_image'),
-            ('boldref2anat_xfm', 'transforms'),
+            # ('boldref2anat_xfm', 'transforms'),
         ]),
+        (inputnode, to_anat_xfm, [
+            ('boldref2anat_xfm', 'in1'),
+            ('orig2boldref_xfm', 'in2'),
+        ]),
+        (to_anat_xfm, anat_boldref, [('out', 'transforms')]),
         (inputnode, anat_wm, [('anat_dseg', 'in_seg')]),
         (inputnode, boldref_wm, [
             ('coreg_boldref', 'reference_image'),
@@ -295,6 +325,13 @@ def init_func_fit_reports_wf(
     #       After: Resampled boldref with white matter mask
 
     if sdc_correction:
+        to_fmap_xfm = pe.Node(
+            niu.Merge(2),
+            name='to_fmap_xfm',
+            run_without_submitting=True,
+            mem_gb=config.DEFAULT_MEMORY_MIN_GB,
+        )
+
         fmapref_boldref = pe.Node(
             ApplyTransforms(
                 dimension=3,
@@ -355,7 +392,13 @@ def init_func_fit_reports_wf(
             (inputnode, fmapref_boldref, [
                 ('fmap_ref', 'input_image'),
                 ('coreg_boldref', 'reference_image'),
-                ('boldref2fmap_xfm', 'transforms'),
+            ]),
+            (inputnode, to_fmap_xfm, [
+                ('boldref2fmap_xfm', 'in1'),
+                ('orig2boldref_xfm', 'in2'),
+            ]),
+            (to_fmap_xfm, fmapref_boldref, [
+                ('out', 'transforms'),
             ]),
             (inputnode, sdcreg_report, [
                 ('sdc_boldref', 'reference'),
