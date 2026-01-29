@@ -74,6 +74,9 @@ def init_bold_volumetric_resample_wf(
     anat2std_xfm
         Affine transform from the anatomical reference image to standard space.
         Leave undefined to resample to anatomical reference space.
+    orig2boldref_xfm
+        Transform mapping run-level BOLD reference with session space. If only run
+        level processing, will be an identity transform.
 
     Outputs
     -------
@@ -99,6 +102,8 @@ def init_bold_volumetric_resample_wf(
                 'boldref2fmap_xfm',
                 'fmap_ref',
                 'fmap_coeff',
+                # boldref
+                'orig2boldref_xfm',
                 # Anatomical
                 'boldref2anat_xfm',
                 # Template
@@ -117,7 +122,7 @@ def init_bold_volumetric_resample_wf(
 
     gen_ref = pe.Node(GenerateSamplingReference(), name='gen_ref', mem_gb=0.3)
 
-    boldref2target = pe.Node(niu.Merge(2), name='boldref2target', run_without_submitting=True)
+    boldref2target = pe.Node(niu.Merge(3), name='boldref2target', run_without_submitting=True)
     bold2target = pe.Node(niu.Merge(2), name='bold2target', run_without_submitting=True)
     resample = pe.Node(
         ResampleSeries(jacobian=jacobian, num_threads=omp_nthreads),
@@ -134,8 +139,9 @@ def init_bold_volumetric_resample_wf(
             (('resolution', _is_native), 'keep_native'),
         ]),
         (inputnode, boldref2target, [
-            ('boldref2anat_xfm', 'in1'),
-            ('anat2std_xfm', 'in2'),
+            ('orig2boldref_xfm', 'in1'),
+            ('boldref2anat_xfm', 'in2'),
+            ('anat2std_xfm', 'in3'),
         ]),
         (inputnode, bold2target, [('motion_xfm', 'in1')]),
         (inputnode, resample, [('bold_file', 'in_file')]),
