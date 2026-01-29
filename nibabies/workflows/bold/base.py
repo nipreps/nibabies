@@ -124,16 +124,10 @@ def init_bold_apply_wf(
         Registration spheres from fsnative to fsLR space, collated left, then right
     anat_ribbon
         Binary cortical ribbon mask in anat space
-    fmap
-        Fieldmap file
     fmap_ref
         Fieldmap reference file
     fmap_coeff
         List of spline coefficient files
-    fmap_mask
-        Fieldmap mask
-    sdc_method
-        Fieldmap correction method name
     anat2std_xfm
         Transform from anatomical space to standard space
     std_t1w
@@ -213,11 +207,8 @@ def init_bold_apply_wf(
                 'cortex_mask',
                 'anat_ribbon',
                 # Fieldmap registration
-                'fmap',
                 'fmap_ref',
                 'fmap_coeff',
-                'fmap_mask',
-                'sdc_method',
                 # Volumetric templates
                 'anat2std_xfm',
                 'std_t1w',
@@ -261,6 +252,7 @@ def init_bold_apply_wf(
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
             ('dummy_scans', 'inputnode.dummy_scans'),
+            ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
         ]),
     ])  # fmt:skip
 
@@ -289,6 +281,7 @@ def init_bold_apply_wf(
                 ('bold_mask', 'inputnode.bold_mask'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
+                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
             ]),
         ])  # fmt:skip
 
@@ -356,6 +349,7 @@ def init_bold_apply_wf(
             ('coreg_boldref', 'inputnode.bold_ref_file'),
             ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
             ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
+            ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
         ]),
         (bold_native_wf, bold_anat_wf, [
             ('outputnode.bold_minimal', 'inputnode.bold_file'),
@@ -422,6 +416,7 @@ def init_bold_apply_wf(
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
+                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
             ]),
             (bold_native_wf, bold_std_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),
@@ -438,6 +433,7 @@ def init_bold_apply_wf(
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
+                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
             ]),
             (bold_native_wf, ds_bold_std_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
             (bold_std_wf, ds_bold_std_wf, [
@@ -472,7 +468,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         # sources are bold_file, motion_xfm, boldref2anat_xfm, fsnative2anat_xfm
         merge_surface_sources = pe.Node(
-            niu.Merge(4),
+            niu.Merge(5),
             name='merge_surface_sources',
             run_without_submitting=True,
         )
@@ -480,8 +476,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         workflow.connect([
             (inputnode, merge_surface_sources, [
                 ('motion_xfm', 'in2'),
-                ('boldref2anat_xfm', 'in3'),
-                ('fsnative2anat_xfm', 'in4'),
+                ('orig2boldref_xfm', 'in3'),
+                ('boldref2anat_xfm', 'in4'),
+                ('fsnative2anat_xfm', 'in5'),
             ]),
             (merge_surface_sources, bold_surf_wf, [
                 ('out', 'inputnode.sources'),
@@ -580,6 +577,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
+                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
             ]),
             (bold_native_wf, bold_MNIInfant_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),

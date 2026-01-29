@@ -680,6 +680,8 @@ def init_bold_native_wf(
     boldref2fmap_xfm
         Affine transform mapping from BOLD reference space to the fieldmap
         space, if applicable.
+    orig2boldref_xfm
+        Transform mapping run-level BOLD reference with session space, if applicable.
     fmap_ref
         Fieldmap reference file
     fmap_coeff
@@ -755,6 +757,7 @@ def init_bold_native_wf(
                 'boldref',
                 'bold_mask',
                 'motion_xfm',
+                'orig2boldref_xfm',
                 'boldref2fmap_xfm',
                 'dummy_scans',
                 # Fieldmap fit
@@ -838,10 +841,18 @@ def init_bold_native_wf(
         mem_gb=mem_gb['resampled'],
     )
 
+    merge_xfms = pe.Node(niu.Merge(2), name='merge_xfms', run_without_submitting=True)
+
     workflow.connect([
+        (inputnode, merge_xfms, [
+            ('motion_xfm', 'in1'),
+            ('orig2boldref_xfm', 'in2'),
+        ]),
+        (merge_xfms, boldref_bold, [
+            ('out', 'transforms'),
+        ]),
         (inputnode, boldref_bold, [
             ('boldref', 'ref_file'),
-            ('motion_xfm', 'transforms'),
         ]),
         (boldbuffer, boldref_bold, [
             ('bold_file', 'in_file'),

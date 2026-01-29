@@ -627,6 +627,7 @@ def init_ds_bold_native_wf(
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
                 'boldref2fmap_xfm',
+                'orig2boldref_xfm',
             ]
         ),
         name='inputnode',
@@ -634,7 +635,7 @@ def init_ds_bold_native_wf(
 
     sources = pe.Node(
         BIDSURI(
-            numinputs=3,
+            numinputs=4,
             dataset_links=config.execution.dataset_links,
             out_dir=str(config.execution.output_dir.absolute()),
         ),
@@ -644,7 +645,8 @@ def init_ds_bold_native_wf(
         (inputnode, sources, [
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
-            ('boldref2fmap_xfm', 'in3'),
+            ('orig2boldref_xfm', 'in3'),
+            ('boldref2fmap_xfm', 'in4'),
         ]),
     ])  # fmt:skip
 
@@ -775,6 +777,7 @@ def init_ds_volumes_wf(
                 'resolution',
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
+                'orig2boldref_xfm',
                 'boldref2fmap_xfm',
             ]
         ),
@@ -783,7 +786,7 @@ def init_ds_volumes_wf(
 
     sources = pe.Node(
         BIDSURI(
-            numinputs=6,
+            numinputs=7,
             dataset_links=config.execution.dataset_links,
             out_dir=str(config.execution.output_dir.absolute()),
         ),
@@ -809,10 +812,11 @@ def init_ds_volumes_wf(
         (inputnode, sources, [
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
-            ('boldref2fmap_xfm', 'in3'),
-            ('boldref2anat_xfm', 'in4'),
-            ('anat2std_xfm', 'in5'),
-            ('template', 'in6'),
+            ('orig2boldref_xfm', 'in3'),
+            ('boldref2fmap_xfm', 'in4'),
+            ('boldref2anat_xfm', 'in5'),
+            ('anat2std_xfm', 'in6'),
+            ('template', 'in7'),
         ]),
         (inputnode, boldref2target, [
             # Note that ANTs expects transforms in target-to-source order
