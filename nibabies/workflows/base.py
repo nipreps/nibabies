@@ -1033,11 +1033,8 @@ tasks and sessions), the following preprocessing was performed.
         if fieldmap_id:
             workflow.connect([
                 (fmap_select, bold_apply_wf, [
-                    ('fmap', 'inputnode.fmap'),
                     ('fmap_ref', 'inputnode.fmap_ref'),
                     ('fmap_coeff', 'inputnode.fmap_coeff'),
-                    ('fmap_mask', 'inputnode.fmap_mask'),
-                    ('sdc_method', 'inputnode.sdc_method'),
                 ]),
             ])  # fmt:skip
 
