@@ -396,6 +396,7 @@ def init_bold_fit_wf(
             bold_file=bold_file,
             multiecho=multiecho,
             ref_frame_start=config.workflow.hmc_bold_frame,
+            find_good_refframe=config.workflow.find_good_hmc_refframe
         )
         hmc_boldref_wf.inputs.inputnode.dummy_scans = config.workflow.dummy_scans
 
