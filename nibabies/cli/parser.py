@@ -757,13 +757,13 @@ discourage its usage.""",
         '--hmc-bold-frame',
         type=int,
         default=16,
-        help='Frame to start head motion estimation on BOLD.',
+        help='Frame to start head motion estimation on BOLD',
     )
     g_baby.add_argument(
-        '--find-good-hmc-refframe',
+        '--estimate-good-refframe',
         action='store_true',
-        help='Find a low-motion BOLD reference frame out of each timeseries instead of '
-        'running RobustAverage over all frames after hmc_bold_frame.'
+        help='Estimate and find a low-motion BOLD reference frame out of each timeseries instead of '
+        'running RobustAverage over all frames after ``hmc_bold_frame.``'
     )
     g_baby.add_argument(
         '--norm-csf',
