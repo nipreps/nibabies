@@ -25,6 +25,7 @@ from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.utils.misc import pass_dummy_scans
+from nibabies.interfaces.reference import SelectOneFrame
 
 DEFAULT_MEMORY_MIN_GB = 0.01
 
@@ -124,37 +125,53 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
             name='select_frames',
         )
+        select_frames.inputs.ref_frame_start = ref_frame_start
+
+        gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
+
+        workflow.connect([
+            (inputnode, validation_and_dummies_wf, [
+                ('bold_file', 'inputnode.bold_file'),
+                ('dummy_scans', 'inputnode.dummy_scans'),
+            ]),
+            (validation_and_dummies_wf, outputnode, [
+                ('outputnode.bold_file', 'bold_file'),
+                ('outputnode.skip_vols', 'skip_vols'),
+                ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
+                ('outputnode.validation_report', 'validation_report'),
+            ]),
+            (validation_and_dummies_wf, gen_avg, [
+                ('outputnode.bold_file', 'in_file'),
+            ]),
+            (validation_and_dummies_wf, select_frames, [
+                ('outputnode.bold_file', 'in_file'),
+            ]),
+            (inputnode, select_frames, [('dummy_scans', 'dummy_scans')]),
+            (select_frames, gen_avg, [('t_mask', 't_mask')]),
+            (gen_avg, outputnode, [('out_file', 'boldref')]),
+        ])  # fmt:skip
+        return workflow
     else:  # Select a single low-motion frame
-        select_frames = pe.Node(
-            niu.Function(function=_select_one_frame, output_names=['start_frame', 't_mask']),
-            name='select_frames',
-        )
-    select_frames.inputs.ref_frame_start = ref_frame_start
-
-    gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
-
-    workflow.connect([
-        (inputnode, validation_and_dummies_wf, [
-            ('bold_file', 'inputnode.bold_file'),
-            ('dummy_scans', 'inputnode.dummy_scans'),
-        ]),
-        (validation_and_dummies_wf, outputnode, [
-            ('outputnode.bold_file', 'bold_file'),
-            ('outputnode.skip_vols', 'skip_vols'),
-            ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
-            ('outputnode.validation_report', 'validation_report'),
-        ]),
-        (validation_and_dummies_wf, gen_avg, [
-            ('outputnode.bold_file', 'in_file'),
-        ]),
-        (validation_and_dummies_wf, select_frames, [
-            ('outputnode.bold_file', 'in_file'),
-        ]),
-        (inputnode, select_frames, [('dummy_scans', 'dummy_scans')]),
-        (select_frames, gen_avg, [('t_mask', 't_mask')]),
-        (gen_avg, outputnode, [('out_file', 'boldref')]),
-    ])  # fmt:skip
-    return workflow
+        select_one_frame = pe.Node(SelectOneFrame(), name='select_one_frame')
+        select_one_frame.inputs.ref_frame_start = ref_frame_start
+        workflow.connect([
+            (inputnode, validation_and_dummies_wf, [
+                ('bold_file', 'inputnode.bold_file'),
+                ('dummy_scans', 'inputnode.dummy_scans'),
+            ]),
+            (validation_and_dummies_wf, outputnode, [
+                ('outputnode.bold_file', 'bold_file'),
+                ('outputnode.skip_vols', 'skip_vols'),
+                ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
+                ('outputnode.validation_report', 'validation_report'),
+            ]),
+            (validation_and_dummies_wf, select_one_frame, [
+                ('outputnode.bold_file', 'in_file'),
+            ]),
+            (inputnode, select_one_frame, [('dummy_scans', 'dummy_scans')]),
+            (select_one_frame, outputnode, [('out_file', 'boldref')]),
+        ])  # fmt:skip
+        return workflow
 
 
 def _select_frames(
@@ -185,34 +202,7 @@ def _select_frames(
     return start_frame, list(t_mask)
 
 
-def _select_one_frame(
-    in_file: str,
-    ref_frame_start: int,
-    dummy_scans: int | None = None
-) -> int:
-    import warnings
-    import nibabel as nb
-    import numpy as np
-    start_frame = max(ref_frame_start, dummy_scans) if dummy_scans else ref_frame_start
 
-    img = nb.load(in_file)
-    ts = img.get_fdata()
-    img_len = ts.shape[3]
-    if start_frame >= img_len:
-        warnings.warn(
-            f'Caculating the BOLD reference starting on frame {start_frame} but only {img_len} '
-            'volumes in BOLD file, so using last volume.',
-            stacklevel=1,
-        )
-        start_frame = img_len - 1
-
-    ts = ts[..., start_frame:]
-    ts /= np.max(ts)
-    ts_mean = np.nanmean(ts, axis=(0,1,2))
-    t_mask = np.array([False] * img_len, dtype=bool)
-    chosen_frame = np.argmin(np.sum((ts - ts_mean)**2, axis=(0,1,2)))
-    t_mask[chosen_frame] = True
-    return start_frame, t_mask
 
 
 def init_validation_and_dummies_wf(
