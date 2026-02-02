@@ -562,7 +562,7 @@ class workflow(_Config):
     dummy_scans = None
     """Set a number of initial scans to be considered nonsteady states."""
     estimate_good_refframe = False
-    """Find a single BOLD reference frame out of each timeseries instead of
+    """Use a heuristic to estimate a good BOLD reference frame in each timeseries, instead of
     running RobustAverage over all frames after ``hmc_bold_frame``."""
     fd_radius = 45
     """Head radius in mm for framewise displacement calculation"""

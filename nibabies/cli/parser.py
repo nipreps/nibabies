@@ -762,8 +762,8 @@ discourage its usage.""",
     g_baby.add_argument(
         '--estimate-good-refframe',
         action='store_true',
-        help='Estimate and find a low-motion BOLD reference frame out of each timeseries instead of '
-        'running RobustAverage over all frames after ``hmc_bold_frame.``'
+        help='Use a heuristic to estimate a low-motion BOLD reference frame out '
+        'of each timeseries instead of running RobustAverage over all frames after ``hmc_bold_frame.``'
     )
     g_baby.add_argument(
         '--norm-csf',
