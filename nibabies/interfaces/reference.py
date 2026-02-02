@@ -26,7 +26,7 @@ class _SelectOneFrameInputSpec(BaseInterfaceInputSpec):
 
 
 class _SelectOneFrameOutputSpec(TraitedSpec):
-    out_file = File(desc="Single reference frame")
+    out_file = File(exists=True, desc="Single reference frame")
 
 
 class SelectOneFrame(SimpleInterface):
