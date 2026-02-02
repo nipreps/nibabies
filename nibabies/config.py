@@ -575,8 +575,7 @@ class workflow(_Config):
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     hmc_bold_frame = 16
-    """Frame to start head motion correction estimation on BOLD. Cannot be used
-    with --find-good-hmc-ref"""
+    """Frame to start head motion correction estimation on BOLD."""
     ignore = None
     """Ignore particular steps for *nibabies*."""
     level = None
