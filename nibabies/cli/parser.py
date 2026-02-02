@@ -769,6 +769,12 @@ discourage its usage.""",
         help='Frame to start head motion estimation on BOLD.',
     )
     g_baby.add_argument(
+        '--find-good-hmc-refframe',
+        action='store_true',
+        help='Find a low-motion BOLD reference frame out of each timeseries instead of '
+        'running RobustAverage over all frames after hmc_bold_frame.'
+    )
+    g_baby.add_argument(
         '--norm-csf',
         action='store_true',
         help='Replace low intensity voxels in CSF mask with average',

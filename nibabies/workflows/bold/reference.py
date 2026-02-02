@@ -33,8 +33,8 @@ def init_raw_boldref_wf(
     bold_file: str | None = None,
     multiecho: bool = False,
     ref_frame_start: int = 16,
+    find_good_refframe: bool = False,
     name: str = 'raw_boldref_wf',
-    precomputed_tmask: list[bool] | None = None
 ):
     """
     Build a workflow that generates reference BOLD images for a series.
@@ -61,11 +61,11 @@ def init_raw_boldref_wf(
         If multiecho data was supplied, data from the first echo will be selected
     ref_frame_start: :obj:`int`
         BOLD frame to start creating the reference map from.
+    find_good_refframe: :obj:`bool`
+        If True, find a single BOLD reference frame out of each timeseries instead of
+        running RobustAverage over all frames after ref_frame_start.
     name : :obj:`str`
         Name of workflow (default: ``raw_boldref_wf``)
-    precomputed_tmask : :obj:`list[bool] | None`
-        Optional mask used to average only over low-motion frames when
-        generating a reference image.
 
     Inputs
     ------
@@ -73,9 +73,6 @@ def init_raw_boldref_wf(
         BOLD series NIfTI file
     dummy_scans : int or None
         Number of non-steady-state volumes specified by user at beginning of ``bold_file``
-    precomputed_tmask : list[int] or None
-        Optional mask used to average only over low-motion frames when
-        generating a reference image.
 
     Outputs
     -------
@@ -99,7 +96,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
 """
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['bold_file', 'dummy_scans', 'precomputed_tmask']),
+        niu.IdentityInterface(fields=['bold_file', 'dummy_scans']),
         name='inputnode',
     )
     outputnode = pe.Node(
@@ -118,19 +115,21 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
     # Simplify manually setting input image
     if bold_file is not None:
         inputnode.inputs.bold_file = bold_file
-    if precomputed_tmask is not None:
-        inputnode.inputs.precomputed_tmask = precomputed_tmask
 
     validation_and_dummies_wf = init_validation_and_dummies_wf()
 
     # Drop frames to avoid startle when MRI begins acquiring
-    select_frames = pe.Node(
-        niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
-        name='select_frames',
-    )
+    if not find_good_refframe:
+        select_frames = pe.Node(
+            niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
+            name='select_frames',
+        )
+    else:  # Select a single low-motion frame
+        select_frames = pe.Node(
+            niu.Function(function=_select_one_frame, output_names=['start_frame', 't_mask']),
+            name='select_frames',
+        )
     select_frames.inputs.ref_frame_start = ref_frame_start
-    if precomputed_tmask is not None:
-        select_frames.inputs.precomputed_tmask = precomputed_tmask
 
     gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
 
@@ -159,7 +158,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
 
 
 def _select_frames(
-    in_file: str, ref_frame_start: int, dummy_scans: int | None, precomputed_tmask: list[bool] | None
+    in_file: str, ref_frame_start: int, dummy_scans: int | None
 ) -> tuple[int, list]:
     import warnings
 
@@ -181,16 +180,39 @@ def _select_frames(
         )
         start_frame = img_len - 1
 
-    if precomputed_tmask is None:
-        t_mask = np.array([False] * img_len, dtype=bool)
-        t_mask[start_frame:] = True
-        return start_frame, list(t_mask)
-    else:
-        if not len(precomputed_tmask) == img_len:
-            raise ValueError("Precomputed tmask is not the same length as the BOLD image.")
-        t_mask = precomputed_tmask
-        t_mask[:start_frame] = False
-        return start_frame, t_mask
+    t_mask = np.array([False] * img_len, dtype=bool)
+    t_mask[start_frame:] = True
+    return start_frame, list(t_mask)
+
+
+def _select_one_frame(
+    in_file: str,
+    ref_frame_start: int,
+    dummy_scans: int | None = None
+) -> int:
+    import warnings
+    import nibabel as nb
+    import numpy as np
+    start_frame = max(ref_frame_start, dummy_scans) if dummy_scans else ref_frame_start
+
+    img = nb.load(in_file)
+    ts = img.get_fdata()
+    img_len = ts.shape[3]
+    if start_frame >= img_len:
+        warnings.warn(
+            f'Caculating the BOLD reference starting on frame {start_frame} but only {img_len} '
+            'volumes in BOLD file, so using last volume.',
+            stacklevel=1,
+        )
+        start_frame = img_len - 1
+
+    ts = ts[..., start_frame:]
+    ts /= np.max(ts)
+    ts_mean = np.nanmean(ts, axis=(0,1,2))
+    t_mask = np.array([False] * img_len, dtype=bool)
+    chosen_frame = np.argmin(np.sum((ts - ts_mean)**2, axis=(0,1,2)))
+    t_mask[chosen_frame] = True
+    return start_frame, t_mask
 
 
 def init_validation_and_dummies_wf(

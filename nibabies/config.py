@@ -563,6 +563,9 @@ class workflow(_Config):
     """Set a number of initial scans to be considered nonsteady states."""
     fd_radius = 45
     """Head radius in mm for framewise displacement calculation"""
+    find_good_hmc_refframe = False
+    """Find a single BOLD reference frame out of each timeseries instead of
+    running RobustAverage over all frames after hmc_bold_frame."""
     fmap_bspline = None
     """Regularize fieldmaps with a field of B-Spline basis."""
     fmap_demean = None
@@ -572,7 +575,8 @@ class workflow(_Config):
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     hmc_bold_frame = 16
-    """Frame to start head motion correction estimation on BOLD"""
+    """Frame to start head motion correction estimation on BOLD. Cannot be used
+    with --find-good-hmc-ref"""
     ignore = None
     """Ignore particular steps for *nibabies*."""
     level = None
@@ -596,9 +600,6 @@ class workflow(_Config):
     """Threshold for :abbr:`FD (frame-wise displacement)`."""
     run_reconall = True
     """Run FreeSurfer's surface reconstruction."""
-    sdc_boldref_fd_threshold = None
-    """A framewise displacement (FD) threshold which masks high-motion frames
-    before creating an average BOLD reference image for use in SDC correction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
     skull_strip_template = 'UNCInfant:cohort-1'
