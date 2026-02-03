@@ -139,14 +139,14 @@ def _build_parser():
                 raise parser.error(f'Path does not exist: <{value}>.')
 
     def _pos_int_or_auto(value, parser):
-        import re
-        if re.fullmatch(r'\+?\d+', value):  # positive int
-            value = int(value)
-        elif value != "auto":
+        if value.lower() == 'auto':
+            return 'auto'
+        try:
+            return int(value)
+        except ValueError:
             raise parser.error(
                 f"--hmc-bold-frame must be either 'auto' or a positive integer. Received {value}."
             )
-        return value
 
     def _slice_time_ref(value, parser):
         if value == 'start':
