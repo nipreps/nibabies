@@ -25,6 +25,7 @@ from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.utils.misc import pass_dummy_scans
+
 from nibabies.interfaces.reference import DetectReferenceFrame
 
 DEFAULT_MEMORY_MIN_GB = 0.01

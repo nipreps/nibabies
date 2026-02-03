@@ -1,7 +1,7 @@
 from nipype.interfaces.base import (
+    BaseInterfaceInputSpec,
     File,
     SimpleInterface,
-    BaseInterfaceInputSpec,
     TraitedSpec,
     traits,
 )
@@ -46,6 +46,7 @@ def _detect_reference_frame(
     in_file: str, ref_frame_start: int, out_file: str, dummy_scans: int | None = None
 ) -> tuple[str, int]:
     import warnings
+
     import nibabel as nb
     import numpy as np
 

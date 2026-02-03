@@ -146,10 +146,10 @@ def _build_parser():
             if value < 0:
                 raise ValueError()
             return value
-        except ValueError:
+        except ValueError as err:
             raise parser.error(
                 f"--hmc-bold-frame must be either 'auto' or a positive integer. Received {value}."
-            )
+            ) from err
 
     def _slice_time_ref(value, parser):
         if value == 'start':
