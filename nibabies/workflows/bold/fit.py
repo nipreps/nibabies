@@ -391,22 +391,12 @@ def init_bold_fit_wf(
     )
     if not hmc_boldref:
         config.loggers.workflow.info('Stage 1: Adding HMC boldref workflow')
-        if config.workflow.hmc_bold_frame == "auto":
-            hmc_boldref_wf = init_raw_boldref_wf(
-                name='hmc_boldref_wf',
-                bold_file=bold_file,
-                multiecho=multiecho,
-                ref_frame_start=16,
-                estimate_good_refframe=True
-            )
-        else:
-            hmc_boldref_wf = init_raw_boldref_wf(
-                name='hmc_boldref_wf',
-                bold_file=bold_file,
-                multiecho=multiecho,
-                ref_frame_start=config.workflow.hmc_bold_frame,
-                estimate_good_refframe=False
-            )
+        hmc_boldref_wf = init_raw_boldref_wf(
+            name='hmc_boldref_wf',
+            bold_file=bold_file,
+            multiecho=multiecho,
+            ref_frame_start=config.workflow.hmc_bold_frame,
+        )
         hmc_boldref_wf.inputs.inputnode.dummy_scans = config.workflow.dummy_scans
 
         ds_hmc_boldref_wf = init_ds_boldref_wf(

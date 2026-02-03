@@ -129,7 +129,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         ])
     ])  # fmt:skip
     # Drop frames to avoid startle when MRI begins acquiring
-    if not estimate_good_refframe:
+    if ref_frame_start != "auto":
         select_frames = pe.Node(
             niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
             name='select_frames',
@@ -150,7 +150,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         ])  # fmt:skip
     else:  # Select a single low-motion frame
         detect_referenece_frame = pe.Node(DetectReferenceFrame(), name='detect_referenece_frame')
-        detect_referenece_frame.inputs.ref_frame_start = ref_frame_start
+        detect_referenece_frame.inputs.ref_frame_start = 16
         workflow.connect([
             (validation_and_dummies_wf, detect_referenece_frame, [
                 ('outputnode.bold_file', 'in_file'),
@@ -187,9 +187,6 @@ def _select_frames(
     t_mask = np.array([False] * img_len, dtype=bool)
     t_mask[start_frame:] = True
     return start_frame, list(t_mask)
-
-
-
 
 
 def init_validation_and_dummies_wf(
