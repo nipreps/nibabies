@@ -47,7 +47,7 @@ class SelectOneFrame(SimpleInterface):
         return runtime
 
 
-def _select_one_frame(
+def _detect_reference_frame(
     in_file: str,
     ref_frame_start: int,
     out_file: str,
