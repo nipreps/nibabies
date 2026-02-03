@@ -129,7 +129,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         ])
     ])  # fmt:skip
     # Drop frames to avoid startle when MRI begins acquiring
-    if ref_frame_start != "auto":
+    if ref_frame_start != 'auto':
         select_frames = pe.Node(
             niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
             name='select_frames',

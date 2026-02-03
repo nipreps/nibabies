@@ -98,7 +98,7 @@ def _build_parser():
     def _to_gb(value):
         scale = {'G': 1, 'T': 10**3, 'M': 1e-3, 'K': 1e-6, 'B': 1e-9}
         digits = ''.join([c for c in value if c.isdigit()])
-        units = value[len(digits):] or 'M'
+        units = value[len(digits) :] or 'M'
         return int(digits) * scale[units[0]]
 
     def _drop_sub(value):
@@ -770,7 +770,7 @@ discourage its usage.""",
         metavar='{auto,FRAME_NUMBER}',
         help='Frame to start head motion estimation on BOLD. '
         '``auto`` chooses this frame based on a sum-of-least-squares '
-        'heuristic.'
+        'heuristic.',
     )
     g_baby.add_argument(
         '--norm-csf',

@@ -9,24 +9,17 @@ from nipype.utils.filemanip import fname_presuffix
 
 
 class _DetectReferenceFrameInputSpec(BaseInterfaceInputSpec):
-    in_file = File(
-        exists=True,
-        mandatory=True,
-        desc="BOLD timeseries"
-    )
+    in_file = File(exists=True, mandatory=True, desc='BOLD timeseries')
     ref_frame_start = traits.Int(
-        mandatory=True,
-        desc="Frame to start looking for a low-motion reference frame"
+        mandatory=True, desc='Frame to start looking for a low-motion reference frame'
     )
     dummy_scans = traits.Either(
-        None, traits.Int,
-        usedefault=True,
-        desc="Number of non-steady-state scans at the start."
+        None, traits.Int, usedefault=True, desc='Number of non-steady-state scans at the start.'
     )
 
 
 class _DetectReferenceFrameOutputSpec(TraitedSpec):
-    out_file = File(exists=True, desc="Single reference frame")
+    out_file = File(exists=True, desc='Single reference frame')
     frame_idx = traits.Int(desc='Frame index used')
 
 
@@ -42,7 +35,7 @@ class DetectReferenceFrame(SimpleInterface):
             in_file=self.inputs.in_file,
             ref_frame_start=self.inputs.ref_frame_start,
             out_file=out_path,
-            dummy_scans=self.inputs.dummy_scans
+            dummy_scans=self.inputs.dummy_scans,
         )
         self._results['out_file'] = out_file
         self._results['frame_idx'] = frame_idx
@@ -50,14 +43,12 @@ class DetectReferenceFrame(SimpleInterface):
 
 
 def _detect_reference_frame(
-    in_file: str,
-    ref_frame_start: int,
-    out_file: str,
-    dummy_scans: int | None = None
+    in_file: str, ref_frame_start: int, out_file: str, dummy_scans: int | None = None
 ) -> tuple[str, int]:
     import warnings
     import nibabel as nb
     import numpy as np
+
     start_frame = max(ref_frame_start, dummy_scans) if dummy_scans else ref_frame_start
 
     img = nb.load(in_file)
@@ -74,10 +65,7 @@ def _detect_reference_frame(
     ts = ts[..., start_frame:]
     ts /= np.max(ts)
     ts_mean = np.nanmean(ts, axis=3)
-    chosen_frame = np.argmin(np.sum((ts - ts_mean[..., np.newaxis])**2, axis=(0,1,2)))
-    chosen_frame_img = nb.Nifti1Image(
-        np.squeeze(ts[..., chosen_frame]),
-        affine=img.affine
-    )
+    chosen_frame = np.argmin(np.sum((ts - ts_mean[..., np.newaxis]) ** 2, axis=(0, 1, 2)))
+    chosen_frame_img = nb.Nifti1Image(np.squeeze(ts[..., chosen_frame]), affine=img.affine)
     nb.save(chosen_frame_img, out_file)
     return out_file, chosen_frame
