@@ -33,7 +33,7 @@ DEFAULT_MEMORY_MIN_GB = 0.01
 def init_raw_boldref_wf(
     bold_file: str | None = None,
     multiecho: bool = False,
-    ref_frame_start: int = 16,
+    ref_frame_start: int | str = 16,
     name: str = 'raw_boldref_wf',
 ):
     """
