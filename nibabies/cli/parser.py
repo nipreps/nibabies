@@ -766,8 +766,8 @@ discourage its usage.""",
     g_baby.add_argument(
         '--hmc-bold-frame',
         type=_pos_int_or_auto,
-        default=16,
-        metavar="{auto,FRAME_NUMBER}",
+        default='auto',
+        metavar='{auto,FRAME_NUMBER}',
         help='Frame to start head motion estimation on BOLD. '
         '``auto`` chooses this frame based on a sum-of-least-squares '
         'heuristic.'
