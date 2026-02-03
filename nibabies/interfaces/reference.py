@@ -71,8 +71,8 @@ def _select_one_frame(
 
     ts = ts[..., start_frame:]
     ts /= np.max(ts)
-    ts_mean = np.nanmean(ts, axis=(0,1,2))
-    chosen_frame = np.argmin(np.sum((ts - ts_mean)**2, axis=(0,1,2)))
+    ts_mean = np.nanmean(ts, axis=3)
+    chosen_frame = np.argmin(np.sum((ts - ts_mean[..., np.newaxis])**2, axis=(0,1,2)))
     chosen_frame_img = nb.Nifti1Image(
         np.squeeze(ts[..., chosen_frame]),
         affine=img.affine
