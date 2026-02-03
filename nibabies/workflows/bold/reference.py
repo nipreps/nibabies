@@ -150,7 +150,6 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             (select_frames, gen_avg, [('t_mask', 't_mask')]),
             (gen_avg, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
-        return workflow
     else:  # Select a single low-motion frame
         select_one_frame = pe.Node(SelectOneFrame(), name='select_one_frame')
         select_one_frame.inputs.ref_frame_start = ref_frame_start
@@ -171,7 +170,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             (inputnode, select_one_frame, [('dummy_scans', 'dummy_scans')]),
             (select_one_frame, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
-        return workflow
+    return workflow
 
 
 def _select_frames(
