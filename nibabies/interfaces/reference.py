@@ -53,7 +53,7 @@ def _detect_reference_frame(
     ref_frame_start: int,
     out_file: str,
     dummy_scans: int | None = None
-) -> str:
+) -> tuple[str, int]:
     import warnings
     import nibabel as nb
     import numpy as np
