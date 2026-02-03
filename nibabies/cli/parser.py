@@ -142,7 +142,10 @@ def _build_parser():
         if value.lower() == 'auto':
             return 'auto'
         try:
-            return int(value)
+            value = int(value)
+            if value < 0:
+                raise ValueError()
+            return value
         except ValueError:
             raise parser.error(
                 f"--hmc-bold-frame must be either 'auto' or a positive integer. Received {value}."
