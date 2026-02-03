@@ -78,4 +78,4 @@ def _detect_reference_frame(
         affine=img.affine
     )
     nb.save(chosen_frame_img, out_file)
-    return out_file
+    return out_file, chosen_frame
