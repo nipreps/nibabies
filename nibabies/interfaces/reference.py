@@ -59,7 +59,7 @@ def _detect_reference_frame(
     start_frame = max(ref_frame_start, dummy_scans) if dummy_scans else ref_frame_start
 
     img = nb.load(in_file)
-    ts = img.get_fdata()
+    ts = img.get_fdata(dtype='float32')
     img_len = ts.shape[3]
     if start_frame >= img_len:
         warnings.warn(
