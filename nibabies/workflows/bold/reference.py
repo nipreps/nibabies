@@ -59,10 +59,8 @@ def init_raw_boldref_wf(
         BOLD series NIfTI file
     multiecho : :obj:`bool`
         If multiecho data was supplied, data from the first echo will be selected
-    ref_frame_start: :obj:`int`
-        BOLD frame to start creating the reference map from.
-    estimate_good_refframe: :obj:`bool`
-        If True, use a heuristic to find a single low-motion BOLD reference frame out of each timeseries
+    ref_frame_start: :obj:`int` or :obj:`str`
+        BOLD frame to start creating the reference map from. If 'auto', use a heuristic to find a single low-motion BOLD reference frame out of each timeseries.
         instead of running RobustAverage over all frames after ref_frame_start.
     name : :obj:`str`
         Name of workflow (default: ``raw_boldref_wf``)
