@@ -38,7 +38,7 @@ class DetectReferenceFrame(SimpleInterface):
 
     def _run_interface(self, runtime):
         out_path = fname_presuffix(self.inputs.in_file, suffix='_refframe', newpath=runtime.cwd)
-        _detect_reference_frame(
+        out_file, frame_idx = _detect_reference_frame(
             in_file=self.inputs.in_file,
             ref_frame_start=self.inputs.ref_frame_start,
             out_file=out_path,
