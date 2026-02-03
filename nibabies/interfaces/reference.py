@@ -29,7 +29,7 @@ class _SelectOneFrameOutputSpec(TraitedSpec):
     out_file = File(exists=True, desc="Single reference frame")
 
 
-class SelectOneFrame(SimpleInterface):
+class DetectReferenceFrame(SimpleInterface):
     """Select one reference frame for HMC and SDC correction"""
 
     input_spec = _SelectOneFrameInputSpec
