@@ -34,7 +34,6 @@ def init_raw_boldref_wf(
     bold_file: str | None = None,
     multiecho: bool = False,
     ref_frame_start: int = 16,
-    estimate_good_refframe: bool = False,
     name: str = 'raw_boldref_wf',
 ):
     """
