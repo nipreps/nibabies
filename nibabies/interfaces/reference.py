@@ -44,7 +44,8 @@ class DetectReferenceFrame(SimpleInterface):
             out_file=out_path,
             dummy_scans=self.inputs.dummy_scans
         )
-        self._results['out_file'] = out_path
+        self._results['out_file'] = out_file
+        self._results['frame_idx'] = frame_idx
         return runtime
 
 
