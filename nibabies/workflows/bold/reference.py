@@ -25,7 +25,7 @@ from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.utils.misc import pass_dummy_scans
-from nibabies.interfaces.reference import SelectOneFrame
+from nibabies.interfaces.reference import DetectReferenceFrame
 
 DEFAULT_MEMORY_MIN_GB = 0.01
 
@@ -119,6 +119,18 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
 
     validation_and_dummies_wf = init_validation_and_dummies_wf()
 
+    workflow.connect([
+        (inputnode, validation_and_dummies_wf, [
+            ('bold_file', 'inputnode.bold_file'),
+            ('dummy_scans', 'inputnode.dummy_scans'),
+        ]),
+        (validation_and_dummies_wf, outputnode, [
+            ('outputnode.bold_file', 'bold_file'),
+            ('outputnode.skip_vols', 'skip_vols'),
+            ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
+            ('outputnode.validation_report', 'validation_report'),
+        ])
+    ])  # fmt:skip
     # Drop frames to avoid startle when MRI begins acquiring
     if not estimate_good_refframe:
         select_frames = pe.Node(
@@ -128,18 +140,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         select_frames.inputs.ref_frame_start = ref_frame_start
 
         gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
-
         workflow.connect([
-            (inputnode, validation_and_dummies_wf, [
-                ('bold_file', 'inputnode.bold_file'),
-                ('dummy_scans', 'inputnode.dummy_scans'),
-            ]),
-            (validation_and_dummies_wf, outputnode, [
-                ('outputnode.bold_file', 'bold_file'),
-                ('outputnode.skip_vols', 'skip_vols'),
-                ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
-                ('outputnode.validation_report', 'validation_report'),
-            ]),
             (validation_and_dummies_wf, gen_avg, [
                 ('outputnode.bold_file', 'in_file'),
             ]),
@@ -151,24 +152,14 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             (gen_avg, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
     else:  # Select a single low-motion frame
-        select_one_frame = pe.Node(SelectOneFrame(), name='select_one_frame')
-        select_one_frame.inputs.ref_frame_start = ref_frame_start
+        detect_referenece_frame = pe.Node(DetectReferenceFrame(), name='detect_referenece_frame')
+        detect_referenece_frame.inputs.ref_frame_start = ref_frame_start
         workflow.connect([
-            (inputnode, validation_and_dummies_wf, [
-                ('bold_file', 'inputnode.bold_file'),
-                ('dummy_scans', 'inputnode.dummy_scans'),
-            ]),
-            (validation_and_dummies_wf, outputnode, [
-                ('outputnode.bold_file', 'bold_file'),
-                ('outputnode.skip_vols', 'skip_vols'),
-                ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
-                ('outputnode.validation_report', 'validation_report'),
-            ]),
-            (validation_and_dummies_wf, select_one_frame, [
+            (validation_and_dummies_wf, detect_referenece_frame, [
                 ('outputnode.bold_file', 'in_file'),
             ]),
-            (inputnode, select_one_frame, [('dummy_scans', 'dummy_scans')]),
-            (select_one_frame, outputnode, [('out_file', 'boldref')]),
+            (inputnode, detect_referenece_frame, [('dummy_scans', 'dummy_scans')]),
+            (detect_referenece_frame, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
     return workflow
 

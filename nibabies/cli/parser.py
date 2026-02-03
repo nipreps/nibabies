@@ -98,7 +98,7 @@ def _build_parser():
     def _to_gb(value):
         scale = {'G': 1, 'T': 10**3, 'M': 1e-3, 'K': 1e-6, 'B': 1e-9}
         digits = ''.join([c for c in value if c.isdigit()])
-        units = value[len(digits) :] or 'M'
+        units = value[len(digits):] or 'M'
         return int(digits) * scale[units[0]]
 
     def _drop_sub(value):
@@ -137,6 +137,16 @@ def _build_parser():
                     raise parser.error(f'JSON syntax error in: <{value}>.') from e
             else:
                 raise parser.error(f'Path does not exist: <{value}>.')
+
+    def _pos_int_or_auto(value, parser):
+        import re
+        if re.fullmatch(r'\+?\d+', value):  # positive int
+            value = int(value)
+        elif value != "auto":
+            raise parser.error(
+                f"--hmc-bold-frame must be either 'auto' or a positive integer. Received {value}."
+            )
+        return value
 
     def _slice_time_ref(value, parser):
         if value == 'start':
@@ -755,15 +765,12 @@ discourage its usage.""",
     )
     g_baby.add_argument(
         '--hmc-bold-frame',
-        type=int,
+        type=_pos_int_or_auto,
         default=16,
-        help='Frame to start head motion estimation on BOLD',
-    )
-    g_baby.add_argument(
-        '--estimate-good-refframe',
-        action='store_true',
-        help='Use a heuristic to estimate a low-motion BOLD reference frame out '
-        'of each timeseries instead of running RobustAverage over all frames after ``hmc_bold_frame.``'
+        metavar="{auto,FRAME_NUMBER}",
+        help='Frame to start head motion estimation on BOLD. '
+        '``auto`` chooses this frame based on a sum-of-least-squares '
+        'heuristic.'
     )
     g_baby.add_argument(
         '--norm-csf',

@@ -8,7 +8,7 @@ from nipype.interfaces.base import (
 from nipype.utils.filemanip import fname_presuffix
 
 
-class _SelectOneFrameInputSpec(BaseInterfaceInputSpec):
+class _DetectReferenceFrameInputSpec(BaseInterfaceInputSpec):
     in_file = File(
         exists=True,
         mandatory=True,
@@ -25,19 +25,19 @@ class _SelectOneFrameInputSpec(BaseInterfaceInputSpec):
     )
 
 
-class _SelectOneFrameOutputSpec(TraitedSpec):
+class _DetectReferenceFrameOutputSpec(TraitedSpec):
     out_file = File(exists=True, desc="Single reference frame")
 
 
 class DetectReferenceFrame(SimpleInterface):
     """Select one reference frame for HMC and SDC correction"""
 
-    input_spec = _SelectOneFrameInputSpec
-    output_spec = _SelectOneFrameOutputSpec
+    input_spec = _DetectReferenceFrameInputSpec
+    output_spec = _DetectReferenceFrameOutputSpec
 
     def _run_interface(self, runtime):
         out_path = fname_presuffix(self.inputs.in_file, suffix='_refframe', newpath=runtime.cwd)
-        _select_one_frame(
+        _detect_reference_frame(
             in_file=self.inputs.in_file,
             ref_frame_start=self.inputs.ref_frame_start,
             out_file=out_path,
