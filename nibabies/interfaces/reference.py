@@ -27,6 +27,7 @@ class _DetectReferenceFrameInputSpec(BaseInterfaceInputSpec):
 
 class _DetectReferenceFrameOutputSpec(TraitedSpec):
     out_file = File(exists=True, desc="Single reference frame")
+    frame_idx = traits.Int(desc='Frame index used')
 
 
 class DetectReferenceFrame(SimpleInterface):
