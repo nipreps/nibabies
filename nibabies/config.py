@@ -561,9 +561,6 @@ class workflow(_Config):
     """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
     dummy_scans = None
     """Set a number of initial scans to be considered nonsteady states."""
-    estimate_good_refframe = False
-    """Use a heuristic to estimate a good BOLD reference frame in each timeseries, instead of
-    running RobustAverage over all frames after ``hmc_bold_frame``."""
     fd_radius = 45
     """Head radius in mm for framewise displacement calculation"""
     fmap_bspline = None
