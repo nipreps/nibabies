@@ -155,8 +155,8 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         workflow.connect([
             (validation_and_dummies_wf, detect_referenece_frame, [
                 ('outputnode.bold_file', 'in_file'),
+                ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (inputnode, detect_referenece_frame, [('dummy_scans', 'dummy_scans')]),
             (detect_referenece_frame, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
     return workflow
