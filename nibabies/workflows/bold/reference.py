@@ -144,8 +144,8 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             ]),
             (validation_and_dummies_wf, select_frames, [
                 ('outputnode.bold_file', 'in_file'),
+                ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (inputnode, select_frames, [('dummy_scans', 'dummy_scans')]),
             (select_frames, gen_avg, [('t_mask', 't_mask')]),
             (gen_avg, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
