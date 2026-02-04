@@ -64,7 +64,7 @@ def _detect_reference_frame(
         start_frame = img_len - 1
 
     ts = ts[..., start_frame:]
-    ts /= np.max(ts)
+    ts = np.clip(ts, a_min=np.percentile(0.2), a_max=np.percentile(99.8))
     ts_mean = np.nanmean(ts, axis=3)
     chosen_frame = np.argmin(np.sum((ts - ts_mean[..., np.newaxis]) ** 2, axis=(0, 1, 2)))
     chosen_frame_img = nb.Nifti1Image(np.squeeze(ts[..., chosen_frame]), affine=img.affine)
