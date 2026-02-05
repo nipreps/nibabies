@@ -10,8 +10,8 @@ from nipype.utils.filemanip import fname_presuffix
 
 class _DetectReferenceFrameInputSpec(BaseInterfaceInputSpec):
     in_file = File(exists=True, mandatory=True, desc='BOLD timeseries')
-    ref_frame_start = traits.Int(0,
-        usedefault=True, desc='Frame to start looking for a low-motion reference frame'
+    ref_frame_start = traits.Int(
+        0, usedefault=True, desc='Frame to start looking for a low-motion reference frame'
     )
     dummy_scans = traits.Either(
         None, traits.Int, usedefault=True, desc='Number of non-steady-state scans at the start.'
