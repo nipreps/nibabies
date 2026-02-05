@@ -152,11 +152,11 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
     else:  # Select a single low-motion frame
         detect_reference_frame = pe.Node(DetectReferenceFrame(), name='detect_reference_frame')
         workflow.connect([
-            (validation_and_dummies_wf, detect_referenece_frame, [
+            (validation_and_dummies_wf, detect_reference_frame, [
                 ('outputnode.bold_file', 'in_file'),
                 ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (detect_referenece_frame, outputnode, [('out_file', 'boldref')]),
+            (detect_reference_frame, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
     return workflow
 
