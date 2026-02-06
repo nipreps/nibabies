@@ -139,7 +139,7 @@ def _make_params(
     bids_filters: dict | None = None,
     norm_csf: bool = False,
     multi_step_reg: bool = True,
-    hmc_bold_frame: int | str = 0,
+    hmc_bold_frame: int | str = 16,
 ):
     if ignore is None:
         ignore = []
