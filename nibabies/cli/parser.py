@@ -19,6 +19,7 @@ def _build_parser():
         Action,
         ArgumentDefaultsHelpFormatter,
         ArgumentParser,
+        ArgumentTypeError,
         BooleanOptionalAction,
     )
     from functools import partial
@@ -138,7 +139,7 @@ def _build_parser():
             else:
                 raise parser.error(f'Path does not exist: <{value}>.')
 
-    def _pos_int_or_auto(value, parser):
+    def _pos_int_or_auto(value):
         if value.lower() == 'auto':
             return 'auto'
         try:
@@ -147,7 +148,7 @@ def _build_parser():
                 raise ValueError()
             return value
         except ValueError as err:
-            raise parser.error(
+            raise ArgumentTypeError(
                 f"--hmc-bold-frame must be either 'auto' or a positive integer. Received {value}."
             ) from err
 
