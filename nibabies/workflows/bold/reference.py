@@ -26,13 +26,15 @@ from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.utils.misc import pass_dummy_scans
 
+from nibabies.interfaces.reference import DetectReferenceFrame
+
 DEFAULT_MEMORY_MIN_GB = 0.01
 
 
 def init_raw_boldref_wf(
     bold_file: str | None = None,
     multiecho: bool = False,
-    ref_frame_start: int = 16,
+    ref_frame_start: int | str = 16,
     name: str = 'raw_boldref_wf',
 ):
     """
@@ -58,8 +60,9 @@ def init_raw_boldref_wf(
         BOLD series NIfTI file
     multiecho : :obj:`bool`
         If multiecho data was supplied, data from the first echo will be selected
-    ref_frame_start: :obj:`int`
-        BOLD frame to start creating the reference map from.
+    ref_frame_start: :obj:`int` or :obj:`str`
+        BOLD frame to start creating the reference map from. If 'auto', use a heuristic to find a single low-motion BOLD reference frame out of each timeseries.
+        instead of running RobustAverage over all frames after ref_frame_start.
     name : :obj:`str`
         Name of workflow (default: ``raw_boldref_wf``)
 
@@ -114,15 +117,6 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
 
     validation_and_dummies_wf = init_validation_and_dummies_wf()
 
-    # Drop frames to avoid startle when MRI begins acquiring
-    select_frames = pe.Node(
-        niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
-        name='select_frames',
-    )
-    select_frames.inputs.ref_frame_start = ref_frame_start
-
-    gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
-
     workflow.connect([
         (inputnode, validation_and_dummies_wf, [
             ('bold_file', 'inputnode.bold_file'),
@@ -133,17 +127,37 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             ('outputnode.skip_vols', 'skip_vols'),
             ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
             ('outputnode.validation_report', 'validation_report'),
-        ]),
-        (validation_and_dummies_wf, gen_avg, [
-            ('outputnode.bold_file', 'in_file'),
-        ]),
-        (validation_and_dummies_wf, select_frames, [
-            ('outputnode.bold_file', 'in_file'),
-        ]),
-        (inputnode, select_frames, [('dummy_scans', 'dummy_scans')]),
-        (select_frames, gen_avg, [('t_mask', 't_mask')]),
-        (gen_avg, outputnode, [('out_file', 'boldref')]),
+        ])
     ])  # fmt:skip
+    # Drop frames to avoid startle when MRI begins acquiring
+    if ref_frame_start != 'auto':
+        select_frames = pe.Node(
+            niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
+            name='select_frames',
+        )
+        select_frames.inputs.ref_frame_start = ref_frame_start
+
+        gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
+        workflow.connect([
+            (validation_and_dummies_wf, gen_avg, [
+                ('outputnode.bold_file', 'in_file'),
+            ]),
+            (validation_and_dummies_wf, select_frames, [
+                ('outputnode.bold_file', 'in_file'),
+                ('outputnode.skip_vols', 'dummy_scans'),
+            ]),
+            (select_frames, gen_avg, [('t_mask', 't_mask')]),
+            (gen_avg, outputnode, [('out_file', 'boldref')]),
+        ])  # fmt:skip
+    else:  # Select a single low-motion frame
+        detect_reference_frame = pe.Node(DetectReferenceFrame(), name='detect_reference_frame')
+        workflow.connect([
+            (validation_and_dummies_wf, detect_reference_frame, [
+                ('outputnode.bold_file', 'in_file'),
+                ('outputnode.skip_vols', 'dummy_scans'),
+            ]),
+            (detect_reference_frame, outputnode, [('out_file', 'boldref')]),
+        ])  # fmt:skip
     return workflow
 
 
