@@ -559,6 +559,8 @@ class workflow(_Config):
     BOLD image-header ('header')."""
     cifti_output = None
     """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
+    coreg_bolds = False
+    """Coregister all BOLD runs to a single session-level BOLD reference."""
     dummy_scans = None
     """Set a number of initial scans to be considered nonsteady states."""
     fd_radius = 45
@@ -821,6 +823,7 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'surface_recon_method',
         'bold2anat_dof',
         'bold2anat_init',
+        'coreg_bolds',
         'dummy_scans',
         'fd_radius',
         'fmap_bspline',

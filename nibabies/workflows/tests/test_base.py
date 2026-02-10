@@ -139,6 +139,7 @@ def _make_params(
     bids_filters: dict | None = None,
     norm_csf: bool = False,
     multi_step_reg: bool = True,
+    coreg_bolds: bool = False,
     hmc_bold_frame: int | str = 16,
 ):
     if ignore is None:
@@ -162,6 +163,7 @@ def _make_params(
         bids_filters,
         norm_csf,
         multi_step_reg,
+        coreg_bolds,
         hmc_bold_frame,
     )
 
@@ -186,6 +188,7 @@ def _make_params(
         'bids_filters',
         'norm_csf',
         'multi_step_reg',
+        'coreg_bolds',
         'hmc_bold_frame',
     ),
     [
@@ -221,8 +224,8 @@ def _make_params(
         # Regression test for gh-3154:
         _make_params(bids_filters={'sbref': {'suffix': 'sbref'}}),
         _make_params(norm_csf=True),
-        _make_params(multi_step_reg=True),
         _make_params(multi_step_reg=False),
+        _make_params(coreg_bolds=True),
         _make_params(hmc_bold_frame='auto'),
     ],
 )
@@ -248,6 +251,7 @@ def test_init_nibabies_wf(
     bids_filters: dict,
     norm_csf: bool,
     multi_step_reg: bool,
+    coreg_bolds: bool,
     hmc_bold_frame: int | str,
 ):
     monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
@@ -262,6 +266,7 @@ def test_init_nibabies_wf(
         config.workflow.project_goodvoxels = project_goodvoxels
         config.workflow.norm_csf = norm_csf
         config.workflow.multi_step_reg = multi_step_reg
+        config.workflow.coreg_bolds = coreg_bolds
         # config.workflow.run_msmsulc = run_msmsulc
         config.workflow.skull_strip_anat = skull_strip_anat
         config.workflow.cifti_output = cifti_output

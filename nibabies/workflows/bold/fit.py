@@ -30,12 +30,10 @@ from nipype.pipeline import engine as pe
 from niworkflows.func.util import init_enhance_and_skullstrip_bold_wf, init_skullstrip_bold_wf
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.interfaces.nitransforms import ConcatenateXFMs
-from niworkflows.interfaces.utility import KeySelect
 from sdcflows.workflows.apply.registration import init_coeff2epi_wf
 
 from nibabies import config
 from nibabies._types import Anatomical
-from nibabies.interfaces.reports import FunctionalSummary
 from nibabies.interfaces.resampling import (
     DistortionParameters,
     ReconstructFieldmap,
@@ -54,7 +52,6 @@ from nibabies.workflows.bold.outputs import (
     init_ds_boldref_wf,
     init_ds_hmc_wf,
     init_ds_registration_wf,
-    init_func_fit_reports_wf,
 )
 from nibabies.workflows.bold.reference import init_raw_boldref_wf, init_validation_and_dummies_wf
 from nibabies.workflows.bold.registration import init_bold_reg_wf
@@ -102,6 +99,7 @@ def init_bold_fit_wf(
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
     jacobian: bool = False,
+    coreg_anat: bool = True,
     omp_nthreads: int = 1,
     name: str = 'bold_fit_wf',
 ) -> pe.Workflow:
@@ -150,18 +148,16 @@ def init_bold_fit_wf(
         FreeSurfer subject ID
     fsnative2t1w_xfm
         LTA-style affine matrix translating from FreeSurfer-conformed subject space to T1w
-    fmap_id
-        Unique identifiers to select fieldmap files
     fmap
-        List of estimated fieldmaps (collated with fmap_id)
+        Fieldmap file
     fmap_ref
-        List of fieldmap reference files (collated with fmap_id)
+        Fieldmap reference file
     fmap_coeff
-        List of lists of spline coefficient files (collated with fmap_id)
+        List of spline coefficient files
     fmap_mask
-        List of fieldmap masks (collated with fmap_id)
+        Fieldmap mask
     sdc_method
-        List of fieldmap correction method names (collated with fmap_id)
+        Fieldmap correction method name
 
     Outputs
     -------
@@ -232,11 +228,9 @@ def init_bold_fit_wf(
     config.loggers.workflow.info(sbref_msg)
 
     # Get metadata from BOLD file(s)
-    entities = extract_entities(bold_series)
     metadata = layout.get_metadata(bold_file)
-    orientation = ''.join(nb.aff2axcodes(nb.load(bold_file).affine))
 
-    bold_tlen, mem_gb = estimate_bold_mem_usage(bold_file)
+    _, mem_gb = estimate_bold_mem_usage(bold_file)
 
     # Boolean used to update workflow self-descriptions
     multiecho = len(bold_series) > 1
@@ -259,12 +253,9 @@ def init_bold_fit_wf(
             fields=[
                 'bold_file',
                 # Fieldmap registration
-                'fmap',
                 'fmap_ref',
                 'fmap_coeff',
                 'fmap_mask',
-                'fmap_id',
-                'sdc_method',
                 # Anatomical coregistration
                 'anat_preproc',
                 'anat_mask',
@@ -286,8 +277,15 @@ def init_bold_fit_wf(
                 'coreg_boldref',
                 'bold_mask',
                 'motion_xfm',
-                'boldref2anat_xfm',
+                'boldref2anat_xfm',  # Undefined if coreg_anat is False
                 'boldref2fmap_xfm',
+                # summary (can be undefined)
+                'algo_dummy_scans',  # if hmc
+                'fallback',  # if run -> anat coregistration
+                # func fit reports wf
+                'validation_report',
+                'sdc_boldref',
+                'fieldmap',
             ],
         ),
         name='outputnode',
@@ -323,38 +321,6 @@ def init_bold_fit_wf(
         config.loggers.workflow.debug(f'Reusing coregistration reference: {coreg_boldref}')
     fmapref_buffer.inputs.sbref_files = sbref_files
 
-    use_fs = config.workflow.surface_recon_method is not None
-    summary = pe.Node(
-        FunctionalSummary(
-            distortion_correction='None',  # Can override with connection
-            registration='FreeSurfer' if use_fs else 'FSL',
-            registration_dof=config.workflow.bold2anat_dof,
-            registration_init=config.workflow.bold2anat_init,
-            pe_direction=metadata.get('PhaseEncodingDirection'),
-            echo_idx=entities.get('echo', []),
-            tr=metadata['RepetitionTime'],
-            orientation=orientation,
-        ),
-        name='summary',
-        mem_gb=config.DEFAULT_MEMORY_MIN_GB,
-        run_without_submitting=True,
-    )
-    summary.inputs.dummy_scans = config.workflow.dummy_scans
-    if config.workflow.level == 'full':
-        # Hack. More pain than it's worth to connect this up at a higher level.
-        # We can consider separating out fit and transform summaries,
-        # or connect a bunch a bunch of summary parameters to outputnodes
-        # to make available to the base workflow.
-        summary.inputs.slice_timing = (
-            bool(metadata.get('SliceTiming')) and 'slicetiming' not in config.workflow.ignore
-        )
-
-    func_fit_reports_wf = init_func_fit_reports_wf(
-        reference_anat=reference_anat,
-        sdc_correction=fieldmap_id is None,
-        output_dir=config.execution.output_dir,
-    )
-
     workflow.connect([
         (hmcref_buffer, outputnode, [
             ('boldref', 'hmc_boldref'),
@@ -367,21 +333,6 @@ def init_bold_fit_wf(
         ]),
         (fmapreg_buffer, outputnode, [('boldref2fmap_xfm', 'boldref2fmap_xfm')]),
         (hmc_buffer, outputnode, [('hmc_xforms', 'motion_xfm')]),
-        (inputnode, func_fit_reports_wf, [
-            ('bold_file', 'inputnode.source_file'),
-            ('anat_preproc', 'inputnode.anat_preproc'),
-            # May not need all of these
-            ('anat_mask', 'inputnode.anat_mask'),
-            ('anat_dseg', 'inputnode.anat_dseg'),
-            ('subjects_dir', 'inputnode.subjects_dir'),
-            ('subject_id', 'inputnode.subject_id'),
-        ]),
-        (outputnode, func_fit_reports_wf, [
-            ('coreg_boldref', 'inputnode.coreg_boldref'),
-            ('bold_mask', 'inputnode.bold_mask'),
-            ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-        ]),
-        (summary, func_fit_reports_wf, [('out_report', 'inputnode.summary_report')]),
     ])  # fmt:skip
 
     # Stage 1: Generate motion correction boldref
@@ -414,9 +365,9 @@ def init_bold_fit_wf(
                 ('outputnode.bold_file', 'bold_file'),
                 ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (hmc_boldref_wf, summary, [('outputnode.algo_dummy_scans', 'algo_dummy_scans')]),
-            (hmc_boldref_wf, func_fit_reports_wf, [
-                ('outputnode.validation_report', 'inputnode.validation_report'),
+            (hmc_boldref_wf, outputnode, [
+                ('outputnode.algo_dummy_scans', 'algo_dummy_scans'),
+                ('outputnode.validation_report', 'validation_report'),
             ]),
             (ds_hmc_boldref_wf, hmc_boldref_source_buffer, [
                 ('outputnode.boldref', 'in_file'),
@@ -432,9 +383,7 @@ def init_bold_fit_wf(
                 ('outputnode.bold_file', 'bold_file'),
                 ('outputnode.skip_vols', 'dummy_scans'),
             ]),
-            (validation_and_dummies_wf, func_fit_reports_wf, [
-                ('outputnode.validation_report', 'inputnode.validation_report'),
-            ]),
+            (validation_and_dummies_wf, outputnode, [('outputnode.validation_report', 'validation_report')]),
             (hmcref_buffer, hmc_boldref_source_buffer, [('boldref', 'in_file')]),
         ])  # fmt:skip
 
@@ -465,38 +414,18 @@ def init_bold_fit_wf(
     # Stage 3: Register fieldmap to boldref and reconstruct in BOLD space
     if fieldmap_id:
         config.loggers.workflow.info('Stage 3: Adding fieldmap reconstruction workflow')
-        fmap_select = pe.Node(
-            KeySelect(
-                fields=['fmap_ref', 'fmap_coeff', 'fmap_mask', 'sdc_method'],
-                key=fieldmap_id,
-            ),
-            name='fmap_select',
-            run_without_submitting=True,
-        )
 
         boldref_fmap = pe.Node(ReconstructFieldmap(inverse=[True]), name='boldref_fmap', mem_gb=1)
 
         workflow.connect([
-            (inputnode, fmap_select, [
-                ('fmap_ref', 'fmap_ref'),
-                ('fmap_coeff', 'fmap_coeff'),
-                ('fmap_mask', 'fmap_mask'),
-                ('sdc_method', 'sdc_method'),
-                ('fmap_id', 'keys'),
-            ]),
             (fmapref_buffer, boldref_fmap, [('out', 'target_ref_file')]),
             (fmapreg_buffer, boldref_fmap, [('boldref2fmap_xfm', 'transforms')]),
-            (fmap_select, boldref_fmap, [
+            (inputnode, boldref_fmap, [
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),
-            (fmap_select, func_fit_reports_wf, [('fmap_ref', 'inputnode.fmap_ref')]),
-            (fmap_select, summary, [('sdc_method', 'distortion_correction')]),
-            (fmapref_buffer, func_fit_reports_wf, [('out', 'inputnode.sdc_boldref')]),
-            (fmapreg_buffer, func_fit_reports_wf, [
-                ('boldref2fmap_xfm', 'inputnode.boldref2fmap_xfm'),
-            ]),
-            (boldref_fmap, func_fit_reports_wf, [('out_file', 'inputnode.fieldmap')]),
+            (fmapref_buffer, outputnode, [('out', 'sdc_boldref')]),
+            (boldref_fmap, outputnode, [('out_file', 'fieldmap')]),
         ])  # fmt:skip
 
         if not boldref2fmap_xform:
@@ -523,12 +452,12 @@ def init_bold_fit_wf(
             )
 
             workflow.connect([
-                (fmap_select, fmapreg_wf, [
+                (inputnode, fmapreg_wf, [
                     ('fmap_ref', 'inputnode.fmap_ref'),
                     ('fmap_mask', 'inputnode.fmap_mask'),
                 ]),
                 (fmapref_buffer, fmapreg_source_files, [('out', 'in1')]),
-                (fmap_select, fmapreg_source_files, [
+                (inputnode, fmapreg_source_files, [
                     ('fmap_ref', 'in2'),
                 ]),
                 (fmapreg_wf, itk_mat2txt, [('outputnode.target2fmap_xfm', 'in_xfms')]),
@@ -624,7 +553,7 @@ def init_bold_fit_wf(
                     ('outputnode.mask_file', 'inputnode.boldmask'),
                 ]),
                 (fmapreg_buffer, coreg_ref_source_files, [('boldref2fmap_xfm', 'in2')]),
-                (fmap_select, coreg_ref_source_files, [('fmap_coeff', 'in3')]),
+                (inputnode, coreg_ref_source_files, [('fmap_coeff', 'in3')]),
             ])  # fmt:skip
 
             if not boldref2fmap_xform:
@@ -655,14 +584,14 @@ def init_bold_fit_wf(
             (skullstrip_precomp_ref_wf, regref_buffer, [('outputnode.mask_file', 'boldmask')])
         ])  # fmt:skip
 
-    if not boldref2anat_xform:
+    if coreg_anat and not boldref2anat_xform:
         config.loggers.workflow.info('Stage 5: Adding coregistration workflow')
         # calculate BOLD registration to T1w
         bold_reg_wf = init_bold_reg_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
             bold2anat_init=config.workflow.bold2anat_init,
             use_bbr=config.workflow.use_bbr,
-            freesurfer=use_fs,
+            freesurfer=config.workflow.surface_recon_method is not None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb['resampled'],
             sloppy=config.execution.sloppy,
@@ -695,7 +624,6 @@ def init_bold_fit_wf(
                 ('outputnode.metadata', 'inputnode.metadata'),
             ]),
             (ds_boldreg_wf, outputnode, [('outputnode.xform', 'boldref2anat_xfm')]),
-            (bold_reg_wf, summary, [('outputnode.fallback', 'fallback')]),
         ])  # fmt:skip
     else:
         config.loggers.workflow.info('Found coregistration transform - skipping Stage 5')
@@ -752,12 +680,12 @@ def init_bold_native_wf(
     boldref2fmap_xfm
         Affine transform mapping from BOLD reference space to the fieldmap
         space, if applicable.
-    fmap_id
-        Unique identifiers to select fieldmap files
+    orig2boldref_xfm
+        Transform mapping run-level BOLD reference with session space, if applicable.
     fmap_ref
-        List of fieldmap reference files (collated with fmap_id)
+        Fieldmap reference file
     fmap_coeff
-        List of lists of spline coefficient files (collated with fmap_id)
+        List of spline coefficient files
 
     Outputs
     -------
@@ -829,12 +757,12 @@ def init_bold_native_wf(
                 'boldref',
                 'bold_mask',
                 'motion_xfm',
+                'orig2boldref_xfm',
                 'boldref2fmap_xfm',
                 'dummy_scans',
                 # Fieldmap fit
                 'fmap_ref',
                 'fmap_coeff',
-                'fmap_id',
             ],
         ),
         name='inputnode',
@@ -890,23 +818,12 @@ def init_bold_native_wf(
 
     # Prepare fieldmap metadata
     if fieldmap_id:
-        fmap_select = pe.Node(
-            KeySelect(fields=['fmap_ref', 'fmap_coeff'], key=fieldmap_id),
-            name='fmap_select',
-            run_without_submitting=True,
-        )
-
         distortion_params = pe.Node(
             DistortionParameters(metadata=metadata, in_file=bold_file),
             name='distortion_params',
             run_without_submitting=True,
         )
         workflow.connect([
-            (inputnode, fmap_select, [
-                ('fmap_ref', 'fmap_ref'),
-                ('fmap_coeff', 'fmap_coeff'),
-                ('fmap_id', 'keys'),
-            ]),
             (distortion_params, boldbuffer, [
                 ('readout_time', 'ro_time'),
                 ('pe_direction', 'pe_dir'),
@@ -924,10 +841,18 @@ def init_bold_native_wf(
         mem_gb=mem_gb['resampled'],
     )
 
+    merge_xfms = pe.Node(niu.Merge(2), name='merge_xfms', run_without_submitting=True)
+
     workflow.connect([
+        (inputnode, merge_xfms, [
+            ('motion_xfm', 'in1'),
+            ('orig2boldref_xfm', 'in2'),
+        ]),
+        (merge_xfms, boldref_bold, [
+            ('out', 'transforms'),
+        ]),
         (inputnode, boldref_bold, [
             ('boldref', 'ref_file'),
-            ('motion_xfm', 'transforms'),
         ]),
         (boldbuffer, boldref_bold, [
             ('bold_file', 'in_file'),
@@ -942,8 +867,6 @@ def init_bold_native_wf(
             (inputnode, boldref_fmap, [
                 ('boldref', 'target_ref_file'),
                 ('boldref2fmap_xfm', 'transforms'),
-            ]),
-            (fmap_select, boldref_fmap, [
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),

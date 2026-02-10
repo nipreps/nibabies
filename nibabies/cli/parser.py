@@ -788,6 +788,12 @@ discourage its usage.""",
         help='For certain adult templates (MNI152NLin6Asym), perform two step '
         'registrations (native -> MNIInfant -> template) and concatenate into a single xfm',
     )
+    g_baby.add_argument(
+        '--coreg-bolds',
+        action=BooleanOptionalAction,
+        default=False,
+        help='Create a shared BOLD reference space across runs.',
+    )
     return parser
 
 
