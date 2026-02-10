@@ -19,6 +19,7 @@ def _build_parser():
         Action,
         ArgumentDefaultsHelpFormatter,
         ArgumentParser,
+        ArgumentTypeError,
         BooleanOptionalAction,
     )
     from functools import partial
@@ -137,6 +138,19 @@ def _build_parser():
                     raise parser.error(f'JSON syntax error in: <{value}>.') from e
             else:
                 raise parser.error(f'Path does not exist: <{value}>.')
+
+    def _pos_int_or_auto(value):
+        if value.lower() == 'auto':
+            return 'auto'
+        try:
+            value = int(value)
+            if value < 0:
+                raise ValueError()
+            return value
+        except ValueError as err:
+            raise ArgumentTypeError(
+                f"--hmc-bold-frame must be either 'auto' or a positive integer. Received {value}."
+            ) from err
 
     def _slice_time_ref(value, parser):
         if value == 'start':
@@ -755,9 +769,12 @@ discourage its usage.""",
     )
     g_baby.add_argument(
         '--hmc-bold-frame',
-        type=int,
+        type=_pos_int_or_auto,
         default=16,
-        help='Frame to start head motion estimation on BOLD.',
+        metavar='{auto,FRAME_NUMBER}',
+        help='Frame to start head motion estimation on BOLD. '
+        '``auto`` chooses this frame based on a sum-of-least-squares '
+        'heuristic.',
     )
     g_baby.add_argument(
         '--norm-csf',

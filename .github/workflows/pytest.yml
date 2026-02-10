@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         os: [ 'ubuntu-latest' ]
-        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13', '3.14' ]
         dependencies: [ 'latest', 'pre' ]
         include:
         - os: ubuntu-latest
@@ -38,11 +38,11 @@ jobs:
       DEPENDS: ${{ matrix.dependencies }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: recursive
         fetch-depth: 0
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       with:
         path: ~/.cache/templateflow
         key: templateflow-v1
@@ -51,21 +51,22 @@ jobs:
         sudo apt update
         sudo apt install -y --no-install-recommends graphviz
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: astral-sh/setup-uv@v7
       with:
         python-version: ${{ matrix.python-version }}
     - name: Display Python version
-      run: python -c "import sys; print(sys.version)"
+      run: uv run python --version
     - name: Install tox
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install tox tox-gh-actions
+        uv tool install --with=tox-uv --with=tox-gh-actions tox
     - name: Show tox config
       run: tox c
     - name: Run tox
       run: tox -v --exit-and-dump-after 1200
-    - uses: codecov/codecov-action@v4
+    - name: Minimize uv cache
+      run: uv cache prune --ci
+      if: ${{ always() }}
+    - uses: codecov/codecov-action@v5
       with:
-        file: coverage.xml
         token: ${{ secrets.CODECOV_TOKEN }}
       if: ${{ always() }}

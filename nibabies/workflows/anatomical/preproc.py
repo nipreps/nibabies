@@ -99,7 +99,7 @@ def init_csf_norm_wf(name: str = 'csf_norm_wf') -> Workflow:
 
 
 def init_conform_derivative_wf(
-    *, in_file: str = None, name: str = 'conform_derivative_wf'
+    *, in_file: str | None = None, name: str = 'conform_derivative_wf'
 ) -> pe.Workflow:
     """
     Ensure derivatives share the same space as anatomical references.

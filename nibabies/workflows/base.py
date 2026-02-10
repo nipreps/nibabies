@@ -638,7 +638,6 @@ BIDS structure for this particular subject.
         #         (anat_fit_wf, fmap_select_std, [
         #             ('outputnode.std2anat_xfm', 'std2anat_xfm'),
         #             ('outputnode.template', 'keys')]),
-        #     ])  # fmt:skip
 
         for estimator in fmap_estimators:
             LOGGER.info(
@@ -1200,8 +1199,8 @@ def map_fieldmap_estimation(
     fmap_estimators = find_estimators(
         layout=layout,
         subject=subject_id,
-        fmapless=bool(use_syn) or ignore_fieldmaps and force_syn,
-        force_fmapless=force_syn or ignore_fieldmaps and use_syn,
+        fmapless=bool(use_syn) or (ignore_fieldmaps and force_syn),
+        force_fmapless=force_syn or (ignore_fieldmaps and use_syn),
         bids_filters=filters,
         anat_suffix=['T1w', 'T2w'],
     )

@@ -135,11 +135,12 @@ def _make_params(
     use_syn_sdc: str | bool = False,
     force_syn: bool = False,
     surface_recon_method: str | None = 'auto',
-    ignore: list[str] = None,
-    bids_filters: dict = None,
+    ignore: list[str] | None = None,
+    bids_filters: dict | None = None,
     norm_csf: bool = False,
     multi_step_reg: bool = True,
     coreg_bolds: bool = False,
+    hmc_bold_frame: int | str = 16,
 ):
     if ignore is None:
         ignore = []
@@ -163,6 +164,7 @@ def _make_params(
         norm_csf,
         multi_step_reg,
         coreg_bolds,
+        hmc_bold_frame,
     )
 
 
@@ -187,6 +189,7 @@ def _make_params(
         'norm_csf',
         'multi_step_reg',
         'coreg_bolds',
+        'hmc_bold_frame',
     ),
     [
         _make_params(),
@@ -223,6 +226,7 @@ def _make_params(
         _make_params(norm_csf=True),
         _make_params(multi_step_reg=False),
         _make_params(coreg_bolds=True),
+        _make_params(hmc_bold_frame='auto'),
     ],
 )
 def test_init_nibabies_wf(
@@ -248,6 +252,7 @@ def test_init_nibabies_wf(
     norm_csf: bool,
     multi_step_reg: bool,
     coreg_bolds: bool,
+    hmc_bold_frame: int | str,
 ):
     monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
     with mock_config(bids_dir=bids_root):
@@ -267,6 +272,7 @@ def test_init_nibabies_wf(
         config.workflow.cifti_output = cifti_output
         config.workflow.surface_recon_method = surface_recon_method
         config.workflow.ignore = ignore
+        config.workflow.hmc_bold_frame = hmc_bold_frame
         with patch.dict('nibabies.config.execution.bids_filters', bids_filters):
             wf = init_nibabies_wf(
                 [

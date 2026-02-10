@@ -574,7 +574,7 @@ class workflow(_Config):
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     hmc_bold_frame = 16
-    """Frame to start head motion correction estimation on BOLD"""
+    """Frame to start head motion correction estimation on BOLD. If 'auto', use heuristic to estimate reference in each timeseries"""
     ignore = None
     """Ignore particular steps for *nibabies*."""
     level = None
@@ -853,7 +853,7 @@ def hash_config(
     conf: dict[str, ty.Any],
     *,
     fields_required: dict[str, list[str]] = DEFAULT_CONFIG_HASH_FIELDS,
-    version: str = None,
+    version: str | None = None,
     digest_size: int = 4,
 ) -> str:
     """
