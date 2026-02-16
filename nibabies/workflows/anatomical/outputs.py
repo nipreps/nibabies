@@ -590,10 +590,20 @@ def init_anat_derivatives_wf(
         from niworkflows.interfaces.space import SpaceDataSource
         from smriprep.interfaces.templateflow import TemplateFlowSelect
 
+        from nibabies.workflows.bold.base import _combine_space
+
         spacesource = pe.Node(SpaceDataSource(), name='spacesource', run_without_submitting=True)
         spacesource.iterables = (
             'in_tuple',
             [(s.fullname, s.spec) for s in spaces.cached.get_standard(dim=(3,))],
+        )
+
+        combine_space = pe.Node(
+            niu.Function(function=_combine_space),
+            name='combine_space',
+            run_without_submitting=True,
+            input_names=['space', 'cohort'],
+            output_names=['space'],
         )
 
         gen_tplid = pe.Node(
@@ -690,6 +700,10 @@ def init_anat_derivatives_wf(
             (inputnode, select_xfm, [
                 ('anat2std_xfm', 'anat2std_xfm'),
                 ('template', 'keys')]),
+            (spacesource, combine_space, [
+                ('space', 'space'),
+                ('cohort', 'cohort'),
+            ]),
             (spacesource, gen_tplid, [('space', 'template'),
                                       ('cohort', 'cohort')]),
             (gen_tplid, select_xfm, [('out', 'key')]),
@@ -724,11 +738,11 @@ def init_anat_derivatives_wf(
             ]
             # Connect the space input of these datasinks
             + [
-                (
-                    spacesource,
-                    n,
-                    [('space', 'space'), ('cohort', 'cohort'), ('resolution', 'resolution')],
-                )
+                (combine_space, n, [('space', 'space')])
+                for n in (ds_std_t1w, ds_std_mask, ds_std_dseg, ds_std_tpms)
+            ]
+            + [
+                (spacesource, n, [('resolution', 'resolution')])
                 for n in (ds_std_t1w, ds_std_mask, ds_std_dseg, ds_std_tpms)
             ]
         )
