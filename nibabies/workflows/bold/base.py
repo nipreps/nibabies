@@ -454,6 +454,20 @@ configured with cubic B-spline interpolation.
         ])  # fmt:skip
 
     if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
+        combine_space = pe.Node(
+            niu.Function(function=_combine_space),
+            name='combine_space',
+            run_without_submitting=True,
+            input_names=['space', 'cohort'],
+            output_names=['space'],
+        )
+        workflow.connect([
+            (inputnode, combine_space, [
+                ('std_space', 'space'),
+                ('std_cohort', 'cohort'),
+            ]),
+        ])  # fmt:skip
+
         # Missing:
         #  * Clipping BOLD after resampling
         #  * Resampling parcellations
@@ -496,10 +510,9 @@ configured with cubic B-spline interpolation.
             (inputnode, ds_bold_std_wf, [
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std_t1w', 'inputnode.template'),
-                ('std_space', 'inputnode.space'),
                 ('std_resolution', 'inputnode.resolution'),
-                ('std_cohort', 'inputnode.cohort'),
             ]),
+            (combine_space, ds_bold_std_wf, [('space', 'inputnode.space')]),
             (bold_fit_wf, ds_bold_std_wf, [
                 ('outputnode.bold_mask', 'inputnode.bold_mask'),
                 ('outputnode.coreg_boldref', 'inputnode.bold_ref'),
@@ -866,3 +879,13 @@ def get_MNIInfant_mask(spaces: 'SpatialReferences', res: str | int) -> str:
             )
 
     raise FileNotFoundError(f'MNIInfant mask (resolution {res}) not found.')
+
+
+def _combine_space(space, cohort) -> str:
+    """Combine space and cohort into a single string.
+
+    If cohort is not defined, return the space as is.
+    """
+    if cohort:
+        return f'{space}+{cohort}'
+    return space
