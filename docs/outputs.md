@@ -240,8 +240,8 @@ these will be indicated with `[specifiers]`
 ```
   sub-<subject_label>/[ses-<session_label>/]
     func/
-      sub-<subject_label>_[specifiers]_space-<space_label>_desc-brain_mask.nii.gz
-      sub-<subject_label>_[specifiers]_space-<space_label>_desc-preproc_bold.nii.gz
+      sub-<subject_label>_[specifiers]_space-<space_label>+<cohort>_desc-brain_mask.nii.gz
+      sub-<subject_label>_[specifiers]_space-<space_label>+<cohort>_desc-preproc_bold.nii.gz
 ```
 
 :::{note}
@@ -311,6 +311,8 @@ Fieldmap registration outputs are part of the *minimal* processing level.
 
 Volumetric output spaces labels (`<space_label>` above, and in the following) include
 `T1w` and `MNI152NLin2009cAsym` (default).
+For space labels that include a cohort, the cohort is included in the space label,
+for example `MNIInfant+1`.
 
 #### Surfaces, segmentations and parcellations from FreeSurfer
 
