@@ -144,8 +144,6 @@ def init_bold_wf(
         Value of space entity to be used in standard space output filenames
     std_resolution
         Value of resolution entity to be used in standard space output filenames
-    std_cohort
-        Value of cohort entity to be used in standard space output filenames
     anat2mni6_xfm
         Transform from anatomical space to MNI152NLin6Asym space
     mni6_mask
@@ -154,7 +152,7 @@ def init_bold_wf(
         Transform from MNI152NLin2009cAsym to anatomical space
 
     Note that ``anat2std_xfm``, ``std_space``, ``std_resolution``,
-    ``std_cohort``, ``std_t1w`` and ``std_mask`` are treated as single
+    ``std_t1w`` and ``std_mask`` are treated as single
     inputs. In order to resample to multiple target spaces, connect
     these fields to an iterable.
 
@@ -244,7 +242,6 @@ configured with cubic B-spline interpolation.
                 'std_mask',
                 'std_space',
                 'std_resolution',
-                'std_cohort',
                 # MNI152NLin6Asym warp, for CIFTI use
                 # 'anat2mni6_xfm',
                 # 'mni6_mask',
@@ -454,20 +451,6 @@ configured with cubic B-spline interpolation.
         ])  # fmt:skip
 
     if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
-        combine_space = pe.Node(
-            niu.Function(function=_combine_space),
-            name='combine_space',
-            run_without_submitting=True,
-            input_names=['space', 'cohort'],
-            output_names=['space'],
-        )
-        workflow.connect([
-            (inputnode, combine_space, [
-                ('std_space', 'space'),
-                ('std_cohort', 'cohort'),
-            ]),
-        ])  # fmt:skip
-
         # Missing:
         #  * Clipping BOLD after resampling
         #  * Resampling parcellations
@@ -511,8 +494,8 @@ configured with cubic B-spline interpolation.
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std_t1w', 'inputnode.template'),
                 ('std_resolution', 'inputnode.resolution'),
+                ('std_space', 'inputnode.space'),
             ]),
-            (combine_space, ds_bold_std_wf, [('space', 'inputnode.space')]),
             (bold_fit_wf, ds_bold_std_wf, [
                 ('outputnode.bold_mask', 'inputnode.bold_mask'),
                 ('outputnode.coreg_boldref', 'inputnode.bold_ref'),
@@ -886,6 +869,10 @@ def _combine_space(space, cohort) -> str:
 
     If cohort is not defined, return the space as is.
     """
+    if space.startswith('space-'):
+        space = space.split('-')[1]
     if cohort:
+        if cohort.startswith('cohort-'):
+            cohort = cohort.split('-')[1]
         return f'{space}+{cohort}'
     return space

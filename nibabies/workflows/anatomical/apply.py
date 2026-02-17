@@ -68,7 +68,6 @@ def init_infant_anat_apply_wf(
                 'std_t1w',
                 'anat2std_xfm',
                 'std_space',
-                'std_cohort',
                 'std_resolution',
             ]
         ),
@@ -81,16 +80,6 @@ def init_infant_anat_apply_wf(
     )
 
     if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
-        from nibabies.workflows.bold.base import _combine_space
-
-        combine_space = pe.Node(
-            niu.Function(function=_combine_space),
-            name='combine_space',
-            run_without_submitting=True,
-            input_names=['space', 'cohort'],
-            output_names=['space'],
-        )
-
         ds_std_volumes_wf = init_ds_anat_volumes_wf(
             bids_root=bids_root,
             output_dir=output_dir,
@@ -98,23 +87,19 @@ def init_infant_anat_apply_wf(
         )
 
         workflow.connect([
-            (inputnode, combine_space, [
-                ('std_space', 'space'),
-                ('std_cohort', 'cohort'),
-            ]),
             (inputnode, ds_std_volumes_wf, [
                 ('anat_valid_list', 'inputnode.source_files'),
                 ('anat_preproc', 'inputnode.anat_preproc'),
                 ('anat_mask', 'inputnode.anat_mask'),
                 ('anat_dseg', 'inputnode.anat_dseg'),
                 ('anat_tpms', 'inputnode.anat_tpms'),
+                ('std_space', 'inputnode.space'),
             ]),
             (inputnode, ds_std_volumes_wf, [
                 ('std_t1w', 'inputnode.ref_file'),
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std_resolution', 'inputnode.resolution'),
             ]),
-            (combine_space, ds_std_volumes_wf, [('space', 'inputnode.space')]),
         ])  # fmt:skip
 
     if recon_method is not None:

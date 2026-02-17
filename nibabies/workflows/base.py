@@ -574,8 +574,7 @@ It is released under the [CC0]\
                 (template_iterator_wf, anat_apply_wf, [
                     ('outputnode.std_t1w', 'inputnode.std_t1w',),
                     ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),
-                    ('outputnode.space', 'inputnode.std_space'),
-                    ('outputnode.cohort', 'inputnode.std_cohort'),
+                    ('outputnode.space_entity', 'inputnode.std_space'),
                     ('outputnode.resolution', 'inputnode.std_resolution'),
                 ]),
             ])  # fmt:skip
@@ -791,9 +790,8 @@ tasks and sessions), the following preprocessing was performed.
             if template_iterator_wf is not None:
                 workflow.connect([
                     (template_iterator_wf, bold_wf, [
-                        ('outputnode.space', 'inputnode.std_space'),
+                        ('outputnode.space_entity', 'inputnode.std_space'),
                         ('outputnode.resolution', 'inputnode.std_resolution'),
-                        ('outputnode.cohort', 'inputnode.std_cohort'),
                         ('outputnode.std_t1w', 'inputnode.std_t1w'),
                         ('outputnode.std_mask', 'inputnode.std_mask'),
                         ('outputnode.anat2std_xfm', 'inputnode.anat2std_xfm'),

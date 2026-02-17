@@ -239,7 +239,7 @@ def init_anat_reports_wf(
                 ('outputnode.anat2std_xfm', 'transforms'),
                 ('outputnode.std_t1w', 'reference_image'),
             ]),
-            (template_iterator_wf, norm_rpt, [('outputnode.space', 'before_label')]),
+            (template_iterator_wf, norm_rpt, [('outputnode.space_entity', 'before_label')]),
             (t1w_std, norm_msk, [('output_image', 'after')]),
             (mask_std, norm_msk, [('output_image', 'after_mask')]),
             (template_iterator_wf, norm_msk, [
@@ -251,7 +251,7 @@ def init_anat_reports_wf(
                 ('after', 'after'),
             ]),
             (inputnode, ds_std_t1w_report, [('source_file', 'source_file')]),
-            (template_iterator_wf, ds_std_t1w_report, [('outputnode.space', 'space')]),
+            (template_iterator_wf, ds_std_t1w_report, [('outputnode.space_entity', 'space')]),
             (norm_rpt, ds_std_t1w_report, [('out_report', 'in_file')]),
         ])  # fmt:skip
 
