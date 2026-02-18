@@ -136,12 +136,12 @@ class CompositeTransformUtil(_CompositeTransformUtil):
             outputs['out_transforms'] = transforms
 
             # Potentially could be more than one affine / displacement per composite transform...
-            outputs['affine_transform'] = [
+            outputs['affine_transform'] = next(
                 x for x in transforms if 'AffineTransform' in Path(x).name
-            ][0]
-            outputs['displacement_field'] = [
+            )
+            outputs['displacement_field'] = next(
                 x for x in transforms if 'DisplacementFieldTransform' in Path(x).name
-            ][0]
+            )
         elif self.inputs.process == 'assemble':
             outputs['out_file'] = Path(self.inputs.out_file).absolute()
         return outputs

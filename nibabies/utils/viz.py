@@ -18,7 +18,7 @@ DINA4_LANDSCAPE = (11.69, 8.27)
 class fMRIPlot:
     """Generates the fMRI Summary Plot."""
 
-    __slots__ = ('func_file', 'mask_data', 'tr', 'seg_data', 'confounds', 'spikes', 'sort_carpet')
+    __slots__ = ('confounds', 'func_file', 'mask_data', 'seg_data', 'sort_carpet', 'spikes', 'tr')
 
     def __init__(
         self,

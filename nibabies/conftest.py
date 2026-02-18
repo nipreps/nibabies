@@ -1,6 +1,7 @@
 """py.test configuration"""
 
 import json
+from importlib.resources import files as ir_files
 from pathlib import Path
 from shutil import copytree
 
@@ -9,11 +10,6 @@ import numpy as np
 import pytest
 
 from nibabies.data import load as load_data
-
-try:
-    from importlib.resources import files as ir_files
-except ImportError:  # PY<3.9
-    from importlib_resources import files as ir_files
 
 
 def copytree_or_skip(source, target):

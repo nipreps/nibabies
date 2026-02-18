@@ -188,7 +188,7 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
 COPY --from=nipreps/mcribs@sha256:363a5c3f25dd96fd1306329659b89b61718b50b8a6fc82a7e7732fc19af0cbc9 /opt/MCRIBS/ /opt/MCRIBS
 COPY --from=pyenv /usr/local/lib/ /usr/local/lib/
 ENV PATH="/opt/MCRIBS/bin:/opt/MCRIBS/MIRTK/MIRTK-install/bin:/opt/MCRIBS/MIRTK/MIRTK-install/lib/tools:${PATH}" \
-    LD_LIBRARY_PATH="/opt/MCRIBS/lib:/opt/MCRIBS/ITK/ITK-install/lib:/opt/MCRIBS/VTK/VTK-install/lib:/opt/MCRIBS/MIRTK/MIRTK-install/lib:/usr/local/lib:${LD_LIBRARY_PATH}" \
+    LD_LIBRARY_PATH="/opt/MCRIBS/lib:/opt/MCRIBS/ITK/ITK-install/lib:/opt/MCRIBS/VTK/VTK-install/lib:/opt/MCRIBS/MIRTK/MIRTK-install/lib:/usr/local/lib" \
     MCRIBS_HOME="/opt/MCRIBS" \
     PYTHONPATH="/opt/MCRIBS/lib/python"
 
@@ -205,7 +205,7 @@ RUN micromamba shell init -s bash && \
     echo "micromamba activate nibabies" >> $HOME/.bashrc
 ENV PATH="/opt/conda/envs/nibabies/bin:$PATH" \
     CPATH="/opt/conda/envs/nibabies/include" \
-    LD_LIBRARY_PATH="/opt/conda/envs/nibabies/lib" \
+    LD_LIBRARY_PATH="/opt/conda/envs/nibabies/lib:${LD_LIBRARY_PATH}" \
     CONDA_PYTHON="/opt/conda/envs/nibabies/bin/python"
 
 # FSL environment
