@@ -351,7 +351,7 @@ def init_bold_fit_wf(
 
     func_fit_reports_wf = init_func_fit_reports_wf(
         reference_anat=reference_anat,
-        sdc_correction=fieldmap_id is None,
+        sdc_correction=fieldmap_id is not None,
         output_dir=config.execution.output_dir,
     )
 
