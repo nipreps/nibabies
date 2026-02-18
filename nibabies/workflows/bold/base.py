@@ -493,8 +493,8 @@ configured with cubic B-spline interpolation.
             (inputnode, ds_bold_std_wf, [
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
                 ('std_t1w', 'inputnode.template'),
-                ('std_resolution', 'inputnode.resolution'),
                 ('std_space', 'inputnode.space'),
+                ('std_resolution', 'inputnode.resolution'),
             ]),
             (bold_fit_wf, ds_bold_std_wf, [
                 ('outputnode.bold_mask', 'inputnode.bold_mask'),
@@ -862,17 +862,3 @@ def get_MNIInfant_mask(spaces: 'SpatialReferences', res: str | int) -> str:
             )
 
     raise FileNotFoundError(f'MNIInfant mask (resolution {res}) not found.')
-
-
-def _combine_space(space, cohort) -> str:
-    """Combine space and cohort into a single string.
-
-    If cohort is not defined, return the space as is.
-    """
-    if space.startswith('space-'):
-        space = space.split('-')[1]
-    if cohort:
-        if cohort.startswith('cohort-'):
-            cohort = cohort.split('-')[1]
-        return f'{space}+{cohort}'
-    return space
