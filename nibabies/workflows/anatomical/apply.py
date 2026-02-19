@@ -68,7 +68,6 @@ def init_infant_anat_apply_wf(
                 'std_t1w',
                 'anat2std_xfm',
                 'std_space',
-                'std_cohort',
                 'std_resolution',
             ]
         ),
@@ -94,12 +93,11 @@ def init_infant_anat_apply_wf(
                 ('anat_mask', 'inputnode.anat_mask'),
                 ('anat_dseg', 'inputnode.anat_dseg'),
                 ('anat_tpms', 'inputnode.anat_tpms'),
+                ('std_space', 'inputnode.space'),
             ]),
             (inputnode, ds_std_volumes_wf, [
                 ('std_t1w', 'inputnode.ref_file'),
                 ('anat2std_xfm', 'inputnode.anat2std_xfm'),
-                ('std_space', 'inputnode.space'),
-                ('std_cohort', 'inputnode.cohort'),
                 ('std_resolution', 'inputnode.resolution'),
             ]),
         ])  # fmt:skip

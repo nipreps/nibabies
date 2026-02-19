@@ -360,3 +360,17 @@ def age_to_months(age: int | float, units: ty.Literal['weeks', 'months', 'years'
     elif units == 'years':
         age *= YEARS_TO_MONTH
     return round(age)
+
+
+def combine_space(space, cohort) -> str:
+    """Combine space and cohort into a single string.
+
+    If cohort is not defined, return the space as is.
+    """
+    if space.startswith('space-'):
+        space = space.split('-')[1]
+    if cohort:
+        if cohort.startswith('cohort-'):
+            cohort = cohort.split('-')[1]
+        return f'{space}+{cohort}'
+    return space

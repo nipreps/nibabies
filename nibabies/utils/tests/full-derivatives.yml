@@ -102,15 +102,12 @@ dataset_description:
     mode: image
     desc: hmc
   - suffix: boldref
-    space: MNIInfant
-    cohort: 1
+    space: MNIInfant+1
   - suffix: mask
-    space: MNIInfant
-    cohort: 1
+    space: MNIInfant+1
     desc: brain
   - suffix: bold
-    space: MNIInfant
-    cohort: 1
+    space: MNIInfant+1
     desc: preproc
   - suffix: bold
     space: fsLR
