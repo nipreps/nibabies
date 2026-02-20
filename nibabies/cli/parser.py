@@ -1,5 +1,5 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
-# vi: set ft=python sts=4 ts=4 sw=4 et:
+\ vi: set ft=python sts=4 ts=4 sw=4 et:
 """Parser."""
 
 from __future__ import annotations
@@ -87,14 +87,14 @@ def _build_parser():
             raise parser.error(f'Path should point to a file (or symlink of file): <{path}>.')
         return path
 
-    def _is_file_or_none(path, parser):
+    def _is_file_or_none_as_str(path, parser):
         """Ensure a given path exists and it is a file."""
-        if path is None:
+        if path is None or path == "":
             return None
         path = _path_exists(path, parser)
         if not path.is_file():
             raise parser.error(f'Path should point to a file (or symlink of file): <{path}>.')
-        return path
+        return str(path.resolve())
 
     def _min_one(value, parser):
         """Ensure an argument is not lower than 1."""
@@ -189,7 +189,7 @@ def _build_parser():
     PathExists = partial(_path_exists, parser=parser)
     DirNotEmpty = partial(_dir_not_empty, parser=parser)
     IsFile = partial(_is_file, parser=parser)
-    IsFileOrNone = partial(_is_file_or_none, parser=parser)
+    IsFileOrNoneAsStr = partial(_is_file_or_none_as_str, parser=parser)
     PositiveInt = partial(_min_one, parser=parser)
     BIDSFilter = partial(_bids_filter, parser=parser)
     SliceTimeRef = partial(_slice_time_ref, parser=parser)
@@ -580,7 +580,7 @@ Useful for further Tedana processing post-NiBabies.""",
     g_fmap.add_argument(
         '--topup-config',
         metavar='FILE',
-        type=IsFileOrNone,
+        type=IsFileOrNoneAsStr,
         default=None,
         help='path to a custom topup config file',
     )
