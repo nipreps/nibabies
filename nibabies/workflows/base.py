@@ -608,7 +608,7 @@ It is released under the [CC0]\
             omp_nthreads=omp_nthreads,
             output_dir=output_dir,
             subject=subject_id,
-            topup_config=config.workflows.topup_config,
+            topup_config=config.workflow.topup_config,
             sd_prior=False,  # No priors for infants yet
         )
         fmap_wf.__desc__ = f"""
