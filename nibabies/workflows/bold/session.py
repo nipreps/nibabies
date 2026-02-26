@@ -29,12 +29,12 @@ from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.func.util import init_skullstrip_bold_wf
 
 
-def init_coreg_bolds_wf(
+def init_coreg_session_bolds_wf(
     *,
     num_bold_runs: int,
     unbiased: bool = False,
     omp_nthreads: int = 1,
-    name: str = 'coreg_bolds_wf',
+    name: str = 'coreg_session_bolds_wf',
 ) -> Workflow:
     """
     Register all BOLD runs of a session to a single session-reference.

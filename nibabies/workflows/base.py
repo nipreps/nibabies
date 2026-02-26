@@ -715,10 +715,10 @@ tasks and sessions), the following preprocessing was performed.
         config.workflow.bold2anat_init = 't2w' if has_t2w else 't1w'
 
     # Common space for all BOLD runs in this session
-    if config.workflow.coreg_bolds:
+    if config.workflow.bold_coreg_level == 'session':
         from nibabies.workflows.bold.outputs import init_ds_registration_wf
         from nibabies.workflows.bold.registration import init_bold_reg_wf
-        from nibabies.workflows.bold.session import init_coreg_bolds_wf
+        from nibabies.workflows.bold.session import init_coreg_session_bolds_wf
 
         # TODO: Check each BOLD file phase encoding
         # only allow if homogeneous
@@ -729,7 +729,7 @@ tasks and sessions), the following preprocessing was performed.
             name='merge_fit_boldrefs',
         )
 
-        coreg_bolds_wf = init_coreg_bolds_wf(
+        coreg_bolds_wf = init_coreg_session_bolds_wf(
             num_bold_runs=len(bold_runs),
             omp_nthreads=omp_nthreads,
         )
@@ -811,7 +811,7 @@ tasks and sessions), the following preprocessing was performed.
             fieldmap_id=fieldmap_id,
             reference_anat=reference_anat,
             omp_nthreads=omp_nthreads,
-            coreg_anat=not bool(config.workflow.coreg_bolds),
+            coreg_anat=config.workflow.bold_coreg_level == 'run',
             name=_get_wf_name(bold_file, 'fit_bold'),
         )
         bold_fit_wf.__desc__ = func_pre_desc + (bold_fit_wf.__desc__ or '')
@@ -926,7 +926,7 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
             ])  # fmt:skip
 
-        if config.workflow.coreg_bolds:
+        if config.workflow.bold_coreg_level == 'session':
             select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm{i}')
 
             ds_orig2boldref_xfm = init_ds_registration_wf(
@@ -956,8 +956,12 @@ tasks and sessions), the following preprocessing was performed.
 
                 (coreg_bolds_wf, select_coreg_xfm, [('outputnode.orig2boldref_xfms', 'inlist')]),
                 (select_coreg_xfm, ds_orig2boldref_xfm, [('out', 'inputnode.xform')]),
-                (session_bold_reg_wf, ds_orig2boldref_xfm, [('outputnode.metadata', 'inputnode.metadata')]),
-                (coreg_bolds_wf, ds_orig2boldref_xfm, [('outputnode.boldref_files', 'inputnode.source_files')]),
+                (session_bold_reg_wf, ds_orig2boldref_xfm, [
+                    ('outputnode.metadata', 'inputnode.metadata'),
+                ]),
+                (coreg_bolds_wf, ds_orig2boldref_xfm, [
+                    ('outputnode.boldref_files', 'inputnode.source_files'),
+                ]),
                 (ds_orig2boldref_xfm, boldref_buffer, [('outputnode.xform', 'orig2boldref_xfm')]),
 
                 (session_bold_reg_wf, ds_boldref2anat_wf, [

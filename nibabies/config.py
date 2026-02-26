@@ -557,10 +557,10 @@ class workflow(_Config):
     bold2anat_init = 'auto'
     """Whether to use standard coregistration ('register') or to initialize coregistration from the
     BOLD image-header ('header')."""
+    bold_coreg_level = 'run'
+    """Level to coregister BOLD runs to a common reference, either 'run' (default) or 'session'."""
     cifti_output = None
     """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
-    coreg_bolds = False
-    """Coregister all BOLD runs to a single session-level BOLD reference."""
     dummy_scans = None
     """Set a number of initial scans to be considered nonsteady states."""
     fd_radius = 45
@@ -823,7 +823,7 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'surface_recon_method',
         'bold2anat_dof',
         'bold2anat_init',
-        'coreg_bolds',
+        'bold_coreg_level',
         'dummy_scans',
         'fd_radius',
         'fmap_bspline',

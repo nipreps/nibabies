@@ -789,10 +789,10 @@ discourage its usage.""",
         'registrations (native -> MNIInfant -> template) and concatenate into a single xfm',
     )
     g_baby.add_argument(
-        '--coreg-bolds',
-        action=BooleanOptionalAction,
-        default=False,
-        help='Create a shared BOLD reference space across runs.',
+        '--bold-coreg-level',
+        options=['run', 'session'],
+        default='run',
+        help='Determine BOLD reference image for coregistration at run or session level.',
     )
     return parser
 
