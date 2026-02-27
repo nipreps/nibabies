@@ -376,6 +376,7 @@ def init_bold_apply_wf(
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
             ]),
             (bold_native_wf, ds_bold_anat_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
             (bold_anat_wf, ds_bold_anat_wf, [
