@@ -176,7 +176,7 @@ def init_bold_fit_wf(
     boldref2anat_xfm
         Affine transform mapping from BOLD reference space to the anatomical
         space.
-    boldref2fmap_xfm
+    orig2fmap_xfm
         Affine transform mapping from BOLD reference space to the fieldmap
         space, if applicable.
     dummy_scans
@@ -278,7 +278,7 @@ def init_bold_fit_wf(
                 'bold_mask',
                 'motion_xfm',
                 'boldref2anat_xfm',  # Undefined if coreg_anat is False
-                'boldref2fmap_xfm',
+                'orig2fmap_xfm',
                 # summary (can be undefined)
                 'algo_dummy_scans',  # if hmc
                 'fallback',  # if run -> anat coregistration
@@ -301,7 +301,7 @@ def init_bold_fit_wf(
     fmapref_buffer = pe.Node(niu.Function(function=_select_ref), name='fmapref_buffer')
     hmc_buffer = pe.Node(niu.IdentityInterface(fields=['hmc_xforms']), name='hmc_buffer')
     fmapreg_buffer = pe.Node(
-        niu.IdentityInterface(fields=['boldref2fmap_xfm']), name='fmapreg_buffer'
+        niu.IdentityInterface(fields=['orig2fmap_xfm']), name='fmapreg_buffer'
     )
     regref_buffer = pe.Node(
         niu.IdentityInterface(fields=['boldref', 'boldmask']), name='regref_buffer'
@@ -314,7 +314,7 @@ def init_bold_fit_wf(
         hmc_buffer.inputs.hmc_xforms = hmc_xforms
         config.loggers.workflow.debug(f'Reusing motion correction transforms: {hmc_xforms}')
     if boldref2fmap_xform:
-        fmapreg_buffer.inputs.boldref2fmap_xfm = boldref2fmap_xform
+        fmapreg_buffer.inputs.orig2fmap_xfm = boldref2fmap_xform
         config.loggers.workflow.debug(f'Reusing BOLD-to-fieldmap transform: {boldref2fmap_xform}')
     if coreg_boldref:
         regref_buffer.inputs.boldref = coreg_boldref
@@ -331,7 +331,7 @@ def init_bold_fit_wf(
             ('boldref', 'coreg_boldref'),
             ('boldmask', 'bold_mask'),
         ]),
-        (fmapreg_buffer, outputnode, [('boldref2fmap_xfm', 'boldref2fmap_xfm')]),
+        (fmapreg_buffer, outputnode, [('orig2fmap_xfm', 'orig2fmap_xfm')]),
         (hmc_buffer, outputnode, [('hmc_xforms', 'motion_xfm')]),
     ])  # fmt:skip
 
@@ -419,7 +419,7 @@ def init_bold_fit_wf(
 
         workflow.connect([
             (fmapref_buffer, boldref_fmap, [('out', 'target_ref_file')]),
-            (fmapreg_buffer, boldref_fmap, [('boldref2fmap_xfm', 'transforms')]),
+            (fmapreg_buffer, boldref_fmap, [('orig2fmap_xfm', 'transforms')]),
             (inputnode, boldref_fmap, [
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
@@ -463,7 +463,7 @@ def init_bold_fit_wf(
                 (fmapreg_wf, itk_mat2txt, [('outputnode.target2fmap_xfm', 'in_xfms')]),
                 (itk_mat2txt, ds_fmapreg_wf, [('out_xfm', 'inputnode.xform')]),
                 (fmapreg_source_files, ds_fmapreg_wf, [('out', 'inputnode.source_files')]),
-                (ds_fmapreg_wf, fmapreg_buffer, [('outputnode.xform', 'boldref2fmap_xfm')]),
+                (ds_fmapreg_wf, fmapreg_buffer, [('outputnode.xform', 'orig2fmap_xfm')]),
             ])  # fmt:skip
         else:
             config.loggers.workflow.info(
@@ -552,7 +552,7 @@ def init_bold_fit_wf(
                 (skullstrip_bold_wf, ds_boldmask_wf, [
                     ('outputnode.mask_file', 'inputnode.boldmask'),
                 ]),
-                (fmapreg_buffer, coreg_ref_source_files, [('boldref2fmap_xfm', 'in2')]),
+                (fmapreg_buffer, coreg_ref_source_files, [('orig2fmap_xfm', 'in2')]),
                 (inputnode, coreg_ref_source_files, [('fmap_coeff', 'in3')]),
             ])  # fmt:skip
 
@@ -677,7 +677,7 @@ def init_bold_native_wf(
     motion_xfm
         Affine transforms from each BOLD volume to ``hmc_boldref``, written
         as concatenated ITK affine transforms.
-    boldref2fmap_xfm
+    orig2fmap_xfm
         Affine transform mapping from BOLD reference space to the fieldmap
         space, if applicable.
     orig2boldref_xfm
@@ -758,7 +758,7 @@ def init_bold_native_wf(
                 'bold_mask',
                 'motion_xfm',
                 'orig2boldref_xfm',
-                'boldref2fmap_xfm',
+                'orig2fmap_xfm',
                 'dummy_scans',
                 # Fieldmap fit
                 'fmap_ref',
@@ -866,7 +866,7 @@ def init_bold_native_wf(
         workflow.connect([
             (inputnode, boldref_fmap, [
                 ('boldref', 'target_ref_file'),
-                ('boldref2fmap_xfm', 'transforms'),
+                ('orig2fmap_xfm', 'transforms'),
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),
