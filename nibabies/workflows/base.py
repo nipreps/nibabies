@@ -768,6 +768,8 @@ tasks and sessions), the following preprocessing was performed.
         metadata = config.execution.layout.get_metadata(bold_file)
         fieldmap_id = estimator_map.get(bold_file)
 
+        bold_id = _get_wf_name(bold_file, None).removesuffix('_wf')
+
         nvols, _ = estimate_bold_mem_usage(bold_file)
         if nvols <= 5 - config.execution.sloppy:
             config.loggers.workflow.warning(
@@ -812,7 +814,7 @@ tasks and sessions), the following preprocessing was performed.
             reference_anat=reference_anat,
             omp_nthreads=omp_nthreads,
             coreg_anat=config.workflow.bold_coreg_level == 'run',
-            name=_get_wf_name(bold_file, 'fit_bold'),
+            name=f'bold_fit_{bold_id}_wf',
         )
         bold_fit_wf.__desc__ = func_pre_desc + (bold_fit_wf.__desc__ or '')
 
@@ -827,7 +829,7 @@ tasks and sessions), the following preprocessing was performed.
                     'bold_mask',
                 ],
             ),
-            name=f'boldref_buffer{i}',
+            name=f'boldref_buffer_{bold_id}',
         )
         boldref_buffer.inputs.bold_file = bold_file
 
@@ -844,7 +846,7 @@ tasks and sessions), the following preprocessing was performed.
                 orientation=''.join(nb.aff2axcodes(nb.load(bold_file).affine)),
                 dummy_scans=config.workflow.dummy_scans,
             ),
-            name=_get_wf_name(bold_file, 'func_fit_summary'),
+            name=f'func_fit_summary_{bold_id}',
             mem_gb=config.DEFAULT_MEMORY_MIN_GB,
             run_without_submitting=True,
         )
@@ -853,7 +855,7 @@ tasks and sessions), the following preprocessing was performed.
             reference_anat=reference_anat,
             sdc_correction=fieldmap_id is None,
             output_dir=config.execution.output_dir,
-            name=_get_wf_name(bold_file, 'func_fit_reports'),
+            name=f'func_fit_reports_{bold_id}_wf',
         )
 
         workflow.connect([
@@ -900,7 +902,7 @@ tasks and sessions), the following preprocessing was performed.
                     fields=['fmap', 'fmap_ref', 'fmap_coeff', 'fmap_mask', 'sdc_method'],
                     key=fieldmap_id,
                 ),
-                name=f'fmap_select{i}',
+                name=f'fmap_select_{bold_id}',
                 run_without_submitting=True,
             )
 
@@ -927,7 +929,7 @@ tasks and sessions), the following preprocessing was performed.
             ])  # fmt:skip
 
         if config.workflow.bold_coreg_level == 'session':
-            select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm{i}')
+            select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm_{bold_id}')
 
             ds_orig2boldref_xfm = init_ds_registration_wf(
                 source_file=bold_file,
@@ -935,7 +937,7 @@ tasks and sessions), the following preprocessing was performed.
                 source='orig',
                 dest='boldref',
                 desc='coreg',
-                name=f'ds_orig2boldref_xfm{i}',
+                name=f'ds_orig2boldref_xfm_{bold_id}',
             )
 
             ds_boldref2anat_wf = init_ds_registration_wf(
@@ -944,7 +946,7 @@ tasks and sessions), the following preprocessing was performed.
                 source='boldref',
                 dest=reference_anat,
                 desc='coreg',
-                name=f'ds_boldref2anat_wf{i}',
+                name=f'ds_boldref2anat_wf_{bold_id}',
             )
 
             workflow.connect([
@@ -1000,7 +1002,7 @@ tasks and sessions), the following preprocessing was performed.
             fieldmap_id=fieldmap_id,
             spaces=spaces,
             reference_anat=reference_anat,
-            name=_get_wf_name(bold_file, 'bold_apply'),
+            name=f'bold_apply_{bold_id}_wf',
         )
 
         workflow.connect([
@@ -1305,4 +1307,6 @@ def _get_wf_name(bold_fname, prefix):
 
     fname = split_filename(bold_fname)[1]
     fname_nosub = '_'.join(fname.split('_')[1:-1])
+    if prefix is None:
+        return f'{fname_nosub}_wf'
     return f'{prefix}_{fname_nosub.replace("-", "_")}_wf'
