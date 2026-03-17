@@ -25,8 +25,10 @@ recommended to have an accompanying JSON file to further describe these fields, 
 Age is used to choose the optimal surface reconstruction method when the flag `--surface-recon-method auto` is employed for surface reconstruction:
 
  - M-CRIB-S: 0-3 months old (only if T2w and segmentation in T2w space is present)
- - infant FreeSurfer: 4-24 months old (or 0-24 months old if no T2w/T2w segmentation is present)
+ - Infant FreeSurfer: 4-24 months old (or 0-24 months old if no T2w/T2w segmentation is present)
  - FreeSurfer (standard FreeSurfer developed from adult data): >24 months old
+
+Some in-depth comparisons across different reconstruction methods can be found [here](./surface_comparisons.md).
 
 ## The FreeSurfer license
 
