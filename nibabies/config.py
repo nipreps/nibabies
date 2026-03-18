@@ -613,6 +613,8 @@ class workflow(_Config):
     instance keeping standard and nonstandard spaces."""
     surface_recon_method = None
     """Method to use for surface reconstruction."""
+    topup_config = None
+    """Path to a custom topup configuration file."""
     use_bbr = False
     """Run boundary-based registration for BOLD-to-T1w registration."""
     use_syn_sdc = None
