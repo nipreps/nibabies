@@ -3,7 +3,7 @@
 """Version CLI helpers."""
 
 from contextlib import suppress
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -21,7 +21,7 @@ def check_latest():
     latest = None
     date = None
     outdated = None
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     cachefile = Path.home() / '.cache' / 'nibabies' / 'latest'
     try:
         cachefile.parent.mkdir(parents=True, exist_ok=True)
@@ -36,7 +36,7 @@ def check_latest():
         else:
             try:
                 latest = Version(latest)
-                date = datetime.strptime(date, DATE_FMT).astimezone(timezone.utc)
+                date = datetime.strptime(date, DATE_FMT).astimezone(UTC)
             except (InvalidVersion, ValueError):
                 latest = None
             else:

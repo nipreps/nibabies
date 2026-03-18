@@ -32,8 +32,6 @@ def _build_parser():
 
     deprecations = {
         # parser attribute name: (replacement flag, version slated to be removed in)
-        'clean_workdir',
-        (None, '26.0.0'),
     }
 
     class DeprecatedAction(Action):
@@ -647,12 +645,6 @@ Useful for further Tedana processing post-NiBabies.""",
         type=Path,
         default=Path('work').absolute(),
         help='path where intermediate results should be stored',
-    )
-    g_other.add_argument(
-        '--clean-workdir',
-        action=DeprecatedAction,
-        default=False,
-        help='Deprecated and has no effect.',
     )
     g_other.add_argument(
         '--resource-monitor',
