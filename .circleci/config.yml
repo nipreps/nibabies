@@ -1,3 +1,20 @@
+version: 2.1
+setup: true
+
+orbs:
+  docker: circleci/docker@2.1.4
+  path-filtering: circleci/path-filtering@3.0.0
+
+parameters:
+  run-build:
+    type: boolean
+    default: false
+
+aliases:
+- &src "/tmp/src/nibabies"
+
+
+### The following YAML anchors include reusable steps
 _machine_defaults: &machine_defaults
   environment:
     TZ: "/usr/share/zoneinfo/America/New_York"
@@ -10,7 +27,7 @@ _machine_defaults: &machine_defaults
 
 _python_defaults: &python_defaults
   docker:
-  - image: cimg/python:3.12.5
+  - image: cimg/python:3.14
     auth:
       username: $DOCKER_USER
       password: $DOCKER_PAT
@@ -66,14 +83,8 @@ _check_skip_job: &check_skip_job
     fi
     echo "No skip"
 
-version: 2.1
-aliases:
-- &src "/tmp/src/nibabies"
-orbs:
-  docker: circleci/docker@2.1.4
 
 jobs:
-
   build:
     !!merge <<: *machine_defaults
     environment:
@@ -601,9 +612,18 @@ workflows:
   build_test_deploy:
     jobs:
 
+    - path-filtering/filter:
+        name: filter-paths
+        base-revision: ${CIRCLE_BASE_REVISION:-master}
+        mapping: |
+          nibabies/.* run-build true
+          Dockerfile run-build true
+
     - build:
         context:
         - nipreps-common
+        requires:
+          - filter-paths
         filters:
           branches:
             ignore:
@@ -614,6 +634,8 @@ workflows:
     - get_data:
         context:
         - fs-license
+        requires:
+          - filter-paths
         filters:
           branches:
             ignore:
@@ -626,6 +648,8 @@ workflows:
     - test_deploy_pypi:
         context:
         - nipreps-common
+        requires:
+          - filter-paths
         filters:
           branches:
             only:
