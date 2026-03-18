@@ -69,7 +69,7 @@ universal = true
 
 [tool.black]
 line-length = 99
-target-version = ['py39']
+target-version = ['py313']
 skip-string-normalization = true
 
 [tool.isort]

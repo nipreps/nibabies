@@ -1,24 +1,9 @@
+from contextlib import chdir as _chdir
 from pathlib import Path
 from shutil import copytree
 from tempfile import TemporaryDirectory
 
 import pytest
-
-try:
-    from contextlib import chdir as _chdir
-except ImportError:  # PY310
-    import os
-    from contextlib import contextmanager
-
-    @contextmanager  # type: ignore
-    def _chdir(path):
-        cwd = os.getcwd()
-        os.chdir(path)
-        try:
-            yield
-        finally:
-            os.chdir(cwd)
-
 
 DATA_FILES = (
     'functional.nii',
