@@ -72,7 +72,7 @@ etelemetry==0.3.1
     # via nipype
 fasteners==0.19
     # via datalad
-filelock==3.18.0
+filelock==3.20.3
     # via nipype
 fonttools==4.58.4
     # via matplotlib
