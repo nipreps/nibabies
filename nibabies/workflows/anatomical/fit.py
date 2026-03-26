@@ -1011,7 +1011,7 @@ def init_infant_anat_fit_wf(
 
     if concat_xfms and intermediate is None:
         LOGGER.error(
-            'Intermediate is not set - skipping concatenation workflow. Spaces: %s',
+            'Intermediate is not set - skipping concatenation workflow. Spaces: %s'
             ' Intermediate targets: %s',
             spaces.get_spaces(nonstandard=False, dim=(3,)),
             intermediate_targets,
@@ -1148,6 +1148,9 @@ def init_infant_anat_fit_wf(
                 use_aseg=bool(anat_aseg),
             )
 
+            if anat_aseg:
+                workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
+
         # Force use of the T1w image
         workflow.connect([
             (inputnode, fs_isrunning, [
@@ -1165,9 +1168,6 @@ def init_infant_anat_fit_wf(
                 ('outputnode.subject_id', 'subject_id'),
             ]),
         ])  # fmt:skip
-
-        if anat_aseg:
-            workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
