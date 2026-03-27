@@ -1011,7 +1011,7 @@ def init_infant_anat_fit_wf(
 
     if concat_xfms and intermediate is None:
         LOGGER.error(
-            'Intermediate is not set - skipping concatenation workflow. Spaces: %s',
+            'Intermediate is not set - skipping concatenation workflow. Spaces: %s'
             ' Intermediate targets: %s',
             spaces.get_spaces(nonstandard=False, dim=(3,)),
             intermediate_targets,
@@ -1148,6 +1148,9 @@ def init_infant_anat_fit_wf(
                 use_aseg=bool(anat_aseg),
             )
 
+            if anat_aseg:
+                workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
+
         # Force use of the T1w image
         workflow.connect([
             (inputnode, fs_isrunning, [
@@ -1165,9 +1168,6 @@ def init_infant_anat_fit_wf(
                 ('outputnode.subject_id', 'subject_id'),
             ]),
         ])  # fmt:skip
-
-        if anat_aseg:
-            workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
@@ -1979,7 +1979,7 @@ def init_infant_single_anat_fit_wf(
 
     if concat_xfms and intermediate is None:
         LOGGER.error(
-            'Intermediate is not set - skipping concatenation workflow.\nSpaces: %s\n',
+            'Intermediate is not set - skipping concatenation workflow.\nSpaces: %s\n'
             'Intermediate targets: %s',
             spaces.get_spaces(nonstandard=False, dim=(3,)),
             intermediate_targets,
@@ -2043,7 +2043,7 @@ def init_infant_single_anat_fit_wf(
     # Stage 5: Surface reconstruction
     if recon_method == 'mcribs':
         if reference_anat == 'T1w':
-            LOGGER.warning('Attempting to use MCRIBS with a T1w file, good luck.')
+            raise ValueError('M-CRIB-S requires use of a T2w image.')
 
         from nibabies.workflows.anatomical.surfaces import init_mcribs_surface_recon_wf
 
@@ -2107,6 +2107,9 @@ def init_infant_single_anat_fit_wf(
                 use_aseg=bool(anat_aseg),
             )
 
+            if anat_aseg:
+                workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
+
         workflow.connect([
             (inputnode, fs_isrunning, [
                 ('subjects_dir', 'subjects_dir'),
@@ -2123,9 +2126,6 @@ def init_infant_single_anat_fit_wf(
                 ('outputnode.subject_id', 'subject_id'),
             ]),
         ])  # fmt:skip
-
-        if anat_aseg:
-            workflow.connect(aseg_buffer, 'anat_aseg', surface_recon_wf, 'inputnode.in_aseg')
 
     fsnative_xfms = precomputed.get('transforms', {}).get('fsnative')
     if not fsnative_xfms:
