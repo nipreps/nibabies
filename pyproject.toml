@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.27", "hatch-vcs", "nipreps-versions"]
+requires = ["hatchling>=1.27", "hatch-vcs", "nipreps-versions", "setuptools_scm < 8"]
 build-backend = "hatchling.build"
 
 [project]
