@@ -428,6 +428,8 @@ class execution(_Config):
     """Select a particular task from all available in the dataset."""
     templateflow_home = _templateflow_home
     """The root folder of the TemplateFlow client."""
+    topup_config = None
+    """Path to custom topup configuration file"""
     unique_labels = None
     """Combinations of subject + session identifiers to be preprocessed."""
     work_dir = Path('work').absolute()
@@ -451,6 +453,7 @@ class execution(_Config):
         'output_dir',
         'segmentation_atlases_dir',
         'templateflow_home',
+        'topup_config',
         'work_dir',
     )
 
@@ -613,8 +616,6 @@ class workflow(_Config):
     instance keeping standard and nonstandard spaces."""
     surface_recon_method = None
     """Method to use for surface reconstruction."""
-    topup_config = None
-    """Path to a custom topup configuration file."""
     use_bbr = False
     """Run boundary-based registration for BOLD-to-T1w registration."""
     use_syn_sdc = None
