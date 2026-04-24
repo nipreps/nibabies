@@ -423,7 +423,7 @@ toml==0.10.2
     # via
     #   nibabies (pyproject.toml)
     #   sdcflows
-tornado==6.5.1
+tornado==6.5.5
     # via bokeh
 tqdm==4.67.1
     # via
