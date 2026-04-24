@@ -74,7 +74,7 @@ fasteners==0.19
     # via datalad
 filelock==3.18.0
     # via nipype
-fonttools==4.58.4
+fonttools==4.60.2
     # via matplotlib
 formulaic==1.1.1
     # via pybids
