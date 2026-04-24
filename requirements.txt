@@ -445,7 +445,7 @@ tzdata==2025.2
     # via pandas
 universal-pathlib==0.2.6
     # via pybids
-urllib3==2.4.0
+urllib3==2.6.3
     # via
     #   botocore
     #   requests
