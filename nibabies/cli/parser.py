@@ -567,7 +567,13 @@ Useful for further Tedana processing post-NiBabies.""",
         default=True,
         help='do not remove median (within mask) from fieldmap',
     )
-
+    g_fmap.add_argument(
+        '--topup-config',
+        metavar='FILE',
+        type=IsFile,
+        default=None,
+        help='path to a custom topup config file',
+    )
     # SyN-unwarp options
     g_syn = parser.add_argument_group('Specific options for SyN distortion correction')
     g_syn.add_argument(
