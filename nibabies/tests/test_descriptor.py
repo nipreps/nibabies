@@ -147,13 +147,15 @@ def test_descriptor_init_anat_fit_wf_routes_single_anat():
             'recon_method': 'auto',
             'segmentation_atlases': None,
             'reference_anat': None,
-            'cifti_output': False,
         }.get(key, default)
 
+    mock_config = MagicMock()
+    mock_config.workflow.cifti_output = False
     with (
         patch.object(desc, 'get', side_effect=_fake_get),
         patch('nibabies.descriptor.init_infant_single_anat_fit_wf') as mock_single,
         patch('nibabies.descriptor.init_infant_anat_fit_wf') as mock_dual,
+        patch('nibabies.descriptor.config', mock_config),
     ):
         desc.init_anat_fit_wf(
             t1w=['t1.nii.gz'],
@@ -187,13 +189,15 @@ def test_descriptor_init_anat_fit_wf_routes_dual_anat():
             'recon_method': 'auto',
             'segmentation_atlases': None,
             'reference_anat': None,
-            'cifti_output': False,
         }.get(key, default)
 
+    mock_config = MagicMock()
+    mock_config.workflow.cifti_output = False
     with (
         patch.object(desc, 'get', side_effect=_fake_get),
         patch('nibabies.descriptor.init_infant_single_anat_fit_wf') as mock_single,
         patch('nibabies.descriptor.init_infant_anat_fit_wf') as mock_dual,
+        patch('nibabies.descriptor.config', mock_config),
     ):
         desc.init_anat_fit_wf(
             t1w=['t1.nii.gz'],

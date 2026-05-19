@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fmriprep import config
 from fmriprep.extensions.descriptor import ExtensionDescriptor
 
 from nibabies._version import __version__
@@ -80,6 +81,7 @@ class NibabiesExtension(ExtensionDescriptor):
             recon_method=recon_method,
             segmentation_atlases=segmentation_atlases,
             reference_anat=reference_anat,
+            cifti_output=config.workflow.cifti_output,
         )
 
         if single_anat:
