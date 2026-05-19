@@ -35,6 +35,7 @@ dependencies = [
     "pybids >= 0.15.0",
     "requests",
     "sdcflows @ git+https://github.com/nipreps/sdcflows.git@main",
+    "fmriprep @ git+https://github.com/nipreps/fmriprep.git@feat/extension-framework",
     "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
     "tedana >= 23.0.2",
     "templateflow >= 25.0.3",
