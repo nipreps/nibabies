@@ -90,6 +90,9 @@ all = ["nibabies[dev,doc,maint,telemetry,test]"]
 nibabies = "nibabies.cli.run:main"
 nibabies-mcribs = "nibabies.cli.mcribs:main"
 
+[project.entry-points."fmriprep.extensions"]
+nibabies = "nibabies.descriptor:NibabiesExtension"
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
