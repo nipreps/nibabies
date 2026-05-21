@@ -763,7 +763,6 @@ def init_ds_bold_session_wf(
             fields=[
                 'source_files',
                 'bold',
-                'bold_mask',
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
                 'orig2session_xfm',
@@ -788,27 +787,6 @@ def init_ds_bold_session_wf(
             ('orig2session_xfm', 'in3'),
             ('orig2fmap_xfm', 'in4'),
         ]),
-    ])  # fmt:skip
-
-    ds_bold_mask = pe.Node(
-        DerivativesDataSink(
-            base_directory=output_dir,
-            space='session',
-            desc='brain',
-            suffix='mask',
-            compress=True,
-            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
-        ),
-        name='ds_bold_mask',
-        run_without_submitting=True,
-        mem_gb=DEFAULT_MEMORY_MIN_GB,
-    )
-    workflow.connect([
-        (inputnode, ds_bold_mask, [
-            ('source_files', 'source_file'),
-            ('bold_mask', 'in_file'),
-        ]),
-        (sources, ds_bold_mask, [('out', 'Sources')]),
     ])  # fmt:skip
 
     ds_bold = pe.Node(

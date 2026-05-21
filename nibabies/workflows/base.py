@@ -762,6 +762,8 @@ tasks and sessions), the following preprocessing was performed.
             ]),
     ])  # fmt:skip
 
+        _session_dismiss = ('task', 'run', 'echo', 'part', 'dir')
+
         ds_session_boldref = pe.Node(
             DerivativesDataSink(
                 source_file=bold_runs[0][0],
@@ -769,13 +771,27 @@ tasks and sessions), the following preprocessing was performed.
                 desc='coreg',
                 suffix='boldref',
                 compress=True,
-                dismiss_entities=('run', 'echo', 'part'),
+                dismiss_entities=_session_dismiss,
             ),
             name='ds_session_boldref',
             run_without_submitting=True,
         )
+        ds_session_bold_mask = pe.Node(
+            DerivativesDataSink(
+                source_file=bold_runs[0][0],
+                base_directory=config.execution.nibabies_dir,
+                space='session',
+                desc='brain',
+                suffix='mask',
+                compress=True,
+                dismiss_entities=_session_dismiss,
+            ),
+            name='ds_session_bold_mask',
+            run_without_submitting=True,
+        )
         workflow.connect([
             (coreg_bolds_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
+            (coreg_bolds_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
         ])  # fmt:skip
 
     for i, bold_series in enumerate(bold_runs):
