@@ -61,7 +61,7 @@ def init_coreg_session_bolds_wf(
         Brain mask for the session-level BOLD reference.
     boldref_files
         List of BOLD reference files (same as input).
-    orig2boldref_xfms
+    orig2session_xfms
         Transforms from each run's original space to the session boldref
 
     """
@@ -78,7 +78,7 @@ def init_coreg_session_bolds_wf(
 
     outputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['boldref', 'bold_mask', 'orig2boldref_xfms', 'boldref_files']
+            fields=['boldref', 'bold_mask', 'orig2session_xfms', 'boldref_files']
         ),
         name='outputnode',
     )
@@ -90,7 +90,7 @@ def init_coreg_session_bolds_wf(
     #     from niworkflows.data import load as niw_load
 
     #     identity_xfm = niw_load('identity_xfm')
-    #     outputnode.inputs.orig2boldref_xfms = [identity_xfm]
+    #     outputnode.inputs.orig2session_xfms = [identity_xfm]
     #     return workflow
 
     boldref_template = pe.Node(
@@ -128,7 +128,7 @@ def init_coreg_session_bolds_wf(
             ('transform_outputs', 'in_xfm'),
         ]),
         (to_itk, outputnode, [
-            ('out_xfm', 'orig2boldref_xfms'),
+            ('out_xfm', 'orig2session_xfms'),
         ]),
         (inputnode, outputnode, [
             ('boldref_files', 'boldref_files'),
