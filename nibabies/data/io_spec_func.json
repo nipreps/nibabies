@@ -45,6 +45,15 @@
           "mode": "image",
           "suffix": "xfm",
           "extension": ".txt"
+        },
+        "orig2session": {
+          "datatype": "func",
+          "desc": "coreg",
+          "from": "orig",
+          "to": "session",
+          "mode": "image",
+          "suffix": "xfm",
+          "extension": ".txt"
         }
       }
     },
