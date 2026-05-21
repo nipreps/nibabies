@@ -86,6 +86,31 @@ The segmentation directory layout should consist of one or more template directo
 
 :::
 
+### BOLD coregistration level (`--bold-coreg-level`)
+
+By default (`run`), each BOLD run is independently registered to the anatomical image.
+The `session` option instead builds a session-wide mean BOLD template from all runs before
+registering that template to the anatomical image.
+This can improve BOLD-to-anatomical registration quality by averaging signal across runs
+before coregistration.
+
+The session-level pipeline follows four steps:
+
+1. Head-motion correction (HMC) is applied per-volume within each run.
+2. Susceptibility distortion correction (SDC) is applied to each run's BOLD reference image.
+3. Each run's SDC-corrected boldref is registered to a session-wide BOLD template using FreeSurfer's `mri_robust_template`.
+4. The session template is registered to the anatomical image.
+
+The full transform chain applied during resampling is therefore:
+`bold volume → orig boldref (HMC) → session boldref (orig2session) → T1w (boldref2anat) → standard space (anat2std)`.
+
+:::{admonition} Output spaces and session-space BOLD
+:class: tip
+
+Adding `session` to `--output-spaces` when using `--bold-coreg-level session` saves each run
+resampled into the session boldref template.
+:::
+
 ## Using the nibabies wrapper
 
 The wrapper will generate a Docker or Singularity command line for you, print it out for reporting purposes, and then execute it without further action needed.
