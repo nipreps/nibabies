@@ -47,6 +47,7 @@ from nibabies.workflows.bold.confounds import init_bold_confs_wf, init_carpetplo
 from nibabies.workflows.bold.fit import init_bold_native_wf, init_bold_session_wf
 from nibabies.workflows.bold.outputs import (
     init_ds_bold_native_wf,
+    init_ds_bold_session_wf,
     init_ds_volumes_wf,
     prepare_timing_parameters,
 )
@@ -304,6 +305,26 @@ def init_bold_apply_wf(
             (bold_native_wf, bold_session_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_minimal'),
                 ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
+            ]),
+        ])  # fmt:skip
+
+        ds_bold_session_wf = init_ds_bold_session_wf(
+            bids_root=str(config.execution.bids_dir),
+            output_dir=output_dir,
+            multiecho=multiecho,
+            all_metadata=all_metadata,
+        )
+        ds_bold_session_wf.inputs.inputnode.source_files = bold_series
+
+        workflow.connect([
+            (bold_session_wf, ds_bold_session_wf, [
+                ('outputnode.bold_session', 'inputnode.bold'),
+            ]),
+            (inputnode, ds_bold_session_wf, [
+                ('bold_mask', 'inputnode.bold_mask'),
+                ('motion_xfm', 'inputnode.motion_xfm'),
+                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
             ]),
         ])  # fmt:skip
 

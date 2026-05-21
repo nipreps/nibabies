@@ -746,6 +746,96 @@ def init_ds_bold_native_wf(
     return workflow
 
 
+def init_ds_bold_session_wf(
+    *,
+    bids_root: str,
+    output_dir: str,
+    multiecho: bool,
+    all_metadata: list[dict],
+    name='ds_bold_session_wf',
+) -> pe.Workflow:
+    metadata = all_metadata[0]
+    timing_parameters = prepare_timing_parameters(metadata)
+
+    workflow = pe.Workflow(name=name)
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                'source_files',
+                'bold',
+                'bold_mask',
+                # Transforms previously used to generate the outputs
+                'motion_xfm',
+                'orig2session_xfm',
+                'orig2fmap_xfm',
+            ]
+        ),
+        name='inputnode',
+    )
+
+    sources = pe.Node(
+        BIDSURI(
+            numinputs=4,
+            dataset_links=config.execution.dataset_links,
+            out_dir=str(config.execution.output_dir.absolute()),
+        ),
+        name='sources',
+    )
+    workflow.connect([
+        (inputnode, sources, [
+            ('source_files', 'in1'),
+            ('motion_xfm', 'in2'),
+            ('orig2session_xfm', 'in3'),
+            ('orig2fmap_xfm', 'in4'),
+        ]),
+    ])  # fmt:skip
+
+    ds_bold_mask = pe.Node(
+        DerivativesDataSink(
+            base_directory=output_dir,
+            space='session',
+            desc='brain',
+            suffix='mask',
+            compress=True,
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+        ),
+        name='ds_bold_mask',
+        run_without_submitting=True,
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+    workflow.connect([
+        (inputnode, ds_bold_mask, [
+            ('source_files', 'source_file'),
+            ('bold_mask', 'in_file'),
+        ]),
+        (sources, ds_bold_mask, [('out', 'Sources')]),
+    ])  # fmt:skip
+
+    ds_bold = pe.Node(
+        DerivativesDataSink(
+            base_directory=output_dir,
+            space='session',
+            desc='preproc',
+            compress=True,
+            SkullStripped=multiecho,
+            TaskName=metadata.get('TaskName'),
+            dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+            **timing_parameters,
+        ),
+        name='ds_bold',
+        mem_gb=DEFAULT_MEMORY_MIN_GB,
+    )
+    workflow.connect([
+        (inputnode, ds_bold, [
+            ('source_files', 'source_file'),
+            ('bold', 'in_file'),
+        ]),
+        (sources, ds_bold, [('out', 'Sources')]),
+    ])  # fmt:skip
+
+    return workflow
+
+
 def init_ds_volumes_wf(
     *,
     bids_root: str,
