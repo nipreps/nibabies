@@ -903,6 +903,140 @@ def init_bold_native_wf(
     return workflow
 
 
+def init_bold_session_wf(
+    *,
+    bold_series: list[str],
+    fieldmap_id: str | None = None,
+    omp_nthreads: int = 1,
+    name: str = 'bold_session_wf',
+) -> pe.Workflow:
+    r"""
+    Resample BOLD series to session-level boldref space.
+
+    Takes the minimally-processed BOLD (``bold_minimal``, STC-only for
+    single-echo, T2\*-combined for multi-echo) produced by
+    :py:func:`init_bold_native_wf` and resamples to the session boldref with
+    head motion and susceptibility distortion correction applied. STC is not
+    repeated here.
+
+    Parameters
+    ----------
+    bold_series
+        List of paths to NIfTI files (used to derive metadata).
+    fieldmap_id
+        Fieldmap identifier. If :obj:`None`, no SDC is applied.
+    omp_nthreads
+        Maximum number of threads per process.
+
+    Inputs
+    ------
+    bold_minimal
+        STC-only BOLD series (output of :py:func:`init_bold_native_wf`).
+    session_boldref
+        Session-level BOLD reference image.
+    orig2session_xfm
+        Affine transform from the run-level boldref to the session boldref.
+    motion_xfm
+        Per-volume affine transforms (HMC).
+    orig2fmap_xfm
+        Affine from boldref space to fieldmap space (SDC only).
+    fmap_ref
+        Fieldmap reference file (SDC only).
+    fmap_coeff
+        B-spline fieldmap coefficients (SDC only).
+
+    Outputs
+    -------
+    bold_session
+        BOLD series resampled into session boldref space with HMC and SDC applied.
+
+    """
+    bold_file = bold_series[0]
+    metadata = config.execution.layout.get_metadata(bold_file)
+    _, mem_gb = estimate_bold_mem_usage(bold_file)
+
+    workflow = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=[
+                'bold_minimal',
+                'session_boldref',
+                'orig2session_xfm',
+                'motion_xfm',
+                'orig2fmap_xfm',
+                'fmap_ref',
+                'fmap_coeff',
+            ],
+        ),
+        name='inputnode',
+    )
+
+    outputnode = pe.Node(
+        niu.IdentityInterface(fields=['bold_session']),
+        name='outputnode',
+    )
+
+    merge_bold2session = pe.Node(
+        niu.Merge(2), name='merge_bold2session', run_without_submitting=True
+    )
+
+    boldref_bold = pe.Node(
+        ResampleSeries(
+            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            num_threads=omp_nthreads,
+        ),
+        name='boldref_bold',
+        n_procs=omp_nthreads,
+        mem_gb=mem_gb['resampled'],
+    )
+
+    workflow.connect([
+        (inputnode, merge_bold2session, [
+            ('motion_xfm', 'in1'),
+            ('orig2session_xfm', 'in2'),
+        ]),
+        (inputnode, boldref_bold, [
+            ('bold_minimal', 'in_file'),
+            ('session_boldref', 'ref_file'),
+        ]),
+        (merge_bold2session, boldref_bold, [('out', 'transforms')]),
+        (boldref_bold, outputnode, [('out_file', 'bold_session')]),
+    ])  # fmt:skip
+
+    if fieldmap_id:
+        distortion_params = pe.Node(
+            DistortionParameters(metadata=metadata, in_file=bold_file),
+            name='distortion_params',
+            run_without_submitting=True,
+        )
+        fmap2session = pe.Node(niu.Merge(2), name='fmap2session', run_without_submitting=True)
+        boldref_fmap = pe.Node(
+            ReconstructFieldmap(inverse=[True, False]),
+            name='boldref_fmap',
+            mem_gb=1,
+        )
+        workflow.connect([
+            (distortion_params, boldref_bold, [
+                ('readout_time', 'ro_time'),
+                ('pe_direction', 'pe_dir'),
+            ]),
+            (inputnode, fmap2session, [
+                ('orig2fmap_xfm', 'in1'),
+                ('orig2session_xfm', 'in2'),
+            ]),
+            (inputnode, boldref_fmap, [
+                ('session_boldref', 'target_ref_file'),
+                ('fmap_coeff', 'in_coeffs'),
+                ('fmap_ref', 'fmap_ref_file'),
+            ]),
+            (fmap2session, boldref_fmap, [('out', 'transforms')]),
+            (boldref_fmap, boldref_bold, [('out_file', 'fieldmap')]),
+        ])  # fmt:skip
+
+    return workflow
+
+
 def _select_ref(sbref_files, boldref_files):
     """Select first sbref or boldref file, preferring sbref if available"""
     from niworkflows.utils.connections import listify
