@@ -142,6 +142,7 @@ def _make_params(
     multi_step_reg: bool = True,
     hmc_bold_frame: int | str = 16,
     output_spaces: str | None = None,
+    bold_coreg_level: str = 'run',
 ):
     if ignore is None:
         ignore = []
@@ -166,6 +167,7 @@ def _make_params(
         multi_step_reg,
         hmc_bold_frame,
         output_spaces,
+        bold_coreg_level,
     )
 
 
@@ -197,6 +199,7 @@ def _patch_output_spaces(output_spaces: str | None):
         'multi_step_reg',
         'hmc_bold_frame',
         'output_spaces',
+        'bold_coreg_level',
     ),
     [
         _make_params(),
@@ -232,9 +235,9 @@ def _patch_output_spaces(output_spaces: str | None):
         # Regression test for gh-3154:
         _make_params(bids_filters={'sbref': {'suffix': 'sbref'}}),
         _make_params(norm_csf=True),
-        _make_params(multi_step_reg=True),
         _make_params(multi_step_reg=False),
         _make_params(hmc_bold_frame='auto'),
+        _make_params(bold_coreg_level='session'),
     ],
 )
 def test_init_nibabies_wf(
@@ -261,6 +264,7 @@ def test_init_nibabies_wf(
     multi_step_reg: bool,
     hmc_bold_frame: int | str,
     output_spaces: str | None,
+    bold_coreg_level: str,
 ):
     monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
     with mock_config(bids_dir=bids_root):
@@ -274,6 +278,7 @@ def test_init_nibabies_wf(
         config.workflow.project_goodvoxels = project_goodvoxels
         config.workflow.norm_csf = norm_csf
         config.workflow.multi_step_reg = multi_step_reg
+        config.workflow.bold_coreg_level = bold_coreg_level
         # config.workflow.run_msmsulc = run_msmsulc
         config.workflow.skull_strip_anat = skull_strip_anat
         config.workflow.cifti_output = cifti_output

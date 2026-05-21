@@ -786,6 +786,12 @@ discourage its usage.""",
         help='For certain adult templates (MNI152NLin6Asym), perform two step '
         'registrations (native -> MNIInfant -> template) and concatenate into a single xfm',
     )
+    g_baby.add_argument(
+        '--bold-coreg-level',
+        choices=('run', 'session'),
+        default='run',
+        help='Determine BOLD reference image for coregistration at run or session level.',
+    )
     return parser
 
 
