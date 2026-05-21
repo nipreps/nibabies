@@ -724,17 +724,33 @@ tasks and sessions), the following preprocessing was performed.
         # only allow if homogeneous
         LOGGER.info('Coregistering all BOLD runs to a common space')
 
-        merge_fit_boldrefs = pe.Node(
-            niu.Merge(len(bold_runs)),
-            name='merge_fit_boldrefs',
-        )
+        # Check for precomputed session boldref and mask
+        session_boldref = None
+        session_mask = None
+        if config.execution.derivatives:
+            from nibabies.utils.derivatives import collect_functional_derivatives
 
-        coreg_bolds_wf = init_coreg_session_bolds_wf(
-            num_bold_runs=len(bold_runs),
-            omp_nthreads=omp_nthreads,
-        )
+            _session_ents = {'subject': subject_id}
+            if session_id:
+                _session_ents['session'] = session_id
+            _session_cache: dict = {}
+            for deriv_dir in config.execution.derivatives.values():
+                _session_cache.update(
+                    collect_functional_derivatives(
+                        derivatives_dir=deriv_dir,
+                        entities=_session_ents,
+                        fieldmap_id=None,
+                    )
+                )
+            session_boldref = _session_cache.get('session_boldref')
+            session_mask = _session_cache.get('session_bold_mask')
+            if bool(session_boldref) != bool(session_mask):
+                LOGGER.warning(
+                    'Found only one of session boldref/mask in derivatives — recomputing both.'
+                )
+                session_boldref = session_mask = None
 
-        # session BOLD reference to anatomical registration
+        # session BOLD reference to anatomical registration (always needed)
         session_bold_reg_wf = init_bold_reg_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
             bold2anat_init=config.workflow.bold2anat_init,
@@ -747,7 +763,6 @@ tasks and sessions), the following preprocessing was performed.
         )
 
         workflow.connect([
-            (merge_fit_boldrefs, coreg_bolds_wf, [('out', 'inputnode.boldref_files')]),
             (anat_fit_wf, session_bold_reg_wf, [
                 ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
                 ('outputnode.anat_mask', 'inputnode.anat_mask'),
@@ -757,42 +772,57 @@ tasks and sessions), the following preprocessing was performed.
                 ('outputnode.subject_id', 'inputnode.subject_id'),
                 ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
             ]),
-            (coreg_bolds_wf, session_bold_reg_wf, [
-                ('outputnode.boldref', 'inputnode.ref_bold_brain'),
-            ]),
-    ])  # fmt:skip
+        ])  # fmt:skip
 
         _session_dismiss = ('task', 'run', 'echo', 'part', 'dir')
 
-        ds_session_boldref = pe.Node(
-            DerivativesDataSink(
-                source_file=bold_runs[0][0],
-                base_directory=config.execution.nibabies_dir,
-                desc='coreg',
-                suffix='boldref',
-                compress=True,
-                dismiss_entities=_session_dismiss,
-            ),
-            name='ds_session_boldref',
-            run_without_submitting=True,
-        )
-        ds_session_bold_mask = pe.Node(
-            DerivativesDataSink(
-                source_file=bold_runs[0][0],
-                base_directory=config.execution.nibabies_dir,
-                space='session',
-                desc='brain',
-                suffix='mask',
-                compress=True,
-                dismiss_entities=_session_dismiss,
-            ),
-            name='ds_session_bold_mask',
-            run_without_submitting=True,
-        )
-        workflow.connect([
-            (coreg_bolds_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
-            (coreg_bolds_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
-        ])  # fmt:skip
+        if session_boldref:
+            LOGGER.info(f'Reusing session boldref: {session_boldref}')
+            LOGGER.info(f'Reusing session bold mask: {session_mask}')
+            session_bold_reg_wf.inputs.inputnode.ref_bold_brain = session_boldref
+        else:
+            merge_fit_boldrefs = pe.Node(
+                niu.Merge(len(bold_runs)),
+                name='merge_fit_boldrefs',
+            )
+            coreg_bolds_wf = init_coreg_session_bolds_wf(
+                num_bold_runs=len(bold_runs),
+                omp_nthreads=omp_nthreads,
+            )
+
+            ds_session_boldref = pe.Node(
+                DerivativesDataSink(
+                    source_file=bold_runs[0][0],
+                    base_directory=config.execution.nibabies_dir,
+                    desc='coreg',
+                    suffix='boldref',
+                    compress=True,
+                    dismiss_entities=_session_dismiss,
+                ),
+                name='ds_session_boldref',
+                run_without_submitting=True,
+            )
+            ds_session_bold_mask = pe.Node(
+                DerivativesDataSink(
+                    source_file=bold_runs[0][0],
+                    base_directory=config.execution.nibabies_dir,
+                    space='session',
+                    desc='brain',
+                    suffix='mask',
+                    compress=True,
+                    dismiss_entities=_session_dismiss,
+                ),
+                name='ds_session_bold_mask',
+                run_without_submitting=True,
+            )
+            workflow.connect([
+                (merge_fit_boldrefs, coreg_bolds_wf, [('out', 'inputnode.boldref_files')]),
+                (coreg_bolds_wf, session_bold_reg_wf, [
+                    ('outputnode.boldref', 'inputnode.ref_bold_brain'),
+                ]),
+                (coreg_bolds_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
+                (coreg_bolds_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
+            ])  # fmt:skip
 
     for i, bold_series in enumerate(bold_runs):
         bold_file = bold_series[0]
@@ -807,6 +837,11 @@ tasks and sessions), the following preprocessing was performed.
             config.loggers.workflow.warning(
                 f'Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>.'
             )
+            if config.execution.bold_coreg_level == 'session':
+                # TODO: Move this check prior to create session workflow to avoid hard crashes
+                raise RuntimeError(
+                    'Cannot create session-level BOLD reference with invalid BOLD series.'
+                )
             continue
 
         functional_cache = {}
@@ -965,16 +1000,9 @@ tasks and sessions), the following preprocessing was performed.
             ])  # fmt:skip
 
         if config.workflow.bold_coreg_level == 'session':
-            select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm_{bold_id}')
+            from niworkflows.interfaces.nitransforms import ConcatenateXFMs
 
-            ds_orig2session_xfm = init_ds_registration_wf(
-                source_file=bold_file,
-                output_dir=config.execution.nibabies_dir,
-                source='orig',
-                dest='session',
-                desc='coreg',
-                name=f'ds_orig2session_xfm_{bold_id}',
-            )
+            orig2session = functional_cache.get('orig2session')
 
             ds_boldref2anat_wf = init_ds_registration_wf(
                 source_file=bold_file,
@@ -986,27 +1014,10 @@ tasks and sessions), the following preprocessing was performed.
             )
 
             workflow.connect([
-                (bold_fit_wf, merge_fit_boldrefs, [('outputnode.coreg_boldref', f'in{i+1}')]),
-                (coreg_bolds_wf, boldref_buffer, [
-                    ('outputnode.boldref', 'coreg_boldref'),
-                    ('outputnode.boldref', 'session_boldref'),
-                    ('outputnode.bold_mask', 'bold_mask'),
-                ]),
                 (bold_fit_wf, boldref_buffer, [
                     ('outputnode.coreg_boldref', 'orig_boldref'),
                     ('outputnode.bold_mask', 'orig_bold_mask'),
                 ]),
-
-                (coreg_bolds_wf, select_coreg_xfm, [('outputnode.orig2session_xfms', 'inlist')]),
-                (select_coreg_xfm, ds_orig2session_xfm, [('out', 'inputnode.xform')]),
-                (session_bold_reg_wf, ds_orig2session_xfm, [
-                    ('outputnode.metadata', 'inputnode.metadata'),
-                ]),
-                (coreg_bolds_wf, ds_orig2session_xfm, [
-                    ('outputnode.boldref_files', 'inputnode.source_files'),
-                ]),
-                (ds_orig2session_xfm, boldref_buffer, [('outputnode.xform', 'orig2session_xfm')]),
-
                 (session_bold_reg_wf, ds_boldref2anat_wf, [
                     ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
                 ]),
@@ -1016,9 +1027,23 @@ tasks and sessions), the following preprocessing was performed.
                 (session_bold_reg_wf, func_fit_summary, [('outputnode.fallback', 'fallback')]),
             ])  # fmt:skip
 
-            # Compose run→session→anat for confounds (run-space bold needs run→anat)
-            from niworkflows.interfaces.nitransforms import ConcatenateXFMs
+            if session_boldref:
+                boldref_buffer.inputs.coreg_boldref = session_boldref
+                boldref_buffer.inputs.session_boldref = session_boldref
+                boldref_buffer.inputs.bold_mask = session_mask
+            else:
+                workflow.connect([
+                    (bold_fit_wf, merge_fit_boldrefs, [
+                        ('outputnode.coreg_boldref', f'in{i+1}'),
+                    ]),
+                    (coreg_bolds_wf, boldref_buffer, [
+                        ('outputnode.boldref', 'coreg_boldref'),
+                        ('outputnode.boldref', 'session_boldref'),
+                        ('outputnode.bold_mask', 'bold_mask'),
+                    ]),
+                ])  # fmt:skip
 
+            # Compose run→session→anat for confounds
             merge_orig2anat_xfms = pe.Node(
                 niu.Merge(2),
                 name=f'merge_orig2anat_xfms_{bold_id}',
@@ -1029,11 +1054,43 @@ tasks and sessions), the following preprocessing was performed.
                 name=f'concat_orig2anat_{bold_id}',
             )
             workflow.connect([
-                (ds_orig2session_xfm, merge_orig2anat_xfms, [('outputnode.xform', 'in1')]),
-                (ds_boldref2anat_wf, merge_orig2anat_xfms, [('outputnode.xform', 'in2')]),
                 (merge_orig2anat_xfms, concat_orig2anat, [('out', 'in_xfms')]),
                 (concat_orig2anat, boldref_buffer, [('out_xfm', 'orig2anat_xfm')]),
+                (ds_boldref2anat_wf, merge_orig2anat_xfms, [('outputnode.xform', 'in2')]),
             ])  # fmt:skip
+
+            if orig2session:
+                LOGGER.info(f'Reusing orig2session transform: {orig2session}')
+                boldref_buffer.inputs.orig2session_xfm = orig2session
+                merge_orig2anat_xfms.inputs.in1 = orig2session
+            else:
+                select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm_{bold_id}')
+                ds_orig2session_xfm = init_ds_registration_wf(
+                    source_file=bold_file,
+                    output_dir=config.execution.nibabies_dir,
+                    source='orig',
+                    dest='session',
+                    desc='coreg',
+                    name=f'ds_orig2session_xfm_{bold_id}',
+                )
+                workflow.connect([
+                    (coreg_bolds_wf, select_coreg_xfm, [
+                        ('outputnode.orig2session_xfms', 'inlist'),
+                    ]),
+                    (select_coreg_xfm, ds_orig2session_xfm, [('out', 'inputnode.xform')]),
+                    (session_bold_reg_wf, ds_orig2session_xfm, [
+                        ('outputnode.metadata', 'inputnode.metadata'),
+                    ]),
+                    (coreg_bolds_wf, ds_orig2session_xfm, [
+                        ('outputnode.boldref_files', 'inputnode.source_files'),
+                    ]),
+                    (ds_orig2session_xfm, boldref_buffer, [
+                        ('outputnode.xform', 'orig2session_xfm'),
+                    ]),
+                    (ds_orig2session_xfm, merge_orig2anat_xfms, [
+                        ('outputnode.xform', 'in1'),
+                    ]),
+                ])  # fmt:skip
         else:
             from niworkflows.data import load as nwf_load
 

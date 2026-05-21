@@ -131,6 +131,16 @@ def collect_functional_derivatives(
         if not item:
             continue
         derivs_cache[xfm] = item[0] if len(item) == 1 else item
+
+    # Session queries use {**entities, **qry} so spec null-values (run, task) override
+    # per-run entity values, ensuring only session-level files (lacking those entities) match.
+    for key, qry in spec.get('session', {}).items():
+        query = {**entities, **qry}
+        item = layout.get(return_type='filename', **query)
+        if not item:
+            continue
+        derivs_cache[f'session_{key}'] = item[0] if len(item) == 1 else item
+
     return derivs_cache
 
 
