@@ -44,7 +44,7 @@ from nibabies.utils.misc import estimate_bold_mem_usage
 # BOLD workflows
 from nibabies.workflows.bold.apply import init_bold_volumetric_resample_wf
 from nibabies.workflows.bold.confounds import init_bold_confs_wf, init_carpetplot_wf
-from nibabies.workflows.bold.fit import init_bold_native_wf
+from nibabies.workflows.bold.fit import init_bold_native_wf, init_bold_session_wf
 from nibabies.workflows.bold.outputs import (
     init_ds_bold_native_wf,
     init_ds_volumes_wf,
@@ -181,6 +181,7 @@ def init_bold_apply_wf(
             fields=[
                 # Fit outputs
                 'coreg_boldref',
+                'session_boldref',
                 'bold_mask',
                 'motion_xfm',
                 'orig2fmap_xfm',
@@ -245,12 +246,11 @@ def init_bold_apply_wf(
         (inputnode, bold_native_wf, [
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
-            ('coreg_boldref', 'inputnode.boldref'),
+            ('coreg_boldref', 'inputnode.run_boldref'),
             ('bold_mask', 'inputnode.bold_mask'),
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
             ('dummy_scans', 'inputnode.dummy_scans'),
-            ('orig2session_xfm', 'inputnode.orig2session_xfm'),
         ]),
     ])  # fmt:skip
 
@@ -280,6 +280,27 @@ def init_bold_apply_wf(
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+            ]),
+        ])  # fmt:skip
+
+    session_out = 'session' in nonstd_spaces and config.workflow.bold_coreg_level == 'session'
+    if session_out:
+        bold_session_wf = init_bold_session_wf(
+            bold_series=bold_series,
+            fieldmap_id=fieldmap_id,
+            omp_nthreads=omp_nthreads,
+        )
+        workflow.connect([
+            (inputnode, bold_session_wf, [
+                ('session_boldref', 'inputnode.session_boldref'),
+                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('fmap_ref', 'inputnode.fmap_ref'),
+                ('fmap_coeff', 'inputnode.fmap_coeff'),
+            ]),
+            (bold_native_wf, bold_session_wf, [
+                ('outputnode.bold_minimal', 'inputnode.bold_minimal'),
+                ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
             ]),
         ])  # fmt:skip
 
