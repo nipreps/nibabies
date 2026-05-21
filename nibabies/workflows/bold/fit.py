@@ -670,8 +670,8 @@ def init_bold_native_wf(
 
     Inputs
     ------
-    boldref
-        BOLD reference file
+    run_boldref
+        Per-run BOLD reference file (sbref or average volume from the run).
     bold_mask
         Mask of BOLD reference file
     motion_xfm
@@ -680,9 +680,6 @@ def init_bold_native_wf(
     orig2fmap_xfm
         Affine transform mapping from BOLD reference space to the fieldmap
         space, if applicable.
-    orig2session_xfm
-        Transform mapping run-level BOLD reference to session boldref space, if applicable.
-        Identity when ``--bold-coreg-level run``.
     fmap_ref
         Fieldmap reference file
     fmap_coeff
@@ -695,10 +692,10 @@ def init_bold_native_wf(
         slice-timing correction (STC) may have been applied. For multi-echo
         data, this is identical to bold_native.
     bold_native
-        BOLD series resampled into BOLD reference space. Slice-timing,
+        BOLD series resampled into run-level BOLD reference space. Slice-timing,
         head motion and susceptibility distortion correction (STC, HMC, SDC)
-        will all be applied to each file. For multi-echo data, the echos
-        are combined to form an `optimal combination`_.
+        will all be applied. For multi-echo data, the echos are combined to
+        form an `optimal combination`_.
     metadata
         Metadata dictionary of BOLD series with the shortest echo
     motion_xfm
@@ -755,10 +752,9 @@ def init_bold_native_wf(
         niu.IdentityInterface(
             fields=[
                 # BOLD fit
-                'boldref',
+                'run_boldref',
                 'bold_mask',
                 'motion_xfm',
-                'orig2session_xfm',
                 'orig2fmap_xfm',
                 'dummy_scans',
                 # Fieldmap fit
@@ -842,20 +838,10 @@ def init_bold_native_wf(
         mem_gb=mem_gb['resampled'],
     )
 
-    merge_orig2session = pe.Node(
-        niu.Merge(2), name='merge_orig2session', run_without_submitting=True
-    )
-
     workflow.connect([
-        (inputnode, merge_orig2session, [
-            ('motion_xfm', 'in1'),
-            ('orig2session_xfm', 'in2'),
-        ]),
-        (merge_orig2session, boldref_bold, [
-            ('out', 'transforms'),
-        ]),
         (inputnode, boldref_bold, [
-            ('boldref', 'ref_file'),
+            ('motion_xfm', 'transforms'),
+            ('run_boldref', 'ref_file'),
         ]),
         (boldbuffer, boldref_bold, [
             ('bold_file', 'in_file'),
@@ -868,7 +854,7 @@ def init_bold_native_wf(
         boldref_fmap = pe.Node(ReconstructFieldmap(inverse=[True]), name='boldref_fmap', mem_gb=1)
         workflow.connect([
             (inputnode, boldref_fmap, [
-                ('boldref', 'target_ref_file'),
+                ('run_boldref', 'target_ref_file'),
                 ('orig2fmap_xfm', 'transforms'),
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
