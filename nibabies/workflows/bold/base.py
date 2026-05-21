@@ -321,7 +321,6 @@ def init_bold_apply_wf(
                 ('outputnode.bold_session', 'inputnode.bold'),
             ]),
             (inputnode, ds_bold_session_wf, [
-                ('bold_mask', 'inputnode.bold_mask'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2session_xfm', 'inputnode.orig2session_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
