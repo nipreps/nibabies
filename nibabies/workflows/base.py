@@ -767,6 +767,22 @@ tasks and sessions), the following preprocessing was performed.
             ]),
     ])  # fmt:skip
 
+        ds_session_boldref = pe.Node(
+            DerivativesDataSink(
+                source_file=bold_runs[0][0],
+                base_directory=config.execution.nibabies_dir,
+                desc='coreg',
+                suffix='boldref',
+                compress=True,
+                dismiss_entities=('run', 'echo', 'part'),
+            ),
+            name='ds_session_boldref',
+            run_without_submitting=True,
+        )
+        workflow.connect([
+            (coreg_bolds_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
+        ])  # fmt:skip
+
     for i, bold_series in enumerate(bold_runs):
         bold_file = bold_series[0]
         entities = extract_entities(bold_series)
