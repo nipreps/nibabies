@@ -186,7 +186,7 @@ def init_bold_apply_wf(
                 'orig2fmap_xfm',
                 'dummy_scans',
                 'boldref2anat_xfm',
-                'orig2boldref_xfm',  # identity if not coregistering across BOLDs
+                'orig2session_xfm',  # identity if not coregistering across BOLDs
                 # Anatomical coregistration
                 'anat_preproc',
                 'anat_mask',
@@ -250,7 +250,7 @@ def init_bold_apply_wf(
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
             ('dummy_scans', 'inputnode.dummy_scans'),
-            ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+            ('orig2session_xfm', 'inputnode.orig2session_xfm'),
         ]),
     ])  # fmt:skip
 
@@ -279,7 +279,7 @@ def init_bold_apply_wf(
                 ('bold_mask', 'inputnode.bold_mask'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
-                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
             ]),
         ])  # fmt:skip
 
@@ -347,7 +347,7 @@ def init_bold_apply_wf(
             ('coreg_boldref', 'inputnode.bold_ref_file'),
             ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
             ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-            ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+            ('orig2session_xfm', 'inputnode.orig2session_xfm'),
         ]),
         (bold_native_wf, bold_anat_wf, [
             ('outputnode.bold_minimal', 'inputnode.bold_file'),
@@ -374,7 +374,7 @@ def init_bold_apply_wf(
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
-                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
             ]),
             (bold_native_wf, ds_bold_anat_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
             (bold_anat_wf, ds_bold_anat_wf, [
@@ -415,7 +415,7 @@ def init_bold_apply_wf(
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
             ]),
             (bold_native_wf, bold_std_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),
@@ -432,7 +432,7 @@ def init_bold_apply_wf(
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
-                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
             ]),
             (bold_native_wf, ds_bold_std_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
             (bold_std_wf, ds_bold_std_wf, [
@@ -475,7 +475,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         workflow.connect([
             (inputnode, merge_surface_sources, [
                 ('motion_xfm', 'in2'),
-                ('orig2boldref_xfm', 'in3'),
+                ('orig2session_xfm', 'in3'),
                 ('boldref2anat_xfm', 'in4'),
                 ('fsnative2anat_xfm', 'in5'),
             ]),
@@ -576,7 +576,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-                ('orig2boldref_xfm', 'inputnode.orig2boldref_xfm'),
+                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
             ]),
             (bold_native_wf, bold_MNIInfant_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),
