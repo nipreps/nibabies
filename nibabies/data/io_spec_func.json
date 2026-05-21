@@ -55,6 +55,25 @@
           "suffix": "xfm",
           "extension": ".txt"
         }
+      },
+      "session": {
+        "boldref": {
+          "datatype": "func",
+          "desc": "coreg",
+          "suffix": "boldref",
+          "run": null,
+          "task": null,
+          "extension": [".nii.gz", ".nii"]
+        },
+        "bold_mask": {
+          "datatype": "func",
+          "space": "session",
+          "desc": "brain",
+          "suffix": "mask",
+          "run": null,
+          "task": null,
+          "extension": [".nii.gz", ".nii"]
+        }
       }
     },
     "patterns": [
