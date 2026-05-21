@@ -183,6 +183,9 @@ def init_bold_apply_wf(
                 'coreg_boldref',
                 'session_boldref',
                 'bold_mask',
+                'orig_boldref',
+                'orig_bold_mask',
+                'orig2anat_xfm',
                 'motion_xfm',
                 'orig2fmap_xfm',
                 'dummy_scans',
@@ -246,7 +249,7 @@ def init_bold_apply_wf(
         (inputnode, bold_native_wf, [
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
-            ('coreg_boldref', 'inputnode.run_boldref'),
+            ('orig_boldref', 'inputnode.orig_boldref'),
             ('bold_mask', 'inputnode.bold_mask'),
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
@@ -676,10 +679,10 @@ excluding voxels whose time-series have a locally high coefficient of variation.
         (inputnode, bold_confounds_wf, [
             ('anat_tpms', 'inputnode.anat_tpms'),
             ('anat_mask', 'inputnode.anat_mask'),
-            ('bold_mask', 'inputnode.bold_mask'),
-            ('coreg_boldref', 'inputnode.hmc_boldref'),
+            ('orig_bold_mask', 'inputnode.bold_mask'),
+            ('orig_boldref', 'inputnode.hmc_boldref'),
             ('motion_xfm', 'inputnode.motion_xfm'),
-            ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
+            ('orig2anat_xfm', 'inputnode.boldref2anat_xfm'),
             ('dummy_scans', 'inputnode.skip_vols'),
         ]),
         (bold_native_wf, bold_confounds_wf, [
@@ -709,8 +712,8 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             ]),
             (inputnode, carpetplot_wf, [
                 ('dummy_scans', 'inputnode.dummy_scans'),
-                ('bold_mask', 'inputnode.bold_mask'),
-                ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
+                ('orig_bold_mask', 'inputnode.bold_mask'),
+                ('orig2anat_xfm', 'inputnode.boldref2anat_xfm'),
             ]),
             (bold_native_wf, carpetplot_wf, [
                 ('outputnode.bold_native', 'inputnode.bold'),

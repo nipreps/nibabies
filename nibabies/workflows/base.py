@@ -832,6 +832,10 @@ tasks and sessions), the following preprocessing was performed.
                     'orig2session_xfm',
                     'coreg_boldref',
                     'bold_mask',
+                    'orig_boldref',
+                    'orig_bold_mask',
+                    'orig2anat_xfm',
+                    'session_boldref',
                 ],
             ),
             name=f'boldref_buffer_{bold_id}',
@@ -958,7 +962,12 @@ tasks and sessions), the following preprocessing was performed.
                 (bold_fit_wf, merge_fit_boldrefs, [('outputnode.coreg_boldref', f'in{i+1}')]),
                 (coreg_bolds_wf, boldref_buffer, [
                     ('outputnode.boldref', 'coreg_boldref'),
+                    ('outputnode.boldref', 'session_boldref'),
                     ('outputnode.bold_mask', 'bold_mask'),
+                ]),
+                (bold_fit_wf, boldref_buffer, [
+                    ('outputnode.coreg_boldref', 'orig_boldref'),
+                    ('outputnode.bold_mask', 'orig_bold_mask'),
                 ]),
 
                 (coreg_bolds_wf, select_coreg_xfm, [('outputnode.orig2session_xfms', 'inlist')]),
@@ -979,6 +988,25 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
                 (session_bold_reg_wf, func_fit_summary, [('outputnode.fallback', 'fallback')]),
             ])  # fmt:skip
+
+            # Compose run→session→anat for confounds (run-space bold needs run→anat)
+            from niworkflows.interfaces.nitransforms import ConcatenateXFMs
+
+            merge_orig2anat_xfms = pe.Node(
+                niu.Merge(2),
+                name=f'merge_orig2anat_xfms_{bold_id}',
+                run_without_submitting=True,
+            )
+            concat_orig2anat = pe.Node(
+                ConcatenateXFMs(),
+                name=f'concat_orig2anat_{bold_id}',
+            )
+            workflow.connect([
+                (ds_orig2session_xfm, merge_orig2anat_xfms, [('outputnode.xform', 'in1')]),
+                (ds_boldref2anat_wf, merge_orig2anat_xfms, [('outputnode.xform', 'in2')]),
+                (merge_orig2anat_xfms, concat_orig2anat, [('out', 'in_xfms')]),
+                (concat_orig2anat, boldref_buffer, [('out_xfm', 'orig2anat_xfm')]),
+            ])  # fmt:skip
         else:
             from niworkflows.data import load as nwf_load
 
@@ -986,8 +1014,11 @@ tasks and sessions), the following preprocessing was performed.
             workflow.connect([
                 (bold_fit_wf, boldref_buffer, [
                     ('outputnode.boldref2anat_xfm', 'boldref2anat_xfm'),
+                    ('outputnode.boldref2anat_xfm', 'orig2anat_xfm'),
                     ('outputnode.coreg_boldref', 'coreg_boldref'),
+                    ('outputnode.coreg_boldref', 'orig_boldref'),
                     ('outputnode.bold_mask', 'bold_mask'),
+                    ('outputnode.bold_mask', 'orig_bold_mask'),
                 ]),
                 (bold_fit_wf, func_fit_summary, [
                     ('outputnode.fallback', 'fallback'),
@@ -1037,6 +1068,10 @@ tasks and sessions), the following preprocessing was performed.
                 ('orig2session_xfm', 'inputnode.orig2session_xfm'),
                 ('coreg_boldref', 'inputnode.coreg_boldref'),
                 ('bold_mask', 'inputnode.bold_mask'),
+                ('orig_boldref', 'inputnode.orig_boldref'),
+                ('orig_bold_mask', 'inputnode.orig_bold_mask'),
+                ('orig2anat_xfm', 'inputnode.orig2anat_xfm'),
+                ('session_boldref', 'inputnode.session_boldref'),
             ]),
         ])  # fmt:skip
 

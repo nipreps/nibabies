@@ -670,7 +670,7 @@ def init_bold_native_wf(
 
     Inputs
     ------
-    run_boldref
+    orig_boldref
         Per-run BOLD reference file (sbref or average volume from the run).
     bold_mask
         Mask of BOLD reference file
@@ -752,7 +752,7 @@ def init_bold_native_wf(
         niu.IdentityInterface(
             fields=[
                 # BOLD fit
-                'run_boldref',
+                'orig_boldref',
                 'bold_mask',
                 'motion_xfm',
                 'orig2fmap_xfm',
@@ -841,7 +841,7 @@ def init_bold_native_wf(
     workflow.connect([
         (inputnode, boldref_bold, [
             ('motion_xfm', 'transforms'),
-            ('run_boldref', 'ref_file'),
+            ('orig_boldref', 'ref_file'),
         ]),
         (boldbuffer, boldref_bold, [
             ('bold_file', 'in_file'),
@@ -854,7 +854,7 @@ def init_bold_native_wf(
         boldref_fmap = pe.Node(ReconstructFieldmap(inverse=[True]), name='boldref_fmap', mem_gb=1)
         workflow.connect([
             (inputnode, boldref_fmap, [
-                ('run_boldref', 'target_ref_file'),
+                ('orig_boldref', 'target_ref_file'),
                 ('orig2fmap_xfm', 'transforms'),
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
