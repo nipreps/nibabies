@@ -729,32 +729,6 @@ tasks and sessions), the following preprocessing was performed.
         # only allow if homogeneous
         LOGGER.info('Coregistering all BOLD runs to a common space')
 
-        # Check for precomputed session boldref and mask
-        session_boldref = None
-        session_mask = None
-        if config.execution.derivatives:
-            from nibabies.utils.derivatives import collect_functional_derivatives
-
-            _session_ents = {'subject': subject_id}
-            if session_id:
-                _session_ents['session'] = session_id
-            _session_cache: dict = {}
-            for deriv_dir in config.execution.derivatives.values():
-                _session_cache.update(
-                    collect_functional_derivatives(
-                        derivatives_dir=deriv_dir,
-                        entities=_session_ents,
-                        fieldmap_id=None,
-                    )
-                )
-            session_boldref = _session_cache.get('session_boldref')
-            session_mask = _session_cache.get('session_bold_mask')
-            if bool(session_boldref) != bool(session_mask):
-                LOGGER.warning(
-                    'Found only one of session boldref/mask in derivatives — recomputing both.'
-                )
-                session_boldref = session_mask = None
-
         # session BOLD reference to anatomical registration (always needed)
         session_bold_reg_wf = init_bold_reg_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
@@ -779,55 +753,20 @@ tasks and sessions), the following preprocessing was performed.
             ]),
         ])  # fmt:skip
 
-        _session_dismiss = ('task', 'run', 'echo', 'part', 'dir')
-
-        if session_boldref:
-            LOGGER.info(f'Reusing session boldref: {session_boldref}')
-            LOGGER.info(f'Reusing session bold mask: {session_mask}')
-            session_bold_reg_wf.inputs.inputnode.ref_bold_brain = session_boldref
-        else:
-            merge_fit_boldrefs = pe.Node(
-                niu.Merge(len(bold_runs)),
-                name='merge_fit_boldrefs',
-            )
-            coreg_bolds_wf = init_coreg_session_bolds_wf(
-                num_bold_runs=len(bold_runs),
-                omp_nthreads=omp_nthreads,
-            )
-
-            ds_session_boldref = pe.Node(
-                DerivativesDataSink(
-                    source_file=bold_runs[0][0],
-                    base_directory=config.execution.nibabies_dir,
-                    desc='coreg',
-                    suffix='boldref',
-                    compress=True,
-                    dismiss_entities=_session_dismiss,
-                ),
-                name='ds_session_boldref',
-                run_without_submitting=True,
-            )
-            ds_session_bold_mask = pe.Node(
-                DerivativesDataSink(
-                    source_file=bold_runs[0][0],
-                    base_directory=config.execution.nibabies_dir,
-                    space='session',
-                    desc='brain',
-                    suffix='mask',
-                    compress=True,
-                    dismiss_entities=_session_dismiss,
-                ),
-                name='ds_session_bold_mask',
-                run_without_submitting=True,
-            )
-            workflow.connect([
-                (merge_fit_boldrefs, coreg_bolds_wf, [('out', 'inputnode.boldref_files')]),
-                (coreg_bolds_wf, session_bold_reg_wf, [
-                    ('outputnode.boldref', 'inputnode.ref_bold_brain'),
-                ]),
-                (coreg_bolds_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
-                (coreg_bolds_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
-            ])  # fmt:skip
+        merge_fit_boldrefs = pe.Node(
+            niu.Merge(len(bold_runs)),
+            name='merge_fit_boldrefs',
+        )
+        coreg_bolds_wf = init_coreg_session_bolds_wf(
+            num_bold_runs=len(bold_runs),
+            omp_nthreads=omp_nthreads,
+        )
+        workflow.connect([
+            (merge_fit_boldrefs, coreg_bolds_wf, [('out', 'inputnode.boldref_files')]),
+            (coreg_bolds_wf, session_bold_reg_wf, [
+                ('outputnode.boldref', 'inputnode.ref_bold_brain'),
+            ]),
+        ])  # fmt:skip
 
     for i, bold_series in enumerate(bold_runs):
         bold_file = bold_series[0]
@@ -1032,21 +971,42 @@ tasks and sessions), the following preprocessing was performed.
                 (session_bold_reg_wf, func_fit_summary, [('outputnode.fallback', 'fallback')]),
             ])  # fmt:skip
 
-            if session_boldref:
-                boldref_buffer.inputs.coreg_boldref = session_boldref
-                boldref_buffer.inputs.session_boldref = session_boldref
-                boldref_buffer.inputs.bold_mask = session_mask
-            else:
-                workflow.connect([
-                    (bold_fit_wf, merge_fit_boldrefs, [
-                        ('outputnode.coreg_boldref', f'in{i+1}'),
-                    ]),
-                    (coreg_bolds_wf, boldref_buffer, [
-                        ('outputnode.boldref', 'coreg_boldref'),
-                        ('outputnode.boldref', 'session_boldref'),
-                        ('outputnode.bold_mask', 'bold_mask'),
-                    ]),
-                ])  # fmt:skip
+            ds_session_boldref = pe.Node(
+                DerivativesDataSink(
+                    source_file=bold_file,
+                    base_directory=config.execution.nibabies_dir,
+                    space='session',
+                    desc='coreg',
+                    suffix='boldref',
+                    compress=True,
+                ),
+                name=f'ds_session_boldref_{bold_id}',
+                run_without_submitting=True,
+            )
+            ds_session_bold_mask = pe.Node(
+                DerivativesDataSink(
+                    source_file=bold_file,
+                    base_directory=config.execution.nibabies_dir,
+                    space='session',
+                    desc='brain',
+                    suffix='mask',
+                    compress=True,
+                ),
+                name=f'ds_session_bold_mask_{bold_id}',
+                run_without_submitting=True,
+            )
+            workflow.connect([
+                (bold_fit_wf, merge_fit_boldrefs, [
+                    ('outputnode.coreg_boldref', f'in{i+1}'),
+                ]),
+                (coreg_bolds_wf, boldref_buffer, [
+                    ('outputnode.boldref', 'coreg_boldref'),
+                    ('outputnode.boldref', 'session_boldref'),
+                    ('outputnode.bold_mask', 'bold_mask'),
+                ]),
+                (coreg_bolds_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
+                (coreg_bolds_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
+            ])  # fmt:skip
 
             # Compose run→session→anat for confounds
             merge_orig2anat_xfms = pe.Node(
