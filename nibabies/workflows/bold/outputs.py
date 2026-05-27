@@ -896,7 +896,6 @@ def init_ds_volumes_wf(
             ('source_files', 'source_file'),
             ('bold', 'in_file'),
             ('space', 'space'),
-            ('cohort', 'cohort'),
             ('resolution', 'resolution'),
         ]),
         (sources, ds_bold, [('out', 'Sources')]),
@@ -987,7 +986,6 @@ def init_ds_volumes_wf(
             (inputnode, datasink, [
                 ('source_files', 'source_file'),
                 ('space', 'space'),
-                ('cohort', 'cohort'),
                 ('resolution', 'resolution'),
             ])
             for datasink in datasinks
