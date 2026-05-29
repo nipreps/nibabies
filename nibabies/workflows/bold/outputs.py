@@ -746,13 +746,13 @@ def init_ds_bold_native_wf(
     return workflow
 
 
-def init_ds_bold_session_wf(
+def init_ds_bold_boldref_wf(
     *,
     bids_root: str,
     output_dir: str,
     multiecho: bool,
     all_metadata: list[dict],
-    name='ds_bold_session_wf',
+    name='ds_bold_boldref_wf',
 ) -> pe.Workflow:
     metadata = all_metadata[0]
     timing_parameters = prepare_timing_parameters(metadata)
