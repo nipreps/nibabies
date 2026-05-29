@@ -854,10 +854,10 @@ tasks and sessions), the following preprocessing was performed.
                 fields=[
                     'bold_file',
                     'boldref2anat_xfm',
-                    'orig2session_xfm',
+                    'run2boldref_xfm',
                     'coreg_boldref',
                     'bold_mask',
-                    'orig_boldref',
+                    'run_boldref',
                     'orig_bold_mask',
                     'orig2anat_xfm',
                     'boldref_template',
@@ -925,7 +925,7 @@ tasks and sessions), the following preprocessing was performed.
                 ('bold_file', 'inputnode.source_file'),
                 ('coreg_boldref', 'inputnode.coreg_boldref'),
                 ('bold_mask', 'inputnode.bold_mask'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
             ]),
         ])  # fmt:skip
@@ -966,7 +966,7 @@ tasks and sessions), the following preprocessing was performed.
         if bold_coreg_level != 'run':
             from niworkflows.interfaces.nitransforms import ConcatenateXFMs
 
-            orig2session = functional_cache.get('orig2session')
+            run2boldref = functional_cache.get('run2boldref')
 
             ds_boldref2anat_wf = init_ds_registration_wf(
                 source_file=bold_file,
@@ -979,7 +979,7 @@ tasks and sessions), the following preprocessing was performed.
 
             workflow.connect([
                 (bold_fit_wf, boldref_buffer, [
-                    ('outputnode.coreg_boldref', 'orig_boldref'),
+                    ('outputnode.coreg_boldref', 'run_boldref'),
                     ('outputnode.bold_mask', 'orig_bold_mask'),
                 ]),
                 (session_bold_reg_wf, ds_boldref2anat_wf, [
@@ -995,7 +995,7 @@ tasks and sessions), the following preprocessing was performed.
                 DerivativesDataSink(
                     source_file=bold_file,
                     base_directory=config.execution.nibabies_dir,
-                    space='session',
+                    space='boldref',
                     desc='coreg',
                     suffix='boldref',
                     compress=True,
@@ -1007,7 +1007,7 @@ tasks and sessions), the following preprocessing was performed.
                 DerivativesDataSink(
                     source_file=bold_file,
                     base_directory=config.execution.nibabies_dir,
-                    space='session',
+                    space='boldref',
                     desc='brain',
                     suffix='mask',
                     compress=True,
@@ -1044,48 +1044,48 @@ tasks and sessions), the following preprocessing was performed.
                 (ds_boldref2anat_wf, merge_orig2anat_xfms, [('outputnode.xform', 'in2')]),
             ])  # fmt:skip
 
-            if orig2session:
-                LOGGER.info(f'Reusing orig2session transform: {orig2session}')
-                boldref_buffer.inputs.orig2session_xfm = orig2session
-                merge_orig2anat_xfms.inputs.in1 = orig2session
+            if run2boldref:
+                LOGGER.info(f'Reusing run2boldref transform: {run2boldref}')
+                boldref_buffer.inputs.run2boldref_xfm = run2boldref
+                merge_orig2anat_xfms.inputs.in1 = run2boldref
             else:
                 select_coreg_xfm = pe.Node(niu.Select(index=i), name=f'select_coreg_xfm_{bold_id}')
-                ds_orig2session_xfm = init_ds_registration_wf(
+                ds_run2boldref_xfm = init_ds_registration_wf(
                     source_file=bold_file,
                     output_dir=config.execution.nibabies_dir,
-                    source='orig',
-                    dest='session',
+                    source='run',
+                    dest='boldref',
                     desc='coreg',
-                    name=f'ds_orig2session_xfm_{bold_id}',
+                    name=f'ds_run2boldref_xfm_{bold_id}',
                 )
                 workflow.connect([
                     (bold_template_wf, select_coreg_xfm, [
-                        ('outputnode.orig2session_xfms', 'inlist'),
+                        ('outputnode.run2boldref_xfms', 'inlist'),
                     ]),
-                    (select_coreg_xfm, ds_orig2session_xfm, [('out', 'inputnode.xform')]),
-                    (session_bold_reg_wf, ds_orig2session_xfm, [
+                    (select_coreg_xfm, ds_run2boldref_xfm, [('out', 'inputnode.xform')]),
+                    (session_bold_reg_wf, ds_run2boldref_xfm, [
                         ('outputnode.metadata', 'inputnode.metadata'),
                     ]),
-                    (bold_template_wf, ds_orig2session_xfm, [
+                    (bold_template_wf, ds_run2boldref_xfm, [
                         ('outputnode.boldref_files', 'inputnode.source_files'),
                     ]),
-                    (ds_orig2session_xfm, boldref_buffer, [
-                        ('outputnode.xform', 'orig2session_xfm'),
+                    (ds_run2boldref_xfm, boldref_buffer, [
+                        ('outputnode.xform', 'run2boldref_xfm'),
                     ]),
-                    (ds_orig2session_xfm, merge_orig2anat_xfms, [
+                    (ds_run2boldref_xfm, merge_orig2anat_xfms, [
                         ('outputnode.xform', 'in1'),
                     ]),
                 ])  # fmt:skip
         else:
             from niworkflows.data import load as nwf_load
 
-            boldref_buffer.inputs.orig2session_xfm = nwf_load('itkIdentityTransform.txt')
+            boldref_buffer.inputs.run2boldref_xfm = nwf_load('itkIdentityTransform.txt')
             workflow.connect([
                 (bold_fit_wf, boldref_buffer, [
                     ('outputnode.boldref2anat_xfm', 'boldref2anat_xfm'),
                     ('outputnode.boldref2anat_xfm', 'orig2anat_xfm'),
                     ('outputnode.coreg_boldref', 'coreg_boldref'),
-                    ('outputnode.coreg_boldref', 'orig_boldref'),
+                    ('outputnode.coreg_boldref', 'run_boldref'),
                     ('outputnode.bold_mask', 'bold_mask'),
                     ('outputnode.bold_mask', 'orig_bold_mask'),
                 ]),
@@ -1134,10 +1134,10 @@ tasks and sessions), the following preprocessing was performed.
             ]),
             (boldref_buffer, bold_apply_wf, [
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
                 ('coreg_boldref', 'inputnode.coreg_boldref'),
                 ('bold_mask', 'inputnode.bold_mask'),
-                ('orig_boldref', 'inputnode.orig_boldref'),
+                ('run_boldref', 'inputnode.run_boldref'),
                 ('orig_bold_mask', 'inputnode.orig_bold_mask'),
                 ('orig2anat_xfm', 'inputnode.orig2anat_xfm'),
                 ('boldref_template', 'inputnode.boldref_template'),

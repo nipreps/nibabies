@@ -670,7 +670,7 @@ def init_bold_native_wf(
 
     Inputs
     ------
-    orig_boldref
+    run_boldref
         Per-run BOLD reference file (sbref or average volume from the run).
     bold_mask
         Mask of BOLD reference file
@@ -752,7 +752,7 @@ def init_bold_native_wf(
         niu.IdentityInterface(
             fields=[
                 # BOLD fit
-                'orig_boldref',
+                'run_boldref',
                 'bold_mask',
                 'motion_xfm',
                 'orig2fmap_xfm',
@@ -841,7 +841,7 @@ def init_bold_native_wf(
     workflow.connect([
         (inputnode, boldref_bold, [
             ('motion_xfm', 'transforms'),
-            ('orig_boldref', 'ref_file'),
+            ('run_boldref', 'ref_file'),
         ]),
         (boldbuffer, boldref_bold, [
             ('bold_file', 'in_file'),
@@ -854,7 +854,7 @@ def init_bold_native_wf(
         boldref_fmap = pe.Node(ReconstructFieldmap(inverse=[True]), name='boldref_fmap', mem_gb=1)
         workflow.connect([
             (inputnode, boldref_fmap, [
-                ('orig_boldref', 'target_ref_file'),
+                ('run_boldref', 'target_ref_file'),
                 ('orig2fmap_xfm', 'transforms'),
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
@@ -934,7 +934,7 @@ def init_bold_session_wf(
         STC-only BOLD series (output of :py:func:`init_bold_native_wf`).
     boldref_template
         BOLD reference template image.
-    orig2session_xfm
+    run2boldref_xfm
         Affine transform from the run-level boldref to the boldref template.
     motion_xfm
         Per-volume affine transforms (HMC).
@@ -962,7 +962,7 @@ def init_bold_session_wf(
             fields=[
                 'bold_minimal',
                 'boldref_template',
-                'orig2session_xfm',
+                'run2boldref_xfm',
                 'motion_xfm',
                 'orig2fmap_xfm',
                 'fmap_ref',
@@ -994,7 +994,7 @@ def init_bold_session_wf(
     workflow.connect([
         (inputnode, merge_bold2session, [
             ('motion_xfm', 'in1'),
-            ('orig2session_xfm', 'in2'),
+            ('run2boldref_xfm', 'in2'),
         ]),
         (inputnode, boldref_bold, [
             ('bold_minimal', 'in_file'),
@@ -1023,7 +1023,7 @@ def init_bold_session_wf(
             ]),
             (inputnode, fmap2session, [
                 ('orig2fmap_xfm', 'in1'),
-                ('orig2session_xfm', 'in2'),
+                ('run2boldref_xfm', 'in2'),
             ]),
             (inputnode, boldref_fmap, [
                 ('boldref_template', 'target_ref_file'),

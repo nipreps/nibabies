@@ -74,7 +74,7 @@ def init_bold_volumetric_resample_wf(
     anat2std_xfm
         Affine transform from the anatomical reference image to standard space.
         Leave undefined to resample to anatomical reference space.
-    orig2session_xfm
+    run2boldref_xfm
         Transform mapping run-level BOLD reference to boldref template space.
         Identity when ``--bold-coreg-level run``.
 
@@ -103,7 +103,7 @@ def init_bold_volumetric_resample_wf(
                 'fmap_ref',
                 'fmap_coeff',
                 # boldref
-                'orig2session_xfm',
+                'run2boldref_xfm',
                 # Anatomical
                 'boldref2anat_xfm',
                 # Template
@@ -139,7 +139,7 @@ def init_bold_volumetric_resample_wf(
             (('resolution', _is_native), 'keep_native'),
         ]),
         (inputnode, boldref2target, [
-            ('orig2session_xfm', 'in1'),
+            ('run2boldref_xfm', 'in1'),
             ('boldref2anat_xfm', 'in2'),
             ('anat2std_xfm', 'in3'),
         ]),

@@ -184,14 +184,14 @@ def init_bold_apply_wf(
                 'coreg_boldref',
                 'boldref_template',
                 'bold_mask',
-                'orig_boldref',
+                'run_boldref',
                 'orig_bold_mask',
                 'orig2anat_xfm',
                 'motion_xfm',
                 'orig2fmap_xfm',
                 'dummy_scans',
                 'boldref2anat_xfm',
-                'orig2session_xfm',  # identity if not coregistering across BOLDs
+                'run2boldref_xfm',  # identity if not coregistering across BOLDs
                 # Anatomical coregistration
                 'anat_preproc',
                 'anat_mask',
@@ -250,7 +250,7 @@ def init_bold_apply_wf(
         (inputnode, bold_native_wf, [
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
-            ('orig_boldref', 'inputnode.orig_boldref'),
+            ('run_boldref', 'inputnode.run_boldref'),
             ('bold_mask', 'inputnode.bold_mask'),
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
@@ -283,11 +283,11 @@ def init_bold_apply_wf(
                 ('orig_bold_mask', 'inputnode.bold_mask'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
         ])  # fmt:skip
 
-    session_out = 'session' in nonstd_spaces and config.workflow.bold_coreg_level == 'session'
+    session_out = 'boldref' in nonstd_spaces and config.workflow.bold_coreg_level == 'session'
     if session_out:
         bold_session_wf = init_bold_session_wf(
             bold_series=bold_series,
@@ -297,7 +297,7 @@ def init_bold_apply_wf(
         workflow.connect([
             (inputnode, bold_session_wf, [
                 ('boldref_template', 'inputnode.boldref_template'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
@@ -322,7 +322,7 @@ def init_bold_apply_wf(
             ]),
             (inputnode, ds_bold_session_wf, [
                 ('motion_xfm', 'inputnode.motion_xfm'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
             ]),
         ])  # fmt:skip
@@ -391,7 +391,7 @@ def init_bold_apply_wf(
             ('coreg_boldref', 'inputnode.bold_ref_file'),
             ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
             ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-            ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+            ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
         ]),
         (bold_native_wf, bold_anat_wf, [
             ('outputnode.bold_minimal', 'inputnode.bold_file'),
@@ -418,7 +418,7 @@ def init_bold_apply_wf(
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
             (bold_native_wf, ds_bold_anat_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
             (bold_anat_wf, ds_bold_anat_wf, [
@@ -459,7 +459,7 @@ def init_bold_apply_wf(
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
             (bold_native_wf, bold_std_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),
@@ -476,7 +476,7 @@ def init_bold_apply_wf(
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
             (bold_native_wf, ds_bold_std_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
             (bold_std_wf, ds_bold_std_wf, [
@@ -519,7 +519,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         workflow.connect([
             (inputnode, merge_surface_sources, [
                 ('motion_xfm', 'in2'),
-                ('orig2session_xfm', 'in3'),
+                ('run2boldref_xfm', 'in3'),
                 ('boldref2anat_xfm', 'in4'),
                 ('fsnative2anat_xfm', 'in5'),
             ]),
@@ -620,7 +620,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
-                ('orig2session_xfm', 'inputnode.orig2session_xfm'),
+                ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
             (bold_native_wf, bold_MNIInfant_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),
@@ -700,7 +700,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             ('anat_tpms', 'inputnode.anat_tpms'),
             ('anat_mask', 'inputnode.anat_mask'),
             ('orig_bold_mask', 'inputnode.bold_mask'),
-            ('orig_boldref', 'inputnode.hmc_boldref'),
+            ('run_boldref', 'inputnode.hmc_boldref'),
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('orig2anat_xfm', 'inputnode.boldref2anat_xfm'),
             ('dummy_scans', 'inputnode.skip_vols'),

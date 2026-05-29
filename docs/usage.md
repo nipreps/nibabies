@@ -102,15 +102,15 @@ The session-level pipeline follows four steps:
 4. The session template is registered to the anatomical image.
 
 The full transform chain applied during resampling is therefore:
-`bold volume → orig boldref (HMC) → boldref template (orig2template) → T1w (boldref2anat) → standard space (anat2std)`.
+`bold volume → run boldref (HMC) → boldref (run2boldref) → T1w (boldref2anat) → standard space (anat2std)`.
 
 If `--bold-coreg-level session` is selected, NiBabies will first validate whether all runs can contribute to a common session template. If the data are incompatible (for example, when only some runs have SDC applied, or when all runs are SDC-less but have mixed phase-encoding directions), NiBabies falls back to `run`-level coregistration instead.
 
-:::{admonition} Output spaces and session-space BOLD
+:::{admonition} Output spaces and template-space BOLD
 :class: tip
 
-Adding `session` to `--output-spaces` when using `--bold-coreg-level session` saves each run
-resampled into the boldref template space.
+Adding `boldref` to `--output-spaces` when using `--bold-coreg-level session` saves each run
+resampled into the boldref space.
 :::
 
 ## Using the nibabies wrapper

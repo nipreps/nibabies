@@ -183,7 +183,7 @@ def init_func_fit_reports_wf(
         SDC-corrected BOLD reference image.
     boldref2anat_xfm
         BOLD reference to anatomical transform.
-        orig2session_xfm
+        run2boldref_xfm
         Original BOLD to BOLD reference transform
     orig2fmap_xfm
         BOLD reference to fieldmap transform (optional)
@@ -207,7 +207,7 @@ def init_func_fit_reports_wf(
         'bold_mask',
         'boldref2anat_xfm',
         'orig2fmap_xfm',
-        'orig2session_xfm',
+        'run2boldref_xfm',
         'anat_preproc',
         'anat_mask',
         'anat_dseg',
@@ -301,7 +301,7 @@ def init_func_fit_reports_wf(
         ]),
         (inputnode, to_anat_xfm, [
             ('boldref2anat_xfm', 'in1'),
-            ('orig2session_xfm', 'in2'),
+            ('run2boldref_xfm', 'in2'),
         ]),
         (to_anat_xfm, anat_boldref, [('out', 'transforms')]),
         (inputnode, anat_wm, [('anat_dseg', 'in_seg')]),
@@ -395,7 +395,7 @@ def init_func_fit_reports_wf(
             ]),
             (inputnode, to_fmap_xfm, [
                 ('orig2fmap_xfm', 'in1'),
-                ('orig2session_xfm', 'in2'),
+                ('run2boldref_xfm', 'in2'),
             ]),
             (to_fmap_xfm, fmapref_boldref, [
                 ('out', 'transforms'),
@@ -586,7 +586,7 @@ def init_ds_hmc_wf(
             extension='.txt',
             compress=True,
             dismiss_entities=DEFAULT_DISMISS_ENTITIES,
-            **{'from': 'orig', 'to': 'boldref'},
+            **{'from': 'orig', 'to': 'run'},
         ),
         name='ds_xforms',
         run_without_submitting=True,
@@ -627,7 +627,7 @@ def init_ds_bold_native_wf(
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
                 'orig2fmap_xfm',
-                'orig2session_xfm',
+                'run2boldref_xfm',
             ]
         ),
         name='inputnode',
@@ -645,7 +645,7 @@ def init_ds_bold_native_wf(
         (inputnode, sources, [
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
-            ('orig2session_xfm', 'in3'),
+            ('run2boldref_xfm', 'in3'),
             ('orig2fmap_xfm', 'in4'),
         ]),
     ])  # fmt:skip
@@ -765,7 +765,7 @@ def init_ds_bold_session_wf(
                 'bold',
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
-                'orig2session_xfm',
+                'run2boldref_xfm',
                 'orig2fmap_xfm',
             ]
         ),
@@ -784,7 +784,7 @@ def init_ds_bold_session_wf(
         (inputnode, sources, [
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
-            ('orig2session_xfm', 'in3'),
+            ('run2boldref_xfm', 'in3'),
             ('orig2fmap_xfm', 'in4'),
         ]),
     ])  # fmt:skip
@@ -792,7 +792,7 @@ def init_ds_bold_session_wf(
     ds_bold = pe.Node(
         DerivativesDataSink(
             base_directory=output_dir,
-            space='session',
+            space='boldref',
             desc='preproc',
             compress=True,
             SkullStripped=multiecho,
@@ -845,7 +845,7 @@ def init_ds_volumes_wf(
                 'resolution',
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
-                'orig2session_xfm',
+                'run2boldref_xfm',
                 'orig2fmap_xfm',
             ]
         ),
@@ -880,7 +880,7 @@ def init_ds_volumes_wf(
         (inputnode, sources, [
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
-            ('orig2session_xfm', 'in3'),
+            ('run2boldref_xfm', 'in3'),
             ('orig2fmap_xfm', 'in4'),
             ('boldref2anat_xfm', 'in5'),
             ('anat2std_xfm', 'in6'),
