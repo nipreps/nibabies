@@ -16,10 +16,10 @@
 # limitations under the License.
 #
 """
-Session-level BOLD workflows
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+BOLD template creation workflow.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: init_bold_coreg_runs_wf
+.. autofunction:: init_bold_template_wf
 
 """
 
@@ -29,15 +29,15 @@ from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.func.util import init_skullstrip_bold_wf
 
 
-def init_coreg_session_bolds_wf(
+def init_bold_template_wf(
     *,
     num_bold_runs: int,
     unbiased: bool = False,
     omp_nthreads: int = 1,
-    name: str = 'coreg_session_bolds_wf',
+    name: str = 'bold_template_wf',
 ) -> Workflow:
     """
-    Register all BOLD runs of a session to a single session-reference.
+    Register all BOLD runs to a common template reference.
 
     Parameters
     ----------
