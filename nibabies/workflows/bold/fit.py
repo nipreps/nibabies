@@ -915,7 +915,7 @@ def init_bold_session_wf(
 
     Takes the minimally-processed BOLD (``bold_minimal``, STC-only for
     single-echo, T2\*-combined for multi-echo) produced by
-    :py:func:`init_bold_native_wf` and resamples to the session boldref with
+    :py:func:`init_bold_native_wf` and resamples to the boldref template with
     head motion and susceptibility distortion correction applied. STC is not
     repeated here.
 
@@ -932,10 +932,10 @@ def init_bold_session_wf(
     ------
     bold_minimal
         STC-only BOLD series (output of :py:func:`init_bold_native_wf`).
-    session_boldref
-        Session-level BOLD reference image.
+    boldref_template
+        BOLD reference template image.
     orig2session_xfm
-        Affine transform from the run-level boldref to the session boldref.
+        Affine transform from the run-level boldref to the boldref template.
     motion_xfm
         Per-volume affine transforms (HMC).
     orig2fmap_xfm
@@ -948,7 +948,7 @@ def init_bold_session_wf(
     Outputs
     -------
     bold_session
-        BOLD series resampled into session boldref space with HMC and SDC applied.
+        BOLD series resampled into boldref template space with HMC and SDC applied.
 
     """
     bold_file = bold_series[0]
@@ -961,7 +961,7 @@ def init_bold_session_wf(
         niu.IdentityInterface(
             fields=[
                 'bold_minimal',
-                'session_boldref',
+                'boldref_template',
                 'orig2session_xfm',
                 'motion_xfm',
                 'orig2fmap_xfm',
@@ -998,7 +998,7 @@ def init_bold_session_wf(
         ]),
         (inputnode, boldref_bold, [
             ('bold_minimal', 'in_file'),
-            ('session_boldref', 'ref_file'),
+            ('boldref_template', 'ref_file'),
         ]),
         (merge_bold2session, boldref_bold, [('out', 'transforms')]),
         (boldref_bold, outputnode, [('out_file', 'bold_session')]),
@@ -1026,7 +1026,7 @@ def init_bold_session_wf(
                 ('orig2session_xfm', 'in2'),
             ]),
             (inputnode, boldref_fmap, [
-                ('session_boldref', 'target_ref_file'),
+                ('boldref_template', 'target_ref_file'),
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),

@@ -182,7 +182,7 @@ def init_bold_apply_wf(
             fields=[
                 # Fit outputs
                 'coreg_boldref',
-                'session_boldref',
+                'boldref_template',
                 'bold_mask',
                 'orig_boldref',
                 'orig_bold_mask',
@@ -296,7 +296,7 @@ def init_bold_apply_wf(
         )
         workflow.connect([
             (inputnode, bold_session_wf, [
-                ('session_boldref', 'inputnode.session_boldref'),
+                ('boldref_template', 'inputnode.boldref_template'),
                 ('orig2session_xfm', 'inputnode.orig2session_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('fmap_ref', 'inputnode.fmap_ref'),

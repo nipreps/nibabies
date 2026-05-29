@@ -764,7 +764,7 @@ tasks and sessions), the following preprocessing was performed.
             omp_nthreads=omp_nthreads,
             mem_gb=2,  # Estimated
             sloppy=config.execution.sloppy,
-            name='session_boldref_to_anat_reg_wf',
+            name='boldref_template_to_anat_reg_wf',
         )
 
         workflow.connect([
@@ -855,7 +855,7 @@ tasks and sessions), the following preprocessing was performed.
                     'orig_boldref',
                     'orig_bold_mask',
                     'orig2anat_xfm',
-                    'session_boldref',
+                    'boldref_template',
                 ],
             ),
             name=f'boldref_buffer_{bold_id}',
@@ -986,7 +986,7 @@ tasks and sessions), the following preprocessing was performed.
                 (session_bold_reg_wf, func_fit_summary, [('outputnode.fallback', 'fallback')]),
             ])  # fmt:skip
 
-            ds_session_boldref = pe.Node(
+            ds_boldref_template = pe.Node(
                 DerivativesDataSink(
                     source_file=bold_file,
                     base_directory=config.execution.nibabies_dir,
@@ -995,7 +995,7 @@ tasks and sessions), the following preprocessing was performed.
                     suffix='boldref',
                     compress=True,
                 ),
-                name=f'ds_session_boldref_{bold_id}',
+                name=f'ds_boldref_template_{bold_id}',
                 run_without_submitting=True,
             )
             ds_session_bold_mask = pe.Node(
@@ -1016,10 +1016,10 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
                 (bold_template_wf, boldref_buffer, [
                     ('outputnode.boldref', 'coreg_boldref'),
-                    ('outputnode.boldref', 'session_boldref'),
+                    ('outputnode.boldref', 'boldref_template'),
                     ('outputnode.bold_mask', 'bold_mask'),
                 ]),
-                (bold_template_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
+                (bold_template_wf, ds_boldref_template, [('outputnode.boldref', 'in_file')]),
                 (bold_template_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
             ])  # fmt:skip
 
@@ -1135,7 +1135,7 @@ tasks and sessions), the following preprocessing was performed.
                 ('orig_boldref', 'inputnode.orig_boldref'),
                 ('orig_bold_mask', 'inputnode.orig_bold_mask'),
                 ('orig2anat_xfm', 'inputnode.orig2anat_xfm'),
-                ('session_boldref', 'inputnode.session_boldref'),
+                ('boldref_template', 'inputnode.boldref_template'),
             ]),
         ])  # fmt:skip
 
