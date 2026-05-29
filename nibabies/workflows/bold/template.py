@@ -32,7 +32,7 @@ from niworkflows.func.util import init_skullstrip_bold_wf
 def init_bold_template_wf(
     *,
     num_bold_runs: int,
-    unbiased: bool = False,
+    unbiased: bool | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_template_wf',
 ) -> Workflow:
@@ -41,12 +41,15 @@ def init_bold_template_wf(
 
     Parameters
     ----------
-    num_bolds : :obj:`int`
-        Number of BOLD runs
+    num_bold_runs : :obj:`int`
+        Number of BOLD runs.
     omp_nthreads : :obj:`int`
         Number of threads.
-    unbiased : :obj:`bool`
-        Whether to use an unbiased registration strategy (default: False).
+    unbiased : :obj:`bool` or None
+        Whether to use an unbiased (iterative) registration strategy.
+        When ``None`` (default), the strategy is chosen automatically:
+        ``False`` (fixed first run as reference) for 2 runs, ``True``
+        (iterative mean-shape template) for 3 or more runs.
 
     Inputs
     ------
@@ -68,8 +71,17 @@ def init_bold_template_wf(
     from niworkflows.interfaces.freesurfer import StructuralReference
     from niworkflows.interfaces.nitransforms import ConvertAffine
 
+    if unbiased is None:
+        unbiased = num_bold_runs >= 3
+
     workflow = Workflow(name=name)
-    workflow.__desc__ = 'All BOLD runs were coregistered to create a session-level BOLD reference.'
+    if unbiased:
+        workflow.__desc__ = (
+            'All BOLD runs were coregistered to an unbiased session-level BOLD reference '
+            'using an iterative template construction strategy.'
+        )
+    else:
+        workflow.__desc__ = "All BOLD runs were coregistered to the first run's BOLD reference."
 
     inputnode = pe.Node(
         niu.IdentityInterface(fields=['boldref_files']),
@@ -85,13 +97,6 @@ def init_bold_template_wf(
 
     # TODO?: Do we want to denoise as well?
     # https://neurostars.org/t/ants-denoiseimage-for-fmri-epis/3091/2
-
-    # if len(bold_runs) == 1:
-    #     from niworkflows.data import load as niw_load
-
-    #     identity_xfm = niw_load('identity_xfm')
-    #     outputnode.inputs.orig2session_xfms = [identity_xfm]
-    #     return workflow
 
     boldref_template = pe.Node(
         StructuralReference(
