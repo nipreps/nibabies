@@ -65,7 +65,7 @@ def init_bold_template_wf(
     boldref_files
         List of BOLD reference files (same as input).
     orig2session_xfms
-        Transforms from each run's original space to the session boldref
+        Transforms from each run's original space to the boldref template
 
     """
     from niworkflows.interfaces.freesurfer import StructuralReference
