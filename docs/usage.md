@@ -104,6 +104,8 @@ The session-level pipeline follows four steps:
 The full transform chain applied during resampling is therefore:
 `bold volume → orig boldref (HMC) → session boldref (orig2session) → T1w (boldref2anat) → standard space (anat2std)`.
 
+If `--bold-coreg-level session` is selected, NiBabies will first validate whether all runs can contribute to a common session template. If the data are incompatible (for example, when only some runs have SDC applied, or when all runs are SDC-less but have mixed phase-encoding directions), NiBabies falls back to `run`-level coregistration instead.
+
 :::{admonition} Output spaces and session-space BOLD
 :class: tip
 
