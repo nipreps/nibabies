@@ -44,10 +44,10 @@ from nibabies.utils.misc import estimate_bold_mem_usage
 # BOLD workflows
 from nibabies.workflows.bold.apply import init_bold_volumetric_resample_wf
 from nibabies.workflows.bold.confounds import init_bold_confs_wf, init_carpetplot_wf
-from nibabies.workflows.bold.fit import init_bold_native_wf, init_bold_session_wf
+from nibabies.workflows.bold.fit import init_bold_boldref_wf, init_bold_native_wf
 from nibabies.workflows.bold.outputs import (
+    init_ds_bold_boldref_wf,
     init_ds_bold_native_wf,
-    init_ds_bold_session_wf,
     init_ds_volumes_wf,
     prepare_timing_parameters,
 )
@@ -258,15 +258,15 @@ def init_bold_apply_wf(
         ]),
     ])  # fmt:skip
 
-    boldref_out = bool(nonstd_spaces.intersection(('func', 'run', 'bold', 'boldref', 'sbref')))
-    boldref_out &= config.workflow.level == 'full'
+    run_out = bool(nonstd_spaces.intersection(('func', 'run', 'bold', 'sbref')))
+    run_out &= config.workflow.level == 'full'
     echos_out = multiecho and config.execution.me_output_echos
 
-    if boldref_out or echos_out:
+    if run_out or echos_out:
         ds_bold_native_wf = init_ds_bold_native_wf(
             bids_root=str(config.execution.bids_dir),
             output_dir=output_dir,
-            bold_output=boldref_out,
+            bold_output=run_out,
             echo_output=echos_out,
             multiecho=multiecho,
             all_metadata=all_metadata,
@@ -287,40 +287,40 @@ def init_bold_apply_wf(
             ]),
         ])  # fmt:skip
 
-    session_out = 'boldref' in nonstd_spaces and config.workflow.bold_coreg_level == 'session'
-    if session_out:
-        bold_session_wf = init_bold_session_wf(
+    boldref_out = bool(nonstd_spaces.intersection(('boldref', 'session', 'subject')))
+    if boldref_out:
+        bold_boldref_wf = init_bold_boldref_wf(
             bold_series=bold_series,
             fieldmap_id=fieldmap_id,
             omp_nthreads=omp_nthreads,
         )
         workflow.connect([
-            (inputnode, bold_session_wf, [
+            (inputnode, bold_boldref_wf, [
                 ('boldref_template', 'inputnode.boldref_template'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
             ]),
-            (bold_native_wf, bold_session_wf, [
+            (bold_native_wf, bold_boldref_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_minimal'),
                 ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
             ]),
         ])  # fmt:skip
 
-        ds_bold_session_wf = init_ds_bold_session_wf(
+        ds_bold_boldref_wf = init_ds_bold_boldref_wf(
             bids_root=str(config.execution.bids_dir),
             output_dir=output_dir,
             multiecho=multiecho,
             all_metadata=all_metadata,
         )
-        ds_bold_session_wf.inputs.inputnode.source_files = bold_series
+        ds_bold_boldref_wf.inputs.inputnode.source_files = bold_series
 
         workflow.connect([
-            (bold_session_wf, ds_bold_session_wf, [
-                ('outputnode.bold_session', 'inputnode.bold'),
+            (bold_boldref_wf, ds_bold_boldref_wf, [
+                ('outputnode.bold_boldref', 'inputnode.bold'),
             ]),
-            (inputnode, ds_bold_session_wf, [
+            (inputnode, ds_bold_boldref_wf, [
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
                 ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),

@@ -903,12 +903,12 @@ def init_bold_native_wf(
     return workflow
 
 
-def init_bold_session_wf(
+def init_bold_boldref_wf(
     *,
     bold_series: list[str],
     fieldmap_id: str | None = None,
     omp_nthreads: int = 1,
-    name: str = 'bold_session_wf',
+    name: str = 'bold_boldref_wf',
 ) -> pe.Workflow:
     r"""
     Resample BOLD series to session-level boldref space.
@@ -947,7 +947,7 @@ def init_bold_session_wf(
 
     Outputs
     -------
-    bold_session
+    bold_boldref
         BOLD series resampled into boldref template space with HMC and SDC applied.
 
     """
@@ -973,12 +973,12 @@ def init_bold_session_wf(
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['bold_session']),
+        niu.IdentityInterface(fields=['bold_boldref']),
         name='outputnode',
     )
 
-    merge_bold2session = pe.Node(
-        niu.Merge(2), name='merge_bold2session', run_without_submitting=True
+    merge_bold2boldref = pe.Node(
+        niu.Merge(2), name='merge_bold2boldref', run_without_submitting=True
     )
 
     boldref_bold = pe.Node(
@@ -992,7 +992,7 @@ def init_bold_session_wf(
     )
 
     workflow.connect([
-        (inputnode, merge_bold2session, [
+        (inputnode, merge_bold2boldref, [
             ('motion_xfm', 'in1'),
             ('run2boldref_xfm', 'in2'),
         ]),
@@ -1000,8 +1000,8 @@ def init_bold_session_wf(
             ('bold_minimal', 'in_file'),
             ('boldref_template', 'ref_file'),
         ]),
-        (merge_bold2session, boldref_bold, [('out', 'transforms')]),
-        (boldref_bold, outputnode, [('out_file', 'bold_session')]),
+        (merge_bold2boldref, boldref_bold, [('out', 'transforms')]),
+        (boldref_bold, outputnode, [('out_file', 'bold_boldref')]),
     ])  # fmt:skip
 
     if fieldmap_id:
@@ -1010,7 +1010,7 @@ def init_bold_session_wf(
             name='distortion_params',
             run_without_submitting=True,
         )
-        fmap2session = pe.Node(niu.Merge(2), name='fmap2session', run_without_submitting=True)
+        fmap2boldref = pe.Node(niu.Merge(2), name='fmap2boldref', run_without_submitting=True)
         boldref_fmap = pe.Node(
             ReconstructFieldmap(inverse=[True, False]),
             name='boldref_fmap',
@@ -1021,7 +1021,7 @@ def init_bold_session_wf(
                 ('readout_time', 'ro_time'),
                 ('pe_direction', 'pe_dir'),
             ]),
-            (inputnode, fmap2session, [
+            (inputnode, fmap2boldref, [
                 ('orig2fmap_xfm', 'in1'),
                 ('run2boldref_xfm', 'in2'),
             ]),
@@ -1030,7 +1030,7 @@ def init_bold_session_wf(
                 ('fmap_coeff', 'in_coeffs'),
                 ('fmap_ref', 'fmap_ref_file'),
             ]),
-            (fmap2session, boldref_fmap, [('out', 'transforms')]),
+            (fmap2boldref, boldref_fmap, [('out', 'transforms')]),
             (boldref_fmap, boldref_bold, [('out_file', 'fieldmap')]),
         ])  # fmt:skip
 

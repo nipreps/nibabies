@@ -754,9 +754,8 @@ tasks and sessions), the following preprocessing was performed.
         from nibabies.workflows.bold.registration import init_bold_reg_wf
         from nibabies.workflows.bold.template import init_bold_template_wf
 
-        LOGGER.info('Coregistering all BOLD runs to a common space')
-        # session BOLD reference to anatomical registration (always needed)
-        session_bold_reg_wf = init_bold_reg_wf(
+        LOGGER.info('Coregistering all BOLD run references to a common space')
+        boldref_reg_wf = init_bold_reg_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
             bold2anat_init=config.workflow.bold2anat_init,
             use_bbr=config.workflow.use_bbr,
@@ -764,11 +763,11 @@ tasks and sessions), the following preprocessing was performed.
             omp_nthreads=omp_nthreads,
             mem_gb=2,  # Estimated
             sloppy=config.execution.sloppy,
-            name='boldref_template_to_anat_reg_wf',
+            name='boldref_reg_wf',
         )
 
         workflow.connect([
-            (anat_fit_wf, session_bold_reg_wf, [
+            (anat_fit_wf, boldref_reg_wf, [
                 ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
                 ('outputnode.anat_mask', 'inputnode.anat_mask'),
                 ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
@@ -789,7 +788,7 @@ tasks and sessions), the following preprocessing was performed.
         )
         workflow.connect([
             (merge_fit_boldrefs, bold_template_wf, [('out', 'inputnode.boldref_files')]),
-            (bold_template_wf, session_bold_reg_wf, [
+            (bold_template_wf, boldref_reg_wf, [
                 ('outputnode.boldref', 'inputnode.ref_bold_brain'),
             ]),
         ])  # fmt:skip
@@ -977,13 +976,13 @@ tasks and sessions), the following preprocessing was performed.
                     ('outputnode.coreg_boldref', 'run_boldref'),
                     ('outputnode.bold_mask', 'orig_bold_mask'),
                 ]),
-                (session_bold_reg_wf, ds_boldref2anat_wf, [
+                (boldref_reg_wf, ds_boldref2anat_wf, [
                     ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
                 ]),
                 (ds_boldref2anat_wf, boldref_buffer, [
                     ('outputnode.xform', 'boldref2anat_xfm'),
                 ]),
-                (session_bold_reg_wf, func_fit_summary, [('outputnode.fallback', 'fallback')]),
+                (boldref_reg_wf, func_fit_summary, [('outputnode.fallback', 'fallback')]),
             ])  # fmt:skip
 
             ds_boldref_template = pe.Node(
@@ -998,7 +997,7 @@ tasks and sessions), the following preprocessing was performed.
                 name=f'ds_boldref_template_{bold_id}',
                 run_without_submitting=True,
             )
-            ds_session_bold_mask = pe.Node(
+            ds_boldref_mask = pe.Node(
                 DerivativesDataSink(
                     source_file=bold_file,
                     base_directory=config.execution.nibabies_dir,
@@ -1007,7 +1006,7 @@ tasks and sessions), the following preprocessing was performed.
                     suffix='mask',
                     compress=True,
                 ),
-                name=f'ds_session_bold_mask_{bold_id}',
+                name=f'ds_boldref_mask_{bold_id}',
                 run_without_submitting=True,
             )
             workflow.connect([
@@ -1020,7 +1019,7 @@ tasks and sessions), the following preprocessing was performed.
                     ('outputnode.bold_mask', 'bold_mask'),
                 ]),
                 (bold_template_wf, ds_boldref_template, [('outputnode.boldref', 'in_file')]),
-                (bold_template_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
+                (bold_template_wf, ds_boldref_mask, [('outputnode.bold_mask', 'in_file')]),
             ])  # fmt:skip
 
             # Compose run→session→anat for confounds
@@ -1058,7 +1057,7 @@ tasks and sessions), the following preprocessing was performed.
                         ('outputnode.run2boldref_xfms', 'inlist'),
                     ]),
                     (select_coreg_xfm, ds_run2boldref_xfm, [('out', 'inputnode.xform')]),
-                    (session_bold_reg_wf, ds_run2boldref_xfm, [
+                    (boldref_reg_wf, ds_run2boldref_xfm, [
                         ('outputnode.metadata', 'inputnode.metadata'),
                     ]),
                     (bold_template_wf, ds_run2boldref_xfm, [
