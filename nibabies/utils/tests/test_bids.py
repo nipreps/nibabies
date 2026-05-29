@@ -2,7 +2,46 @@ from pathlib import Path
 
 import pytest
 
-from nibabies.utils.bids import _get_age_from_tsv
+from nibabies.utils.bids import _get_age_from_tsv, is_valid_bold_template
+
+
+class _MockLayout:
+    """Minimal BIDSLayout stub for bold_coreg_compat tests."""
+
+    def __init__(self, pe_map: dict):
+        self._pe_map = pe_map
+
+    def get_metadata(self, f):
+        pe = self._pe_map.get(f)
+        return {'PhaseEncodingDirection': pe} if pe is not None else {}
+
+
+@pytest.mark.parametrize(
+    ('bold_runs', 'estimator_map', 'pe_map', 'expected'),
+    [
+        ([], {}, {}, False),
+        ([['a.nii']], {}, {'a.nii': 'j'}, False),
+        ([['a.nii'], ['b.nii']], {'a.nii': 'fmap1', 'b.nii': 'fmap2'}, {}, True),
+        ([['a.nii'], ['b.nii']], {'a.nii': 'fmap1'}, {'a.nii': 'j', 'b.nii': 'j'}, False),
+        ([['a.nii'], ['b.nii']], {}, {'a.nii': 'j', 'b.nii': 'j'}, True),
+        ([['a.nii'], ['b.nii']], {}, {'a.nii': 'j', 'b.nii': 'j-'}, False),
+        ([['a.nii'], ['b.nii']], {}, {}, True),
+        ([['a.nii'], ['b.nii']], {}, {'a.nii': 'j'}, False),
+    ],
+    ids=[
+        'false-no_runs',
+        'false-one_run',
+        'true-all_sdc',
+        'false-mixed_sdc',
+        'true-no_sdc_single_pe',
+        'false-no_sdc_opposing_pe',
+        'true-no_sdc_no_pe',
+        'false-no_sdc_missing_pe',
+    ],
+)
+def test_is_valid_bold_template(bold_runs, estimator_map, pe_map, expected):
+    layout = _MockLayout(pe_map)
+    assert is_valid_bold_template(bold_runs, estimator_map, layout) is expected
 
 
 def create_tsv(data: dict, out_file: Path) -> None:
