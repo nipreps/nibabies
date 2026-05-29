@@ -879,6 +879,7 @@ tasks and sessions), the following preprocessing was performed.
                 tr=metadata['RepetitionTime'],
                 orientation=''.join(nb.aff2axcodes(nb.load(bold_file).affine)),
                 dummy_scans=config.workflow.dummy_scans,
+                bold_coreg_level=bold_coreg_level,
             ),
             name=f'func_fit_summary_{bold_id}',
             mem_gb=config.DEFAULT_MEMORY_MIN_GB,
