@@ -719,16 +719,26 @@ tasks and sessions), the following preprocessing was performed.
             )
         config.workflow.bold2anat_init = 't2w' if has_t2w else 't1w'
 
-    # Common space for all BOLD runs in this session
-    if config.workflow.bold_coreg_level == 'session':
+    bold_coreg_level = config.workflow.bold_coreg_level
+
+    if bold_coreg_level != 'run':
+        # First check if common template is possible
+        from nibabies.utils.bids import is_valid_bold_template
+
+        if not is_valid_bold_template(bold_runs, estimator_map, config.execution.layout):
+            LOGGER.error(
+                'Error when creating BOLD coregistration template: '
+                'Either only some runs have SDC applied, or all are SDC-less '
+                'runs but contain multiple phase-encoding directions.'
+            )
+            bold_coreg_level = 'run'
+
+    if bold_coreg_level != 'run':
         from nibabies.workflows.bold.outputs import init_ds_registration_wf
         from nibabies.workflows.bold.registration import init_bold_reg_wf
         from nibabies.workflows.bold.session import init_coreg_session_bolds_wf
 
-        # TODO: Check each BOLD file phase encoding
-        # only allow if homogeneous
         LOGGER.info('Coregistering all BOLD runs to a common space')
-
         # session BOLD reference to anatomical registration (always needed)
         session_bold_reg_wf = init_bold_reg_wf(
             bold2anat_dof=config.workflow.bold2anat_dof,
@@ -776,12 +786,13 @@ tasks and sessions), the following preprocessing was performed.
 
         bold_id = _get_wf_name(bold_file, None).removesuffix('_wf')
 
+        # TODO: Volume check should happen when collecting BOLD files
         nvols, _ = estimate_bold_mem_usage(bold_file)
         if nvols <= 5 - config.execution.sloppy:
             config.loggers.workflow.warning(
                 f'Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>.'
             )
-            if config.execution.bold_coreg_level == 'session':
+            if bold_coreg_level != 'session':
                 # TODO: Move this check prior to create session workflow to avoid hard crashes
                 raise RuntimeError(
                     'Cannot create session-level BOLD reference with invalid BOLD series.'
@@ -824,7 +835,7 @@ tasks and sessions), the following preprocessing was performed.
             fieldmap_id=fieldmap_id,
             reference_anat=reference_anat,
             omp_nthreads=omp_nthreads,
-            coreg_anat=config.workflow.bold_coreg_level == 'run',
+            coreg_anat=bool(bold_coreg_level == 'run'),
             name=f'bold_fit_{bold_id}_wf',
         )
         bold_fit_wf.__desc__ = func_pre_desc + (bold_fit_wf.__desc__ or '')
@@ -943,7 +954,7 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
             ])  # fmt:skip
 
-        if config.workflow.bold_coreg_level == 'session':
+        if bold_coreg_level != 'run':
             from niworkflows.interfaces.nitransforms import ConcatenateXFMs
 
             orig2session = functional_cache.get('orig2session')

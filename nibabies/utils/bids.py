@@ -362,6 +362,56 @@ def age_to_months(age: int | float, units: ty.Literal['weeks', 'months', 'years'
     return round(age)
 
 
+def is_valid_bold_template(
+    bold_runs: list[list[str]],
+    estimator_map: dict,
+    layout,
+) -> bool:
+    """Return True if BOLD template creation is possible.
+
+    Three independent conditions are checked:
+
+    1. **Insufficient runs** – fewer than two runs cannot form a meaningful
+       session template.
+
+    2. **Mixed SDC coverage** – if only some runs are distortion corrected,
+       the resulting boldrefs live in different geometric spaces even when their
+       phase-encoding directions agree.
+
+    3. **PE-direction heterogeneity** – when all runs are SDC-less, if more
+       than one distinct phase-encoding direction is present (including ``None``
+       for runs that lack the metadata), the distortions oppose each other in a
+       way that rigid/affine registration cannot recover.
+
+    Parameters
+    ----------
+    bold_runs
+        List of bold series (each series is a list of file paths).
+    estimator_map
+        Mapping of bold file → fieldmap estimator ID.  An absent key or None
+        value means no fieldmap / no SDC for that run.
+    layout
+        A :class:`bids.layout.BIDSLayout` instance used to read file metadata.
+
+    Returns
+    -------
+    compatible : bool
+        ``True`` if there are at least two runs, all share the same SDC status,
+        and SDC-less runs span exactly one phase-encoding direction.
+    """
+    if len(bold_runs) < 2:
+        return False
+
+    sdc_corrected = [bool(estimator_map.get(series[0])) for series in bold_runs]
+    if any(sdc_corrected):
+        return all(sdc_corrected)
+
+    pe_dirs = {
+        layout.get_metadata(series[0]).get('PhaseEncodingDirection') for series in bold_runs
+    }
+    return len(pe_dirs) == 1
+
+
 def combine_space(space, cohort) -> str:
     """Combine space and cohort into a single string.
 
