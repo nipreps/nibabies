@@ -82,6 +82,25 @@ if ty.TYPE_CHECKING:
 MCRIBS_RECOMMEND_AGE_CAP = 3
 
 
+def _filter_short_bold_runs(bold_runs: list, min_vols: int = 5) -> list:
+    """Exclude BOLD runs that are too short to process."""
+    import nibabel as nb
+
+    filtered_bolds = []
+    for run in bold_runs:
+        bold_file = listify(run)[0]
+        img = nb.load(bold_file)
+        if len(img.shape) < 4 or img.shape[3] < min_vols:
+            LOGGER.warning(
+                f'Too short BOLD series (<= {min_vols} timepoints). '
+                f'Skipping processing of <{bold_file}>.'
+            )
+            continue
+        filtered_bolds.append(run)
+
+    return filtered_bolds
+
+
 def init_nibabies_wf(subworkflows_list: list[SubjectSession]):
     """
     Build *NiBabies*'s pipeline.
@@ -225,7 +244,7 @@ def init_single_subject_wf(
     from niworkflows.utils.bids import collect_data
     from niworkflows.utils.spaces import Reference
 
-    from ..utils.misc import estimate_bold_mem_usage, fix_multi_source_name
+    from ..utils.misc import fix_multi_source_name
 
     subject_session_id = _subject_session_id(subject_id, session_id)
     workflow = Workflow(name=f'single_subject_{subject_session_id}_wf')
@@ -268,6 +287,8 @@ It is released under the [CC0]\
         echo=config.execution.echo_idx,
         bids_filters=config.execution.bids_filters,
     )[0]
+
+    subject_data['bold'] = _filter_short_bold_runs(subject_data['bold'])
 
     if 'flair' in config.workflow.ignore:
         subject_data['flair'] = []
@@ -780,19 +801,6 @@ tasks and sessions), the following preprocessing was performed.
         fieldmap_id = estimator_map.get(bold_file)
 
         bold_id = _get_wf_name(bold_file, None).removesuffix('_wf')
-
-        # TODO: Volume check should happen when collecting BOLD files
-        nvols, _ = estimate_bold_mem_usage(bold_file)
-        if nvols <= 5 - config.execution.sloppy:
-            config.loggers.workflow.warning(
-                f'Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>.'
-            )
-            if bold_coreg_level != 'session':
-                # TODO: Move this check prior to create session workflow to avoid hard crashes
-                raise RuntimeError(
-                    'Cannot create session-level BOLD reference with invalid BOLD series.'
-                )
-            continue
 
         functional_cache = {}
         if config.execution.derivatives:
