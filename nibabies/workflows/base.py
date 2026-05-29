@@ -736,7 +736,7 @@ tasks and sessions), the following preprocessing was performed.
     if bold_coreg_level != 'run':
         from nibabies.workflows.bold.outputs import init_ds_registration_wf
         from nibabies.workflows.bold.registration import init_bold_reg_wf
-        from nibabies.workflows.bold.session import init_coreg_session_bolds_wf
+        from nibabies.workflows.bold.template import init_bold_template_wf
 
         LOGGER.info('Coregistering all BOLD runs to a common space')
         # session BOLD reference to anatomical registration (always needed)
@@ -767,13 +767,13 @@ tasks and sessions), the following preprocessing was performed.
             niu.Merge(len(bold_runs)),
             name='merge_fit_boldrefs',
         )
-        coreg_bolds_wf = init_coreg_session_bolds_wf(
+        bold_template_wf = init_bold_template_wf(
             num_bold_runs=len(bold_runs),
             omp_nthreads=omp_nthreads,
         )
         workflow.connect([
-            (merge_fit_boldrefs, coreg_bolds_wf, [('out', 'inputnode.boldref_files')]),
-            (coreg_bolds_wf, session_bold_reg_wf, [
+            (merge_fit_boldrefs, bold_template_wf, [('out', 'inputnode.boldref_files')]),
+            (bold_template_wf, session_bold_reg_wf, [
                 ('outputnode.boldref', 'inputnode.ref_bold_brain'),
             ]),
         ])  # fmt:skip
@@ -1010,13 +1010,13 @@ tasks and sessions), the following preprocessing was performed.
                 (bold_fit_wf, merge_fit_boldrefs, [
                     ('outputnode.coreg_boldref', f'in{i+1}'),
                 ]),
-                (coreg_bolds_wf, boldref_buffer, [
+                (bold_template_wf, boldref_buffer, [
                     ('outputnode.boldref', 'coreg_boldref'),
                     ('outputnode.boldref', 'session_boldref'),
                     ('outputnode.bold_mask', 'bold_mask'),
                 ]),
-                (coreg_bolds_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
-                (coreg_bolds_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
+                (bold_template_wf, ds_session_boldref, [('outputnode.boldref', 'in_file')]),
+                (bold_template_wf, ds_session_bold_mask, [('outputnode.bold_mask', 'in_file')]),
             ])  # fmt:skip
 
             # Compose run→session→anat for confounds
@@ -1050,14 +1050,14 @@ tasks and sessions), the following preprocessing was performed.
                     name=f'ds_orig2session_xfm_{bold_id}',
                 )
                 workflow.connect([
-                    (coreg_bolds_wf, select_coreg_xfm, [
+                    (bold_template_wf, select_coreg_xfm, [
                         ('outputnode.orig2session_xfms', 'inlist'),
                     ]),
                     (select_coreg_xfm, ds_orig2session_xfm, [('out', 'inputnode.xform')]),
                     (session_bold_reg_wf, ds_orig2session_xfm, [
                         ('outputnode.metadata', 'inputnode.metadata'),
                     ]),
-                    (coreg_bolds_wf, ds_orig2session_xfm, [
+                    (bold_template_wf, ds_orig2session_xfm, [
                         ('outputnode.boldref_files', 'inputnode.source_files'),
                     ]),
                     (ds_orig2session_xfm, boldref_buffer, [
