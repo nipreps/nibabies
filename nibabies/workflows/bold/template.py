@@ -64,7 +64,7 @@ def init_bold_template_wf(
         Brain mask for the session-level BOLD reference.
     boldref_files
         List of BOLD reference files (same as input).
-    orig2session_xfms
+    run2boldref_xfms
         Transforms from each run's original space to the boldref template
 
     """
@@ -90,7 +90,7 @@ def init_bold_template_wf(
 
     outputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['boldref', 'bold_mask', 'orig2session_xfms', 'boldref_files']
+            fields=['boldref', 'bold_mask', 'run2boldref_xfms', 'boldref_files']
         ),
         name='outputnode',
     )
@@ -133,7 +133,7 @@ def init_bold_template_wf(
             ('transform_outputs', 'in_xfm'),
         ]),
         (to_itk, outputnode, [
-            ('out_xfm', 'orig2session_xfms'),
+            ('out_xfm', 'run2boldref_xfms'),
         ]),
         (inputnode, outputnode, [
             ('boldref_files', 'boldref_files'),

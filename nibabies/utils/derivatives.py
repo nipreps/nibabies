@@ -119,15 +119,18 @@ def collect_functional_derivatives(
             continue
         derivs_cache[f'{key}_boldref'] = item[0] if len(item) == 1 else item
 
-    # coreg_boldref is the legacy derivative name for orig_boldref
-    if 'coreg_boldref' in derivs_cache and 'orig_boldref' not in derivs_cache:
-        derivs_cache['orig_boldref'] = derivs_cache['coreg_boldref']
+    # coreg_boldref is the legacy derivative name for run_boldref
+    if 'coreg_boldref' in derivs_cache and 'run_boldref' not in derivs_cache:
+        derivs_cache['run_boldref'] = derivs_cache['coreg_boldref']
 
     for xfm, qry in spec['transforms'].items():
         query = {**qry, **entities}
         if xfm == 'boldref2fmap':
             query['to'] = fieldmap_id
         item = layout.get(return_type='filename', **query)
+        if not item and xfm == 'hmc':
+            # legacy: from-orig_to-boldref (now from-orig_to-run)
+            item = layout.get(return_type='filename', **{**query, 'to': 'boldref'})
         if not item:
             continue
         derivs_cache[xfm] = item[0] if len(item) == 1 else item

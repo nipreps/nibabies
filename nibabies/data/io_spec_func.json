@@ -26,14 +26,14 @@
         "hmc": {
           "datatype": "func",
           "from": "orig",
-          "to": "boldref",
+          "to": "run",
           "mode": "image",
           "suffix": "xfm",
           "extension": ".txt"
         },
         "boldref2anat": {
           "datatype": "func",
-          "from": "orig",
+          "from": "boldref",
           "to": "anat",
           "mode": "image",
           "suffix": "xfm",
@@ -41,16 +41,16 @@
         },
         "boldref2fmap": {
           "datatype": "func",
-          "from": "orig",
+          "from": "boldref",
           "mode": "image",
           "suffix": "xfm",
           "extension": ".txt"
         },
-        "orig2session": {
+        "run2boldref": {
           "datatype": "func",
           "desc": "coreg",
-          "from": "orig",
-          "to": "session",
+          "from": "run",
+          "to": "boldref",
           "mode": "image",
           "suffix": "xfm",
           "extension": ".txt"
