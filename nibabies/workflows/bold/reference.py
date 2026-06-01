@@ -130,7 +130,44 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         ])
     ])  # fmt:skip
     # Drop frames to avoid startle when MRI begins acquiring
-    if ref_frame_start != 'auto':
+    if ref_frame_start == 'auto':
+        detect_reference_frame = pe.Node(DetectReferenceFrame(), name='detect_reference_frame')
+        workflow.connect([
+            (validation_and_dummies_wf, detect_reference_frame, [
+                ('outputnode.bold_file', 'in_file'),
+                ('outputnode.skip_vols', 'dummy_scans'),
+            ]),
+            (detect_reference_frame, outputnode, [('out_file', 'boldref')]),
+        ])  # fmt:skip
+    elif ref_frame_start == 'mcflirt':
+        from nipype.interfaces.fsl import MCFLIRT
+
+        mcflirt = pe.Node(MCFLIRT(), name='mcflirt', mem_gb=1)
+        mcflirt.inputs.cost = "normcorr"
+        mcflirt.inputs.save_rms = True
+
+        get_lowest_motion_frame = pe.Node(
+            niu.Function(
+                function=_get_lowest_motion_frame,
+                input_names=["rms_files"],
+                output_names=["t_mask"]
+            ),
+            name="get_lowest_motion_frame"
+        )
+
+        gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
+        workflow.connect([
+            (validation_and_dummies_wf, mcflirt, [
+                ('outputnode.bold_file', 'in_file'),
+            ]),
+            (validation_and_dummies_wf, gen_avg, [
+                ('outputnode.bold_file', 'in_file')
+            ])
+            (mcflirt, get_lowest_motion_frame, [('rms_files', 'rms_files')]),
+            (get_lowest_motion_frame, gen_avg, [('t_mask', 't_mask')]),
+            (gen_avg, outputnode, [('out_file', 'boldref')]),
+        ])  # fmt:skip
+    else:  # Select a single low-motion frame
         select_frames = pe.Node(
             niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
             name='select_frames',
@@ -149,16 +186,18 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             (select_frames, gen_avg, [('t_mask', 't_mask')]),
             (gen_avg, outputnode, [('out_file', 'boldref')]),
         ])  # fmt:skip
-    else:  # Select a single low-motion frame
-        detect_reference_frame = pe.Node(DetectReferenceFrame(), name='detect_reference_frame')
-        workflow.connect([
-            (validation_and_dummies_wf, detect_reference_frame, [
-                ('outputnode.bold_file', 'in_file'),
-                ('outputnode.skip_vols', 'dummy_scans'),
-            ]),
-            (detect_reference_frame, outputnode, [('out_file', 'boldref')]),
-        ])  # fmt:skip
     return workflow
+
+
+def _get_lowest_motion_frame(
+    rms_files: str
+) -> list[bool]:
+    import numpy as np
+    abs_motion = np.loadtxt(rms_files[0])  # load absolute motion file
+    lowest_motion_frame = np.argmin(abs_motion)
+    t_mask = [False] * abs_motion.shape[0]
+    t_mask[lowest_motion_frame] = True
+    return t_mask
 
 
 def _select_frames(
