@@ -162,7 +162,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             ]),
             (validation_and_dummies_wf, gen_avg, [
                 ('outputnode.bold_file', 'in_file'),
-            ])
+            ]),
             (mcflirt, get_lowest_motion_frame, [('rms_files', 'rms_files')]),
             (get_lowest_motion_frame, gen_avg, [('t_mask', 't_mask')]),
             (gen_avg, outputnode, [('out_file', 'boldref')]),
