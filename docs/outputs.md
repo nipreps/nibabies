@@ -249,17 +249,40 @@ The mask file is part of the *minimal* processing level. The BOLD series
 is only generated at the *full* processing level.
 :::
 
+#### BOLD reference spaces
+
+NiBabies defines a consistent hierarchy of BOLD reference spaces, reflected in
+the `space` and `from`/`to` entities of functional outputs:
+
+- **`orig`** — the native BOLD acquisition space.
+- **`run`** — the per-run boldref space. This is the target of HMC and is derived
+  from the sbref or a robust average of the BOLD series.
+- **`boldref`** — the final coregistration reference space registered to anatomy.
+  When `--bold-coreg-level run` (default), `boldref` is identical to `run`.
+  When `--bold-coreg-level session`, `boldref` is a template image built from all
+  run-level boldrefs.
+- **`anat`** — the anatomical reference space (T1w or T2w).
+
+The full transform chain applied during resampling is therefore:
+
+```
+orig → run      (from-orig_to-run, HMC)
+run  → boldref  (from-run_to-boldref, identity when --bold-coreg-level run)
+boldref → anat  (from-boldref_to-anat)
+anat → std      (anat2std)
+```
+
 #### Motion correction outputs
 
 Head-motion correction (HMC) produces a reference image to which all volumes
 are aligned, and a corresponding transform that maps the original BOLD series
-to the reference image::
+to the run-level boldref:
 
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
     sub-<subject_label>_[specifiers]_desc-hmc_boldref.nii.gz
-    sub-<subject_label>_[specifiers]_from-orig_to_boldref_mode-image_desc-hmc_xfm.nii.gz
+    sub-<subject_label>_[specifiers]_from-orig_to-run_mode-image_desc-hmc_xfm.txt
 ```
 
 :::{note}
@@ -268,8 +291,15 @@ Motion correction outputs are part of the *minimal* processing level.
 
 #### Coregistration outputs
 
-Registration of the BOLD series to the anatomical reference image generates a further reference
-image and affine transform
+Registration of the BOLD series to the anatomical image generates a further reference
+image and affine transform:
+
+:::{tip}
+The coregistration reference used for anatomy registration depends on
+`--bold-coreg-level`. See [BOLD coregistration level](usage.md#bold-coregistration-level---bold-coreg-level)
+for details.
+:::
+
 
 ```
 sub-<subject_label>/[ses-<session_label>/]
@@ -291,7 +321,7 @@ is identified with `"B0FieldIdentifier": "TOPUP"`, the generated transform will 
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
-    sub-<subject_label>_[specifiers]_from-boldref_to-TOPUP_mode-image_xfm.nii.gz
+    sub-<subject_label>_[specifiers]_from-boldref_to-TOPUP_mode-image_xfm.txt
 ```
 
 If the association is discovered through the `IntendedFor` field of the
