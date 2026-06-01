@@ -193,8 +193,8 @@ def _get_lowest_motion_frame(
     rms_files: str
 ) -> list[bool]:
     import numpy as np
-    abs_motion = np.loadtxt(rms_files[0])  # load absolute motion file
-    lowest_motion_frame = np.argmin(abs_motion)
+    abs_motion, rel_motion = np.loadtxt(rms_files[0]), np.loadtxt(rms_files[0])
+    lowest_motion_frame = np.argmin(rel_motion) + 1  # rel_motion short of BOLD length by 1 frame
     t_mask = [False] * abs_motion.shape[0]
     t_mask[lowest_motion_frame] = True
     return t_mask
