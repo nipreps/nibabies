@@ -341,7 +341,7 @@ pyyaml==6.0.2
     #   smriprep
 rdflib==7.1.4
     # via nipype
-requests==2.32.4
+requests==2.33.0
     # via
     #   nibabies (pyproject.toml)
     #   datalad
