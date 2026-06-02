@@ -311,7 +311,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         dest='memory_gb',
         action='store',
         type=_to_gb,
-        help='upper bound memory limit for NiBabies processes',
+        help='upper bound memory limit for NiBabies processes, in megabytes',
     )
     g_perfm.add_argument(
         '--low-mem',
