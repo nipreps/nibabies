@@ -34,7 +34,7 @@ dependencies = [
     "psutil >= 5.4",
     "pybids >= 0.15.0",
     "requests",
-    "sdcflows @ git+https://github.com/RamoneAgard/sdcflows.git@nibabies25.0.1compat_FSL-MC",
+    "sdcflows @ git+https://github.com/joey-scanga/sdcflows.git@feat/fsl_setwise_avg",
     # "sdcflows @ git+https://github.com/nipreps/sdcflows.git@main",
     "smriprep @ git+https://github.com/nipreps/smriprep.git@master",
     "tedana >= 23.0.2",
