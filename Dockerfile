@@ -25,11 +25,40 @@
 # Ubuntu 22.04 LTS - Jammy
 ARG BASE_IMAGE=ubuntu:jammy-20240405
 
-# NiBabies wheel
-FROM ghcr.io/astral-sh/uv:python3.12-alpine AS src
-RUN apk add git
-COPY . /src
-RUN uvx --from build pyproject-build --installer uv -w /src
+#
+# Build pixi environment
+# The Pixi environment includes:
+#   - Python
+#     - Scientific Python stack (via conda-forge)
+#     - General Python dependencies (via PyPI), including NiBabies itself
+#   - NodeJS
+#     - bids-validator
+#     - svgo
+#   - FSL (via fslconda)
+#   - ants, connectome-workbench (via conda-forge)
+#   - ...
+#
+FROM ghcr.io/prefix-dev/pixi:0.70.0 AS build
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+                    ca-certificates \
+                    git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# Run post-link scripts during install, but use global to keep out of source tree
+RUN pixi config set --global run-post-link-scripts insecure
+
+# Install dependencies before the package itself to leverage caching
+RUN mkdir /app
+COPY pixi.lock pyproject.toml /app
+WORKDIR /app
+RUN --mount=type=cache,target=/root/.cache/rattler pixi install -e nibabies --frozen --skip nibabies
+RUN --mount=type=cache,target=/root/.npm pixi run --as-is -e nibabies npm install -g svgo@^3.2.0 bids-validator@1.14.10
+# Note that PATH gets hard-coded. Remove it and re-apply in final image
+RUN pixi shell-hook -e nibabies --as-is | grep -v PATH > /shell-hook.sh
+
+# Finally, install the package
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/rattler pixi install -e nibabies --frozen
 
 # Older Python to support legacy MCRIBS
 FROM python:3.6.15-slim AS pyenv
@@ -69,30 +98,6 @@ RUN mkdir -p /opt/afni-latest \
         -name "3dUnifize" -or \
         -name "3dAutomask" -or \
         -name "3dvolreg" \) -delete
-
-# Micromamba
-FROM downloader AS micromamba
-
-# Install a C compiler to build extensions when needed.
-# traits<6.4 wheels are not available for Python 3.11+, but build easily.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-WORKDIR /
-# Bump the date to current to force update micromamba
-RUN echo "2025.06.12" && curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-ENV MAMBA_ROOT_PREFIX="/opt/conda"
-COPY env.yml /tmp/env.yml
-COPY requirements.txt /tmp/requirements.txt
-WORKDIR /tmp
-RUN micromamba create -y -f /tmp/env.yml && \
-    micromamba clean -y -a
-
-ENV PATH="/opt/conda/envs/nibabies/bin:$PATH" \
-    UV_USE_IO_URING=0
-RUN npm install -g svgo@^3.2.0 bids-validator@1.14.10 && \
-    rm -r ~/.npm
 
 # Main container
 FROM ${BASE_IMAGE} AS nibabies
@@ -198,21 +203,20 @@ WORKDIR /home/nibabies
 ENV HOME="/home/nibabies" \
     LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
 
-COPY --from=micromamba /bin/micromamba /bin/micromamba
-COPY --from=micromamba /opt/conda/envs/nibabies /opt/conda/envs/nibabies
-ENV MAMBA_ROOT_PREFIX="/opt/conda"
-RUN micromamba shell init -s bash && \
-    echo "micromamba activate nibabies" >> $HOME/.bashrc
-ENV PATH="/opt/conda/envs/nibabies/bin:$PATH" \
-    CPATH="/opt/conda/envs/nibabies/include" \
-    LD_LIBRARY_PATH="/opt/conda/envs/nibabies/lib:${LD_LIBRARY_PATH}" \
-    CONDA_PYTHON="/opt/conda/envs/nibabies/bin/python"
+# Install the pixi environment built above
+COPY --from=build /app/.pixi/envs/nibabies /app/.pixi/envs/nibabies
+COPY --from=build /shell-hook.sh /shell-hook.sh
+RUN cat /shell-hook.sh >> $HOME/.bashrc
+ENV PATH="/app/.pixi/envs/nibabies/bin:$PATH" \
+    CPATH="/app/.pixi/envs/nibabies/include" \
+    LD_LIBRARY_PATH="/app/.pixi/envs/nibabies/lib:${LD_LIBRARY_PATH}" \
+    CONDA_PYTHON="/app/.pixi/envs/nibabies/bin/python"
 
 # FSL environment
 ENV LANG="C.UTF-8" \
     LC_ALL="C.UTF-8" \
     PYTHONNOUSERSITE=1 \
-    FSLDIR="/opt/conda/envs/nibabies" \
+    FSLDIR="/app/.pixi/envs/nibabies" \
     FSLOUTPUTTYPE="NIFTI_GZ" \
     FSLMULTIFILEQUIT="TRUE" \
     FSLLOCKDIR="" \
@@ -226,17 +230,12 @@ ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1 \
     IS_DOCKER_8395080871=1
 
-# Precaching atlases
+# Precaching atlases (templateflow is provided by the pixi environment)
 COPY scripts/fetch_templates.py fetch_templates.py
-RUN ${CONDA_PYTHON} -m pip install --no-cache-dir --upgrade templateflow && \
-    ${CONDA_PYTHON} fetch_templates.py && \
+RUN ${CONDA_PYTHON} fetch_templates.py && \
     rm fetch_templates.py && \
     find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
-
-# Install pre-built wheel
-COPY --from=src /src/dist/*.whl .
-RUN ${CONDA_PYTHON} -m pip install --no-cache-dir $( ls *.whl )[telemetry,test]
 
 # Facilitate Apptainer use
 RUN find $HOME -type d -exec chmod go=u {} + && \
@@ -257,4 +256,4 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.version=$VERSION \
       org.label-schema.schema-version="1.0"
 
-ENTRYPOINT ["/opt/conda/envs/nibabies/bin/nibabies"]
+ENTRYPOINT ["/app/.pixi/envs/nibabies/bin/nibabies"]

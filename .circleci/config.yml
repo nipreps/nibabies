@@ -13,3 +13,5 @@ workflows:
           mapping: |
             nibabies/.* run-build true
             Dockerfile run-build true
+            pyproject.toml run-build true
+            pixi.lock run-build true

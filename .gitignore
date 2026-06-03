@@ -100,3 +100,7 @@ testdata/
 .vscode/
 
 _version.py
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
