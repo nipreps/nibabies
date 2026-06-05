@@ -155,7 +155,7 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             name="get_lowest_motion_frame"
         )
 
-        gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
+        gen_avg = pe.Node(RobustAverage(mc_method='FSL'), name='gen_avg', mem_gb=1)
         workflow.connect([
             (validation_and_dummies_wf, mcflirt, [
                 ('outputnode.bold_file', 'in_file')
