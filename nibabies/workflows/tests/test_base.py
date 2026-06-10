@@ -224,6 +224,7 @@ def _make_params(
         _make_params(multi_step_reg=True),
         _make_params(multi_step_reg=False),
         _make_params(hmc_bold_frame='auto'),
+        _make_params(hmc_bold_frame='mcflirt'),
     ],
 )
 def test_init_nibabies_wf(

@@ -140,6 +140,8 @@ def _build_parser():
     def _pos_int_or_auto(value):
         if value.lower() == 'auto':
             return 'auto'
+        elif value.lower() == 'mcflirt':
+            return 'mcflirt'
         try:
             value = int(value)
             if value < 0:
@@ -147,7 +149,7 @@ def _build_parser():
             return value
         except ValueError as err:
             raise ArgumentTypeError(
-                f"--hmc-bold-frame must be either 'auto' or a positive integer. Received {value}."
+                f"--hmc-bold-frame must be either 'auto', 'mcflirt', or a positive integer. Received {value}."
             ) from err
 
     def _slice_time_ref(value, parser):
@@ -769,10 +771,12 @@ discourage its usage.""",
         '--hmc-bold-frame',
         type=_pos_int_or_auto,
         default=16,
-        metavar='{auto,FRAME_NUMBER}',
+        metavar='{auto,mcflirt,FRAME_NUMBER}',
         help='Frame to start head motion estimation on BOLD. '
         '``auto`` chooses this frame based on a sum-of-least-squares '
-        'heuristic.',
+        "heuristic. ``mcflirt`` runs MCFLIRT on the raw BOLD with the 'normcorr' "
+        "cost function, calculates framewise displacement (FD) at each frame, then RobustAverage's "
+        'the 5 lowest-FD frames together, which is used as the BOLD reference.',
     )
     g_baby.add_argument(
         '--norm-csf',
