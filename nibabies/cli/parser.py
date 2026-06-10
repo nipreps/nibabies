@@ -774,9 +774,9 @@ discourage its usage.""",
         metavar='{auto,mcflirt,FRAME_NUMBER}',
         help='Frame to start head motion estimation on BOLD. '
         '``auto`` chooses this frame based on a sum-of-least-squares '
-        'heuristic. ``mcflirt`` runs MCFLIRT on the raw BOLD with the \'normcorr\' '
-        'cost function, calculates framewise displacement (FD) at each frame, then RobustAverage\'s '
-        'the 5 lowest-FD frames together, which is used as the BOLD reference.'
+        "heuristic. ``mcflirt`` runs MCFLIRT on the raw BOLD with the 'normcorr' "
+        "cost function, calculates framewise displacement (FD) at each frame, then RobustAverage's "
+        'the 5 lowest-FD frames together, which is used as the BOLD reference.',
     )
     g_baby.add_argument(
         '--norm-csf',

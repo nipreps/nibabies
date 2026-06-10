@@ -143,16 +143,16 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
         from nipype.interfaces.fsl import MCFLIRT
 
         mcflirt = pe.Node(MCFLIRT(), name='mcflirt', mem_gb=1)
-        mcflirt.inputs.cost = "normcorr"
+        mcflirt.inputs.cost = 'normcorr'
         mcflirt.inputs.save_rms = True
 
         get_lowest_motion_frame = pe.Node(
             niu.Function(
                 function=_get_lowest_motion_frame,
-                input_names=["rms_files"],
-                output_names=["t_mask"]
+                input_names=['rms_files'],
+                output_names=['t_mask'],
             ),
-            name="get_lowest_motion_frame"
+            name='get_lowest_motion_frame',
         )
 
         gen_avg = pe.Node(RobustAverage(mc_method='FSL'), name='gen_avg', mem_gb=1)
@@ -189,12 +189,13 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
     return workflow
 
 
-def _get_lowest_motion_frame(
-    rms_files: str
-) -> list[bool]:
+def _get_lowest_motion_frame(rms_files: str) -> list[bool]:
     import numpy as np
+
     abs_motion, rel_motion = np.loadtxt(rms_files[0]), np.loadtxt(rms_files[1])
-    lowest_motion_frames = np.argsort(rel_motion)[:5] + 1  # rel_motion short of BOLD length by 1 frame
+    lowest_motion_frames = (
+        np.argsort(rel_motion)[:5] + 1
+    )  # rel_motion short of BOLD length by 1 frame
     t_mask = [False] * abs_motion.shape[0]
     for idx in lowest_motion_frames:
         t_mask[idx] = True
