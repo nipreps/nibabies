@@ -50,7 +50,6 @@ from nibabies.workflows.anatomical.registration import (
     init_coregistration_wf,
 )
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
-from nibabies.workflows.anatomical.surfaces import init_mcribs_dhcp_wf
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import Reference, SpatialReferences
@@ -1365,57 +1364,29 @@ def init_infant_anat_fit_wf(
         outputnode.inputs.anat_ribbon = precomputed['anat_ribbon']
 
     # Stage 9: Baseline fsLR registration
-    if recon_method == 'mcribs':
-        if len(precomputed.get('sphere_reg_dhcpAsym', [])) < 2:
-            LOGGER.info('ANAT Stage 9: Creating dhcp-fsLR registration sphere')
-            fsLR_reg_wf = init_mcribs_dhcp_wf()
+    if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
+        LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
+        fsLR_reg_wf = init_fsLR_reg_wf()
 
-            ds_fsLR_reg_wf = init_ds_surfaces_wf(
-                output_dir=output_dir,
-                surfaces=['sphere_reg_dhcpAsym'],
-                name='ds_fsLR_reg_wf',
-            )
+        ds_fsLR_reg_wf = init_ds_surfaces_wf(
+            output_dir=output_dir,
+            surfaces=['sphere_reg_fsLR'],
+            name='ds_fsLR_reg_wf',
+        )
 
-            workflow.connect([
-                (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
-                (sourcefile_buffer, ds_fsLR_reg_wf, [
-                    ('anat_source_files', 'inputnode.source_files'),
-                ]),
-                (fsLR_reg_wf, ds_fsLR_reg_wf, [
-                    ('outputnode.sphere_reg_dhcpAsym', 'inputnode.sphere_reg_dhcpAsym')
-                ]),
-                (ds_fsLR_reg_wf, fsLR_buffer, [
-                    ('outputnode.sphere_reg_dhcpAsym', 'sphere_reg_fsLR'),
-                ]),
-            ])  # fmt:skip
-        else:
-            LOGGER.info('ANAT Stage 9: Found pre-computed dhcp-fsLR registration sphere')
-            fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_dhcpAsym'])
-
+        workflow.connect([
+            (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
+            (sourcefile_buffer, ds_fsLR_reg_wf, [
+                ('anat_source_files', 'inputnode.source_files'),
+            ]),
+            (fsLR_reg_wf, ds_fsLR_reg_wf, [
+                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
+            ]),
+            (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+        ])  # fmt:skip
     else:
-        if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
-            LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
-            fsLR_reg_wf = init_fsLR_reg_wf()
-
-            ds_fsLR_reg_wf = init_ds_surfaces_wf(
-                output_dir=output_dir,
-                surfaces=['sphere_reg_fsLR'],
-                name='ds_fsLR_reg_wf',
-            )
-
-            workflow.connect([
-                (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
-                (sourcefile_buffer, ds_fsLR_reg_wf, [
-                    ('anat_source_files', 'inputnode.source_files'),
-                ]),
-                (fsLR_reg_wf, ds_fsLR_reg_wf, [
-                    ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
-                ]),
-                (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
-            ])  # fmt:skip
-        else:
-            LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
-            fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+        LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
+        fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
 
     # Stage 10: Cortical surface mask
     if len(precomputed.get('cortex_mask', [])) < 2:
@@ -2322,57 +2293,29 @@ def init_infant_single_anat_fit_wf(
         outputnode.inputs.anat_ribbon = precomputed['anat_ribbon']
 
     # Stage 9: Baseline fsLR registration
-    if recon_method == 'mcribs':
-        if len(precomputed.get('sphere_reg_dhcpAsym', [])) < 2:
-            LOGGER.info('ANAT Stage 9: Creating dhcp-fsLR registration sphere')
-            fsLR_reg_wf = init_mcribs_dhcp_wf()
+    if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
+        LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
+        fsLR_reg_wf = init_fsLR_reg_wf()
 
-            ds_fsLR_reg_wf = init_ds_surfaces_wf(
-                output_dir=output_dir,
-                surfaces=['sphere_reg_dhcpAsym'],
-                name='ds_fsLR_reg_wf',
-            )
+        ds_fsLR_reg_wf = init_ds_surfaces_wf(
+            output_dir=output_dir,
+            surfaces=['sphere_reg_fsLR'],
+            name='ds_fsLR_reg_wf',
+        )
 
-            workflow.connect([
-                (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
-                (sourcefile_buffer, ds_fsLR_reg_wf, [
-                    ('anat_source_files', 'inputnode.source_files'),
-                ]),
-                (fsLR_reg_wf, ds_fsLR_reg_wf, [
-                    ('outputnode.sphere_reg_dhcpAsym', 'inputnode.sphere_reg_dhcpAsym')
-                ]),
-                (ds_fsLR_reg_wf, fsLR_buffer, [
-                    ('outputnode.sphere_reg_dhcpAsym', 'sphere_reg_fsLR'),
-                ]),
-            ])  # fmt:skip
-        else:
-            LOGGER.info('ANAT Stage 9: Found pre-computed dhcp-fsLR registration sphere')
-            fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_dhcpAsym'])
-
+        workflow.connect([
+            (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
+            (sourcefile_buffer, ds_fsLR_reg_wf, [
+                ('anat_source_files', 'inputnode.source_files'),
+            ]),
+            (fsLR_reg_wf, ds_fsLR_reg_wf, [
+                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
+            ]),
+            (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
+        ])  # fmt:skip
     else:
-        if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
-            LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
-            fsLR_reg_wf = init_fsLR_reg_wf()
-
-            ds_fsLR_reg_wf = init_ds_surfaces_wf(
-                output_dir=output_dir,
-                surfaces=['sphere_reg_fsLR'],
-                name='ds_fsLR_reg_wf',
-            )
-
-            workflow.connect([
-                (surfaces_buffer, fsLR_reg_wf, [('sphere_reg', 'inputnode.sphere_reg')]),
-                (sourcefile_buffer, ds_fsLR_reg_wf, [
-                    ('anat_source_files', 'inputnode.source_files'),
-                ]),
-                (fsLR_reg_wf, ds_fsLR_reg_wf, [
-                    ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')
-                ]),
-                (ds_fsLR_reg_wf, fsLR_buffer, [('outputnode.sphere_reg_fsLR', 'sphere_reg_fsLR')]),
-            ])  # fmt:skip
-        else:
-            LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
-            fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+        LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
+        fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
 
     # Stage 10: Cortical surface mask
     if len(precomputed.get('cortex_mask', [])) < 2:
