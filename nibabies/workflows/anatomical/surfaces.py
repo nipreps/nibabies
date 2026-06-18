@@ -1,8 +1,5 @@
 """Anatomical surface projections"""
 
-import typing as ty
-
-import templateflow.api as tf
 from nipype.interfaces import freesurfer as fs
 from nipype.interfaces import io as nio
 from nipype.interfaces import utility as niu
@@ -18,7 +15,6 @@ from niworkflows.interfaces.freesurfer import (
 from niworkflows.interfaces.morphology import BinaryDilation
 from niworkflows.interfaces.patches import FreeSurferSource
 from smriprep.interfaces.freesurfer import MakeMidthickness
-from smriprep.interfaces.workbench import SurfaceResample
 from smriprep.workflows.surfaces import _extract_fs_fields
 
 SURFACE_INPUTS = [
@@ -219,77 +215,6 @@ def init_mcribs_surface_recon_wf(
     return workflow
 
 
-@tag('anat.fslr-reg')
-def init_mcribs_dhcp_wf(*, name='mcribs_dhcp_wf'):
-    """
-    Generate GIFTI registration files to dhcp (42-week) space.
-
-    Note: The dhcp template was derived from the Conte69 atlas,
-    and maps reasonably well to fsLR.
-    """
-    from smriprep.interfaces.workbench import SurfaceSphereProjectUnproject
-
-    workflow = Workflow(name=name)
-
-    inputnode = pe.Node(
-        niu.IdentityInterface(['sphere_reg', 'sulc']),
-        name='inputnode',
-    )
-    outputnode = pe.Node(
-        niu.IdentityInterface(['sphere_reg_dhcpAsym']),
-        name='outputnode',
-    )
-
-    # SurfaceSphereProjectUnProject
-    # project to 41k dHCP atlas sphere
-    #   - sphere-in: Individual native sphere in surf directory registered to 41k atlas sphere
-    #   - sphere-to: the 41k atlas sphere, in the fsaverage directory
-    #   - sphere-unproject-from: 41k atlas sphere registered to dHCP 42wk sphere,
-    #                            in the fsaverage directory
-    #   - sphere-out: lh.sphere.reg2.dHCP42.native.surf.gii
-    project_unproject = pe.MapNode(
-        SurfaceSphereProjectUnproject(),
-        iterfield=['sphere_in', 'sphere_project_to', 'sphere_unproject_from'],
-        name='project_unproject',
-    )
-    project_unproject.inputs.sphere_project_to = [
-        str(
-            tf.get(
-                'fsaverage',
-                density='41k',
-                hemi=hemi,
-                desc=None,
-                suffix='sphere',
-                extension='.surf.gii',
-            )
-        )
-        for hemi in 'LR'
-    ]
-
-    project_unproject.inputs.sphere_unproject_from = [  # TODO: Use symmetric template
-        str(
-            tf.get(
-                'dhcpAsym',
-                space='fsaverage',
-                hemi=hemi,
-                density='41k',
-                desc='reg',
-                suffix='sphere',
-                extension='.surf.gii',
-                raise_empty=True,
-            )
-        )
-        for hemi in 'LR'
-    ]
-
-    workflow.connect([
-        (inputnode, project_unproject, [('sphere_reg', 'sphere_in')]),
-        (project_unproject, outputnode, [('sphere_out', 'sphere_reg_dhcpAsym')]),
-    ])  # fmt:skip
-
-    return workflow
-
-
 @tag('anat.recon')
 def init_infantfs_surface_recon_wf(
     *,
@@ -431,117 +356,6 @@ def init_make_midthickness_wf(
         ]),
     ])  # fmt:skip
     return workflow
-
-
-@tag('anat.resample-surfs')
-def init_resample_surfaces_dhcp_wf(
-    surfaces: list[str],
-    grayord_density: ty.Literal['91k', '170k'],
-    name: str = 'resample_surfaces_dhcp_wf',
-):
-    """
-    Resample subject midthickness surface to specified density.
-
-    Workflow Graph
-        .. workflow::
-            :graph2use: colored
-            :simple_form: yes
-
-            from nibabies.workflows.anatomical.surfaces import init_resample_surfaces_dhcp_wf
-            wf = init_resample_surfaces_dhcp_wf(surfaces=['white', grayord_density='91k')
-
-    Parameters
-    ----------
-    grayord_density : :obj:`str`
-        Either `91k` or `170k`, representing the total of vertices or *grayordinates*.
-    name : :obj:`str`
-        Unique name for the subworkflow (default: ``"resample_surfaces_dhcp_wf``)
-
-    Inputs
-    ------
-    ``<surface>``
-        Left and right GIFTIs for each surface name passed to ``surfaces``
-    sphere_reg_fsLR
-        GIFTI surface mesh corresponding to the subject's fsLR registration sphere
-
-    Outputs
-    -------
-    midthickness
-        GIFTI surface mesh corresponding to the midthickness surface, resampled to fsLR
-    """
-    workflow = Workflow(name=name)
-
-    fslr_density = '32k' if grayord_density == '91k' else '59k'
-
-    inputnode = pe.Node(
-        niu.IdentityInterface(fields=[*surfaces, 'sphere_reg_fsLR']),
-        name='inputnode',
-    )
-
-    outputnode = pe.Node(
-        niu.IdentityInterface(fields=[f'{surf}_fsLR' for surf in surfaces]), name='outputnode'
-    )
-
-    surface_list = pe.Node(
-        niu.Merge(len(surfaces), ravel_inputs=True),
-        name='surface_list',
-        run_without_submitting=True,
-    )
-
-    resampler = pe.MapNode(
-        SurfaceResample(method='BARYCENTRIC'),
-        iterfield=['surface_in', 'current_sphere', 'new_sphere'],
-        name='resampler',
-    )
-    resampler.inputs.new_sphere = [
-        str(
-            tf.get(
-                template='dhcpAsym',
-                cohort='42',
-                density=fslr_density,
-                suffix='sphere',
-                hemi=hemi,
-                space=None,
-                extension='.surf.gii',
-            )
-        )
-        # Order matters. Iterate over surfaces, then hemis to get L R L R L R
-        for _surf in surfaces
-        for hemi in ['L', 'R']
-    ]
-
-    surface_groups = pe.Node(
-        niu.Split(splits=[2] * len(surfaces)),
-        name='surface_groups',
-        run_without_submitting=True,
-    )
-
-    workflow.connect([
-        (inputnode, surface_list, [
-            ((surf, _sorted_by_basename), f'in{i}')
-            for i, surf in enumerate(surfaces, start=1)
-        ]),
-        (inputnode, resampler, [
-            (('sphere_reg_fsLR', _repeat, len(surfaces)), 'current_sphere'),
-        ]),
-        (surface_list, resampler, [('out', 'surface_in')]),
-        (resampler, surface_groups, [('surface_out', 'inlist')]),
-        (surface_groups, outputnode, [
-            (f'out{i}', f'{surf}_fsLR') for i, surf in enumerate(surfaces, start=1)
-        ]),
-    ])  # fmt:skip
-
-    return workflow
-
-
-def _sorted_by_basename(inlist):
-    from os.path import basename
-
-    return sorted(inlist, key=lambda x: str(basename(x)))
-
-
-def _repeat(seq: list, count: int) -> list:
-    return seq * count
 
 
 def _parent(p):

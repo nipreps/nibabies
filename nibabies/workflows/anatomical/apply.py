@@ -18,7 +18,6 @@ from smriprep.workflows.surfaces import (
 
 from nibabies import config
 from nibabies.workflows.anatomical.outputs import init_ds_seg_wf
-from nibabies.workflows.anatomical.surfaces import init_resample_surfaces_dhcp_wf
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import SpatialReferences
@@ -187,15 +186,9 @@ def init_infant_anat_apply_wf(
 
         if cifti_output:
             hcp_morphometrics_wf = init_hcp_morphometrics_wf(omp_nthreads=omp_nthreads)
-            if recon_method == 'mcribs':
-                resample_surfaces_wf = init_resample_surfaces_dhcp_wf(
-                    surfaces=['white', 'pial', 'midthickness'],
-                    grayord_density=cifti_output,
-                )
-            else:
-                resample_surfaces_wf = init_resample_surfaces_wf(
-                    surfaces=['white', 'pial', 'midthickness'], grayord_density=cifti_output
-                )
+            resample_surfaces_wf = init_resample_surfaces_wf(
+                surfaces=['white', 'pial', 'midthickness'], grayord_density=cifti_output
+            )
             morph_grayords_wf = init_morph_grayords_wf(
                 grayord_density=cifti_output, omp_nthreads=omp_nthreads
             )
@@ -204,7 +197,7 @@ def init_infant_anat_apply_wf(
                 output_dir=output_dir,
                 surfaces=['white', 'pial', 'midthickness'],
                 entities={
-                    'space': 'dhcpAsym' if recon_method == 'mcribs' else 'fsLR',
+                    'space': 'fsLR',
                     'density': '32k' if cifti_output == '91k' else '59k',
                 },
                 name='ds_fsLR_surfaces_wf',
