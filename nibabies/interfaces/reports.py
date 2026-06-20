@@ -402,3 +402,41 @@ def get_world_pedir(ornt, pe_direction):
         f'Orientation: {ornt}; PE dir: {pe_direction}'
     )
     return 'Could not be determined - assuming Anterior-Posterior'
+
+
+class _CiftiSurfacesPlotInputSpec(BaseInterfaceInputSpec):
+    in_file = File(exists=True, mandatory=True, desc='CIFTI dense timeseries (.dtseries.nii)')
+    surface_type = traits.Enum(
+        'inflated',
+        'midthickness',
+        'veryinflated',
+        usedefault=True,
+        desc='inflation level of the fsLR mesh used for rendering',
+    )
+
+
+class _CiftiSurfacesPlotOutputSpec(TraitedSpec):
+    out_report = File(exists=True, desc='the output SVG reportlet')
+
+
+class CiftiSurfacesPlot(SimpleInterface):
+    """
+    Render the mean BOLD of a CIFTI dense timeseries on the fsLR surfaces (QC).
+
+    TODO: port this interface to ``nireports``
+    """
+
+    input_spec = _CiftiSurfacesPlotInputSpec
+    output_spec = _CiftiSurfacesPlotOutputSpec
+
+    def _run_interface(self, runtime):
+        from nireports.reportlets.surface import cifti_surfaces_plot
+
+        out_report = str(Path(runtime.cwd) / 'cifti_surfaces.svg')
+        cifti_surfaces_plot(
+            self.inputs.in_file,
+            surface_type=self.inputs.surface_type,
+            output_file=out_report,
+        )
+        self._results['out_report'] = out_report
+        return runtime
