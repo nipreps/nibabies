@@ -609,7 +609,9 @@ excluding voxels whose time-series have a locally high coefficient of variation.
         )
 
         subcortical_rois_wf = init_subcortical_rois_wf()
-        subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf()
+        subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf(
+            debug='cifti' in config.execution.debug
+        )
 
         bold_grayords_wf = init_bold_grayords_wf(
             grayord_density=cifti_output,
@@ -631,6 +633,16 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             run_without_submitting=True,
         )
         ds_bold_cifti.inputs.source_file = bold_file
+
+        ds_report_subcortical = pe.Node(
+            DerivativesDataSink(
+                desc='subcortical',
+                datatype='figures',
+                dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+            ),
+            name='ds_report_subcortical',
+            run_without_submitting=True,
+        )
 
         mniinfant_res = 2 if cifti_output == '91k' else 1
         inputnode.inputs.mniinfant_mask = get_MNIInfant_mask(spaces, mniinfant_res)
@@ -675,6 +687,9 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('outputnode.subcortical_volume', 'inputnode.bold_std'),
                 ('outputnode.subcortical_labels', 'inputnode.bold_labels'),
             ]),
+            (subcortical_mni_alignment_wf, ds_report_subcortical, [
+                ('outputnode.out_report', 'in_file'),
+            ]),
 
             # Resample anat-space BOLD to fsLR surfaces
             (inputnode, bold_fsLR_resampling_wf, [
@@ -699,6 +714,22 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 (('outputnode.dtseries_metadata', _read_json), 'meta_dict'),
             ]),
         ])  # fmt:skip
+
+        if 'cifti' in config.execution.debug:
+            ds_report_subcortical_overlap = pe.Node(
+                DerivativesDataSink(
+                    desc='subcorticaloverlap',
+                    datatype='figures',
+                    dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+                ),
+                name='ds_report_subcortical_overlap',
+                run_without_submitting=True,
+            )
+            workflow.connect([
+                (subcortical_mni_alignment_wf, ds_report_subcortical_overlap, [
+                    ('outputnode.out_report_overlap', 'in_file'),
+                ]),
+            ])  # fmt:skip
 
     bold_confounds_wf = init_bold_confs_wf(
         mem_gb=mem_gb['largemem'],
