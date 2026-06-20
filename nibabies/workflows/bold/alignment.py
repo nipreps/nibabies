@@ -8,6 +8,7 @@ from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
 from nibabies.data import load as load_data
+from nibabies.interfaces.nibabel import CropToROI, MergeLabelROIs
 from nibabies.interfaces.workbench import VolumeLabelImport
 
 
@@ -94,6 +95,7 @@ def init_subcortical_rois_wf(*, name: str = 'subcortical_rois_wf'):
 def init_subcortical_mni_alignment_wf(
     *,
     vol_sigma: float = 0.8,
+    debug: bool = False,
     name: str = 'subcortical_mni_alignment_wf',
 ):
     """
@@ -110,6 +112,8 @@ def init_subcortical_mni_alignment_wf(
         Name of the workflow
     vol_sigma : :obj:`float`
         The sigma for the gaussian volume smoothing kernel, in mm
+    debug : :obj:`bool`
+        Generate the additional collision-overlay QC reportlet
 
     Inputs
     ------
@@ -126,9 +130,19 @@ def init_subcortical_mni_alignment_wf(
         Volume file containing all ROIs individually aligned to standard
     subcortical_labels : :obj:`str`
         Volume file containing all labels
+    subcortical_seg : :obj:`str`
+        Label volume of the aligned subcortical structures on the standard grid,
+        for QC against the reference atlas ROIs
+    out_report : :obj:`str`
+        QC reportlet (SVG) overlaying the aligned segmentation against the reference ROIs
+    out_report_overlap : :obj:`str`
+        QC reportlet (SVG) overlaying the segmentation with the inter-structure collision
+        layer; only produced when ``debug`` is set
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.nibabel import MergeROIs
+    from niworkflows.interfaces.nibabel import Binarize, MergeROIs
+    from niworkflows.interfaces.reportlets.masks import ROIsPlot
+    from templateflow.api import get as get_template
 
     from ...interfaces.workbench import (
         CiftiCreateDenseTimeseries,
@@ -137,7 +151,6 @@ def init_subcortical_mni_alignment_wf(
         CiftiResample,
         CiftiSeparate,
         CiftiSmooth,
-        VolumeAffineResample,
         VolumeAllLabelsToROIs,
         VolumeLabelExportTable,
     )
@@ -149,15 +162,18 @@ def init_subcortical_mni_alignment_wf(
         name='inputnode',
     )
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=['subcortical_volume', 'subcortical_labels']),
+        niu.IdentityInterface(
+            fields=[
+                'subcortical_volume',
+                'subcortical_labels',
+                'subcortical_seg',
+                'out_report',
+                'out_report_overlap',  # Undefined unless debug
+            ]
+        ),
         name='outputnode',
     )
 
-    applyxfm_atlas = pe.Node(fsl.ApplyXFM(in_matrix_file=atlas_xfm), name='applyxfm_atlas')
-    vol_resample = pe.Node(
-        VolumeAffineResample(method='ENCLOSING_VOXEL', flirt=True, affine=atlas_xfm),
-        name='vol_resample',
-    )
     subj_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name='subj_rois')
     split_rois = pe.Node(fsl.Split(dimension='t'), name='split_rois')
     atlas_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name='atlas_rois')
@@ -168,10 +184,17 @@ def init_subcortical_mni_alignment_wf(
         name='parse_labels',
     )
 
+    roi_bbox = pe.MapNode(
+        CropToROI(),
+        iterfield=['in_file'],
+        name='roi_bbox',
+    )
+
     # The following is wrapped in a for-loop, iterating across each roi
     # Instead, we will use MapNodes and iter across the varying inputs
     roi2atlas = pe.MapNode(
         fsl.FLIRT(
+            in_matrix_file=atlas_xfm,
             searchr_x=[-20, 20],
             searchr_y=[-20, 20],
             searchr_z=[-20, 20],
@@ -184,7 +207,7 @@ def init_subcortical_mni_alignment_wf(
         fsl.ApplyXFM(interp='spline'),
         iterfield=['reference', 'in_matrix_file'],
         name='applyxfm_roi',
-        mem_gb=4,
+        mem_gb=1,
     )
     bold_mask_roi = pe.MapNode(
         fsl.ApplyMask(),
@@ -247,38 +270,36 @@ def init_subcortical_mni_alignment_wf(
         iterfield=['in_file'],
         name='separate',
     )
-    fmt_agg_rois = pe.Node(
-        niu.Function(
-            function=format_agg_rois,
-            output_names=['first_image', 'op_files', 'op_string'],
-        ),
-        name='fmt_agg_rois',
+
+    merge_segs = pe.Node(MergeLabelROIs(), name='merge_segs')
+
+    binarize_seg = pe.Node(Binarize(thresh_low=0), name='binarize_seg')
+    binarize_ref = pe.Node(Binarize(thresh_low=0), name='binarize_ref')
+    bg_img = str(
+        get_template('MNI152NLin6Asym', resolution=2, desc=None, suffix='T1w', raise_empty=True)
     )
-    agg_rois = pe.Node(fsl.MultiImageMaths(), name='agg_rois')
+    # aligned segmentation over reference HCP ROIs.
+    mrg_seg_ref = pe.Node(niu.Merge(2), name='mrg_seg_ref')
+    subcortical_rpt = pe.Node(
+        ROIsPlot(colors=['g', 'r'], generate_report=True, in_file=bg_img),
+        name='subcortical_rpt',
+    )
     merge_rois = pe.Node(MergeROIs(), name='merge_rois')
 
     workflow = Workflow(name=name)
     workflow.connect([
-        (inputnode, applyxfm_atlas, [
-            ('MNIInfant_bold', 'in_file'),
-            ('MNI152_rois', 'reference')]),
-        (inputnode, vol_resample, [
-            ('MNIInfant_rois', 'in_file'),
-            ('MNIInfant_rois', 'flirt_source_volume')]),
-        (applyxfm_atlas, vol_resample, [
-            ('out_file', 'volume_space'),
-            ('out_file', 'flirt_target_volume')]),
         (inputnode, subj_rois, [('MNIInfant_rois', 'in_file')]),
         (inputnode, atlas_rois, [('MNI152_rois', 'in_file')]),
         (subj_rois, split_rois, [('out_file', 'in_file')]),
         (atlas_rois, split_atlas_rois, [('out_file', 'in_file')]),
         (inputnode, atlas_labels, [('MNI152_rois', 'in_file')]),
         (atlas_labels, parse_labels, [('out_file', 'label_file')]),
+        (split_atlas_rois, roi_bbox, [('out_files', 'in_file')]),
         # for loop across ROIs
         (split_rois, roi2atlas, [('out_files', 'in_file')]),
-        (split_atlas_rois, roi2atlas, [('out_files', 'reference')]),
+        (roi_bbox, roi2atlas, [('out_file', 'reference')]),
         (inputnode, applyxfm_roi, [('MNIInfant_bold', 'in_file')]),
-        (split_atlas_rois, applyxfm_roi, [('out_files', 'reference')]),
+        (roi_bbox, applyxfm_roi, [('out_file', 'reference')]),
         (roi2atlas, applyxfm_roi, [('out_matrix_file', 'in_matrix_file')]),
         (applyxfm_roi, bold_mask_roi, [('out_file', 'in_file')]),
         (roi2atlas, bold_mask_roi, [('out_file', 'mask_file')]),
@@ -300,16 +321,37 @@ def init_subcortical_mni_alignment_wf(
         (create_label, resample, [('out_file', 'template')]),
         (resample, smooth, [('out_file', 'in_file')]),
         (smooth, separate, [('out_file', 'in_file')]),
-        # end loop
-        (mul_roi, fmt_agg_rois, [('out_file', 'rois')]),
-        (fmt_agg_rois, agg_rois, [
-            ('first_image', 'in_file'),
-            ('op_files', 'operand_files'),
-            ('op_string', 'op_string')]),
+
+        (mul_roi, merge_segs, [('out_file', 'in_files')]),
+        (inputnode, merge_segs, [('MNI152_rois', 'template')]),
+        (merge_segs, outputnode, [('out_file', 'subcortical_seg')]),
         (separate, merge_rois, [('volume_all_file', 'in_files')]),
         (merge_rois, outputnode, [('out_file', 'subcortical_volume')]),
         (inputnode, outputnode, [('MNI152_rois', 'subcortical_labels')]),
+        # QC reportlet: aligned segmentation vs. reference HCP ROIs
+        (merge_segs, binarize_seg, [('out_file', 'in_file')]),
+        (inputnode, binarize_ref, [('MNI152_rois', 'in_file')]),
+        (binarize_ref, mrg_seg_ref, [('out_mask', 'in1')]),
+        (binarize_seg, mrg_seg_ref, [('out_mask', 'in2')]),
+        (mrg_seg_ref, subcortical_rpt, [('out', 'in_rois')]),
+        (subcortical_rpt, outputnode, [('out_report', 'out_report')]),
     ])  # fmt:skip
+
+    if debug:
+        binarize_collision = pe.Node(Binarize(thresh_low=1), name='binarize_collision')
+        mrg_seg_collision = pe.Node(niu.Merge(2), name='mrg_seg_collision')
+        overlap_rpt = pe.Node(
+            ROIsPlot(colors=['b', 'r'], generate_report=True, in_file=bg_img),
+            name='overlap_rpt',
+        )
+        workflow.connect([
+            (merge_segs, binarize_collision, [('overlap_file', 'in_file')]),
+            (binarize_seg, mrg_seg_collision, [('out_mask', 'in1')]),
+            (binarize_collision, mrg_seg_collision, [('out_mask', 'in2')]),
+            (mrg_seg_collision, overlap_rpt, [('out', 'in_rois')]),
+            (overlap_rpt, outputnode, [('out_report', 'out_report_overlap')]),
+        ])  # fmt:skip
+
     return workflow
 
 
@@ -339,22 +381,3 @@ def parse_roi_labels(label_file: str):
         else:
             label_ids.append(int(line.split(' ', 1)[0]))
     return structs, label_ids
-
-
-def format_agg_rois(rois):
-    """
-    Helper function to format MultiImageMaths command.
-
-    Parameters
-    ----------
-    rois : `list` of `str`s
-        List of files
-
-    Returns
-    -------
-    first_image
-    op_files
-    op_string
-
-    """
-    return rois[0], rois[1:], ('-add %s ' * (len(rois) - 1)).strip()
