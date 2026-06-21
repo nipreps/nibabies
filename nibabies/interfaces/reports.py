@@ -440,3 +440,71 @@ class CiftiSurfacesPlot(SimpleInterface):
         )
         self._results['out_report'] = out_report
         return runtime
+
+
+class _SubcorticalAlignmentReportInputSpec(BaseInterfaceInputSpec):
+    anat = File(exists=True, mandatory=True, desc='standard-space anatomical underlay')
+    reference = File(exists=True, mandatory=True, desc='reference atlas labels (before)')
+    moving = File(exists=True, mandatory=True, desc='aligned subcortical labels (after)')
+    cuts = traits.Int(7, usedefault=True, desc='number of cuts per axis')
+
+
+class _SubcorticalAlignmentReportOutputSpec(TraitedSpec):
+    out_report = File(exists=True, desc='before/after flicker SVG reportlet')
+
+
+class SubcorticalAlignmentReport(SimpleInterface):
+    """Flickering before/after of subcortical labels.
+
+    Both label volumes are colorized by structure (shared colormap), so the flicker shows
+    how each structure moved from its atlas position (before) to its aligned position
+    (after). TODO: upstream to nireports.
+    """
+
+    input_spec = _SubcorticalAlignmentReportInputSpec
+    output_spec = _SubcorticalAlignmentReportOutputSpec
+
+    def _run_interface(self, runtime):
+        self._results['out_report'] = _subcortical_alignment_report(
+            self.inputs.anat,
+            self.inputs.reference,
+            self.inputs.moving,
+            cuts=self.inputs.cuts,
+            out_file=str(Path(runtime.cwd) / 'subcortical_alignment.svg'),
+        )
+        return runtime
+
+
+def _subcortical_alignment_report(anat, reference, moving, cuts=7, out_file=None):
+    from uuid import uuid4
+
+    import nibabel as nb
+    from nilearn.plotting import plot_roi
+    from niworkflows.viz.utils import compose_view, cuts_from_bbox, extract_svg
+    from svgutils.transform import fromstring
+
+    # Focus the cuts on the subcortical extent (nonzero reference labels)
+    cut_coords = cuts_from_bbox(nb.load(reference), cuts=cuts)
+
+    def _panels(labels, div_id):
+        panels = []
+        for mode in ('z', 'x', 'y'):
+            display = plot_roi(
+                labels,
+                bg_img=anat,
+                display_mode=mode,
+                cut_coords=cut_coords[mode],
+                cmap='tab20',
+                alpha=0.7,
+                annotate=False,
+                draw_cross=False,
+            )
+            svg = extract_svg(display)
+            display.close()
+            svg = svg.replace('figure_1', f'{div_id}-{mode}-{uuid4()}', 1)
+            panels.append(fromstring(svg))
+        return panels
+
+    out_file = str(Path(out_file or 'subcortical_alignment.svg').absolute())
+    compose_view(_panels(reference, 'before'), _panels(moving, 'after'), out_file=out_file)
+    return out_file

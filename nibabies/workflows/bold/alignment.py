@@ -144,6 +144,7 @@ def init_subcortical_mni_alignment_wf(
     from niworkflows.interfaces.reportlets.masks import ROIsPlot
     from templateflow.api import get as get_template
 
+    from ...interfaces.reports import SubcorticalAlignmentReport
     from ...interfaces.workbench import (
         CiftiCreateDenseTimeseries,
         CiftiCreateLabel,
@@ -273,15 +274,11 @@ def init_subcortical_mni_alignment_wf(
 
     merge_segs = pe.Node(MergeLabelROIs(), name='merge_segs')
 
-    binarize_seg = pe.Node(Binarize(thresh_low=0), name='binarize_seg')
-    binarize_ref = pe.Node(Binarize(thresh_low=0), name='binarize_ref')
     bg_img = str(
         get_template('MNI152NLin6Asym', resolution=2, desc=None, suffix='T1w', raise_empty=True)
     )
-    # aligned segmentation over reference HCP ROIs.
-    mrg_seg_ref = pe.Node(niu.Merge(2), name='mrg_seg_ref')
     subcortical_rpt = pe.Node(
-        ROIsPlot(colors=['g', 'r'], generate_report=True, in_file=bg_img),
+        SubcorticalAlignmentReport(anat=bg_img),
         name='subcortical_rpt',
     )
     merge_rois = pe.Node(MergeROIs(), name='merge_rois')
@@ -328,16 +325,13 @@ def init_subcortical_mni_alignment_wf(
         (separate, merge_rois, [('volume_all_file', 'in_files')]),
         (merge_rois, outputnode, [('out_file', 'subcortical_volume')]),
         (inputnode, outputnode, [('MNI152_rois', 'subcortical_labels')]),
-        # QC reportlet: aligned segmentation vs. reference HCP ROIs
-        (merge_segs, binarize_seg, [('out_file', 'in_file')]),
-        (inputnode, binarize_ref, [('MNI152_rois', 'in_file')]),
-        (binarize_ref, mrg_seg_ref, [('out_mask', 'in1')]),
-        (binarize_seg, mrg_seg_ref, [('out_mask', 'in2')]),
-        (mrg_seg_ref, subcortical_rpt, [('out', 'in_rois')]),
+        (inputnode, subcortical_rpt, [('MNI152_rois', 'reference')]),
+        (merge_segs, subcortical_rpt, [('out_file', 'moving')]),
         (subcortical_rpt, outputnode, [('out_report', 'out_report')]),
     ])  # fmt:skip
 
     if debug:
+        binarize_seg = pe.Node(Binarize(thresh_low=0), name='binarize_seg')
         binarize_collision = pe.Node(Binarize(thresh_low=1), name='binarize_collision')
         mrg_seg_collision = pe.Node(niu.Merge(2), name='mrg_seg_collision')
         overlap_rpt = pe.Node(
@@ -345,6 +339,7 @@ def init_subcortical_mni_alignment_wf(
             name='overlap_rpt',
         )
         workflow.connect([
+            (merge_segs, binarize_seg, [('out_file', 'in_file')]),
             (merge_segs, binarize_collision, [('overlap_file', 'in_file')]),
             (binarize_seg, mrg_seg_collision, [('out_mask', 'in1')]),
             (binarize_collision, mrg_seg_collision, [('out_mask', 'in2')]),
