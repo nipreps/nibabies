@@ -479,26 +479,46 @@ def _subcortical_alignment_report(anat, reference, moving, cuts=7, out_file=None
     from uuid import uuid4
 
     import nibabel as nb
+    import numpy as np
     from nilearn.plotting import plot_roi
     from niworkflows.viz.utils import compose_view, cuts_from_bbox, extract_svg
     from svgutils.transform import fromstring
 
-    # Focus the cuts on the subcortical extent (nonzero reference labels)
-    cut_coords = cuts_from_bbox(nb.load(reference), cuts=cuts)
+    ref_img = nb.load(reference)
+    mov_img = nb.load(moving)
+    ref = np.asanyarray(ref_img.dataobj)
+    mov = np.asanyarray(mov_img.dataobj)
 
-    def _panels(labels, div_id):
+    # Remap the sparse, uneven label values to consecutive integers for distinct colors
+    structures = sorted({int(v) for v in np.unique(np.concatenate([ref, mov], axis=None))} - {0})
+    lut = np.zeros(int(structures[-1]) + 1 if structures else 1, dtype='int16')
+    for new, old in enumerate(structures, start=1):
+        lut[old] = new
+    ref_c = nb.Nifti1Image(lut[ref], ref_img.affine, ref_img.header)
+    mov_c = nb.Nifti1Image(lut[mov], mov_img.affine, mov_img.header)
+    vmax = max(len(structures), 1)
+
+    cut_coords = cuts_from_bbox(ref_img, cuts=cuts)
+
+    def _panels(labels, div_id, title):
         panels = []
-        for mode in ('z', 'x', 'y'):
+        for i, mode in enumerate(('z', 'x', 'y')):
             display = plot_roi(
                 labels,
                 bg_img=anat,
                 display_mode=mode,
                 cut_coords=cut_coords[mode],
                 cmap='tab20',
-                alpha=0.7,
+                vmin=0,
+                vmax=vmax,
+                alpha=0.8,
                 annotate=False,
                 draw_cross=False,
+                colorbar=False,
+                black_bg=True,
             )
+            if i == 0:
+                display.title(title, size=10)
             svg = extract_svg(display)
             display.close()
             svg = svg.replace('figure_1', f'{div_id}-{mode}-{uuid4()}', 1)
@@ -506,5 +526,9 @@ def _subcortical_alignment_report(anat, reference, moving, cuts=7, out_file=None
         return panels
 
     out_file = str(Path(out_file or 'subcortical_alignment.svg').absolute())
-    compose_view(_panels(reference, 'before'), _panels(moving, 'after'), out_file=out_file)
+    compose_view(
+        _panels(ref_c, 'before', 'reference (template)'),
+        _panels(mov_c, 'after', 'aligned (resampled)'),
+        out_file=out_file,
+    )
     return out_file
