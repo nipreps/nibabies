@@ -111,11 +111,8 @@ sections:
     caption: Mean BOLD signal sampled onto the <code>fsLR</code> cortical surfaces, shown on the inflated mesh. Use this to verify that the functional time series was projected to the surface with sensible coverage.
     subtitle: BOLD on fsLR surfaces
   - bids: {datatype: figures, desc: subcortical, suffix: bold}
-    caption: Flickering overlay of the reference HCP subcortical ROIs (before) and the per-structure aligned subcortical segmentation (after), each colorized by structure over the <code>MNI152NLin6Asym</code> T1w template. Structures should land on their reference counterparts; large discrepancies indicate misalignment of the subcortical gray matter feeding the CIFTI dense time series.
-    subtitle: Subcortical alignment to standard space (reference vs. aligned)
-  - bids: {datatype: figures, desc: subcorticaloverlap, suffix: bold}
-    caption: Debugging figure (enabled with <code>--debug cifti</code>). The aligned subcortical segmentation (blue) is shown with voxels claimed by more than one structure highlighted (red). Collisions arise when independently registered structures overlap and are resolved by a first-wins rule in the segmentation.
-    subtitle: Subcortical inter-structure collisions
+    caption: Flickering overlay of the HCP subcortical atlas parcels (colorized by structure) over the <code>MNI152NLin6Asym</code> T1w template (before) and the BOLD reference resampled to the same space (after). The parcels define the CIFTI subcortical grayordinates; the BOLD reference should show subcortical structures sitting under the matching parcels, confirming the functional data was normalized into standard space correctly.
+    subtitle: Subcortical parcels on the normalized BOLD
 - name: About
   nested: true
   reportlets:

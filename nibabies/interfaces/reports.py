@@ -443,9 +443,9 @@ class CiftiSurfacesPlot(SimpleInterface):
 
 
 class _SubcorticalAlignmentReportInputSpec(BaseInterfaceInputSpec):
-    anat = File(exists=True, mandatory=True, desc='standard-space anatomical underlay')
-    reference = File(exists=True, mandatory=True, desc='reference atlas labels (before)')
-    moving = File(exists=True, mandatory=True, desc='aligned subcortical labels (after)')
+    template = File(exists=True, mandatory=True, desc='standard-space anatomical underlay (T1w)')
+    bold = File(exists=True, mandatory=True, desc='BOLD reference in standard space')
+    labels = File(exists=True, mandatory=True, desc='subcortical atlas label volume')
     cuts = traits.Int(7, usedefault=True, desc='number of cuts per axis')
 
 
@@ -454,11 +454,12 @@ class _SubcorticalAlignmentReportOutputSpec(TraitedSpec):
 
 
 class SubcorticalAlignmentReport(SimpleInterface):
-    """Flickering before/after of subcortical labels.
+    """Flickering before/after of the subcortical atlas parcels.
 
-    Both label volumes are colorized by structure (shared colormap), so the flicker shows
-    how each structure moved from its atlas position (before) to its aligned position
-    (after). TODO: upstream to nireports.
+    The parcels (colorized by structure) are overlaid first on the standard template and
+    then on the BOLD reference resampled to the same space, so the flicker shows whether
+    the normalized functional data sits under the matching parcels. TODO: upstream to
+    nireports.
     """
 
     input_spec = _SubcorticalAlignmentReportInputSpec
@@ -466,16 +467,16 @@ class SubcorticalAlignmentReport(SimpleInterface):
 
     def _run_interface(self, runtime):
         self._results['out_report'] = _subcortical_alignment_report(
-            self.inputs.anat,
-            self.inputs.reference,
-            self.inputs.moving,
+            self.inputs.template,
+            self.inputs.bold,
+            self.inputs.labels,
             cuts=self.inputs.cuts,
             out_file=str(Path(runtime.cwd) / 'subcortical_alignment.svg'),
         )
         return runtime
 
 
-def _subcortical_alignment_report(anat, reference, moving, cuts=7, out_file=None):
+def _subcortical_alignment_report(template, bold, labels, cuts=7, out_file=None):
     from uuid import uuid4
 
     import nibabel as nb
@@ -484,34 +485,30 @@ def _subcortical_alignment_report(anat, reference, moving, cuts=7, out_file=None
     from niworkflows.viz.utils import compose_view, cuts_from_bbox, extract_svg
     from svgutils.transform import fromstring
 
-    ref_img = nb.load(reference)
-    mov_img = nb.load(moving)
-    ref = np.asanyarray(ref_img.dataobj)
-    mov = np.asanyarray(mov_img.dataobj)
-
+    lab_img = nb.load(labels)
+    lab = np.asanyarray(lab_img.dataobj)
     # Remap the sparse, uneven label values to consecutive integers for distinct colors
-    structures = sorted({int(v) for v in np.unique(np.concatenate([ref, mov], axis=None))} - {0})
+    structures = sorted({int(v) for v in np.unique(lab)} - {0})
     lut = np.zeros(int(structures[-1]) + 1 if structures else 1, dtype='int16')
     for new, old in enumerate(structures, start=1):
         lut[old] = new
-    ref_c = nb.Nifti1Image(lut[ref], ref_img.affine, ref_img.header)
-    mov_c = nb.Nifti1Image(lut[mov], mov_img.affine, mov_img.header)
+    labels_c = nb.Nifti1Image(lut[lab], lab_img.affine, lab_img.header)
     vmax = max(len(structures), 1)
 
-    cut_coords = cuts_from_bbox(ref_img, cuts=cuts)
+    cut_coords = cuts_from_bbox(lab_img, cuts=cuts)
 
-    def _panels(labels, div_id, title):
+    def _panels(bg, div_id, title):
         panels = []
         for i, mode in enumerate(('z', 'x', 'y')):
             display = plot_roi(
-                labels,
-                bg_img=anat,
+                labels_c,
+                bg_img=bg,
                 display_mode=mode,
                 cut_coords=cut_coords[mode],
                 cmap='tab20',
                 vmin=0,
                 vmax=vmax,
-                alpha=0.8,
+                alpha=0.7,
                 annotate=False,
                 draw_cross=False,
                 colorbar=False,
@@ -527,8 +524,8 @@ def _subcortical_alignment_report(anat, reference, moving, cuts=7, out_file=None
 
     out_file = str(Path(out_file or 'subcortical_alignment.svg').absolute())
     compose_view(
-        _panels(ref_c, 'before', 'reference (template)'),
-        _panels(mov_c, 'after', 'aligned (resampled)'),
+        _panels(template, 'before', 'template'),
+        _panels(bold, 'after', 'BOLD (MNI152NLin6Asym)'),
         out_file=out_file,
     )
     return out_file

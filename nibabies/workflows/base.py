@@ -511,6 +511,7 @@ It is released under the [CC0]\
     reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
     template_iterator_wf = None
     select_MNIInfant_xfm = None
+    select_mni6_xfm = None
     if config.workflow.level == 'full':
         anat_apply_wf = init_infant_anat_apply_wf(
             bids_root=bids_root,
@@ -558,6 +559,19 @@ It is released under the [CC0]\
             workflow.connect([
                 (anat_fit_wf, select_MNIInfant_xfm, [
                     ('outputnode.std2anat_xfm', 'std2anat_xfm'),
+                    ('outputnode.anat2std_xfm', 'anat2std_xfm'),
+                    ('outputnode.template', 'keys'),
+                ]),
+            ])  # fmt:skip
+
+        if cifti_output:
+            select_mni6_xfm = pe.Node(
+                KeySelect(fields=['anat2std_xfm'], key='MNI152NLin6Asym'),
+                name='select_mni6_xfm',
+                run_without_submitting=True,
+            )
+            workflow.connect([
+                (anat_fit_wf, select_mni6_xfm, [
                     ('outputnode.anat2std_xfm', 'anat2std_xfm'),
                     ('outputnode.template', 'keys'),
                 ]),
@@ -803,6 +817,13 @@ tasks and sessions), the following preprocessing was performed.
                     (select_MNIInfant_xfm, bold_wf, [
                         ('std2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
                         ('anat2std_xfm', 'inputnode.anat2mniinfant_xfm')
+                    ]),
+                ])  # fmt:skip
+
+            if select_mni6_xfm is not None:
+                workflow.connect([
+                    (select_mni6_xfm, bold_wf, [
+                        ('anat2std_xfm', 'inputnode.anat2mni6_xfm'),
                     ]),
                 ])  # fmt:skip
 
