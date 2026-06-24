@@ -113,6 +113,7 @@ sections:
   - bids: {datatype: figures, desc: subcortical, suffix: bold}
     caption: Flickering overlay of the HCP subcortical atlas parcels (colorized by structure) over the <code>MNI152NLin6Asym</code> T1w template (before) and the BOLD reference resampled to the same space (after). The parcels define the CIFTI subcortical grayordinates; the BOLD reference should show subcortical structures sitting under the matching parcels, confirming the functional data was normalized into standard space correctly.
     subtitle: Subcortical parcels on the normalized BOLD
+    static: false
 - name: About
   nested: true
   reportlets:
