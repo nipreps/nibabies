@@ -557,6 +557,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     if cifti_output:
         import templateflow.api as tf
         from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+        from niworkflows.interfaces.nibabel import ApplyMask
 
         from nibabies.interfaces.reports import SubcorticalAlignmentReport
         from nibabies.workflows.bold.resampling import (
@@ -639,6 +640,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             name='boldref_mni6',
             mem_gb=1,
         )
+        boldref_mni6_mask = pe.Node(ApplyMask(in_mask=mni6_mask), name='boldref_mni6_mask')
         subcortical_rpt = pe.Node(
             SubcorticalAlignmentReport(template=mni6_t1w, labels=subcortical_labels),
             name='subcortical_rpt',
@@ -695,7 +697,8 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             (bold_fit_wf, boldref2mni6, [('outputnode.boldref2anat_xfm', 'in2')]),
             (bold_fit_wf, boldref_mni6, [('outputnode.coreg_boldref', 'input_image')]),
             (boldref2mni6, boldref_mni6, [('out', 'transforms')]),
-            (boldref_mni6, subcortical_rpt, [('output_image', 'bold')]),
+            (boldref_mni6, boldref_mni6_mask, [('output_image', 'in_file')]),
+            (boldref_mni6_mask, subcortical_rpt, [('out_file', 'bold')]),
             (subcortical_rpt, ds_report_subcortical, [('out_report', 'in_file')]),
         ])  # fmt:skip
 
