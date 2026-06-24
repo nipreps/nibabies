@@ -509,7 +509,7 @@ def _subcortical_alignment_report(template, bold, labels, cuts=7, out_file=None)
                 vmin=0,
                 vmax=vmax,
                 alpha=0.7,
-                annotate=False,
+                annotate=True,
                 draw_cross=False,
                 colorbar=False,
                 black_bg=True,
