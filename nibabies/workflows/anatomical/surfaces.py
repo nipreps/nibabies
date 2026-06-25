@@ -358,6 +358,54 @@ def init_make_midthickness_wf(
     return workflow
 
 
+@tag('anat.fslr-reg')
+def init_mcribs_fsLR_reg_wf(*, name: str = 'mcribs_fsLR_reg_wf') -> Workflow:
+    """
+    Register M-CRIB-S native surfaces to fsLR via M-CRIB-S's own deformation.
+
+    M-CRIB-S surfaces are calibrated to M-CRIB-S's bundled ``fsaverage``/``fs_LR_32k``
+    templates, and should be used to improve cortical folding registration to fsLR.
+
+    Inputs
+    ------
+    sphere_reg
+        Native sphere registered to the M-CRIB-S fsaverage frame (``sphere.reg2``)
+
+    Outputs
+    -------
+    sphere_reg_fsLR
+        Native sphere mesh with fsLR coordinates
+    """
+    from smriprep.interfaces.workbench import SurfaceSphereProjectUnproject
+
+    from nibabies.data import load as load_data
+
+    workflow = Workflow(name=name)
+    inputnode = pe.Node(niu.IdentityInterface(['sphere_reg']), name='inputnode')
+    outputnode = pe.Node(niu.IdentityInterface(['sphere_reg_fsLR']), name='outputnode')
+
+    project_unproject = pe.MapNode(
+        SurfaceSphereProjectUnproject(),
+        iterfield=['sphere_in', 'sphere_project_to', 'sphere_unproject_from'],
+        name='project_unproject',
+    )
+    project_unproject.inputs.sphere_project_to = [
+        str(load_data('mcribs/L.sphere.surf.gii')),
+        str(load_data('mcribs/R.sphere.surf.gii')),
+    ]
+    project_unproject.inputs.sphere_unproject_from = [
+        str(load_data('mcribs/L.sphere.reg.fsLR.surf.gii')),
+        str(load_data('mcribs/R.sphere.reg.fsLR.surf.gii')),
+    ]
+
+    workflow.connect([
+        (inputnode, project_unproject, [('sphere_reg', 'sphere_in')]),
+        (project_unproject, outputnode, [('sphere_out', 'sphere_reg_fsLR')]),
+    ])  # fmt:skip
+
+    return workflow
+
+
 def _parent(p):
     from pathlib import Path
 

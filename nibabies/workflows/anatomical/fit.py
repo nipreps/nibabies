@@ -50,6 +50,7 @@ from nibabies.workflows.anatomical.registration import (
     init_coregistration_wf,
 )
 from nibabies.workflows.anatomical.segmentation import init_segmentation_wf
+from nibabies.workflows.anatomical.surfaces import init_mcribs_fsLR_reg_wf
 
 if ty.TYPE_CHECKING:
     from niworkflows.utils.spaces import Reference, SpatialReferences
@@ -1366,7 +1367,10 @@ def init_infant_anat_fit_wf(
     # Stage 9: Baseline fsLR registration
     if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
         LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
-        fsLR_reg_wf = init_fsLR_reg_wf()
+        if recon_method == 'mcribs':
+            fsLR_reg_wf = init_mcribs_fsLR_reg_wf()
+        else:
+            fsLR_reg_wf = init_fsLR_reg_wf()
 
         ds_fsLR_reg_wf = init_ds_surfaces_wf(
             output_dir=output_dir,
@@ -2295,7 +2299,11 @@ def init_infant_single_anat_fit_wf(
     # Stage 9: Baseline fsLR registration
     if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
         LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
-        fsLR_reg_wf = init_fsLR_reg_wf()
+        if recon_method == 'mcribs':
+            # M-CRIB-S surfaces are calibrated to M-CRIB-S's own fsaverage/fsLR templates
+            fsLR_reg_wf = init_mcribs_fsLR_reg_wf()
+        else:
+            fsLR_reg_wf = init_fsLR_reg_wf()
 
         ds_fsLR_reg_wf = init_ds_surfaces_wf(
             output_dir=output_dir,
