@@ -43,6 +43,8 @@ jobs:
           run-install: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - name: Debug working tree before datalad run
+        run: git status && git diff -- pixi.lock | head -20
       - name: Update lockfile
         run: >
           uvx datalad run -i pixi.lock -i pyproject.toml -o pixi.lock --
