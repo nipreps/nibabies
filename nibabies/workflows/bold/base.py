@@ -221,10 +221,6 @@ def init_bold_apply_wf(
                 'anat2mni6_xfm',
                 # MNI152NLin2009cAsym inverse warp, for carpetplotting (NOT USED)
                 # 'mni2009c2anat_xfm',
-                # MNIInfant <cohort> warp, for CIFTI use
-                'anat2mniinfant_xfm',
-                'mniinfant2anat_xfm',
-                'mniinfant_mask',
             ],
         ),
         name='inputnode',
@@ -798,22 +794,3 @@ def _read_json(in_file):
     from pathlib import Path
 
     return loads(Path(in_file).read_text())
-
-
-def get_MNIInfant_mask(spaces: 'SpatialReferences', res: str | int) -> str:
-    """Parse spaces and return matching MNIInfant space, including cohort."""
-    import templateflow.api as tf
-
-    for ref in spaces.references:
-        if ref.space == 'MNIInfant' and f'res-{res}' in str(ref):
-            return str(
-                tf.get(
-                    'MNIInfant',
-                    cohort=ref.spec['cohort'],
-                    resolution=res,
-                    desc='brain',
-                    suffix='mask',
-                )
-            )
-
-    raise FileNotFoundError(f'MNIInfant mask (resolution {res}) not found.')
