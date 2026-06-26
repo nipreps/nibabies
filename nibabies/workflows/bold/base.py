@@ -670,6 +670,25 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             ]),
         ])  # fmt:skip
 
+        # TODO: make nireports support higher res CIFTIs
+        if cifti_output == '91k':
+            from nibabies.interfaces.reports import CiftiSurfacesPlot
+
+            cifti_surfaces_rpt = pe.Node(CiftiSurfacesPlot(), name='cifti_surfaces_rpt')
+            ds_report_fslr = pe.Node(
+                DerivativesDataSink(
+                    desc='fslr',
+                    datatype='figures',
+                    dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+                ),
+                name='ds_report_fslr',
+                run_without_submitting=True,
+            )
+            workflow.connect([
+                (bold_grayords_wf, cifti_surfaces_rpt, [('outputnode.dtseries', 'in_file')]),
+                (cifti_surfaces_rpt, ds_report_fslr, [('out_report', 'in_file')]),
+            ])  # fmt:skip
+
     bold_confounds_wf = init_bold_confs_wf(
         mem_gb=mem_gb['largemem'],
         metadata=all_metadata[0],
