@@ -337,7 +337,7 @@ def init_func_fit_reports_wf(
                 dimension=3,
                 default_value=0,
                 float=True,
-                invert_transform_flags=[True],
+                invert_transform_flags=[True, False],
                 interpolation='LanczosWindowedSinc',
             ),
             name='fmapref_boldref',
