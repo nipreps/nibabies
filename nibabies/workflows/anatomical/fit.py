@@ -1779,6 +1779,7 @@ def init_infant_single_anat_fit_wf(
                 (brain_extraction_wf, anat_buffer, [
                     ('outputnode.out_mask', 'anat_mask'),
                     ('outputnode.t2w_brain', 'anat_brain'),
+                    ('outputnode.t2w_preproc', 'anat_preproc'),
                 ]),
             ])  # fmt:skip
 
