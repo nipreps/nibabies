@@ -64,9 +64,10 @@ def _get_default_args(bids_dir, tmp_path):
     }
 
 
+@pytest.mark.parametrize('skull_strip_mode', ['skip', 'force'])
 @pytest.mark.parametrize('recon_method', ['mcribs', 'freesurfer', 'infantfs'])
 @pytest.mark.parametrize('use_aseg', [True, False])
-def test_dual_anat_fit_wf(monkeypatch, tmp_path, recon_method, use_aseg):
+def test_dual_anat_fit_wf(monkeypatch, tmp_path, recon_method, use_aseg, skull_strip_mode):
     monkeypatch.setenv('SUBJECTS_DIR', str(tmp_path / 'subjects'))
     (tmp_path / 'subjects').mkdir()
     bids_dir = tmp_path / 'bids'
@@ -90,6 +91,7 @@ def test_dual_anat_fit_wf(monkeypatch, tmp_path, recon_method, use_aseg):
         kwargs = _get_default_args(bids_dir, tmp_path)
         kwargs.update(
             {
+                'skull_strip_mode': skull_strip_mode,
                 't1w': [str(bids_dir / 'sub-01' / 'anat' / 'sub-01_T1w.nii.gz')],
                 't2w': [str(bids_dir / 'sub-01' / 'anat' / 'sub-01_T2w.nii.gz')],
                 'flair': [],
@@ -110,10 +112,13 @@ def test_dual_anat_fit_wf(monkeypatch, tmp_path, recon_method, use_aseg):
             init_infant_anat_fit_wf(**kwargs)
 
 
+@pytest.mark.parametrize('skull_strip_mode', ['skip', 'force'])
 @pytest.mark.parametrize('ref_anat', ['T1w', 'T2w'])
 @pytest.mark.parametrize('recon_method', ['mcribs', 'freesurfer', 'infantfs'])
 @pytest.mark.parametrize('use_aseg', [True, False])
-def test_single_anat_fit_wf(monkeypatch, tmp_path, ref_anat, recon_method, use_aseg):
+def test_single_anat_fit_wf(
+    monkeypatch, tmp_path, ref_anat, recon_method, use_aseg, skull_strip_mode
+):
     monkeypatch.setenv('SUBJECTS_DIR', str(tmp_path / 'subjects'))
     (tmp_path / 'subjects').mkdir()
     bids_dir = tmp_path / 'bids'
@@ -145,6 +150,7 @@ def test_single_anat_fit_wf(monkeypatch, tmp_path, ref_anat, recon_method, use_a
         kwargs = _get_default_args(bids_dir, tmp_path)
         kwargs.update(
             {
+                'skull_strip_mode': skull_strip_mode,
                 't1w': t1w,
                 't2w': t2w,
                 'flair': [],
