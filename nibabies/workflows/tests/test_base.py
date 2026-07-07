@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
@@ -140,6 +141,7 @@ def _make_params(
     norm_csf: bool = False,
     multi_step_reg: bool = True,
     hmc_bold_frame: int | str = 16,
+    output_spaces: str | None = None,
 ):
     if ignore is None:
         ignore = []
@@ -163,7 +165,14 @@ def _make_params(
         norm_csf,
         multi_step_reg,
         hmc_bold_frame,
+        output_spaces,
     )
+
+
+def _patch_output_spaces(output_spaces: str | None):
+    if output_spaces is None:
+        return nullcontext()
+    return patch.object(config.execution, 'output_spaces', output_spaces)
 
 
 @pytest.mark.parametrize('level', ['minimal', 'resampling', 'full'])
@@ -187,6 +196,7 @@ def _make_params(
         'norm_csf',
         'multi_step_reg',
         'hmc_bold_frame',
+        'output_spaces',
     ),
     [
         _make_params(),
@@ -210,6 +220,7 @@ def _make_params(
         _make_params(surface_recon_method=None),
         _make_params(surface_recon_method=None, use_bbr=True),
         _make_params(surface_recon_method=None, use_bbr=False),
+        _make_params(surface_recon_method=None, output_spaces='T1w'),
         _make_params(surface_recon_method='auto'),
         # _make_params(surface_recon_method='mcribs'),  # Requires precomputed segmentation
         _make_params(surface_recon_method='infantfs'),
@@ -249,6 +260,7 @@ def test_init_nibabies_wf(
     norm_csf: bool,
     multi_step_reg: bool,
     hmc_bold_frame: int | str,
+    output_spaces: str | None,
 ):
     monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
     with mock_config(bids_dir=bids_root):
@@ -268,7 +280,10 @@ def test_init_nibabies_wf(
         config.workflow.surface_recon_method = surface_recon_method
         config.workflow.ignore = ignore
         config.workflow.hmc_bold_frame = hmc_bold_frame
-        with patch.dict('nibabies.config.execution.bids_filters', bids_filters):
+        with (
+            _patch_output_spaces(output_spaces),
+            patch.dict('nibabies.config.execution.bids_filters', bids_filters),
+        ):
             wf = init_nibabies_wf(
                 [
                     ('01', None),

@@ -511,37 +511,42 @@ It is released under the [CC0]\
     reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
     template_iterator_wf = None
     select_MNIInfant_xfm = None
+    anat_apply_wf = None
+    std_output_spaces = spaces.cached.get_spaces(nonstandard=False, dim=(3,))
     if config.workflow.level == 'full':
-        anat_apply_wf = init_infant_anat_apply_wf(
-            bids_root=bids_root,
-            cifti_output=cifti_output,
-            msm_sulc=msm_sulc,
-            omp_nthreads=omp_nthreads,
-            output_dir=output_dir,
-            precomputed=anatomical_cache,
-            recon_method=recon_method,
-            reference_anat=reference_anat,
-            spaces=spaces,
-        )
-        workflow.connect([
-            (anat_fit_wf, anat_apply_wf, [
-                ('outputnode.anat_valid_list', 'inputnode.anat_valid_list'),
-                ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
-                ('outputnode.anat_mask', 'inputnode.anat_mask'),
-                ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
-                ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
-                ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-                ('outputnode.white', 'inputnode.white'),
-                ('outputnode.pial', 'inputnode.pial'),
-                ('outputnode.midthickness', 'inputnode.midthickness'),
-                ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
-                (f'outputnode.{reg_sphere}', f'inputnode.{reg_sphere}'),
-                ('outputnode.sulc', 'inputnode.sulc'),
-                ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
-                ('outputnode.subject_id', 'inputnode.subject_id'),
-                ('outputnode.thickness', 'inputnode.thickness'),
-            ]),
-        ])  # fmt:skip
+        # anat_apply_wf only produces standard-space volume and/or surface derivatives
+        # TODO: Refactor name
+        if recon_method is not None or std_output_spaces:
+            anat_apply_wf = init_infant_anat_apply_wf(
+                bids_root=bids_root,
+                cifti_output=cifti_output,
+                msm_sulc=msm_sulc,
+                omp_nthreads=omp_nthreads,
+                output_dir=output_dir,
+                precomputed=anatomical_cache,
+                recon_method=recon_method,
+                reference_anat=reference_anat,
+                spaces=spaces,
+            )
+            workflow.connect([
+                (anat_fit_wf, anat_apply_wf, [
+                    ('outputnode.anat_valid_list', 'inputnode.anat_valid_list'),
+                    ('outputnode.anat_preproc', 'inputnode.anat_preproc'),
+                    ('outputnode.anat_mask', 'inputnode.anat_mask'),
+                    ('outputnode.anat_dseg', 'inputnode.anat_dseg'),
+                    ('outputnode.anat_tpms', 'inputnode.anat_tpms'),
+                    ('outputnode.fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
+                    ('outputnode.white', 'inputnode.white'),
+                    ('outputnode.pial', 'inputnode.pial'),
+                    ('outputnode.midthickness', 'inputnode.midthickness'),
+                    ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
+                    (f'outputnode.{reg_sphere}', f'inputnode.{reg_sphere}'),
+                    ('outputnode.sulc', 'inputnode.sulc'),
+                    ('outputnode.subjects_dir', 'inputnode.subjects_dir'),
+                    ('outputnode.subject_id', 'inputnode.subject_id'),
+                    ('outputnode.thickness', 'inputnode.thickness'),
+                ]),
+            ])  # fmt:skip
 
         if cifti_output and 'MNIInfant' in [ref.space for ref in spaces.references]:
             mniinfant_res = 2 if config.workflow.cifti_output == '91k' else 1
@@ -563,7 +568,7 @@ It is released under the [CC0]\
                 ]),
             ])  # fmt:skip
 
-        if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
+        if std_output_spaces:
             template_iterator_wf = init_template_iterator_wf(spaces=spaces, sloppy=sloppy)
 
             workflow.connect([
@@ -811,11 +816,14 @@ tasks and sessions), the following preprocessing was performed.
                     (anat_fit_wf, bold_wf, [
                         ('outputnode.cortex_mask', 'inputnode.cortex_mask'),
                     ]),
-                    (anat_apply_wf, bold_wf, [
-                        ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
-                        ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
-                    ]),
                 ])  # fmt:skip
+                if anat_apply_wf is not None:
+                    workflow.connect([
+                        (anat_apply_wf, bold_wf, [
+                            ('outputnode.midthickness_fsLR', 'inputnode.midthickness_fsLR'),
+                            ('outputnode.anat_aseg', 'inputnode.anat_aseg'),
+                        ]),
+                    ])  # fmt:skip
 
     return clean_datasinks(workflow)
 
