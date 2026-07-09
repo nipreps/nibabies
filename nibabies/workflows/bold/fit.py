@@ -54,7 +54,6 @@ from nibabies.workflows.bold.outputs import (
     init_ds_registration_wf,
 )
 from nibabies.workflows.bold.reference import init_raw_boldref_wf, init_validation_and_dummies_wf
-from nibabies.workflows.bold.registration import init_bold_reg_wf
 from nibabies.workflows.bold.stc import init_bold_stc_wf
 from nibabies.workflows.bold.t2s import init_bold_t2s_wf
 
@@ -99,7 +98,6 @@ def init_bold_fit_wf(
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
     jacobian: bool = False,
-    coreg_anat: bool = True,
     omp_nthreads: int = 1,
     name: str = 'bold_fit_wf',
 ) -> pe.Workflow:
@@ -173,9 +171,6 @@ def init_bold_fit_wf(
     motion_xfm
         Affine transforms from each BOLD volume to ``hmc_boldref``, written
         as concatenated ITK affine transforms.
-    boldref2anat_xfm
-        Affine transform mapping from BOLD reference space to the anatomical
-        space.
     orig2fmap_xfm
         Affine transform mapping from BOLD reference space to the fieldmap
         space, if applicable.
@@ -190,7 +185,6 @@ def init_bold_fit_wf(
     * :py:func:`~niworkflows.func.utils.init_enhance_and_skullstrip_bold_wf`
     * :py:func:`~sdcflows.workflows.apply.registration.init_coeff2epi_wf`
     * :py:func:`~sdcflows.workflows.apply.correction.init_unwarp_wf`
-    * :py:func:`~nibabies.workflows.bold.registration.init_bold_reg_wf`
     * :py:func:`~nibabies.workflows.bold.outputs.init_ds_boldref_wf`
     * :py:func:`~nibabies.workflows.bold.outputs.init_ds_hmc_wf`
     * :py:func:`~nibabies.workflows.bold.outputs.init_ds_registration_wf`
@@ -244,7 +238,6 @@ def init_bold_fit_wf(
     transforms = precomputed.get('transforms', {})
     hmc_xforms = transforms.get('hmc')
     boldref2fmap_xform = transforms.get('boldref2fmap')
-    boldref2anat_xform = transforms.get('boldref2anat')
 
     workflow = Workflow(name=name)
 
@@ -277,11 +270,9 @@ def init_bold_fit_wf(
                 'coreg_boldref',
                 'bold_mask',
                 'motion_xfm',
-                'boldref2anat_xfm',  # Undefined if coreg_anat is False
                 'orig2fmap_xfm',
                 # summary (can be undefined)
                 'algo_dummy_scans',  # if hmc
-                'fallback',  # if run -> anat coregistration
                 # func fit reports wf
                 'validation_report',
                 'sdc_boldref',
@@ -583,51 +574,6 @@ def init_bold_fit_wf(
         workflow.connect([
             (skullstrip_precomp_ref_wf, regref_buffer, [('outputnode.mask_file', 'boldmask')])
         ])  # fmt:skip
-
-    if coreg_anat and not boldref2anat_xform:
-        config.loggers.workflow.info('Stage 5: Adding coregistration workflow')
-        # calculate BOLD registration to T1w
-        bold_reg_wf = init_bold_reg_wf(
-            bold2anat_dof=config.workflow.bold2anat_dof,
-            bold2anat_init=config.workflow.bold2anat_init,
-            use_bbr=config.workflow.use_bbr,
-            freesurfer=config.workflow.surface_recon_method is not None,
-            omp_nthreads=omp_nthreads,
-            mem_gb=mem_gb['resampled'],
-            sloppy=config.execution.sloppy,
-        )
-
-        ds_boldreg_wf = init_ds_registration_wf(
-            source_file=bold_file,
-            output_dir=config.execution.nibabies_dir,
-            source='boldref',
-            dest=reference_anat,
-            desc='coreg',
-            name='ds_boldreg_wf',
-        )
-
-        workflow.connect([
-            (inputnode, bold_reg_wf, [
-                ('anat_preproc', 'inputnode.anat_preproc'),
-                ('anat_mask', 'inputnode.anat_mask'),
-                ('anat_dseg', 'inputnode.anat_dseg'),
-                # Undefined if --fs-no-reconall, but this is safe
-                ('subjects_dir', 'inputnode.subjects_dir'),
-                ('subject_id', 'inputnode.subject_id'),
-                ('fsnative2anat_xfm', 'inputnode.fsnative2anat_xfm'),
-            ]),
-            (regref_buffer, bold_reg_wf, [('boldref', 'inputnode.ref_bold_brain')]),
-            # Incomplete sources
-            (regref_buffer, ds_boldreg_wf, [('boldref', 'inputnode.source_files')]),
-            (bold_reg_wf, ds_boldreg_wf, [
-                ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
-                ('outputnode.metadata', 'inputnode.metadata'),
-            ]),
-            (ds_boldreg_wf, outputnode, [('outputnode.xform', 'boldref2anat_xfm')]),
-        ])  # fmt:skip
-    else:
-        config.loggers.workflow.info('Found coregistration transform - skipping Stage 5')
-        outputnode.inputs.boldref2anat_xfm = boldref2anat_xform
 
     return workflow
 
