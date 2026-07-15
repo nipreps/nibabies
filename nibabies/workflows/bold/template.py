@@ -75,13 +75,11 @@ def init_bold_template_wf(
         unbiased = num_bold_runs >= 3
 
     workflow = Workflow(name=name)
+    workflow.__desc__ = f'All BOLD runs ({num_bold_runs}) were coregistered to '
     if unbiased:
-        workflow.__desc__ = (
-            'All BOLD runs were coregistered to an unbiased session-level BOLD reference '
-            'using an iterative template construction strategy.'
-        )
+        workflow.__desc__ += 'an unbiased session-level BOLD reference using an iterative template construction strategy.'
     else:
-        workflow.__desc__ = "All BOLD runs were coregistered to the first run's BOLD reference."
+        workflow.__desc__ = "the first run's BOLD reference."
 
     inputnode = pe.Node(
         niu.IdentityInterface(fields=['boldref_files']),
@@ -94,9 +92,6 @@ def init_bold_template_wf(
         ),
         name='outputnode',
     )
-
-    # TODO?: Do we want to denoise as well?
-    # https://neurostars.org/t/ants-denoiseimage-for-fmri-epis/3091/2
 
     boldref_template = pe.Node(
         StructuralReference(
