@@ -33,7 +33,6 @@ from niworkflows.interfaces.nitransforms import ConcatenateXFMs
 from sdcflows.workflows.apply.registration import init_coeff2epi_wf
 
 from nibabies import config
-from nibabies._types import Anatomical
 from nibabies.interfaces.resampling import (
     DistortionParameters,
     ReconstructFieldmap,
@@ -94,7 +93,6 @@ def get_sbrefs(
 def init_bold_fit_wf(
     *,
     bold_series: list[str],
-    reference_anat: Anatomical,
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
     jacobian: bool = False,
@@ -103,6 +101,7 @@ def init_bold_fit_wf(
 ) -> pe.Workflow:
     """
     This workflow controls the minimal estimation steps for functional preprocessing.
+    Note that this workflow does not perform bold to anatomical coregistration.
 
     Workflow Graph
         .. workflow::
@@ -115,7 +114,7 @@ def init_bold_fit_wf(
             with mock_config():
                 bold_file = config.execution.bids_dir / "sub-01" / "func" \
                     / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
-                wf = init_bold_fit_wf(bold_series=[str(bold_file)], reference_anat='T1w')
+                wf = init_bold_fit_wf(bold_series=[str(bold_file)])
 
     Parameters
     ----------
@@ -131,21 +130,6 @@ def init_bold_fit_wf(
     ------
     bold_file
         BOLD series NIfTI file
-    anat_preproc
-        Bias-corrected structural template image
-    anat_mask
-        Mask of the skull-stripped template image
-    anat_dseg
-        Segmentation of preprocessed structural image, including
-        gray-matter (GM), white-matter (WM) and cerebrospinal fluid (CSF)
-    anat2std_xfm
-        List of transform files, collated with templates
-    subjects_dir
-        FreeSurfer SUBJECTS_DIR
-    subject_id
-        FreeSurfer subject ID
-    fsnative2t1w_xfm
-        LTA-style affine matrix translating from FreeSurfer-conformed subject space to T1w
     fmap
         Fieldmap file
     fmap_ref
@@ -249,13 +233,6 @@ def init_bold_fit_wf(
                 'fmap_ref',
                 'fmap_coeff',
                 'fmap_mask',
-                # Anatomical coregistration
-                'anat_preproc',
-                'anat_mask',
-                'anat_dseg',
-                'subjects_dir',
-                'subject_id',
-                'fsnative2anat_xfm',
             ],
         ),
         name='inputnode',
@@ -433,6 +410,12 @@ def init_bold_fit_wf(
                 niu.Merge(2), name='fmapreg_source_files', run_without_submitting=True
             )
 
+            # TODO: the registration reference here is the run-level boldref
+            # (HMC target), so per the orig->run->boldref->anat space chain this
+            # should be source='run' (from-run_to-<fmap>) and the transform
+            # renamed orig2fmap_xfm -> run2fmap_xfm. Also update the io_spec key
+            # (boldref2fmap -> run2fmap) and docs/outputs.md. Changes the fmap
+            # registration derivative filename.
             ds_fmapreg_wf = init_ds_registration_wf(
                 source_file=bold_file,
                 output_dir=config.execution.nibabies_dir,
