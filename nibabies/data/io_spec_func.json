@@ -39,9 +39,9 @@
           "suffix": "xfm",
           "extension": ".txt"
         },
-        "boldref2fmap": {
+        "run2fmap": {
           "datatype": "func",
-          "from": "boldref",
+          "from": "run",
           "mode": "image",
           "suffix": "xfm",
           "extension": ".txt"

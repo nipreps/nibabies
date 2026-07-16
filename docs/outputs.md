@@ -321,7 +321,7 @@ is identified with `"B0FieldIdentifier": "TOPUP"`, the generated transform will 
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
-    sub-<subject_label>_[specifiers]_from-boldref_to-TOPUP_mode-image_xfm.txt
+    sub-<subject_label>_[specifiers]_from-run_to-TOPUP_mode-image_xfm.txt
 ```
 
 If the association is discovered through the `IntendedFor` field of the
@@ -330,7 +330,7 @@ fieldmap metadata, then the transform will be given an auto-generated name
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
-    sub-<subject_label>_[specifiers]_from-boldref_to-auto000XX_mode-image_desc-fmap_xfm.txt
+    sub-<subject_label>_[specifiers]_from-run_to-auto000XX_mode-image_desc-fmap_xfm.txt
 ```
 
 :::{note}

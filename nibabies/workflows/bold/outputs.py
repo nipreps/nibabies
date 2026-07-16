@@ -185,7 +185,7 @@ def init_func_fit_reports_wf(
         BOLD reference to anatomical transform.
         run2boldref_xfm
         Original BOLD to BOLD reference transform
-    orig2fmap_xfm
+    run2fmap_xfm
         BOLD reference to fieldmap transform (optional)
     fieldmap
         Fieldmap image (optional)
@@ -206,7 +206,7 @@ def init_func_fit_reports_wf(
         'coreg_boldref',
         'bold_mask',
         'boldref2anat_xfm',
-        'orig2fmap_xfm',
+        'run2fmap_xfm',
         'run2boldref_xfm',
         'anat_preproc',
         'anat_mask',
@@ -394,7 +394,7 @@ def init_func_fit_reports_wf(
                 ('coreg_boldref', 'reference_image'),
             ]),
             (inputnode, to_fmap_xfm, [
-                ('orig2fmap_xfm', 'in1'),
+                ('run2fmap_xfm', 'in1'),
                 ('run2boldref_xfm', 'in2'),
             ]),
             (to_fmap_xfm, fmapref_boldref, [
@@ -626,7 +626,7 @@ def init_ds_bold_native_wf(
                 't2star',
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
-                'orig2fmap_xfm',
+                'run2fmap_xfm',
                 'run2boldref_xfm',
             ]
         ),
@@ -646,7 +646,7 @@ def init_ds_bold_native_wf(
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
             ('run2boldref_xfm', 'in3'),
-            ('orig2fmap_xfm', 'in4'),
+            ('run2fmap_xfm', 'in4'),
         ]),
     ])  # fmt:skip
 
@@ -766,7 +766,7 @@ def init_ds_bold_boldref_wf(
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
                 'run2boldref_xfm',
-                'orig2fmap_xfm',
+                'run2fmap_xfm',
             ]
         ),
         name='inputnode',
@@ -785,7 +785,7 @@ def init_ds_bold_boldref_wf(
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
             ('run2boldref_xfm', 'in3'),
-            ('orig2fmap_xfm', 'in4'),
+            ('run2fmap_xfm', 'in4'),
         ]),
     ])  # fmt:skip
 
@@ -846,7 +846,7 @@ def init_ds_volumes_wf(
                 # Transforms previously used to generate the outputs
                 'motion_xfm',
                 'run2boldref_xfm',
-                'orig2fmap_xfm',
+                'run2fmap_xfm',
             ]
         ),
         name='inputnode',
@@ -881,7 +881,7 @@ def init_ds_volumes_wf(
             ('source_files', 'in1'),
             ('motion_xfm', 'in2'),
             ('run2boldref_xfm', 'in3'),
-            ('orig2fmap_xfm', 'in4'),
+            ('run2fmap_xfm', 'in4'),
             ('boldref2anat_xfm', 'in5'),
             ('anat2std_xfm', 'in6'),
             ('template', 'in7'),

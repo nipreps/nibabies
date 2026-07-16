@@ -125,7 +125,7 @@ def collect_functional_derivatives(
 
     for xfm, qry in spec['transforms'].items():
         query = {**qry, **entities}
-        if xfm == 'boldref2fmap':
+        if xfm == 'run2fmap':
             query['to'] = fieldmap_id
         item = layout.get(return_type='filename', **query)
         if not item and xfm == 'hmc':

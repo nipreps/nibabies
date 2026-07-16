@@ -188,7 +188,7 @@ def init_bold_apply_wf(
                 'orig_bold_mask',
                 'run2anat_xfm',
                 'motion_xfm',
-                'orig2fmap_xfm',
+                'run2fmap_xfm',
                 'dummy_scans',
                 'boldref2anat_xfm',
                 'run2boldref_xfm',  # identity if not coregistering across BOLDs
@@ -253,7 +253,7 @@ def init_bold_apply_wf(
             ('run_boldref', 'inputnode.run_boldref'),
             ('bold_mask', 'inputnode.bold_mask'),
             ('motion_xfm', 'inputnode.motion_xfm'),
-            ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+            ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
             ('dummy_scans', 'inputnode.dummy_scans'),
         ]),
     ])  # fmt:skip
@@ -282,7 +282,7 @@ def init_bold_apply_wf(
             (inputnode, ds_bold_native_wf, [
                 ('orig_bold_mask', 'inputnode.bold_mask'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
-                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
         ])  # fmt:skip
@@ -298,7 +298,7 @@ def init_bold_apply_wf(
             (inputnode, bold_boldref_wf, [
                 ('boldref_template', 'inputnode.boldref_template'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
-                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
             ]),
@@ -323,7 +323,7 @@ def init_bold_apply_wf(
             (inputnode, ds_bold_boldref_wf, [
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
-                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
             ]),
         ])  # fmt:skip
 
@@ -389,7 +389,7 @@ def init_bold_apply_wf(
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
             ('coreg_boldref', 'inputnode.bold_ref_file'),
-            ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+            ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
             ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
             ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
         ]),
@@ -417,7 +417,7 @@ def init_bold_apply_wf(
                 ('coreg_boldref', 'inputnode.bold_ref'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
-                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
             (bold_native_wf, ds_bold_anat_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
@@ -457,7 +457,7 @@ def init_bold_apply_wf(
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
-                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
@@ -475,7 +475,7 @@ def init_bold_apply_wf(
                 ('coreg_boldref', 'inputnode.bold_ref'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
-                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
             (bold_native_wf, ds_bold_std_wf, [('outputnode.t2star_map', 'inputnode.t2star')]),
@@ -618,7 +618,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
-                ('orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),

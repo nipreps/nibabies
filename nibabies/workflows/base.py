@@ -918,7 +918,7 @@ tasks and sessions), the following preprocessing was performed.
                 ('outputnode.validation_report', 'inputnode.validation_report'),
                 ('outputnode.sdc_boldref', 'inputnode.sdc_boldref'),
                 ('outputnode.fieldmap', 'inputnode.fieldmap'),
-                ('outputnode.orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('outputnode.run2fmap_xfm', 'inputnode.run2fmap_xfm'),
             ]),
             (boldref_buffer, func_fit_reports_wf, [
                 ('bold_file', 'inputnode.source_file'),
@@ -1043,7 +1043,7 @@ tasks and sessions), the following preprocessing was performed.
                 # ('outputnode.coreg_boldref', 'inputnode.coreg_boldref'),
                 # ('outputnode.bold_mask', 'inputnode.bold_mask'),
                 ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
-                ('outputnode.orig2fmap_xfm', 'inputnode.orig2fmap_xfm'),
+                ('outputnode.run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('outputnode.dummy_scans', 'inputnode.dummy_scans'),
             ]),
             (boldref_buffer, bold_apply_wf, [

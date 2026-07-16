@@ -63,7 +63,7 @@ def init_bold_volumetric_resample_wf(
     motion_xfm
         List of affine transforms aligning each volume to ``bold_ref_file``.
         If undefined, no motion correction is performed.
-    orig2fmap_xfm
+    run2fmap_xfm
         Affine transform from ``bold_ref_file`` to the fieldmap reference image.
     fmap_ref
         Fieldmap reference image defining the valid field of view for the fieldmap.
@@ -99,7 +99,7 @@ def init_bold_volumetric_resample_wf(
                 # HMC
                 'motion_xfm',
                 # SDC
-                'orig2fmap_xfm',
+                'run2fmap_xfm',
                 'fmap_ref',
                 'fmap_coeff',
                 # boldref
@@ -171,7 +171,7 @@ def init_bold_volumetric_resample_wf(
 
     workflow.connect([
         (inputnode, distortion_params, [('bold_file', 'in_file')]),
-        (inputnode, fmap2target, [('orig2fmap_xfm', 'in1')]),
+        (inputnode, fmap2target, [('run2fmap_xfm', 'in1')]),
         (gen_ref, fmap_recon, [('out_file', 'target_ref_file')]),
         (boldref2target, fmap2target, [('out', 'in2')]),
         (boldref2target, inverses, [('out', 'inlist')]),
