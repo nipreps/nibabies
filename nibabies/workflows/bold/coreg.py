@@ -8,8 +8,10 @@ from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
+from nibabies import config
 from nibabies._types import Anatomical
 from nibabies.interfaces import DerivativesDataSink
+from nibabies.interfaces.bids import BIDSURI
 
 logger = logging.getLogger('nipype.workflow')
 
@@ -283,9 +285,21 @@ def init_bold_anat_coreg_wf(
                 run_without_submitting=True,
             )
             ds_boldref_mask.inputs.source_file = bold_files
+            template_sources = pe.Node(
+                BIDSURI(
+                    numinputs=1,
+                    dataset_links=config.execution.dataset_links,
+                    out_dir=str(output_dir),
+                ),
+                name='template_sources',
+                run_without_submitting=True,
+            )
             workflow.connect([
+                (inputnode, template_sources, [('run_boldrefs', 'in1')]),
                 (template_buffer, ds_boldref_template, [('boldref', 'in_file')]),
                 (template_buffer, ds_boldref_mask, [('mask', 'in_file')]),
+                (template_sources, ds_boldref_template, [('out', 'Sources')]),
+                (template_sources, ds_boldref_mask, [('out', 'Sources')]),
             ])  # fmt:skip
 
         reg_buffer = pe.Node(
@@ -406,6 +420,11 @@ def init_bold_anat_coreg_wf(
     )
 
     for i, (bold_file, bold_id) in enumerate(zip(bold_files, bold_ids, strict=True)):
+        select_boldref = pe.Node(
+            niu.Select(index=i), name=f'select_boldref_{bold_id}', run_without_submitting=True
+        )
+        workflow.connect(inputnode, 'run_boldrefs', select_boldref, 'inlist')
+
         # Save an identity transform for output space consistency
         ds_run2boldref = init_ds_registration_wf(
             source_file=bold_file,
@@ -416,24 +435,20 @@ def init_bold_anat_coreg_wf(
             name=f'ds_run2boldref_{bold_id}',
         )
         ds_run2boldref.inputs.inputnode.xform = identity_xfm
-        workflow.connect(inputnode, 'run_boldrefs', ds_run2boldref, 'inputnode.source_files')
+        workflow.connect(select_boldref, 'out', ds_run2boldref, 'inputnode.source_files')
 
         if boldref2anat_xfm[i]:
             setattr(merge_boldref2anat.inputs, f'in{i + 1}', boldref2anat_xfm[i])
             setattr(merge_fallbacks.inputs, f'in{i + 1}', False)
             continue
 
-        select_boldref = pe.Node(
-            niu.Select(index=i), name=f'select_boldref_{bold_id}', run_without_submitting=True
-        )
         reg_wf = init_bold_reg_wf(name=f'boldref_reg_{bold_id}_wf', **reg_kwargs)
         ds_boldref2anat = _ds_boldref2anat_wf(bold_file, bold_id)
 
         workflow.connect([
-            (inputnode, select_boldref, [('run_boldrefs', 'inlist')]),
             (select_boldref, reg_wf, [('out', 'inputnode.ref_bold_brain')]),
             (inputnode, reg_wf, anat_reg_inputs),
-            (inputnode, ds_boldref2anat, [('run_boldrefs', 'inputnode.source_files')]),
+            (select_boldref, ds_boldref2anat, [('out', 'inputnode.source_files')]),
             (reg_wf, ds_boldref2anat, [
                 ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
                 ('outputnode.metadata', 'inputnode.metadata'),
