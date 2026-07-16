@@ -97,6 +97,12 @@ dataset_description:
     mode: image
   - suffix: xfm
     extension: .txt
+    from: run
+    to: boldref
+    mode: image
+    desc: coreg
+  - suffix: xfm
+    extension: .txt
     from: orig
     to: boldref
     mode: image

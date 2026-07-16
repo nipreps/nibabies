@@ -119,14 +119,31 @@ def collect_functional_derivatives(
             continue
         derivs_cache[f'{key}_boldref'] = item[0] if len(item) == 1 else item
 
+    # coreg_boldref is the legacy derivative name for run_boldref
+    if 'coreg_boldref' in derivs_cache and 'run_boldref' not in derivs_cache:
+        derivs_cache['run_boldref'] = derivs_cache['coreg_boldref']
+
     for xfm, qry in spec['transforms'].items():
         query = {**qry, **entities}
-        if xfm == 'boldref2fmap':
+        if xfm == 'run2fmap':
             query['to'] = fieldmap_id
         item = layout.get(return_type='filename', **query)
+        if not item and xfm == 'hmc':
+            # legacy: from-orig_to-boldref (now from-orig_to-run)
+            item = layout.get(return_type='filename', **{**query, 'to': 'boldref'})
         if not item:
             continue
         derivs_cache[xfm] = item[0] if len(item) == 1 else item
+
+    # Session queries use {**entities, **qry} so spec null-values (run, task) override
+    # per-run entity values, ensuring only session-level files (lacking those entities) match.
+    for key, qry in spec.get('session', {}).items():
+        query = {**entities, **qry}
+        item = layout.get(return_type='filename', **query)
+        if not item:
+            continue
+        derivs_cache[f'session_{key}'] = item[0] if len(item) == 1 else item
+
     return derivs_cache
 
 
