@@ -85,7 +85,6 @@ MCRIBS_RECOMMEND_AGE_CAP = 3
 
 def _filter_short_bold_runs(bold_runs: list, min_vols: int = 5) -> list:
     """Exclude BOLD runs that are too short to process."""
-    import nibabel as nb
 
     filtered_bolds = []
     for run in bold_runs:
@@ -748,12 +747,13 @@ tasks and sessions), the following preprocessing was performed.
         from nibabies.utils.bids import is_valid_bold_template
 
         if not is_valid_bold_template(bold_runs, estimator_map, config.execution.layout):
-            LOGGER.error(
+            bold_refs = '\n'.join(f'  - {listify(series)[0]}' for series in bold_runs)
+            raise RuntimeError(
                 'Error when creating BOLD coregistration template: '
                 'Either only some runs have SDC applied, or all are SDC-less '
-                'runs but contain multiple phase-encoding directions.'
+                'runs but contain multiple phase-encoding directions.\n'
+                f'BOLD runs:\n{bold_refs}'
             )
-            bold_coreg_level = 'run'
 
     functional_caches = []
     for bold_series in bold_runs:

@@ -166,8 +166,6 @@ def init_bold_apply_wf(
     * :func:`~nibabies.workflows.bold.confounds.init_carpetplot_wf`
 
     """
-    if fieldmap_id is None:
-        fieldmap_id = None
 
     bold_file = bold_series[0]
     output_dir = str(config.execution.nibabies_dir)
