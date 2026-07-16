@@ -305,8 +305,12 @@ for details.
 sub-<subject_label>/[ses-<session_label>/]
   func/
     sub-<subject_label>_[specifiers]_desc-coreg_boldref.nii.gz
+    sub-<subject_label>_[specifiers]_from-run_to-boldref_mode-image_desc-coreg_xfm.txt
     sub-<subject_label>_[specifiers]_from-boldref_to-<anat>_mode-image_desc-coreg_xfm.txt
 ```
+
+The `from-run_to-boldref` transform is written for every run regardless of `--bold-coreg-level`;
+it is an identity transform when `--bold-coreg-level run` (the default).
 
 :::{note}
 Coregistration outputs are part of the *minimal* processing level.
