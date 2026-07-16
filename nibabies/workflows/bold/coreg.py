@@ -406,6 +406,18 @@ def init_bold_anat_coreg_wf(
     )
 
     for i, (bold_file, bold_id) in enumerate(zip(bold_files, bold_ids, strict=True)):
+        # Save an identity transform for output space consistency
+        ds_run2boldref = init_ds_registration_wf(
+            source_file=bold_file,
+            output_dir=output_dir,
+            source='run',
+            dest='boldref',
+            desc='coreg',
+            name=f'ds_run2boldref_{bold_id}',
+        )
+        ds_run2boldref.inputs.inputnode.xform = identity_xfm
+        workflow.connect(inputnode, 'run_boldrefs', ds_run2boldref, 'inputnode.source_files')
+
         if boldref2anat_xfm[i]:
             setattr(merge_boldref2anat.inputs, f'in{i + 1}', boldref2anat_xfm[i])
             setattr(merge_fallbacks.inputs, f'in{i + 1}', False)
