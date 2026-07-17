@@ -54,3 +54,11 @@ For further details, see [](usage.md#using-the-nibabies-wrapper).
 ## Bare-metal Installation
 
 If you would prefer to install this tool natively, you can refer the [Dockerfile](https://github.com/nipreps/nibabies/blob/master/Dockerfile) as a guide for all the dependencies.
+
+## System requirements
+
+*NiBabies* runs on a standard **x86-64** CPU and does **not** require a GPU or any other non-standard hardware.
+As a reasonable minimum for a single subject, our continuous integration uses **4 CPU cores** and **~14 GB of RAM**; additional cores reduce wall-clock time.
+
+When using a container (the recommended installation above), the operating system and every dependency are pinned to an exact version, so there is nothing else to install (image is ~3 GB in size).
+The exact versions shipped in the image are defined in the [Dockerfile](https://github.com/nipreps/nibabies/blob/master/Dockerfile), and the range of Python versions *NiBabies* is continuously tested against is defined in the [test workflow matrix](https://github.com/nipreps/nibabies/blob/master/.github/workflows/pytest.yml).

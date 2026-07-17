@@ -65,6 +65,47 @@ JLF-atlases/
 ...
 ```
 
+## Trying NiBabies on a public example dataset
+
+A small, low resolution single-subject infant dataset is publicly available and is the same one
+used in continuous integration (useful for a quick end-to-end trial and to familiarize with outputs).
+You can leverage [DataLad](https://www.datalad.org/) to download the data:
+
+```shell
+datalad clone https://gin.g-node.org/nipreps-data/bcp
+datalad get -d bcp -J4 bcp/sub-01
+datalad clone https://gin.g-node.org/nipreps-data/bcp-derivatives bcp/derivatives
+datalad get -d bcp/derivatives -J4 bcp/derivatives .
+```
+
+The command below runs the anatomical workflow using the precomputed derivatives
+included above (a [FreeSurfer license](usage.md#the-freesurfer-license) is
+required). It uses `--sloppy`, a reduced, fast configuration - remove it for a
+production-quality run.
+
+```shell
+nibabies-wrapper docker bcp/ bcp/derivatives/nibabies participant \
+    --fs-license-file $FS_LICENSE \
+    -w work/ \
+    --fs-subjects-dir bcp/derivatives/infant-freesurfer \
+    --derivatives precomputed=bcp/derivatives/bibsnet \
+    --output-spaces MNIInfant:cohort-1 func \
+    --age-months 2 \
+    --surface-recon-method infantfs \
+    --anat-only --sloppy
+```
+
+The run produces a [BIDS-Derivatives](outputs.md) dataset under
+`bcp/derivatives/nibabies/` plus a per-subject HTML QA report.
+
+### Benchmarks
+On the CI machine (4 vCPU / 15 GB RAM), the full demo job — the anatomical, full,
+and T2-only configurations in sequence in `--sloppy` mode — completes in roughly
+**10 minutes**, so a single `--anat-only --sloppy` run takes only a few minutes. A
+**production** run (without `--sloppy`, with full surface reconstruction) for one
+subject typically takes on the order of **several hours**, depending on the
+enabled options, available resources, and resolution plus number of acquisitions in a dataset.
+
 ## More context on releases
 
 Like other *NiPreps*, *NiBabies* follows Calendar Versioning ([CalVer](https://calver.org/)), in format of `YY.MINOR.MICRO`.
