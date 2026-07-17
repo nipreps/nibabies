@@ -383,7 +383,7 @@ jobs:
               --nthreads 4 -vv --age-months 2 \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}/derivatives/bibsnet \
-              --output-layout bids
+              --output-layout bids --cifti-output
     - run:
         name: Checking outputs of full nibabies run
         command: |
@@ -429,7 +429,7 @@ jobs:
               --nthreads 4 -vv --age-months 2 \
               --surface-recon-method infantfs \
               --derivatives precomputed=/tmp/data/${DATASET}-t2only/derivatives/bibsnet \
-              --output-layout bids --anat-only --cifti-output
+              --output-layout bids --anat-only
     - run:
         name: Checking outputs of T2-only nibabies anat
         command: |
