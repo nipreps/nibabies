@@ -26,8 +26,6 @@ from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 from niworkflows.interfaces.header import ValidateImage
 from niworkflows.utils.misc import pass_dummy_scans
 
-from nibabies.interfaces.reference import DetectReferenceFrame
-
 DEFAULT_MEMORY_MIN_GB = 0.01
 
 
@@ -129,35 +127,25 @@ using a custom methodology of *NiBabies*, for use in head motion correction.
             ('outputnode.validation_report', 'validation_report'),
         ])
     ])  # fmt:skip
-    # Drop frames to avoid startle when MRI begins acquiring
-    if ref_frame_start != 'auto':
-        select_frames = pe.Node(
-            niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
-            name='select_frames',
-        )
-        select_frames.inputs.ref_frame_start = ref_frame_start
 
-        gen_avg = pe.Node(RobustAverage(), name='gen_avg', mem_gb=1)
-        workflow.connect([
-            (validation_and_dummies_wf, gen_avg, [
-                ('outputnode.bold_file', 'in_file'),
-            ]),
-            (validation_and_dummies_wf, select_frames, [
-                ('outputnode.bold_file', 'in_file'),
-                ('outputnode.skip_vols', 'dummy_scans'),
-            ]),
-            (select_frames, gen_avg, [('t_mask', 't_mask')]),
-            (gen_avg, outputnode, [('out_file', 'boldref')]),
-        ])  # fmt:skip
-    else:  # Select a single low-motion frame
-        detect_reference_frame = pe.Node(DetectReferenceFrame(), name='detect_reference_frame')
-        workflow.connect([
-            (validation_and_dummies_wf, detect_reference_frame, [
-                ('outputnode.bold_file', 'in_file'),
-                ('outputnode.skip_vols', 'dummy_scans'),
-            ]),
-            (detect_reference_frame, outputnode, [('out_file', 'boldref')]),
-        ])  # fmt:skip
+    select_frames = pe.Node(
+        niu.Function(function=_select_frames, output_names=['start_frame', 't_mask']),
+        name='select_frames',
+    )
+    select_frames.inputs.ref_frame_start = ref_frame_start
+
+    gen_avg = pe.Node(RobustAverage(mc_method='FSL'), name='gen_avg', mem_gb=1)
+    workflow.connect([
+        (validation_and_dummies_wf, gen_avg, [
+            ('outputnode.bold_file', 'in_file'),
+        ]),
+        (validation_and_dummies_wf, select_frames, [
+            ('outputnode.bold_file', 'in_file'),
+            ('outputnode.skip_vols', 'dummy_scans'),
+        ]),
+        (select_frames, gen_avg, [('t_mask', 't_mask')]),
+        (gen_avg, outputnode, [('out_file', 'boldref')]),
+    ])  # fmt:skip
     return workflow
 
 
