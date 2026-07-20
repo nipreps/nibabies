@@ -367,6 +367,8 @@ class execution(_Config):
     """A dictionary of BIDS selection filters."""
     boilerplate_only = False
     """Only generate a boilerplate."""
+    compress_svgs = True
+    """Compress reportlet SVGs to reduce report size (only viewable in a browser)."""
     copy_derivatives = False
     """Copy any found derivatives into the output directory."""
     sloppy = False

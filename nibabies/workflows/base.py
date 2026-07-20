@@ -609,7 +609,7 @@ It is released under the [CC0]\
             ])  # fmt:skip
 
     if config.workflow.anat_only:
-        return clean_datasinks(workflow)
+        return configure_workflow(workflow)
 
     fmap_estimators, estimator_map = map_fieldmap_estimation(
         layout=config.execution.layout,
@@ -1100,7 +1100,7 @@ tasks and sessions), the following preprocessing was performed.
                     ]),
                 ])  # fmt:skip
 
-    return clean_datasinks(workflow)
+    return configure_workflow(workflow)
 
 
 def _subject_session_id(subject_id: str, session_id: str | None) -> str:
@@ -1121,15 +1121,28 @@ def _subject_session_id(subject_id: str, session_id: str | None) -> str:
     return '_'.join(entities)
 
 
-def clean_datasinks(workflow: pe.Workflow) -> pe.Workflow:
-    # Overwrite ``out_path_base`` of smriprep's DataSinks
-    for node in workflow.list_node_names():
-        if node.split('.')[-1].startswith('ds_'):
-            workflow.get_node(node).interface.out_path_base = ''
-            workflow.get_node(node).interface.inputs.base_directory = config.execution.nibabies_dir
+def configure_workflow(workflow: pe.Workflow) -> pe.Workflow:
+    """
+    Per-node configuration of a workflow once constructed.
+
+    Specifically:
+    - Alters DataSink nodes to write to output directory
+    - Adds config hash to DataSink nodes if multiverse layout is requested
+    - Compress SVG reportlets if requested and supported
+    """
+    compress = 'auto' if config.execution.compress_svgs else False
+    for node in workflow._get_all_nodes():
+        # Overwrite ``out_path_base`` of smriprep's DataSinks
+        if node.name.startswith('ds_'):
+            node.interface.out_path_base = ''
+            node.interface.inputs.base_directory = config.execution.nibabies_dir
 
             if config.execution.output_layout == 'multiverse':
-                workflow.get_node(node).interface.inputs.hash = config.execution.parameters_hash
+                node.interface.inputs.hash = config.execution.parameters_hash
+
+        # Reportlet-generating nodes expose ``compress_report`` regardless of node name
+        if 'compress_report' in node.interface.inputs.traits():
+            node.interface.inputs.compress_report = compress
     return workflow
 
 
