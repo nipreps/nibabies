@@ -388,3 +388,31 @@ def test_get_estimator_multiple_b0fields(tmp_path):
     # Always get an iterable; don't care if it's a list or tuple
     assert get_estimator(layout, bold_files[0]) == ['epi', 'phasediff']
     assert get_estimator(layout, bold_files[1]) == ('epi',)
+
+
+@pytest.mark.parametrize(
+    ('compress_svgs', 'expected'),
+    [(True, 'auto'), (False, False)],
+)
+def test_configure_workflow_compress_svgs(compress_svgs, expected):
+    """``configure_workflow`` propagates the compress-svgs switch to reportlet nodes."""
+    import nipype.pipeline.engine as pe
+    from nipype.interfaces import utility as niu
+    from nireports.interfaces.reporting.base import SimpleBeforeAfterRPT
+
+    from ..base import configure_workflow
+
+    wf = pe.Workflow(name='test_compress_svgs')
+    wf.add_nodes(
+        [
+            pe.Node(SimpleBeforeAfterRPT(), name='rpt'),
+            pe.Node(niu.IdentityInterface(fields=['x']), name='plain'),
+        ]
+    )
+
+    with patch.object(config.execution, 'compress_svgs', compress_svgs):
+        configure_workflow(wf)
+
+    assert wf.get_node('rpt').interface.inputs.compress_report == expected
+    # Nodes without the trait are left untouched
+    assert 'compress_report' not in wf.get_node('plain').interface.inputs.traits()
