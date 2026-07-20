@@ -217,10 +217,10 @@ def init_bold_apply_wf(
                 'std_space',
                 'std_resolution',
                 'std_cohort',
-                # MNIInfant <cohort> warp, for CIFTI use
-                'anat2mniinfant_xfm',
-                'mniinfant2anat_xfm',
-                'mniinfant_mask',
+                # MNI152NLin6Asym warp, for CIFTI use
+                'anat2mni6_xfm',
+                # MNI152NLin2009cAsym inverse warp, for carpetplotting (NOT USED)
+                # 'mni2009c2anat_xfm',
             ],
         ),
         name='inputnode',
@@ -528,26 +528,38 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     cifti_output = config.workflow.cifti_output
     if cifti_output:
+        import templateflow.api as tf
         from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+        from niworkflows.interfaces.nibabel import ApplyMask
 
-        from nibabies.workflows.bold.alignment import (
-            init_subcortical_mni_alignment_wf,
-            init_subcortical_rois_wf,
-        )
+        from nibabies.interfaces.reports import SubcorticalAlignmentReport
         from nibabies.workflows.bold.resampling import (
             init_bold_fsLR_resampling_wf,
             init_bold_grayords_wf,
             init_goodvoxels_bold_mask_wf,
         )
 
-        bold_MNIInfant_wf = init_bold_volumetric_resample_wf(
+        mni6_res = 2 if cifti_output == '91k' else 1
+        mni6_mask = tf.get(
+            'MNI152NLin6Asym', resolution=mni6_res, desc='brain', suffix='mask', raise_empty=True
+        )
+        mni6_t1w = tf.get(
+            'MNI152NLin6Asym', resolution=mni6_res, desc='brain', suffix='T1w', raise_empty=True
+        )
+        subcortical_labels = tf.get(
+            'MNI152NLin6Asym', resolution=mni6_res, atlas='HCP', suffix='dseg', raise_empty=True
+        )
+
+        bold_MNI6_wf = init_bold_volumetric_resample_wf(
             metadata=all_metadata[0],
             fieldmap_id=fieldmap_id if not multiecho else None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb,
             jacobian='fmap-jacobian' not in config.workflow.ignore,
-            name='bold_MNIInfant_wf',
+            name='bold_MNI6_wf',
         )
+        bold_MNI6_wf.inputs.inputnode.target_ref_file = mni6_mask
+        bold_MNI6_wf.inputs.inputnode.target_mask = mni6_mask
 
         bold_fsLR_resampling_wf = init_bold_fsLR_resampling_wf(
             grayord_density=cifti_output,
@@ -573,20 +585,11 @@ A "goodvoxels" mask was applied during volume-to-surface sampling in fsLR space,
 excluding voxels whose time-series have a locally high coefficient of variation.
 """
 
-        # MNIInfant -> MNI6 registrations (per ROI)
-        MNIInfant_aseg = pe.Node(
-            ApplyTransforms(interpolation='MultiLabel'),
-            name='MNIInfant_aseg',
-            mem_gb=1,
-        )
-
-        subcortical_rois_wf = init_subcortical_rois_wf()
-        subcortical_mni_alignment_wf = init_subcortical_mni_alignment_wf()
-
         bold_grayords_wf = init_bold_grayords_wf(
             grayord_density=cifti_output,
             repetition_time=all_metadata[0]['RepetitionTime'],
         )
+        bold_grayords_wf.inputs.inputnode.bold_labels = subcortical_labels
 
         ds_bold_cifti = pe.Node(
             DerivativesDataSink(
@@ -604,15 +607,30 @@ excluding voxels whose time-series have a locally high coefficient of variation.
         )
         ds_bold_cifti.inputs.source_file = bold_file
 
-        mniinfant_res = 2 if cifti_output == '91k' else 1
-        inputnode.inputs.mniinfant_mask = get_MNIInfant_mask(spaces, mniinfant_res)
+        boldref2mni6 = pe.Node(niu.Merge(2), name='boldref2mni6')
+        boldref_mni6 = pe.Node(
+            ApplyTransforms(interpolation='LanczosWindowedSinc', reference_image=mni6_mask),
+            name='boldref_mni6',
+            mem_gb=1,
+        )
+        boldref_mni6_mask = pe.Node(ApplyMask(in_mask=mni6_mask), name='boldref_mni6_mask')
+        subcortical_rpt = pe.Node(
+            SubcorticalAlignmentReport(template=mni6_t1w, labels=subcortical_labels),
+            name='subcortical_rpt',
+        )
+        ds_report_subcortical = pe.Node(
+            DerivativesDataSink(
+                desc='subcortical',
+                datatype='figures',
+                dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+            ),
+            name='ds_report_subcortical',
+            run_without_submitting=True,
+        )
 
         workflow.connect([
-            # Resample BOLD to MNI152NLin6Asym, may duplicate bold_std_wf above
-            (inputnode, bold_MNIInfant_wf, [
-                ('mniinfant_mask', 'inputnode.target_ref_file'),
-                ('mniinfant_mask', 'inputnode.target_mask'),
-                ('anat2mniinfant_xfm', 'inputnode.anat2std_xfm'),
+            (inputnode, bold_MNI6_wf, [
+                ('anat2mni6_xfm', 'inputnode.anat2std_xfm'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
                 ('coreg_boldref', 'inputnode.bold_ref_file'),
@@ -620,32 +638,13 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('boldref2anat_xfm', 'inputnode.boldref2anat_xfm'),
                 ('run2boldref_xfm', 'inputnode.run2boldref_xfm'),
             ]),
-            (bold_native_wf, bold_MNIInfant_wf, [
+            (bold_native_wf, bold_MNI6_wf, [
                 ('outputnode.bold_minimal', 'inputnode.bold_file'),
                 ('outputnode.motion_xfm', 'inputnode.motion_xfm'),
             ]),
-            (inputnode, MNIInfant_aseg, [
-                ('anat2mniinfant_xfm', 'transforms'),
-                ('anat_aseg', 'input_image'),
+            (bold_MNI6_wf, bold_grayords_wf, [
+                ('outputnode.bold_file', 'inputnode.bold_std'),
             ]),
-            (bold_MNIInfant_wf, MNIInfant_aseg, [
-                ('outputnode.resampling_reference', 'reference_image'),
-            ]),
-            (bold_MNIInfant_wf, subcortical_mni_alignment_wf, [
-                ('outputnode.bold_file', 'inputnode.MNIInfant_bold'),
-            ]),
-            (MNIInfant_aseg, subcortical_rois_wf, [
-                ('output_image', 'inputnode.MNIInfant_aseg'),
-            ]),
-            (subcortical_rois_wf, subcortical_mni_alignment_wf, [
-                ('outputnode.MNIInfant_rois', 'inputnode.MNIInfant_rois'),
-                ('outputnode.MNI152_rois', 'inputnode.MNI152_rois'),
-            ]),
-            (subcortical_mni_alignment_wf, bold_grayords_wf, [
-                ('outputnode.subcortical_volume', 'inputnode.bold_std'),
-                ('outputnode.subcortical_labels', 'inputnode.bold_labels'),
-            ]),
-
             # Resample anat-space BOLD to fsLR surfaces
             (inputnode, bold_fsLR_resampling_wf, [
                 ('white', 'inputnode.white'),
@@ -658,9 +657,6 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             (bold_anat_wf, bold_fsLR_resampling_wf, [
                 ('outputnode.bold_file', 'inputnode.bold_file'),
             ]),
-            # (bold_MNI6_wf, bold_grayords_wf, [
-            #     ('outputnode.bold_file', 'inputnode.bold_std'),
-            # ]),
             (bold_fsLR_resampling_wf, bold_grayords_wf, [
                 ('outputnode.bold_fsLR', 'inputnode.bold_fsLR'),
             ]),
@@ -668,6 +664,13 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('outputnode.dtseries', 'in_file'),
                 (('outputnode.dtseries_metadata', _read_json), 'meta_dict'),
             ]),
+            (inputnode, boldref2mni6, [('anat2mni6_xfm', 'in1')]),
+            (inputnode, boldref2mni6, [('boldref2anat_xfm', 'in2')]),
+            (inputnode, boldref_mni6, [('coreg_boldref', 'input_image')]),
+            (boldref2mni6, boldref_mni6, [('out', 'transforms')]),
+            (boldref_mni6, boldref_mni6_mask, [('output_image', 'in_file')]),
+            (boldref_mni6_mask, subcortical_rpt, [('out_file', 'bold')]),
+            (subcortical_rpt, ds_report_subcortical, [('out_report', 'in_file')]),
         ])  # fmt:skip
 
     bold_confounds_wf = init_bold_confs_wf(
@@ -791,22 +794,3 @@ def _read_json(in_file):
     from pathlib import Path
 
     return loads(Path(in_file).read_text())
-
-
-def get_MNIInfant_mask(spaces: 'SpatialReferences', res: str | int) -> str:
-    """Parse spaces and return matching MNIInfant space, including cohort."""
-    import templateflow.api as tf
-
-    for ref in spaces.references:
-        if ref.space == 'MNIInfant' and f'res-{res}' in str(ref):
-            return str(
-                tf.get(
-                    'MNIInfant',
-                    cohort=ref.spec['cohort'],
-                    resolution=res,
-                    desc='brain',
-                    suffix='mask',
-                )
-            )
-
-    raise FileNotFoundError(f'MNIInfant mask (resolution {res}) not found.')

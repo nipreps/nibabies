@@ -10,6 +10,8 @@ def fetch_MNI6():
 
     tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz
     tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-02_T1w.nii.gz
+    tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-01_desc-brain_T1w.nii.gz
+    tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-02_desc-brain_T1w.nii.gz
     tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-01_desc-brain_mask.nii.gz
     tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-02_desc-brain_mask.nii.gz
     tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-02_atlas-HCP_dseg.nii.gz
@@ -19,6 +21,7 @@ def fetch_MNI6():
     tf.get(template, resolution=(1, 2), desc=None, suffix='T1w')
     tf.get(template, resolution=(1, 2), desc='brain', suffix='mask')
     # CIFTI
+    tf.get(template, resolution=(1, 2), desc='brain', suffix='T1w')
     tf.get(template, resolution=2, atlas='HCP', suffix='dseg')
 
 

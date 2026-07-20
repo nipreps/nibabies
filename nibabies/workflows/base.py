@@ -534,7 +534,7 @@ It is released under the [CC0]\
 
     reg_sphere = f'sphere_reg_{"msm" if msm_sulc else "fsLR"}'
     template_iterator_wf = None
-    select_MNIInfant_xfm = None
+    select_mni6_xfm = None
     anat_apply_wf = None
     std_output_spaces = spaces.cached.get_spaces(nonstandard=False, dim=(3,))
     if config.workflow.level == 'full':
@@ -572,21 +572,14 @@ It is released under the [CC0]\
                 ]),
             ])  # fmt:skip
 
-        if cifti_output and 'MNIInfant' in [ref.space for ref in spaces.references]:
-            mniinfant_res = 2 if config.workflow.cifti_output == '91k' else 1
-
-            select_MNIInfant_xfm = pe.Node(
-                KeySelect(
-                    fields=['anat2std_xfm', 'std2anat_xfm'],
-                    key=get_MNIInfant_key(spaces, mniinfant_res),
-                ),
-                name='select_MNIInfant_xfm',
+        if cifti_output:
+            select_mni6_xfm = pe.Node(
+                KeySelect(fields=['anat2std_xfm'], key='MNI152NLin6Asym'),
+                name='select_mni6_xfm',
                 run_without_submitting=True,
             )
-
             workflow.connect([
-                (anat_fit_wf, select_MNIInfant_xfm, [
-                    ('outputnode.std2anat_xfm', 'std2anat_xfm'),
+                (anat_fit_wf, select_mni6_xfm, [
                     ('outputnode.anat2std_xfm', 'anat2std_xfm'),
                     ('outputnode.template', 'keys'),
                 ]),
@@ -1078,11 +1071,10 @@ tasks and sessions), the following preprocessing was performed.
                 ]),
             ])  # fmt:skip
 
-        if select_MNIInfant_xfm is not None:
+        if select_mni6_xfm is not None:
             workflow.connect([
-                (select_MNIInfant_xfm, bold_apply_wf, [
-                    ('std2anat_xfm', 'inputnode.mniinfant2anat_xfm'),
-                    ('anat2std_xfm', 'inputnode.anat2mniinfant_xfm')
+                (select_mni6_xfm, bold_apply_wf, [
+                    ('anat2std_xfm', 'inputnode.anat2mni6_xfm'),
                 ]),
             ])  # fmt:skip
 
@@ -1305,15 +1297,6 @@ def get_estimator(layout, fname):
         field_source = get_identifier(intended_rel)
 
     return field_source
-
-
-def get_MNIInfant_key(spaces: SpatialReferences, res: str | int) -> str:
-    """Parse spaces and return matching MNIInfant space, including cohort."""
-    for ref in spaces.references:
-        if ref.space == 'MNIInfant' and f'res-{res}' in str(ref):
-            return ref.fullname
-
-    raise KeyError(f'MNIInfant (resolution {res}) not found in SpatialReferences: {spaces}')
 
 
 def _get_wf_name(bold_fname, prefix):

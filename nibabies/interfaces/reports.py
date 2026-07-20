@@ -407,3 +407,92 @@ def get_world_pedir(ornt, pe_direction):
         f'Orientation: {ornt}; PE dir: {pe_direction}'
     )
     return 'Could not be determined - assuming Anterior-Posterior'
+
+
+class _SubcorticalAlignmentReportInputSpec(BaseInterfaceInputSpec):
+    template = File(exists=True, mandatory=True, desc='standard-space anatomical underlay (T1w)')
+    bold = File(exists=True, mandatory=True, desc='BOLD reference in standard space')
+    labels = File(exists=True, mandatory=True, desc='subcortical atlas label volume')
+    cuts = traits.Int(7, usedefault=True, desc='number of cuts per axis')
+
+
+class _SubcorticalAlignmentReportOutputSpec(TraitedSpec):
+    out_report = File(exists=True, desc='before/after flicker SVG reportlet')
+
+
+class SubcorticalAlignmentReport(SimpleInterface):
+    """Flickering before/after of the subcortical atlas parcels.
+
+    The parcels (colorized by structure) are overlaid first on the standard template and
+    then on the BOLD reference resampled to the same space, so the flicker shows whether
+    the normalized functional data sits under the matching parcels. TODO: upstream to
+    nireports.
+    """
+
+    input_spec = _SubcorticalAlignmentReportInputSpec
+    output_spec = _SubcorticalAlignmentReportOutputSpec
+
+    def _run_interface(self, runtime):
+        self._results['out_report'] = _subcortical_alignment_report(
+            self.inputs.template,
+            self.inputs.bold,
+            self.inputs.labels,
+            cuts=self.inputs.cuts,
+            out_file=str(Path(runtime.cwd) / 'subcortical_alignment.svg'),
+        )
+        return runtime
+
+
+def _subcortical_alignment_report(template, bold, labels, cuts=7, out_file=None):
+    from uuid import uuid4
+
+    import nibabel as nb
+    import numpy as np
+    from nilearn.plotting import plot_roi
+    from niworkflows.viz.utils import compose_view, cuts_from_bbox, extract_svg
+    from svgutils.transform import fromstring
+
+    lab_img = nb.load(labels)
+    lab = np.asanyarray(lab_img.dataobj)
+    # Remap the sparse, uneven label values to consecutive integers for distinct colors
+    structures = sorted({int(v) for v in np.unique(lab)} - {0})
+    lut = np.zeros(int(structures[-1]) + 1 if structures else 1, dtype='int16')
+    for new, old in enumerate(structures, start=1):
+        lut[old] = new
+    labels_c = nb.Nifti1Image(lut[lab], lab_img.affine, lab_img.header)
+    vmax = max(len(structures), 1)
+
+    cut_coords = cuts_from_bbox(lab_img, cuts=cuts)
+
+    def _panels(bg, div_id, title):
+        panels = []
+        for i, mode in enumerate(('z', 'x', 'y')):
+            display = plot_roi(
+                labels_c,
+                bg_img=bg,
+                display_mode=mode,
+                cut_coords=cut_coords[mode],
+                cmap='tab20',
+                vmin=0,
+                vmax=vmax,
+                alpha=0.7,
+                annotate=True,
+                draw_cross=False,
+                colorbar=False,
+                black_bg=True,
+            )
+            if i == 0:
+                display.title(title, size=10)
+            svg = extract_svg(display)
+            display.close()
+            svg = svg.replace('figure_1', f'{div_id}-{mode}-{uuid4()}', 1)
+            panels.append(fromstring(svg))
+        return panels
+
+    out_file = str(Path(out_file or 'subcortical_alignment.svg').absolute())
+    compose_view(
+        _panels(template, 'before', 'template'),
+        _panels(bold, 'after', 'BOLD (MNI152NLin6Asym)'),
+        out_file=out_file,
+    )
+    return out_file
