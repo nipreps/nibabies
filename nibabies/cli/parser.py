@@ -370,6 +370,13 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         help='treat dataset as longitudinal - may increase runtime',
     )
     g_conf.add_argument(
+        '--compress-svgs',
+        action=BooleanOptionalAction,
+        default=True,
+        help='Compress reportlet SVGs to reduce report size (only viewable in a browser). '
+        'Use --no-compress-svgs to keep SVGs universally viewable.',
+    )
+    g_conf.add_argument(
         '--output-spaces',
         nargs='*',
         action=OutputReferencesAction,
