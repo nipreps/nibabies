@@ -107,6 +107,9 @@ sections:
       effects and can inform decisions about feature orthogonalization prior to
       confound regression.
     subtitle: Correlations among nuisance regressors
+  - bids: {datatype: figures, desc: fslr, suffix: bold}
+    caption: Mean BOLD signal sampled onto the <code>fsLR</code> cortical surfaces, shown on the inflated mesh. Use this to verify that the functional time series was projected to the surface with sensible coverage.
+    subtitle: BOLD on fsLR surfaces
 - name: About
   nested: true
   reportlets:

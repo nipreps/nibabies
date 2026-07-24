@@ -93,21 +93,6 @@ def fetch_MNIInfant(cohort=1):
     tf.get(template, cohort=cohort, desc='brain', suffix='mask')
 
 
-def fetch_dhcpAsym(cohort=42):
-    """
-    Expected templates:
-
-    tpl-dhcpAsym_cohort-42_hemi-L_den-32k_sphere.surf.gii
-    tpl-dhcpAsym_cohort-42_hemi-R_den-32k_sphere.surf.gii
-    tpl-dhcpAsym_cohort-42_space-fsaverage_hemi-L_den-41k_desc-reg_sphere.surf.gii
-    tpl-dhcpAsym_cohort-42_space-fsaverage_hemi-R_den-41k_desc-reg_sphere.surf.gii
-    """
-    template = 'dhcpAsym'
-
-    tf.get(template, cohort=cohort, density='32k', desc=None, suffix='sphere')
-    tf.get(template, cohort=cohort, space='fsaverage', density='41k', desc='reg', suffix='sphere')
-
-
 def fetch_MNI2009():
     template = 'MNI152NLin2009cAsym'
 
@@ -123,7 +108,6 @@ def main():
     fetch_fsaverage()
     fetch_fsLR()
     fetch_MNIInfant()
-    fetch_dhcpAsym()
     fetch_MNI2009()
 
 
