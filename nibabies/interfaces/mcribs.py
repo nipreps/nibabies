@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from typing import ClassVar
 
 from nipype.interfaces.base import (
     CommandLine,
@@ -107,7 +108,7 @@ class MCRIBReconAll(CommandLine):
     output_spec = MCRIBReconAllOutputSpec
     _no_run = False
 
-    _expected_files = {
+    _expected_files: ClassVar[dict] = {
         'surfrecon': {
             'meshes': (
                 'pial-lh-reordered.vtp',
@@ -231,7 +232,6 @@ class MCRIBReconAll(CommandLine):
                 (root / 'freesurfer' / sid / d).mkdir(**mkdir_kw)
 
         # TODO?: T1w -> <subject_id>/RawT1RadiologicalIsotropic/<subjectid>.nii.gz
-        return
 
     def _run_interface(self, runtime):
         # if users wish to preserve their runs

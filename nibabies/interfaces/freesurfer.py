@@ -79,9 +79,9 @@ class InfantReconAll(CommandLine):
             logdir = Path(self.inputs.outdir) / 'log'
             if logdir.exists():
                 try:
-                    log = sorted(logdir.glob('summary.*.log'))[0]
+                    log = min(logdir.glob('summary.*.log'))
                     self._no_run = 'Successfully finished infant_recon_all' in log.read_text()
-                except IndexError:
+                except ValueError:
                     pass
                 if self._no_run:
                     return 'echo infant_recon_all: nothing to do'

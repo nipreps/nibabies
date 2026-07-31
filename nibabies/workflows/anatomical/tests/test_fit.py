@@ -103,9 +103,11 @@ def test_dual_anat_fit_wf(monkeypatch, tmp_path, recon_method, use_aseg, skull_s
 
         # M-CRIB-S requires aseg to initialize
         if recon_method == 'mcribs' and not use_aseg:
-            with patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning):
-                with pytest.raises(NotImplementedError, match='segmentation is required'):
-                    init_infant_anat_fit_wf(**kwargs)
+            with (
+                patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning),
+                pytest.raises(NotImplementedError, match='segmentation is required'),
+            ):
+                init_infant_anat_fit_wf(**kwargs)
             return
 
         with patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning):
@@ -162,16 +164,20 @@ def test_single_anat_fit_wf(
 
         # M-CRIB-S requires a T2w dataset
         if recon_method == 'mcribs' and ref_anat == 'T1w':
-            with patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning):
-                with pytest.raises(ValueError, match='requires use of a T2w image'):
-                    init_infant_single_anat_fit_wf(**kwargs)
+            with (
+                patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning),
+                pytest.raises(ValueError, match='requires use of a T2w image'),
+            ):
+                init_infant_single_anat_fit_wf(**kwargs)
             return
 
         # M-CRIB-S requires aseg to initialize
         if recon_method == 'mcribs' and not use_aseg:
-            with patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning):
-                with pytest.raises(NotImplementedError, match='segmentation is required'):
-                    init_infant_single_anat_fit_wf(**kwargs)
+            with (
+                patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning),
+                pytest.raises(NotImplementedError, match='segmentation is required'),
+            ):
+                init_infant_single_anat_fit_wf(**kwargs)
             return
 
         with patch('smriprep.utils.misc.fs_isRunning', new=mock_fs_isRunning):

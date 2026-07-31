@@ -100,10 +100,10 @@ def _build_parser():
         return int(digits) * scale[units[0]]
 
     def _drop_sub(value):
-        return value[4:] if value.startswith('sub-') else value
+        return value.removeprefix('sub-')
 
     def _drop_ses(value):
-        return value[4:] if value.startswith('ses-') else value
+        return value.removeprefix('ses-')
 
     def _process_value(value):
         import bids
@@ -874,7 +874,6 @@ applied."""
                 )
             case _:
                 config.loggers.cli.warning('Unknown output layout %s', output_layout)
-                pass
 
     nibabies_dir = config.execution.nibabies_dir
 
