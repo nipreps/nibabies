@@ -181,7 +181,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
     # Limit validation only to data from requested participants
     if participant_label:
         all_subs = {s.name[4:] for s in bids_dir.glob('sub-*')}
-        selected_subs = {s[4:] if s.startswith('sub-') else s for s in participant_label}
+        selected_subs = {s.removeprefix('sub-') for s in participant_label}
         bad_labels = selected_subs.difference(all_subs)
         if bad_labels:
             error_msg = (
@@ -232,8 +232,7 @@ def parse_bids_for_age_months(
     2) Check `sub-<subject_id>/sub-<subject_id>_sessions.tsv`
     3) Check `<root>/participants.tsv`
     """
-    if subject_id.startswith('sub-'):
-        subject_id = subject_id[4:]
+    subject_id = subject_id.removeprefix('sub-')
     if session_id and session_id.startswith('ses-'):
         session_id = session_id[4:]
 
@@ -337,7 +336,7 @@ def _get_age_units(bids_json: Path) -> ty.Literal['weeks', 'months', 'years', Fa
     return False
 
 
-def age_to_months(age: int | float, units: ty.Literal['weeks', 'months', 'years']) -> int:
+def age_to_months(age: float, units: ty.Literal['weeks', 'months', 'years']) -> int:
     """
     Convert a given age, in either "weeks", "months", or "years", into months.
 

@@ -77,7 +77,7 @@ def _mask_gifti(in_file, mask_file, *, threshold=None, metadata=None, newpath=No
 
     # Finalize by adding additional metadata to file
     metad = {
-        **{'CreatedBy': f'MaskGifti (NiBabies-{__version__})'},
+        'CreatedBy': f'MaskGifti (NiBabies-{__version__})',
         **metadata,
     }
     if int(nb.__version__[0]) >= 4:  # API will change in 4.0.0

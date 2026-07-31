@@ -1073,9 +1073,13 @@ class CiftiSeparate(WBCommand):
     input_spec = CiftiSeparateInputSpec
     output_spec = CiftiSeparateOutputSpec
     _cmd = 'wb_command -cifti-separate'
-    _label_roi_files = []
-    _metric_roi_files = []
-    _volume_roi_files = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Per-instance accumulators (avoid shared mutable class state across runs)
+        self._label_roi_files = []
+        self._metric_roi_files = []
+        self._volume_roi_files = []
 
     def _format_arg(self, name, trait_spec, value):
         if name in ('label', 'metric', 'volume'):
