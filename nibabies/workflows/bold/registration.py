@@ -315,7 +315,7 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
             LOGGER.warning('Initializing BBR with header; affine fallback disabled')
             use_bbr = True
 
-    fssource = pe.Node(FreeSurferSource(), name='fssource')
+    fssource = pe.Node(FreeSurferSource(), name='fssource', run_without_submitting=True)
 
     mri_coreg = pe.Node(
         MRICoreg(dof=bold2anat_dof, sep=[4], ftol=0.0001, linmintol=0.01),
