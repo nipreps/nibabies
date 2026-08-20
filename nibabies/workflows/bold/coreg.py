@@ -314,7 +314,8 @@ def init_bold_anat_coreg_wf(
             boldref_reg_wf = init_bold_reg_wf(name='boldref_reg_wf', **reg_kwargs)
             workflow.connect([
                 (template_buffer, boldref_reg_wf, [('boldref', 'inputnode.ref_bold_brain')]),
-                (inputnode, boldref_reg_wf, anat_reg_inputs),
+                # workflow connect edits the list in place, so make a copy
+                (inputnode, boldref_reg_wf, list(anat_reg_inputs)),
                 (boldref_reg_wf, reg_buffer, [
                     ('outputnode.itk_bold_to_anat', 'boldref2anat'),
                     ('outputnode.fallback', 'fallback'),
@@ -447,7 +448,8 @@ def init_bold_anat_coreg_wf(
 
         workflow.connect([
             (select_boldref, reg_wf, [('out', 'inputnode.ref_bold_brain')]),
-            (inputnode, reg_wf, anat_reg_inputs),
+            # workflow connect edits the list in place, so make a copy
+            (inputnode, reg_wf, list(anat_reg_inputs)),
             (select_boldref, ds_boldref2anat, [('out', 'inputnode.source_files')]),
             (reg_wf, ds_boldref2anat, [
                 ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
