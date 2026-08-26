@@ -19,6 +19,20 @@ SUPPORTED_AGE_UNITS = (
     'years',
 )
 
+# Entities that vary across the BOLD runs composing a session-level template.
+# When a coregistration derivative is written once for the whole session, these
+# are dropped from the filename so a single file represents all runs.
+GROUP_DISMISS_ENTITIES = (
+    'task',
+    'acquisition',
+    'ceagent',
+    'reconstruction',
+    'direction',
+    'run',
+    'echo',
+    'part',
+)
+
 
 def write_bidsignore(deriv_dir):
     # TODO: Port to niworkflows

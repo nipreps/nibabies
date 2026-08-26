@@ -133,7 +133,7 @@ def init_bold_confs_wf(
         Mask of the skull-stripped template image
     anat_tpms
         List of tissue probability maps in anatomical space
-    boldref2anat_xfm
+    template2anat_xfm
         Affine matrix that maps the BOLD reference space into alignment with
         the anatomical space
 
@@ -229,7 +229,7 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
                 'skip_vols',
                 'anat_mask',
                 'anat_tpms',
-                'boldref2anat_xfm',
+                'template2anat_xfm',
             ]
         ),
         name='inputnode',
@@ -534,7 +534,7 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         # Brain mask
         (inputnode, anat_mask_tfm, [('anat_mask', 'input_image'),
                                    ('bold_mask', 'reference_image'),
-                                   ('boldref2anat_xfm', 'transforms')]),
+                                   ('template2anat_xfm', 'transforms')]),
         (inputnode, union_mask, [('bold_mask', 'mask1')]),
         (anat_mask_tfm, union_mask, [('output_image', 'mask2')]),
         (union_mask, dilated_mask, [('out', 'in_mask')]),
@@ -546,7 +546,7 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
                                ('skip_vols', 'ignore_initial_volumes')]),
         (inputnode, acc_masks, [('anat_tpms', 'in_vfs'),
                                 (('bold', _get_zooms), 'bold_zooms')]),
-        (inputnode, acc_msk_tfm, [('boldref2anat_xfm', 'transforms'),
+        (inputnode, acc_msk_tfm, [('template2anat_xfm', 'transforms'),
                                   ('bold_mask', 'reference_image')]),
         (inputnode, acc_msk_brain, [('bold_mask', 'in_mask')]),
         (acc_masks, acc_msk_tfm, [('out_masks', 'input_image')]),
@@ -657,7 +657,7 @@ def init_carpetplot_wf(
         BOLD series mask
     confounds_file
         TSV of all aggregated confounds
-    boldref2anat_xfm
+    template2anat_xfm
         Affine matrix that maps the BOLD reference space into alignment with
         the anatomical space
     std2anat_xfm
@@ -690,7 +690,7 @@ def init_carpetplot_wf(
                 'bold',
                 'bold_mask',
                 'confounds_file',
-                'boldref2anat_xfm',
+                'template2anat_xfm',
                 'std2anat_xfm',
                 'cifti_bold',
                 'crown_mask',

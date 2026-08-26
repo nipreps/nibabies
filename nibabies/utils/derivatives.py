@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from collections import defaultdict
 from pathlib import Path
@@ -111,40 +112,86 @@ def collect_functional_derivatives(
     layout = BIDSLayout(derivatives_dir, config=deriv_config, validate=False)
     derivatives_dir = Path(derivatives_dir)
 
-    # search for both boldrefs
-    for key, qry in spec['baseline'].items():
-        query = {**qry, **entities}
+    from nibabies.utils.bids import GROUP_DISMISS_ENTITIES
+
+    # Session- and subject-level templates are written once, dropping the
+    # run-varying entities; relax the query by those entities to find them.
+    # TODO: Move towards expected filenames for these group-level files
+    level_relax = {
+        'run': (),
+        'session': GROUP_DISMISS_ENTITIES,
+        'subject': (*GROUP_DISMISS_ENTITIES, 'session'),
+    }
+
+    def _query(q, relax=()):
+        query = {k: v for k, v in {**entities, **q}.items() if k not in relax}
         item = layout.get(return_type='filename', **query)
         if not item:
-            continue
-        derivs_cache[f'{key}_boldref'] = item[0] if len(item) == 1 else item
+            return None
+        return item[0] if len(item) == 1 else item
 
-    # coreg_boldref is the legacy derivative name for run_boldref
+    # BOLD references, one group per coregistration level. Legacy naming
+    # (space-less/desc-coreg references, from-boldref transforms) is captured by
+    # the list-valued queries in ``io_spec_func.json``.
+    for level, relax in level_relax.items():
+        for name, q in spec.get(level, {}).items():
+            if q.get('suffix') != 'boldref':
+                continue
+            item = _query(q, relax)
+            if not item:
+                continue
+            if name == 'hmc':
+                key = 'hmc_boldref'
+            elif level == 'run':
+                key = 'coreg_boldref'
+            else:
+                key = f'{level}_boldref'
+            derivs_cache[key] = item
+
+    # run_boldref is an alias for the run-native coregistration reference
     if 'coreg_boldref' in derivs_cache and 'run_boldref' not in derivs_cache:
         derivs_cache['run_boldref'] = derivs_cache['coreg_boldref']
 
-    for xfm, qry in spec['transforms'].items():
-        query = {**qry, **entities}
-        if xfm == 'run2fmap':
-            query['to'] = fieldmap_id
-        item = layout.get(return_type='filename', **query)
-        if not item and xfm == 'hmc':
-            # legacy: from-orig_to-boldref (now from-orig_to-run)
-            item = layout.get(return_type='filename', **{**query, 'to': 'boldref'})
-        if not item:
-            continue
-        derivs_cache[xfm] = item[0] if len(item) == 1 else item
-
-    # Session queries use {**entities, **qry} so spec null-values (run, task) override
-    # per-run entity values, ensuring only session-level files (lacking those entities) match.
-    for key, qry in spec.get('session', {}).items():
-        query = {**entities, **qry}
+    # Per-run transforms. Transform extensions/suffixes will not match the provided
+    #   entities (e.g., ".txt" vs ".nii.gz", "xfm" vs "bold"); the queries override them.
+    transforms_cache = {}
+    for xfm, q in spec['transforms'].items():
+        query = {**entities, **q}
+        if xfm == 'run2fmap' and fieldmap_id:
+            # fieldmaps have non-alphanumeric characters removed from their IDs in filenames
+            query['to'] = re.sub(r'[^a-zA-Z0-9]', '', fieldmap_id)
         item = layout.get(return_type='filename', **query)
         if not item:
             continue
-        derivs_cache[f'session_{key}'] = item[0] if len(item) == 1 else item
+        transforms_cache[xfm] = item[0] if len(item) == 1 else item
 
+    # Session-/subject-level template->anat transforms are written once
+    for level in ('session', 'subject'):
+        xfm_q = spec.get(level, {}).get('xfm')
+        if not xfm_q:
+            continue
+        item = _query(xfm_q, level_relax[level])
+        if item:
+            transforms_cache[f'{level}2anat'] = item
+
+    derivs_cache['transforms'] = transforms_cache
     return derivs_cache
+
+
+def aggregate_coreg_precomputed(caches: list[dict], level: str) -> dict:
+    """Aggregate coregistration precomputed inputs from per-run caches."""
+
+    def get_xfm(cache, key):
+        return cache.get('transforms', {}).get(key)
+
+    precomputed = {'template2anat_xfm': [get_xfm(c, f'{level}2anat') for c in caches]}
+    if level != 'run':
+        precomputed['run2template_xfms'] = [get_xfm(c, 'run2template') for c in caches]
+        precomputed['boldref_template'] = next(
+            (c[f'{level}_boldref'] for c in caches if c.get(f'{level}_boldref')),
+            None,
+        )
+    return precomputed
 
 
 def copy_derivatives(
@@ -167,7 +214,15 @@ def copy_derivatives(
     outpath = outdir.joinpath(*out_levels)
     outpath.mkdir(parents=True, exist_ok=True)
 
-    for deriv in derivs.values():
+    # Flatten one level so nested caches (e.g. the ``transforms`` sub-dict) are copied too
+    candidates = []
+    for value in derivs.values():
+        if isinstance(value, dict):
+            candidates.extend(value.values())
+        else:
+            candidates.append(value)
+
+    for deriv in candidates:
         # Skip empty, lists
         if not isinstance(deriv, str):
             continue

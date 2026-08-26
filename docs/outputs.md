@@ -257,19 +257,22 @@ the `space` and `from`/`to` entities of functional outputs:
 - **`orig`** — the native BOLD acquisition space.
 - **`run`** — the per-run boldref space. This is the target of HMC and is derived
   from the sbref or a robust average of the BOLD series.
-- **`boldref`** — the final coregistration reference space registered to anatomy.
-  When `--bold-coreg-level run` (default), `boldref` is identical to `run`.
-  When `--bold-coreg-level session`, `boldref` is a template image built from all
-  run-level boldrefs.
+- **`session`** — the coregistration reference space when `--bold-coreg-level session`:
+  a template image built from all run-level boldrefs and registered to anatomy. Its
+  boldref, mask and `session→anat` transform are each written once for the session
+  (the run-varying entities are dropped from the filename).
 - **`anat`** — the anatomical reference space (T1w or T2w).
 
-The full transform chain applied during resampling is therefore:
+The coregistration reference space is named by `--bold-coreg-level`. With
+`--bold-coreg-level run` (default) the run boldref is itself the coregistration
+target, so `run→session` is not written. The full transform chain applied during
+resampling is therefore:
 
 ```
-orig → run      (from-orig_to-run, HMC)
-run  → boldref  (from-run_to-boldref, identity when --bold-coreg-level run)
-boldref → anat  (from-boldref_to-anat)
-anat → std      (anat2std)
+orig → run       (from-orig_to-run, HMC)
+run  → session   (from-run_to-session, session level only)
+run/session → anat  (from-run_to-anat or from-session_to-anat)
+anat → std       (anat2std)
 ```
 
 #### Motion correction outputs
@@ -281,7 +284,7 @@ to the run-level boldref:
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
-    sub-<subject_label>_[specifiers]_desc-hmc_boldref.nii.gz
+    sub-<subject_label>_[specifiers]_space-orig_desc-hmc_boldref.nii.gz
     sub-<subject_label>_[specifiers]_from-orig_to-run_mode-image_desc-hmc_xfm.txt
 ```
 
@@ -301,16 +304,29 @@ for details.
 :::
 
 
+With `--bold-coreg-level run` (the default), the run boldref is the coregistration
+reference and each run is registered to anatomy independently:
+
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
-    sub-<subject_label>_[specifiers]_desc-coreg_boldref.nii.gz
-    sub-<subject_label>_[specifiers]_from-run_to-boldref_mode-image_desc-coreg_xfm.txt
-    sub-<subject_label>_[specifiers]_from-boldref_to-<anat>_mode-image_desc-coreg_xfm.txt
+    sub-<subject_label>_[specifiers]_space-run_boldref.nii.gz
+    sub-<subject_label>_[specifiers]_space-run_desc-brain_mask.nii.gz
+    sub-<subject_label>_[specifiers]_from-run_to-<anat>_mode-image_desc-coreg_xfm.txt
 ```
 
-The `from-run_to-boldref` transform is written for every run regardless of `--bold-coreg-level`;
-it is an identity transform when `--bold-coreg-level run` (the default).
+With `--bold-coreg-level session`, a session template is built from all run
+boldrefs; the template boldref, mask and `session→anat` transform are written once
+(run-varying entities dropped), alongside a per-run `run→session` transform:
+
+```
+sub-<subject_label>/[ses-<session_label>/]
+  func/
+    sub-<subject_label>_ses-<session_label>_space-session_boldref.nii.gz
+    sub-<subject_label>_ses-<session_label>_space-session_desc-brain_mask.nii.gz
+    sub-<subject_label>_ses-<session_label>_from-session_to-<anat>_mode-image_desc-coreg_xfm.txt
+    sub-<subject_label>_[specifiers]_from-run_to-session_mode-image_desc-coreg_xfm.txt
+```
 
 :::{note}
 Coregistration outputs are part of the *minimal* processing level.

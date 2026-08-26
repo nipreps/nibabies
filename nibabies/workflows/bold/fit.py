@@ -217,7 +217,7 @@ def init_bold_fit_wf(
     coreg_boldref = precomputed.get('coreg_boldref')
     # Can contain
     #  1) run2fmap
-    #  2) boldref2anat
+    #  2) template2anat
     #  3) hmc
     transforms = precomputed.get('transforms', {})
     hmc_xforms = transforms.get('hmc')
@@ -320,6 +320,7 @@ def init_bold_fit_wf(
             source_file=bold_file,
             output_dir=config.execution.nibabies_dir,
             desc='hmc',
+            space='orig',
             name='ds_hmc_boldref_wf',
         )
         ds_hmc_boldref_wf.inputs.inputnode.source_files = [bold_file]
@@ -461,13 +462,14 @@ def init_bold_fit_wf(
         ds_coreg_boldref_wf = init_ds_boldref_wf(
             source_file=bold_file,
             output_dir=config.execution.nibabies_dir,
-            desc='coreg',
+            space='run',
             name='ds_coreg_boldref_wf',
         )
         ds_boldmask_wf = init_ds_boldmask_wf(
             source_file=bold_file,
             output_dir=config.execution.nibabies_dir,
             desc='brain',
+            space='run',
             name='ds_boldmask_wf',
         )
 
@@ -855,7 +857,7 @@ def init_bold_boldref_wf(
         STC-only BOLD series (output of :py:func:`init_bold_native_wf`).
     boldref_template
         BOLD reference template image.
-    run2boldref_xfm
+    run2template_xfm
         Affine transform from the run-level boldref to the boldref template.
     motion_xfm
         Per-volume affine transforms (HMC).
@@ -883,7 +885,7 @@ def init_bold_boldref_wf(
             fields=[
                 'bold_minimal',
                 'boldref_template',
-                'run2boldref_xfm',
+                'run2template_xfm',
                 'motion_xfm',
                 'run2fmap_xfm',
                 'fmap_ref',
@@ -915,7 +917,7 @@ def init_bold_boldref_wf(
     workflow.connect([
         (inputnode, merge_bold2boldref, [
             ('motion_xfm', 'in1'),
-            ('run2boldref_xfm', 'in2'),
+            ('run2template_xfm', 'in2'),
         ]),
         (inputnode, boldref_bold, [
             ('bold_minimal', 'in_file'),
@@ -944,7 +946,7 @@ def init_bold_boldref_wf(
             ]),
             (inputnode, fmap2boldref, [
                 ('run2fmap_xfm', 'in1'),
-                ('run2boldref_xfm', 'in2'),
+                ('run2template_xfm', 'in2'),
             ]),
             (inputnode, boldref_fmap, [
                 ('boldref_template', 'target_ref_file'),
