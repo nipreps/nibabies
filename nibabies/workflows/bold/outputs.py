@@ -139,6 +139,10 @@ def prepare_timing_parameters(metadata: dict):
     return timing_parameters
 
 
+def _first_transform_inverse(transforms):
+    return [True] + [False] * (len(transforms) - 1)
+
+
 def init_func_fit_reports_wf(
     *,
     reference_anat: Anatomical,
@@ -246,20 +250,13 @@ def init_func_fit_reports_wf(
         mem_gb=config.DEFAULT_MEMORY_MIN_GB,
     )
 
-    to_anat_xfm = pe.Node(
-        niu.Merge(2),
-        name='to_anat_xfm',
-        run_without_submitting=True,
-        mem_gb=config.DEFAULT_MEMORY_MIN_GB,
-    )
-
     # Resample anatomical references into BOLD space for plotting
     anat_boldref = pe.Node(
         ApplyTransforms(
             dimension=3,
             default_value=0,
             float=True,
-            invert_transform_flags=[True, False],
+            invert_transform_flags=[True],
             interpolation='LanczosWindowedSinc',
         ),
         name='anat_boldref',
@@ -297,13 +294,8 @@ def init_func_fit_reports_wf(
         (inputnode, anat_boldref, [
             ('anat_preproc', 'input_image'),
             ('coreg_boldref', 'reference_image'),
-            # ('template2anat_xfm', 'transforms'),
+            ('template2anat_xfm', 'transforms'),
         ]),
-        (inputnode, to_anat_xfm, [
-            ('template2anat_xfm', 'in1'),
-            ('run2template_xfm', 'in2'),
-        ]),
-        (to_anat_xfm, anat_boldref, [('out', 'transforms')]),
         (inputnode, anat_wm, [('anat_dseg', 'in_seg')]),
         (inputnode, boldref_wm, [
             ('coreg_boldref', 'reference_image'),
@@ -337,11 +329,15 @@ def init_func_fit_reports_wf(
                 dimension=3,
                 default_value=0,
                 float=True,
-                invert_transform_flags=[True, False],
                 interpolation='LanczosWindowedSinc',
             ),
             name='fmapref_boldref',
             mem_gb=1,
+        )
+        fmap_inverts = pe.Node(
+            niu.Function(function=_first_transform_inverse),
+            name='fmap_inverts',
+            run_without_submitting=True,
         )
 
         # SDC1
@@ -397,9 +393,9 @@ def init_func_fit_reports_wf(
                 ('run2fmap_xfm', 'in1'),
                 ('run2template_xfm', 'in2'),
             ]),
-            (to_fmap_xfm, fmapref_boldref, [
-                ('out', 'transforms'),
-            ]),
+            (to_fmap_xfm, fmap_inverts, [('out', 'transforms')]),
+            (to_fmap_xfm, fmapref_boldref, [('out', 'transforms')]),
+            (fmap_inverts, fmapref_boldref, [('out', 'invert_transform_flags')]),
             (inputnode, sdcreg_report, [
                 ('sdc_boldref', 'reference'),
                 ('fieldmap', 'fieldmap'),
