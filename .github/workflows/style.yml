@@ -31,7 +31,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v10
       - name: Install tox
         run: uv tool install tox --with=tox-uv
       - name: Show tox config
