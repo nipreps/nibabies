@@ -104,3 +104,6 @@ _version.py
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+
+# depend on pixi lock
+uv.lock
