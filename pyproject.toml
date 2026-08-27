@@ -54,7 +54,6 @@ container = [
     "datalad-osf",
 ]
 dev = [
-    "ruff",
     "pre-commit",
 ]
 doc = [
