@@ -40,8 +40,10 @@ def test_collect_derivatives(tmp_path):
         assert len(anat_cache[surface]) == 2
 
     func_cache = collect_functional_derivatives(deriv_dir, {'subject': '01'}, None)
-    for val in ('hmc_boldref', 'coreg_boldref', 'hmc', 'run2boldref'):
+    for val in ('hmc_boldref', 'coreg_boldref'):
         assert func_cache[val]
+    for xfm in ('hmc', 'run2anat'):
+        assert func_cache['transforms'][xfm]
 
 
 def test_copy_derivatives(tmp_path):

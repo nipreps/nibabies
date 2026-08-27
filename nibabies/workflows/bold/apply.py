@@ -69,12 +69,12 @@ def init_bold_volumetric_resample_wf(
         Fieldmap reference image defining the valid field of view for the fieldmap.
     fmap_coeff
         B-Spline coefficients for the fieldmap.
-    boldref2anat_xfm
+    template2anat_xfm
         Affine transform from ``bold_ref_file`` to the anatomical reference image.
     anat2std_xfm
         Affine transform from the anatomical reference image to standard space.
         Leave undefined to resample to anatomical reference space.
-    run2boldref_xfm
+    run2template_xfm
         Transform mapping run-level BOLD reference to boldref template space.
         Identity when ``--bold-coreg-level run``.
 
@@ -103,9 +103,9 @@ def init_bold_volumetric_resample_wf(
                 'fmap_ref',
                 'fmap_coeff',
                 # boldref
-                'run2boldref_xfm',
+                'run2template_xfm',
                 # Anatomical
-                'boldref2anat_xfm',
+                'template2anat_xfm',
                 # Template
                 'anat2std_xfm',
                 # Entity for selecting target resolution
@@ -122,7 +122,7 @@ def init_bold_volumetric_resample_wf(
 
     gen_ref = pe.Node(GenerateSamplingReference(), name='gen_ref', mem_gb=0.3)
 
-    boldref2target = pe.Node(niu.Merge(3), name='boldref2target', run_without_submitting=True)
+    run2target = pe.Node(niu.Merge(3), name='run2target', run_without_submitting=True)
     bold2target = pe.Node(niu.Merge(2), name='bold2target', run_without_submitting=True)
     resample = pe.Node(
         ResampleSeries(jacobian=jacobian, num_threads=omp_nthreads),
@@ -138,15 +138,15 @@ def init_bold_volumetric_resample_wf(
             ('target_mask', 'fov_mask'),
             (('resolution', _is_native), 'keep_native'),
         ]),
-        (inputnode, boldref2target, [
-            ('run2boldref_xfm', 'in1'),
-            ('boldref2anat_xfm', 'in2'),
+        (inputnode, run2target, [
+            ('run2template_xfm', 'in1'),
+            ('template2anat_xfm', 'in2'),
             ('anat2std_xfm', 'in3'),
         ]),
         (inputnode, bold2target, [('motion_xfm', 'in1')]),
         (inputnode, resample, [('bold_file', 'in_file')]),
         (gen_ref, resample, [('out_file', 'ref_file')]),
-        (boldref2target, bold2target, [('out', 'in2')]),
+        (run2target, bold2target, [('out', 'in2')]),
         (bold2target, resample, [('out', 'transforms')]),
         (gen_ref, outputnode, [('out_file', 'resampling_reference')]),
         (resample, outputnode, [('out_file', 'bold_file')]),
@@ -173,8 +173,8 @@ def init_bold_volumetric_resample_wf(
         (inputnode, distortion_params, [('bold_file', 'in_file')]),
         (inputnode, fmap2target, [('run2fmap_xfm', 'in1')]),
         (gen_ref, fmap_recon, [('out_file', 'target_ref_file')]),
-        (boldref2target, fmap2target, [('out', 'in2')]),
-        (boldref2target, inverses, [('out', 'inlist')]),
+        (run2target, fmap2target, [('out', 'in2')]),
+        (run2target, inverses, [('out', 'inlist')]),
         (inputnode, fmap_recon, [
             ('fmap_coeff', 'in_coeffs'),
             ('fmap_ref', 'fmap_ref_file'),
