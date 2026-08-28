@@ -121,7 +121,7 @@ def init_bold_confs_wf(
     bold
         BOLD image, after the prescribed corrections (STC, HMC and SDC)
         when available.
-    bold_mask
+    run_mask
         BOLD series mask
     motion_xfm
         ITK-formatted head motion transforms
@@ -223,7 +223,7 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         niu.IdentityInterface(
             fields=[
                 'bold',
-                'bold_mask',
+                'run_mask',
                 'motion_xfm',
                 'hmc_boldref',
                 'skip_vols',
@@ -525,7 +525,7 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
     workflow.connect([
         # connect inputnode to each non-anatomical confound node
         (inputnode, dvars, [('bold', 'in_file'),
-                            ('bold_mask', 'in_mask')]),
+                            ('run_mask', 'in_mask')]),
         (inputnode, motion_params, [('motion_xfm', 'xfm_file'),
                                     ('hmc_boldref', 'boldref_file')]),
         (inputnode, rmsd, [('motion_xfm', 'xfm_file'),
@@ -533,9 +533,9 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         (motion_params, fdisp, [('out_file', 'in_file')]),
         # Brain mask
         (inputnode, anat_mask_tfm, [('anat_mask', 'input_image'),
-                                   ('bold_mask', 'reference_image'),
+                                   ('run_mask', 'reference_image'),
                                    ('template2anat_xfm', 'transforms')]),
-        (inputnode, union_mask, [('bold_mask', 'mask1')]),
+        (inputnode, union_mask, [('run_mask', 'mask1')]),
         (anat_mask_tfm, union_mask, [('output_image', 'mask2')]),
         (union_mask, dilated_mask, [('out', 'in_mask')]),
         (union_mask, subtract_mask, [('out', 'in_subtract')]),
@@ -547,8 +547,8 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         (inputnode, acc_masks, [('anat_tpms', 'in_vfs'),
                                 (('bold', _get_zooms), 'bold_zooms')]),
         (inputnode, acc_msk_tfm, [('template2anat_xfm', 'transforms'),
-                                  ('bold_mask', 'reference_image')]),
-        (inputnode, acc_msk_brain, [('bold_mask', 'in_mask')]),
+                                  ('run_mask', 'reference_image')]),
+        (inputnode, acc_msk_brain, [('run_mask', 'in_mask')]),
         (acc_masks, acc_msk_tfm, [('out_masks', 'input_image')]),
         (acc_msk_tfm, acc_msk_brain, [('output_image', 'in_file')]),
         (acc_msk_brain, acc_msk_bin, [('out_file', 'in_file')]),
@@ -564,10 +564,10 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         # tCompCor
         (inputnode, tcompcor, [('bold', 'realigned_file'),
                                ('skip_vols', 'ignore_initial_volumes'),
-                               ('bold_mask', 'mask_files')]),
+                               ('run_mask', 'mask_files')]),
         # Global signals extraction (constrained by anatomy)
         (inputnode, signals, [('bold', 'in_file')]),
-        (inputnode, merge_rois, [('bold_mask', 'in1')]),
+        (inputnode, merge_rois, [('run_mask', 'in1')]),
         (acc_msk_bin, merge_rois, [('out_file', 'in2')]),
         (tcompcor, merge_rois, [('high_variance_masks', 'in3')]),
         (merge_rois, signals, [('out', 'label_files')]),
@@ -607,7 +607,7 @@ the edge of the brain, as proposed by [@patriat_improved_2017].
         (tcompcor, outputnode, [('high_variance_masks', 'tcompcor_mask')]),
         (acc_msk_bin, outputnode, [('out_file', 'acompcor_masks')]),
         (inputnode, rois_plot, [('bold', 'in_file'),
-                                ('bold_mask', 'in_mask')]),
+                                ('run_mask', 'in_mask')]),
         (tcompcor, mrg_compcor, [('high_variance_masks', 'in1')]),
         (acc_msk_bin, mrg_compcor, [(('out_file', _last), 'in2')]),
         (subtract_mask, mrg_compcor, [('out_mask', 'in3')]),

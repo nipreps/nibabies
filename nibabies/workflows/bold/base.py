@@ -180,11 +180,11 @@ def init_bold_apply_wf(
         niu.IdentityInterface(
             fields=[
                 # Fit outputs
-                'coreg_boldref',
+                'template_boldref',
                 'boldref_template',
-                'bold_mask',
                 'run_boldref',
-                'orig_bold_mask',
+                'run_mask',
+                'hmc_boldref',
                 'run2anat_xfm',
                 'motion_xfm',
                 'run2fmap_xfm',
@@ -250,7 +250,7 @@ def init_bold_apply_wf(
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
             ('run_boldref', 'inputnode.run_boldref'),
-            ('bold_mask', 'inputnode.bold_mask'),
+            ('run_mask', 'inputnode.run_mask'),
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
             ('dummy_scans', 'inputnode.dummy_scans'),
@@ -279,7 +279,7 @@ def init_bold_apply_wf(
                 ('outputnode.t2star_map', 'inputnode.t2star'),
             ]),
             (inputnode, ds_bold_native_wf, [
-                ('orig_bold_mask', 'inputnode.bold_mask'),
+                ('run_mask', 'inputnode.bold_mask'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('run2template_xfm', 'inputnode.run2template_xfm'),
@@ -354,7 +354,7 @@ def init_bold_apply_wf(
             (inputnode, t2s_reporting_wf, [
                 ('anat_dseg', 'inputnode.label_file'),
                 ('template2anat_xfm', 'inputnode.template2anat_xfm'),
-                ('coreg_boldref', 'inputnode.boldref'),
+                ('template_boldref', 'inputnode.boldref'),
             ]),
             (bold_native_wf, t2s_reporting_wf, [
                 ('outputnode.t2star_map', 'inputnode.t2star_file'),
@@ -388,7 +388,7 @@ def init_bold_apply_wf(
             ('anat_mask', 'inputnode.target_mask'),
             ('fmap_ref', 'inputnode.fmap_ref'),
             ('fmap_coeff', 'inputnode.fmap_coeff'),
-            ('coreg_boldref', 'inputnode.bold_ref_file'),
+            ('run_boldref', 'inputnode.run_boldref'),
             ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
             ('template2anat_xfm', 'inputnode.template2anat_xfm'),
             ('run2template_xfm', 'inputnode.run2template_xfm'),
@@ -413,8 +413,8 @@ def init_bold_apply_wf(
 
         workflow.connect([
             (inputnode, ds_bold_anat_wf, [
-                ('bold_mask', 'inputnode.bold_mask'),
-                ('coreg_boldref', 'inputnode.bold_ref'),
+                ('run_mask', 'inputnode.run_mask'),
+                ('run_boldref', 'inputnode.run_boldref'),
                 ('template2anat_xfm', 'inputnode.template2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
@@ -456,7 +456,7 @@ def init_bold_apply_wf(
                 ('std_resolution', 'inputnode.resolution'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
-                ('coreg_boldref', 'inputnode.bold_ref_file'),
+                ('run_boldref', 'inputnode.run_boldref'),
                 ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('template2anat_xfm', 'inputnode.template2anat_xfm'),
                 ('run2template_xfm', 'inputnode.run2template_xfm'),
@@ -471,8 +471,8 @@ def init_bold_apply_wf(
                 ('std_space', 'inputnode.space'),
                 ('std_resolution', 'inputnode.resolution'),
                 ('std_cohort', 'inputnode.cohort'),
-                ('bold_mask', 'inputnode.bold_mask'),
-                ('coreg_boldref', 'inputnode.bold_ref'),
+                ('run_mask', 'inputnode.run_mask'),
+                ('run_boldref', 'inputnode.run_boldref'),
                 ('template2anat_xfm', 'inputnode.template2anat_xfm'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
@@ -617,7 +617,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
                 ('anat2mniinfant_xfm', 'inputnode.anat2std_xfm'),
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
-                ('coreg_boldref', 'inputnode.bold_ref_file'),
+                ('run_boldref', 'inputnode.run_boldref'),
                 ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('template2anat_xfm', 'inputnode.template2anat_xfm'),
                 ('run2template_xfm', 'inputnode.run2template_xfm'),
@@ -718,8 +718,8 @@ excluding voxels whose time-series have a locally high coefficient of variation.
         (inputnode, bold_confounds_wf, [
             ('anat_tpms', 'inputnode.anat_tpms'),
             ('anat_mask', 'inputnode.anat_mask'),
-            ('orig_bold_mask', 'inputnode.bold_mask'),
-            ('run_boldref', 'inputnode.hmc_boldref'),
+            ('run_mask', 'inputnode.run_mask'),
+            ('hmc_boldref', 'inputnode.hmc_boldref'),
             ('motion_xfm', 'inputnode.motion_xfm'),
             ('run2anat_xfm', 'inputnode.template2anat_xfm'),
             ('dummy_scans', 'inputnode.skip_vols'),
@@ -751,7 +751,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
             ]),
             (inputnode, carpetplot_wf, [
                 ('dummy_scans', 'inputnode.dummy_scans'),
-                ('orig_bold_mask', 'inputnode.bold_mask'),
+                ('run_mask', 'inputnode.bold_mask'),
                 ('run2anat_xfm', 'inputnode.template2anat_xfm'),
             ]),
             (bold_native_wf, carpetplot_wf, [
