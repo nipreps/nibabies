@@ -1,3 +1,42 @@
+26.0.0 (August 31, 2026)
+========================
+First release of the 26.0.x series.
+
+This release introduces the ``--bold-coreg-level`` flag for finer-grained control of BOLD-to-anatomical coregistration, allowing per-session and per-run coregistration.
+
+Additionally, MCRIBS-reconstructed surfaces are now registered directly to fsLR (previously dhcpAsym), adding consistency across surface reconstruction methods, and a new reportlet has been added.
+
+Susceptibility distortion correction benefits from an updated SDCFlows, which couples head-motion and susceptibility-distortion estimation within TOPUP for more robust PEPOLAR fieldmaps.
+
+Finally, SPEC 0 has been adopted - the minimum supported Python is now 3.12.
+
+### Enhancements
+  * ENH: Overhaul fit workflow with upstream fMRIPrep changes (#502)
+  * ENH: Align coregistration BOLD reference with fMRIPrep (#573, #575)
+  * ENH: Expand BOLD coregistration targets (#546)
+  * ENH: Prefer normalized correlation over least squares in BOLD reference generation (#553)
+  * ENH: Add ``auto`` option to ``--hmc-bold-frame`` to find a low-motion BOLD reference (#518)
+  * ENH: Add new option ``--topup-config`` (#526)
+  * ENH: Add toggle for SVG compression (#563)
+  * ENH: Merge cohort entity into the ``space`` entity in derivatives (#524)
+  * ENH: Register MCRIBS directly to fsLR and add fsLR surface report (#557)
+
+### Bug Fixes
+  * FIX: Avoid submitting the FreeSurfer source node (#568)
+  * FIX: Single anatomical skullstrip connection (#562)
+  * FIX: Avoid anatomical apply workflow if no recon or standard spaces (#561)
+  * FIX: Do not set ``in_aseg`` for FreeSurfer recon-all (#533)
+  * FIX: SDC reports now render (#525)
+
+### Documentation
+  * DOC: Add surface comparison documentation (#528)
+  * DOC: Clarify help text for memory-limit argument (#548)
+
+### Internals / Maintenance
+  * MAINT: Support Python 3.13 and 3.14 (#506)
+  * MAINT: Adopt SPEC 0 support policy, dropping Python 3.10 / 3.11 (#529)
+  * MAINT: Use pixi for dependency management (#551)
+
 25.2.1 (October 22, 2025)
 =========================
 Patch release in the 25.2.x series.
