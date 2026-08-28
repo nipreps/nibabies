@@ -146,12 +146,12 @@ def init_bold_fit_wf(
     hmc_boldref
         BOLD reference image used for head motion correction.
         Minimally processed to ensure consistent contrast with BOLD series.
-    coreg_boldref
+    run_boldref
         BOLD reference image used for coregistration. Contrast-enhanced
         and fieldmap-corrected for greater anatomical fidelity, and aligned
         with ``hmc_boldref``.
-    bold_mask
-        Mask of ``coreg_boldref``.
+    run_mask
+        Mask of ``run_boldref``.
     motion_xfm
         Affine transforms from each BOLD volume to ``hmc_boldref``, written
         as concatenated ITK affine transforms.
@@ -214,7 +214,7 @@ def init_bold_fit_wf(
     multiecho = len(bold_series) > 1
 
     hmc_boldref = precomputed.get('hmc_boldref')
-    coreg_boldref = precomputed.get('coreg_boldref')
+    run_boldref = precomputed.get('run_boldref')
     # Can contain
     #  1) run2fmap
     #  2) template2anat
@@ -244,8 +244,8 @@ def init_bold_fit_wf(
             fields=[
                 'dummy_scans',
                 'hmc_boldref',
-                'coreg_boldref',
-                'bold_mask',
+                'run_boldref',
+                'run_mask',
                 'motion_xfm',
                 'run2fmap_xfm',
                 # summary (can be undefined)
@@ -282,9 +282,9 @@ def init_bold_fit_wf(
     if run2fmap_xform:
         fmapreg_buffer.inputs.run2fmap_xfm = run2fmap_xform
         config.loggers.workflow.debug(f'Reusing BOLD-to-fieldmap transform: {run2fmap_xform}')
-    if coreg_boldref:
-        regref_buffer.inputs.boldref = coreg_boldref
-        config.loggers.workflow.debug(f'Reusing coregistration reference: {coreg_boldref}')
+    if run_boldref:
+        regref_buffer.inputs.boldref = run_boldref
+        config.loggers.workflow.debug(f'Reusing coregistration reference: {run_boldref}')
     fmapref_buffer.inputs.sbref_files = sbref_files
 
     workflow.connect([
@@ -294,8 +294,8 @@ def init_bold_fit_wf(
         ]),
         (hmcref_buffer, fmapref_buffer, [('boldref', 'boldref_files')]),
         (regref_buffer, outputnode, [
-            ('boldref', 'coreg_boldref'),
-            ('boldmask', 'bold_mask'),
+            ('boldref', 'run_boldref'),
+            ('boldmask', 'run_mask'),
         ]),
         (fmapreg_buffer, outputnode, [('run2fmap_xfm', 'run2fmap_xfm')]),
         (hmc_buffer, outputnode, [('hmc_xforms', 'motion_xfm')]),
@@ -440,7 +440,7 @@ def init_bold_fit_wf(
         config.loggers.workflow.info('No fieldmap correction - skipping Stage 3')
 
     # Stage 4: Create coregistration reference
-    if not coreg_boldref:
+    if not run_boldref:
         config.loggers.workflow.info('Stage 4: Adding coregistration boldref workflow')
 
         # If sbref files are available, add them to the list of sources
@@ -547,7 +547,7 @@ def init_bold_fit_wf(
         # TODO: Allow precomputed bold masks to be passed
         # Also needs consideration for how it interacts above
         skullstrip_precomp_ref_wf = init_skullstrip_bold_wf(name='skullstrip_precomp_ref_wf')
-        skullstrip_precomp_ref_wf.inputs.inputnode.in_file = coreg_boldref
+        skullstrip_precomp_ref_wf.inputs.inputnode.in_file = run_boldref
         workflow.connect([
             (skullstrip_precomp_ref_wf, regref_buffer, [('outputnode.mask_file', 'boldmask')])
         ])  # fmt:skip
@@ -595,7 +595,7 @@ def init_bold_native_wf(
     ------
     run_boldref
         Per-run BOLD reference file (sbref or average volume from the run).
-    bold_mask
+    run_mask
         Mask of BOLD reference file
     motion_xfm
         Affine transforms from each BOLD volume to ``hmc_boldref``, written
@@ -676,7 +676,7 @@ def init_bold_native_wf(
             fields=[
                 # BOLD fit
                 'run_boldref',
-                'bold_mask',
+                'run_mask',
                 'motion_xfm',
                 'run2fmap_xfm',
                 'dummy_scans',
@@ -806,7 +806,7 @@ def init_bold_native_wf(
         # Do NOT set motion_xfm on outputnode
         # This prevents downstream resamplers from double-dipping
         workflow.connect([
-            (inputnode, bold_t2s_wf, [('bold_mask', 'inputnode.bold_mask')]),
+            (inputnode, bold_t2s_wf, [('run_mask', 'inputnode.bold_mask')]),
             (boldref_bold, join_echos, [('out_file', 'bold_files')]),
             (join_echos, bold_t2s_wf, [('bold_files', 'inputnode.bold_file')]),
             (join_echos, outputnode, [('bold_files', 'bold_echos')]),
