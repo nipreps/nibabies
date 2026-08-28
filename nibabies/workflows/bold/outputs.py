@@ -861,7 +861,7 @@ def init_ds_volumes_wf(
         ),
         name='sources',
     )
-    boldref2target = pe.Node(niu.Merge(2), name='boldref2target')
+    run2target = pe.Node(niu.Merge(3), name='run2target')
 
     # BOLD is pre-resampled
     ds_bold = pe.Node(
@@ -887,11 +887,11 @@ def init_ds_volumes_wf(
             ('anat2std_xfm', 'in6'),
             ('template', 'in7'),
         ]),
-        (inputnode, boldref2target, [
+        (inputnode, run2target, [
             # Note that ANTs expects transforms in target-to-source order
-            # Reverse this for nitransforms-based resamplers
             ('anat2std_xfm', 'in1'),
             ('template2anat_xfm', 'in2'),
+            ('run2template_xfm', 'in3'),
         ]),
         (inputnode, ds_bold, [
             ('source_files', 'source_file'),
@@ -981,7 +981,7 @@ def init_ds_volumes_wf(
             (inputnode, resampler, [('ref_file', 'reference_image')])
             for resampler in resamplers
         ] + [
-            (boldref2target, resampler, [('out', 'transforms')])
+            (run2target, resampler, [('out', 'transforms')])
             for resampler in resamplers
         ] + [
             (inputnode, datasink, [
