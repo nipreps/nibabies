@@ -608,7 +608,10 @@ jobs:
 workflows:
   version: 2
   build_test_deploy:
-    when: << pipeline.parameters.run-build >>
+    when:
+      or:
+        - << pipeline.parameters.run-build >>
+        - << pipeline.git.tag >>
     jobs:
 
     - build:
