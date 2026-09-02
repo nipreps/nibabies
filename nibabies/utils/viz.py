@@ -408,6 +408,8 @@ def _carpet(
                 threshold=0.1,
                 cmap=cmap,
                 interpolation='nearest',
+                # nilearn 0.12.0 changed the colorbar default to True
+                colorbar=False,
             )
 
     if output_file is not None:
