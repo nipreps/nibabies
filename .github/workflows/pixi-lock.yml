@@ -44,9 +44,11 @@ jobs:
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
       - name: Update lockfile
+        # Since preps are sometimes set to branch refs, explicitly call update for them
         run: >
           uvx datalad run -i pixi.lock -i pyproject.toml -o pixi.lock --
-          bash -c '! pixi lock --check || git checkout .'
+          bash -c 'set -e; pixi lock; pixi update nireports niworkflows sdcflows smriprep;
+          git diff --quiet -- pixi.lock || exit 0; git checkout -- pixi.lock'
       - name: Push updated lockfile, if needed
         run: |
           git push $REMOTE HEAD:$BRANCH
