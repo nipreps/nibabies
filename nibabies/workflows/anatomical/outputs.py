@@ -45,7 +45,7 @@ def init_coreg_report_wf(*, output_dir, name='coreg_report_wf'):
         Brain mask.
 
     """
-    from niworkflows.interfaces.reportlets.registration import (
+    from nireports.interfaces.reporting.registration import (
         SimpleBeforeAfterRPT as SimpleBeforeAfter,
     )
 
@@ -130,8 +130,8 @@ def init_anat_reports_wf(
     template
         Template space and specifications
     """
-    from niworkflows.interfaces.reportlets.masks import ROIsPlot
-    from niworkflows.interfaces.reportlets.registration import (
+    from nireports.interfaces.reporting.masks import ROIsPlot
+    from nireports.interfaces.reporting.registration import (
         SimpleBeforeAfterRPT as SimpleBeforeAfter,
     )
     from smriprep.workflows.outputs import (
