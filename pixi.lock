@@ -259,9 +259,9 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
       - pypi: git+https://github.com/nipreps/nireports.git?rev=fix%2Fduplicate-rpts#126a850158e1aa87e17e64811916260bae1fd0bd
-      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
-      - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#8578e496fd463040288903dd01cd196cb66e6f25
-      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#3c76b5bd6c80c84c461ba453f1de54c6c705c476
+      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0d74dbab89b2c3973388175aa2e3d15f438d7a90
+      - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#93938286851685a2e43fe40741bc70fc63ae220d
+      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#8865f660e198830f2ac5011114948d19931d2115
       - pypi: https://files.pythonhosted.org/packages/08/f6/af32e23e563971ffb0fb86be52bc5be5c2c118858ffc119bf6a9039b173d/lxml-6.1.1-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0c/b6/156a8de1e1b47694f0e7de6675866936608d45dc68388fd017d36f8693be/simplejson-4.1.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/10/c2/6604a71269e0c1bd75656d5a001432d16f2cc5b8c057140ec797155c295e/rdflib-7.6.0-py3-none-any.whl
@@ -269,9 +269,9 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/17/93/fb357cc7847c58a8ae790be718903afa81a28d23e642c843dc4129e8a0b2/wrapt-2.2.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/18/e4/5e20b516ff2ddedd92f7943f3f6dda89bb3a08ac06f57ff6633e2be54a7f/mapca-0.0.7-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/19/1c/3fd51e599d00eacc17b6f8c0b30e5f1483b07aee83ed12f0d710ddf9879e/nipype-1.12.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/5e/d4e9f1a599fb8e573b7b87160658329fbf28d19eac2718f51fc3def3aa5a/idna-3.18-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1f/b6/e7cdde7b8e90d5dff25b622f95833ef26567ad184c977278b93a1cbd5717/narwhals-2.22.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2f/31/6bb544f26c38f5f8e8b6b83cbf6021909a6d825bed45cc2647440c780038/nipype-1.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/74/f94141b38a51a553efef7f510fc213894161ae49b88bffd037f8d2a7cb2f/frozendict-2.4.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/39/e8/806475fe4cdfd8635535d3fa11bd61d19b7cc94b61b9147ebdd2ab4cbbee/acres-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/2e/8d0c2ab90a8c1d9a24f0399058ab8519a3279d1bd4289511d74e909f060e/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
@@ -579,9 +579,9 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
       - pypi: git+https://github.com/nipreps/nireports.git?rev=fix%2Fduplicate-rpts#126a850158e1aa87e17e64811916260bae1fd0bd
-      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
-      - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#8578e496fd463040288903dd01cd196cb66e6f25
-      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#3c76b5bd6c80c84c461ba453f1de54c6c705c476
+      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0d74dbab89b2c3973388175aa2e3d15f438d7a90
+      - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#93938286851685a2e43fe40741bc70fc63ae220d
+      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#8865f660e198830f2ac5011114948d19931d2115
       - pypi: https://files.pythonhosted.org/packages/01/ea/5352950cbee9d1e8392e5396ddbc6defc982414e2abc004b501139bce13c/boto3-1.43.21-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/08/f6/af32e23e563971ffb0fb86be52bc5be5c2c118858ffc119bf6a9039b173d/lxml-6.1.1-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl
@@ -594,13 +594,13 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/17/93/fb357cc7847c58a8ae790be718903afa81a28d23e642c843dc4129e8a0b2/wrapt-2.2.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/18/e4/5e20b516ff2ddedd92f7943f3f6dda89bb3a08ac06f57ff6633e2be54a7f/mapca-0.0.7-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/19/1c/3fd51e599d00eacc17b6f8c0b30e5f1483b07aee83ed12f0d710ddf9879e/nipype-1.12.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/5e/d4e9f1a599fb8e573b7b87160658329fbf28d19eac2718f51fc3def3aa5a/idna-3.18-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1f/b6/e7cdde7b8e90d5dff25b622f95833ef26567ad184c977278b93a1cbd5717/narwhals-2.22.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/25/12/ed823e352b2c09d7755a624f08460b26d37782dde9d735242f5c7125f5e1/datasalad-0.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/27/16/ad52f56b96d851a2bcfdc1e754c3531341885bd7177a128c13ff2ca72ab4/pytest_env-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/30/300c343f68beb9d4cbb64ec81e58c5b6b80b56927f72d2b38654ac26e013/coverage-7.14.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2b/58/a58fc997655386daa2e25784e30c288aa3e3819e401f77029ee4899fb55a/s3transfer-0.18.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2f/31/6bb544f26c38f5f8e8b6b83cbf6021909a6d825bed45cc2647440c780038/nipype-1.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/74/f94141b38a51a553efef7f510fc213894161ae49b88bffd037f8d2a7cb2f/frozendict-2.4.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/39/e8/806475fe4cdfd8635535d3fa11bd61d19b7cc94b61b9147ebdd2ab4cbbee/acres-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/2e/8d0c2ab90a8c1d9a24f0399058ab8519a3279d1bd4289511d74e909f060e/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
@@ -939,9 +939,9 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
       - pypi: git+https://github.com/nipreps/nireports.git?rev=fix%2Fduplicate-rpts#126a850158e1aa87e17e64811916260bae1fd0bd
-      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
-      - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#8578e496fd463040288903dd01cd196cb66e6f25
-      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#3c76b5bd6c80c84c461ba453f1de54c6c705c476
+      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0d74dbab89b2c3973388175aa2e3d15f438d7a90
+      - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#93938286851685a2e43fe40741bc70fc63ae220d
+      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#8865f660e198830f2ac5011114948d19931d2115
       - pypi: https://files.pythonhosted.org/packages/08/f6/af32e23e563971ffb0fb86be52bc5be5c2c118858ffc119bf6a9039b173d/lxml-6.1.1-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0c/b6/156a8de1e1b47694f0e7de6675866936608d45dc68388fd017d36f8693be/simplejson-4.1.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
@@ -950,11 +950,11 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/17/93/fb357cc7847c58a8ae790be718903afa81a28d23e642c843dc4129e8a0b2/wrapt-2.2.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/18/e4/5e20b516ff2ddedd92f7943f3f6dda89bb3a08ac06f57ff6633e2be54a7f/mapca-0.0.7-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/19/1c/3fd51e599d00eacc17b6f8c0b30e5f1483b07aee83ed12f0d710ddf9879e/nipype-1.12.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1e/5e/d4e9f1a599fb8e573b7b87160658329fbf28d19eac2718f51fc3def3aa5a/idna-3.18-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1f/b6/e7cdde7b8e90d5dff25b622f95833ef26567ad184c977278b93a1cbd5717/narwhals-2.22.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/27/16/ad52f56b96d851a2bcfdc1e754c3531341885bd7177a128c13ff2ca72ab4/pytest_env-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/30/300c343f68beb9d4cbb64ec81e58c5b6b80b56927f72d2b38654ac26e013/coverage-7.14.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/2f/31/6bb544f26c38f5f8e8b6b83cbf6021909a6d825bed45cc2647440c780038/nipype-1.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/74/f94141b38a51a553efef7f510fc213894161ae49b88bffd037f8d2a7cb2f/frozendict-2.4.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/39/e8/806475fe4cdfd8635535d3fa11bd61d19b7cc94b61b9147ebdd2ab4cbbee/acres-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/2e/8d0c2ab90a8c1d9a24f0399058ab8519a3279d1bd4289511d74e909f060e/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
@@ -4725,9 +4725,9 @@ packages:
   - types-jinja2 ; extra == 'types'
   - types-pyyaml ; extra == 'types'
   requires_python: '>=3.10'
-- pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
+- pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0d74dbab89b2c3973388175aa2e3d15f438d7a90
   name: niworkflows
-  version: 1.15.0.dev124+gd991644f3
+  version: 1.16.0.dev2+g0d74dbab8
   requires_dist:
   - acres>=0.5
   - attrs>=23.1
@@ -4736,19 +4736,19 @@ packages:
   - matplotlib>=3.8
   - nibabel>=5.2
   - nilearn>=0.11.1
-  - nipype>=1.9.2
+  - nipype>=1.12.0
   - nitransforms>=24.1.1
-  - numpy>=1.26
+  - numpy>=2.2
   - packaging>=23
   - pandas>=2.1
   - pybids>=0.18.1
   - pyyaml>=6.0.1
-  - scikit-image>=0.22
+  - scikit-image>=0.25
   - scipy>=1.12
   - seaborn>=0.13
   - svgutils>=0.3.4
   - templateflow>=24.2
-  - transforms3d>=0.4
+  - transforms3d>=0.4.2
   - coverage[toml]>=7 ; extra == 'all'
   - flake8>=3.7.0 ; extra == 'all'
   - furo ; extra == 'all'
@@ -4784,22 +4784,22 @@ packages:
   - pytest-xvfb>=2 ; extra == 'tests'
   - pytest>=8 ; extra == 'tests'
   requires_python: '>=3.12'
-- pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#8578e496fd463040288903dd01cd196cb66e6f25
+- pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#93938286851685a2e43fe40741bc70fc63ae220d
   name: sdcflows
-  version: 26.0.0.dev34+g8578e496f
+  version: 26.0.0.dev14+g939382868
   requires_dist:
   - acres>=0.5.0
-  - attrs>=20.1.0
+  - attrs>=24.1.0
   - migas>=0.4.0
-  - nibabel>=5.1.1
+  - nibabel>=5.3.0
   - nipype>=1.9.0
   - nireports>=25.0.1
   - nitransforms>=25.0.1
   - niworkflows>=1.14.2
-  - numpy>=2.0
-  - pybids>=0.16.4
-  - scikit-image>=0.23
-  - scipy>=1.10
+  - numpy>=2.1
+  - pybids>=0.21
+  - scikit-image>=0.25
+  - scipy>=1.15
   - templateflow>=23.1
   - toml>=0.10
   - attrs>=20.1.0 ; extra == 'all'
@@ -4816,7 +4816,7 @@ packages:
   - pydotplus ; extra == 'all'
   - pytest-cov>=2.11 ; extra == 'all'
   - pytest-env ; extra == 'all'
-  - pytest-xdist>=2.5 ; extra == 'all'
+  - pytest-xdist>=3.3 ; extra == 'all'
   - pytest>=8.1 ; extra == 'all'
   - ruff ; extra == 'all'
   - sphinx-argparse ; extra == 'all'
@@ -4852,47 +4852,46 @@ packages:
   - coverage[toml]>=7 ; extra == 'test'
   - pytest-cov>=2.11 ; extra == 'test'
   - pytest-env ; extra == 'test'
-  - pytest-xdist>=2.5 ; extra == 'test'
+  - pytest-xdist>=3.3 ; extra == 'test'
   - pytest>=8.1 ; extra == 'test'
   - coverage[toml]>=7 ; extra == 'tests'
   - pytest-cov>=2.11 ; extra == 'tests'
   - pytest-env ; extra == 'tests'
-  - pytest-xdist>=2.5 ; extra == 'tests'
+  - pytest-xdist>=3.3 ; extra == 'tests'
   - pytest>=8.1 ; extra == 'tests'
-  requires_python: '>=3.10'
-- pypi: git+https://github.com/nipreps/smriprep.git?rev=master#3c76b5bd6c80c84c461ba453f1de54c6c705c476
+  requires_python: '>=3.12'
+- pypi: git+https://github.com/nipreps/smriprep.git?rev=master#8865f660e198830f2ac5011114948d19931d2115
   name: smriprep
-  version: 0.19.3.dev122+g3c76b5bd6
+  version: 0.20.1.dev1+g8865f660e
   requires_dist:
-  - acres>=0.2
-  - indexed-gzip>=1.7
+  - acres>=0.5.0
+  - indexed-gzip>=1.8.7
   - lockfile>=0.12.2
   - looseversion>=1.3.0
-  - matplotlib>=3.5
-  - nibabel>=4.0.1
-  - nipype>=1.8.5
+  - matplotlib>=3.9
+  - nibabel>=5.3.0
+  - nipype>=1.9.0
   - nireports>=25.3.0
-  - nitransforms>=24.1.1
-  - niworkflows>=1.14.0
-  - numpy>=1.24
-  - packaging>=24
-  - pybids>=0.16
-  - pyyaml>=6.0
+  - nitransforms>=25.0.1
+  - niworkflows>=1.14.4
+  - numpy>=2.1
+  - packaging>=24.2
+  - pybids>=0.21
+  - pyyaml>=6.0.1
   - templateflow>=25.0
-  - coverage[toml]>=5.2.1 ; extra == 'all'
+  - coverage[toml]>=7.6.2 ; extra == 'all'
   - datalad ; extra == 'all'
   - duecredit ; extra == 'all'
   - nbsphinx ; extra == 'all'
   - packaging ; extra == 'all'
   - pydot ; extra == 'all'
-  - pytest-cov>=2.11 ; extra == 'all'
-  - pytest-env ; extra == 'all'
-  - pytest-xdist>=2.5 ; extra == 'all'
-  - pytest>=8.1 ; extra == 'all'
+  - pytest-cov>=6.0.0 ; extra == 'all'
+  - pytest-env>=1.1.4 ; extra == 'all'
+  - pytest-xdist>=3.7.0 ; extra == 'all'
+  - pytest>=8.3.3 ; extra == 'all'
   - sphinx ; extra == 'all'
   - sphinx-argparse ; extra == 'all'
   - sphinx-rtd-theme ; extra == 'all'
-  - sphinxcontrib-apidoc ; extra == 'all'
   - sphinxcontrib-napoleon ; extra == 'all'
   - sphinxcontrib-versioning ; extra == 'all'
   - datalad ; extra == 'datalad'
@@ -4902,7 +4901,6 @@ packages:
   - sphinx ; extra == 'doc'
   - sphinx-argparse ; extra == 'doc'
   - sphinx-rtd-theme ; extra == 'doc'
-  - sphinxcontrib-apidoc ; extra == 'doc'
   - sphinxcontrib-napoleon ; extra == 'doc'
   - sphinxcontrib-versioning ; extra == 'doc'
   - nbsphinx ; extra == 'docs'
@@ -4911,22 +4909,21 @@ packages:
   - sphinx ; extra == 'docs'
   - sphinx-argparse ; extra == 'docs'
   - sphinx-rtd-theme ; extra == 'docs'
-  - sphinxcontrib-apidoc ; extra == 'docs'
   - sphinxcontrib-napoleon ; extra == 'docs'
   - sphinxcontrib-versioning ; extra == 'docs'
   - duecredit ; extra == 'duecredit'
   - flake8 ; extra == 'style'
-  - coverage[toml]>=5.2.1 ; extra == 'test'
-  - pytest-cov>=2.11 ; extra == 'test'
-  - pytest-env ; extra == 'test'
-  - pytest-xdist>=2.5 ; extra == 'test'
-  - pytest>=8.1 ; extra == 'test'
-  - coverage[toml]>=5.2.1 ; extra == 'tests'
-  - pytest-cov>=2.11 ; extra == 'tests'
-  - pytest-env ; extra == 'tests'
-  - pytest-xdist>=2.5 ; extra == 'tests'
-  - pytest>=8.1 ; extra == 'tests'
-  requires_python: '>=3.10'
+  - coverage[toml]>=7.6.2 ; extra == 'test'
+  - pytest-cov>=6.0.0 ; extra == 'test'
+  - pytest-env>=1.1.4 ; extra == 'test'
+  - pytest-xdist>=3.7.0 ; extra == 'test'
+  - pytest>=8.3.3 ; extra == 'test'
+  - coverage[toml]>=7.6.2 ; extra == 'tests'
+  - pytest-cov>=6.0.0 ; extra == 'tests'
+  - pytest-env>=1.1.4 ; extra == 'tests'
+  - pytest-xdist>=3.7.0 ; extra == 'tests'
+  - pytest>=8.3.3 ; extra == 'tests'
+  requires_python: '>=3.12'
 - pypi: https://files.pythonhosted.org/packages/01/ea/5352950cbee9d1e8392e5396ddbc6defc982414e2abc004b501139bce13c/boto3-1.43.21-py3-none-any.whl
   name: boto3
   version: 1.43.21
@@ -5062,6 +5059,110 @@ packages:
   - pytest-cov>=4.0.0 ; extra == 'tests'
   - requests ; extra == 'tests'
   requires_python: '>=3.8'
+- pypi: https://files.pythonhosted.org/packages/19/1c/3fd51e599d00eacc17b6f8c0b30e5f1483b07aee83ed12f0d710ddf9879e/nipype-1.12.0-py3-none-any.whl
+  name: nipype
+  version: 1.12.0
+  sha256: 2b9f5369bee97ab73a46e94233e91f691119b7f5c8b3abb19aff449989cbc130
+  requires_dist:
+  - acres>=0.3.0
+  - click>=8.2.0
+  - etelemetry>=0.3.1
+  - filelock>=3.0.0
+  - looseversion>=1.3.0
+  - lxml>=5.3.0
+  - networkx>=3.4
+  - nibabel>=5.3
+  - numpy>=2.2.0
+  - packaging>=21.0
+  - prov>=1.5.2
+  - puremagic>=1.15
+  - pydot>=1.2.3
+  - python-dateutil>=2.2
+  - rdflib>=5.0.0
+  - scipy>=1.15.0
+  - simplejson>=3.8.0
+  - traits>=6.2
+  - black ; extra == 'all'
+  - coverage[toml]>=7.6.2 ; extra == 'all'
+  - datalad ; extra == 'all'
+  - dipy ; extra == 'all'
+  - duecredit ; extra == 'all'
+  - fuzzywuzzy ; extra == 'all'
+  - gitpython ; extra == 'all'
+  - ipython ; extra == 'all'
+  - matplotlib ; extra == 'all'
+  - matplotlib>=3.10.0 ; extra == 'all'
+  - nbsphinx ; extra == 'all'
+  - niflow-nipype1-workflows ; extra == 'all'
+  - nilearn>=0.11.0 ; extra == 'all'
+  - nipy ; extra == 'all'
+  - nitime ; extra == 'all'
+  - pandas>=2.3.0 ; extra == 'all'
+  - paramiko ; extra == 'all'
+  - psutil>=5.0 ; extra == 'all'
+  - pybids>=0.18.0 ; extra == 'all'
+  - pytest-cov>=6.0.0 ; extra == 'all'
+  - pytest-doctestplus>=1.5.0 ; extra == 'all'
+  - pytest-env>=1.1.4 ; extra == 'all'
+  - pytest-timeout>=2.3.1 ; extra == 'all'
+  - pytest-xdist>=3.7.0 ; extra == 'all'
+  - pytest>=8.3.3 ; extra == 'all'
+  - sphinx-argparse ; extra == 'all'
+  - sphinx>=2.1.2 ; extra == 'all'
+  - sphinx>=8 ; extra == 'all'
+  - sphinxcontrib-apidoc ; extra == 'all'
+  - xvfbwrapper ; extra == 'all'
+  - datalad ; extra == 'data'
+  - black ; extra == 'dev'
+  - coverage[toml]>=7.6.2 ; extra == 'dev'
+  - dipy ; extra == 'dev'
+  - ipython ; extra == 'dev'
+  - matplotlib>=3.10.0 ; extra == 'dev'
+  - nbsphinx ; extra == 'dev'
+  - niflow-nipype1-workflows ; extra == 'dev'
+  - pandas>=2.3.0 ; extra == 'dev'
+  - pytest-cov>=6.0.0 ; extra == 'dev'
+  - pytest-doctestplus>=1.5.0 ; extra == 'dev'
+  - pytest-env>=1.1.4 ; extra == 'dev'
+  - pytest-timeout>=2.3.1 ; extra == 'dev'
+  - pytest-xdist>=3.7.0 ; extra == 'dev'
+  - pytest>=8.3.3 ; extra == 'dev'
+  - sphinx-argparse ; extra == 'dev'
+  - sphinx>=2.1.2 ; extra == 'dev'
+  - sphinx>=8 ; extra == 'dev'
+  - sphinxcontrib-apidoc ; extra == 'dev'
+  - xvfbwrapper ; extra == 'dev'
+  - dipy ; extra == 'doc'
+  - ipython ; extra == 'doc'
+  - matplotlib>=3.10.0 ; extra == 'doc'
+  - nbsphinx ; extra == 'doc'
+  - niflow-nipype1-workflows ; extra == 'doc'
+  - sphinx-argparse ; extra == 'doc'
+  - sphinx>=2.1.2 ; extra == 'doc'
+  - sphinxcontrib-apidoc ; extra == 'doc'
+  - duecredit ; extra == 'duecredit'
+  - fuzzywuzzy ; extra == 'maint'
+  - gitpython ; extra == 'maint'
+  - dipy ; extra == 'nipy'
+  - matplotlib ; extra == 'nipy'
+  - nilearn>=0.11.0 ; extra == 'nipy'
+  - nipy ; extra == 'nipy'
+  - nitime ; extra == 'nipy'
+  - psutil>=5.0 ; extra == 'profiler'
+  - pybids>=0.18.0 ; extra == 'pybids'
+  - black ; extra == 'specs'
+  - paramiko ; extra == 'ssh'
+  - coverage[toml]>=7.6.2 ; extra == 'tests'
+  - pandas>=2.3.0 ; extra == 'tests'
+  - pytest-cov>=6.0.0 ; extra == 'tests'
+  - pytest-doctestplus>=1.5.0 ; extra == 'tests'
+  - pytest-env>=1.1.4 ; extra == 'tests'
+  - pytest-timeout>=2.3.1 ; extra == 'tests'
+  - pytest-xdist>=3.7.0 ; extra == 'tests'
+  - pytest>=8.3.3 ; extra == 'tests'
+  - sphinx>=8 ; extra == 'tests'
+  - xvfbwrapper ; extra == 'xvfbwrapper'
+  requires_python: '>=3.12'
 - pypi: https://files.pythonhosted.org/packages/1e/5e/d4e9f1a599fb8e573b7b87160658329fbf28d19eac2718f51fc3def3aa5a/idna-3.18-py3-none-any.whl
   name: idna
   version: '3.18'
@@ -5127,109 +5228,6 @@ packages:
   requires_dist:
   - botocore>=1.37.4,<2.0a0
   - botocore[crt]>=1.37.4,<2.0a0 ; extra == 'crt'
-  requires_python: '>=3.10'
-- pypi: https://files.pythonhosted.org/packages/2f/31/6bb544f26c38f5f8e8b6b83cbf6021909a6d825bed45cc2647440c780038/nipype-1.11.0-py3-none-any.whl
-  name: nipype
-  version: 1.11.0
-  sha256: 4e20282c7d30d2ff69b54fa0d1e6d3da5d66fda12ac4f9e06be183a3c1269d37
-  requires_dist:
-  - acres>=0.3.0
-  - click>=6.6.0
-  - etelemetry>=0.3.1
-  - filelock>=3.0.0
-  - looseversion>=1.0.1,!=1.2
-  - lxml>=4.9.1
-  - networkx>=2.5
-  - nibabel>=3.0
-  - numpy>=1.21
-  - packaging>=21.0
-  - prov>=1.5.2
-  - puremagic>=1.15
-  - pydot>=1.2.3
-  - python-dateutil>=2.2
-  - rdflib>=5.0.0
-  - scipy>=1.8
-  - simplejson>=3.8.0
-  - traits>=6.2
-  - black ; extra == 'all'
-  - coverage>=5.2.1 ; extra == 'all'
-  - datalad ; extra == 'all'
-  - dipy ; extra == 'all'
-  - duecredit ; extra == 'all'
-  - fuzzywuzzy ; extra == 'all'
-  - gitpython ; extra == 'all'
-  - ipython ; extra == 'all'
-  - matplotlib ; extra == 'all'
-  - nbsphinx ; extra == 'all'
-  - niflow-nipype1-workflows ; extra == 'all'
-  - nilearn ; extra == 'all'
-  - nipy ; extra == 'all'
-  - nitime ; extra == 'all'
-  - pandas>=1.5.0 ; extra == 'all'
-  - paramiko ; extra == 'all'
-  - psutil>=5.0 ; extra == 'all'
-  - pybids>=0.7.0 ; extra == 'all'
-  - pytest-cov>=2.13 ; extra == 'all'
-  - pytest-doctestplus>=1.1.0 ; extra == 'all'
-  - pytest-env>=1.1.0 ; extra == 'all'
-  - pytest-timeout>=1.4 ; extra == 'all'
-  - pytest-xdist>=2.5 ; extra == 'all'
-  - pytest>=6 ; extra == 'all'
-  - sphinx-argparse ; extra == 'all'
-  - sphinx>=2.1.2 ; extra == 'all'
-  - sphinx>=7 ; extra == 'all'
-  - sphinxcontrib-apidoc ; extra == 'all'
-  - xvfbwrapper ; extra == 'all'
-  - datalad ; extra == 'data'
-  - black ; extra == 'dev'
-  - coverage>=5.2.1 ; extra == 'dev'
-  - dipy ; extra == 'dev'
-  - ipython ; extra == 'dev'
-  - matplotlib ; extra == 'dev'
-  - nbsphinx ; extra == 'dev'
-  - niflow-nipype1-workflows ; extra == 'dev'
-  - pandas>=1.5.0 ; extra == 'dev'
-  - pytest-cov>=2.13 ; extra == 'dev'
-  - pytest-doctestplus>=1.1.0 ; extra == 'dev'
-  - pytest-env>=1.1.0 ; extra == 'dev'
-  - pytest-timeout>=1.4 ; extra == 'dev'
-  - pytest-xdist>=2.5 ; extra == 'dev'
-  - pytest>=6 ; extra == 'dev'
-  - sphinx-argparse ; extra == 'dev'
-  - sphinx>=2.1.2 ; extra == 'dev'
-  - sphinx>=7 ; extra == 'dev'
-  - sphinxcontrib-apidoc ; extra == 'dev'
-  - xvfbwrapper ; extra == 'dev'
-  - dipy ; extra == 'doc'
-  - ipython ; extra == 'doc'
-  - matplotlib ; extra == 'doc'
-  - nbsphinx ; extra == 'doc'
-  - niflow-nipype1-workflows ; extra == 'doc'
-  - sphinx-argparse ; extra == 'doc'
-  - sphinx>=2.1.2 ; extra == 'doc'
-  - sphinxcontrib-apidoc ; extra == 'doc'
-  - duecredit ; extra == 'duecredit'
-  - fuzzywuzzy ; extra == 'maint'
-  - gitpython ; extra == 'maint'
-  - dipy ; extra == 'nipy'
-  - matplotlib ; extra == 'nipy'
-  - nilearn ; extra == 'nipy'
-  - nipy ; extra == 'nipy'
-  - nitime ; extra == 'nipy'
-  - psutil>=5.0 ; extra == 'profiler'
-  - pybids>=0.7.0 ; extra == 'pybids'
-  - black ; extra == 'specs'
-  - paramiko ; extra == 'ssh'
-  - coverage>=5.2.1 ; extra == 'tests'
-  - pandas>=1.5.0 ; extra == 'tests'
-  - pytest-cov>=2.13 ; extra == 'tests'
-  - pytest-doctestplus>=1.1.0 ; extra == 'tests'
-  - pytest-env>=1.1.0 ; extra == 'tests'
-  - pytest-timeout>=1.4 ; extra == 'tests'
-  - pytest-xdist>=2.5 ; extra == 'tests'
-  - pytest>=6 ; extra == 'tests'
-  - sphinx>=7 ; extra == 'tests'
-  - xvfbwrapper ; extra == 'xvfbwrapper'
   requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/38/74/f94141b38a51a553efef7f510fc213894161ae49b88bffd037f8d2a7cb2f/frozendict-2.4.7-py3-none-any.whl
   name: frozendict
