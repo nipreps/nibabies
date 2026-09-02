@@ -258,6 +258,7 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-misc_tcl-2406.0-0.tar.bz2
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
+      - pypi: git+https://github.com/nipreps/nireports.git?rev=fix%2Fduplicate-rpts#126a850158e1aa87e17e64811916260bae1fd0bd
       - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
       - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#8578e496fd463040288903dd01cd196cb66e6f25
       - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#3c76b5bd6c80c84c461ba453f1de54c6c705c476
@@ -280,7 +281,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/44/f6/775eb92e865b28cdb4ad1f2bed7a5446197516f76b58a950faa3be3fd08d/pybtex-0.26.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/47/0b/bdf449df87be3f07b23091ceafee8c3ef569cf6d2fb7edec6e3b12b3faa4/bokeh-3.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4b/f8/d0118a2f5f23b02cd166fa385c60f9b0d4f9194f574e2b31cef350ad7223/charset_normalizer-3.4.7-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/4e/23/f87d9328c96e0107fed479ec564ce645b033ae0d6cedad2672bddeb0e065/nireports-25.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4e/74/d5405b9b3b12e9176dff223576d7090bc161092878f533fd0dc23dd6ae1d/looseversion-1.3.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/59/8c/57e832b7af6d7c5abe66eb3fbe3a3a32f4d11ea23a1aa7131371035be991/certifi-2026.5.20-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/61/7a/f38385f1b2d5f54221baf1db3d6371dc6eef8041d95abff39576c694e9d9/transforms3d-0.4.2-py3-none-any.whl
@@ -578,6 +578,7 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-misc_tcl-2406.0-0.tar.bz2
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
+      - pypi: git+https://github.com/nipreps/nireports.git?rev=fix%2Fduplicate-rpts#126a850158e1aa87e17e64811916260bae1fd0bd
       - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
       - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#8578e496fd463040288903dd01cd196cb66e6f25
       - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#3c76b5bd6c80c84c461ba453f1de54c6c705c476
@@ -611,7 +612,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/47/0b/bdf449df87be3f07b23091ceafee8c3ef569cf6d2fb7edec6e3b12b3faa4/bokeh-3.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4a/0d/9c59313ab43d0858a9a665e80763bd830dc78d5f379afc3815e123c486c2/keyrings.alt-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4b/f8/d0118a2f5f23b02cd166fa385c60f9b0d4f9194f574e2b31cef350ad7223/charset_normalizer-3.4.7-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/4e/23/f87d9328c96e0107fed479ec564ce645b033ae0d6cedad2672bddeb0e065/nireports-25.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4e/74/d5405b9b3b12e9176dff223576d7090bc161092878f533fd0dc23dd6ae1d/looseversion-1.3.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/51/ac/e5d886f892666d2d1e5cb8c1a41146e1d79ae8896477b1153a21711d3b44/fasteners-0.20-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/1c/a84d50a0f27ba70d0e4e413c29278a3ac360907090a1925824e1b36f50ec/datalad-1.4.1-py3-none-any.whl
@@ -938,6 +938,7 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-misc_tcl-2406.0-0.tar.bz2
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
+      - pypi: git+https://github.com/nipreps/nireports.git?rev=fix%2Fduplicate-rpts#126a850158e1aa87e17e64811916260bae1fd0bd
       - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
       - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#8578e496fd463040288903dd01cd196cb66e6f25
       - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#3c76b5bd6c80c84c461ba453f1de54c6c705c476
@@ -963,7 +964,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/44/f6/775eb92e865b28cdb4ad1f2bed7a5446197516f76b58a950faa3be3fd08d/pybtex-0.26.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/47/0b/bdf449df87be3f07b23091ceafee8c3ef569cf6d2fb7edec6e3b12b3faa4/bokeh-3.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4b/f8/d0118a2f5f23b02cd166fa385c60f9b0d4f9194f574e2b31cef350ad7223/charset_normalizer-3.4.7-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/4e/23/f87d9328c96e0107fed479ec564ce645b033ae0d6cedad2672bddeb0e065/nireports-25.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4e/74/d5405b9b3b12e9176dff223576d7090bc161092878f533fd0dc23dd6ae1d/looseversion-1.3.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/59/8c/57e832b7af6d7c5abe66eb3fbe3a3a32f4d11ea23a1aa7131371035be991/certifi-2026.5.20-py3-none-any.whl
@@ -4592,7 +4592,7 @@ packages:
   - acres
   - nibabel>=5.1.0
   - nipype>=1.9.0
-  - nireports>=25.3.0
+  - nireports @ git+https://github.com/nipreps/nireports.git@fix/duplicate-rpts
   - nitime
   - nitransforms>=25.0.1
   - niworkflows @ git+https://github.com/nipreps/niworkflows.git@master
@@ -4659,6 +4659,72 @@ packages:
   - pytest-env ; extra == 'tests'
   - pytest-xdist ; extra == 'tests'
   requires_python: '>=3.12'
+- pypi: git+https://github.com/nipreps/nireports.git?rev=fix%2Fduplicate-rpts#126a850158e1aa87e17e64811916260bae1fd0bd
+  name: nireports
+  version: 26.0.0.dev139+g126a85015
+  requires_dist:
+  - acres>=0.2
+  - lxml>=4.7
+  - matplotlib>=3.6
+  - nibabel>=5.0
+  - nilearn>=0.10.1
+  - nipype>=1.8.5
+  - numpy>=1.24
+  - pandas>=1.5
+  - pybids>=0.15.1
+  - pyyaml>=6.0
+  - seaborn>=0.13
+  - templateflow>=23.1
+  - coverage[toml]>=7.10 ; extra == 'all'
+  - furo ; extra == 'all'
+  - packaging>=25.0 ; extra == 'all'
+  - pre-commit ; extra == 'all'
+  - pydot>=1.2.3 ; extra == 'all'
+  - pydotplus ; extra == 'all'
+  - pytest-cov>=6.2 ; extra == 'all'
+  - pytest-env>=1.1 ; extra == 'all'
+  - pytest-xdist>=3.7 ; extra == 'all'
+  - pytest>=8.4 ; extra == 'all'
+  - ruff ; extra == 'all'
+  - sphinx ; extra == 'all'
+  - sphinx>=8.0 ; extra == 'all'
+  - sphinxcontrib-apidoc ; extra == 'all'
+  - sphinxcontrib-napoleon ; extra == 'all'
+  - pre-commit ; extra == 'dev'
+  - ruff ; extra == 'dev'
+  - furo ; extra == 'doc'
+  - pydot>=1.2.3 ; extra == 'doc'
+  - pydotplus ; extra == 'doc'
+  - sphinx ; extra == 'doc'
+  - sphinxcontrib-apidoc ; extra == 'doc'
+  - sphinxcontrib-napoleon ; extra == 'doc'
+  - furo ; extra == 'docs'
+  - pydot>=1.2.3 ; extra == 'docs'
+  - pydotplus ; extra == 'docs'
+  - sphinx ; extra == 'docs'
+  - sphinxcontrib-apidoc ; extra == 'docs'
+  - sphinxcontrib-napoleon ; extra == 'docs'
+  - coverage[toml]>=7.10 ; extra == 'test'
+  - packaging>=25.0 ; extra == 'test'
+  - pytest-cov>=6.2 ; extra == 'test'
+  - pytest-env>=1.1 ; extra == 'test'
+  - pytest-xdist>=3.7 ; extra == 'test'
+  - pytest>=8.4 ; extra == 'test'
+  - sphinx>=8.0 ; extra == 'test'
+  - coverage[toml]>=7.10 ; extra == 'tests'
+  - packaging>=25.0 ; extra == 'tests'
+  - pytest-cov>=6.2 ; extra == 'tests'
+  - pytest-env>=1.1 ; extra == 'tests'
+  - pytest-xdist>=3.7 ; extra == 'tests'
+  - pytest>=8.4 ; extra == 'tests'
+  - sphinx>=8.0 ; extra == 'tests'
+  - lxml-stubs ; extra == 'types'
+  - pandas-stubs ; extra == 'types'
+  - pytest ; extra == 'types'
+  - scipy-stubs ; extra == 'types'
+  - types-jinja2 ; extra == 'types'
+  - types-pyyaml ; extra == 'types'
+  requires_python: '>=3.10'
 - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#d991644f3a769d7c84e7c8bb897ea30fb96885df
   name: niworkflows
   version: 1.15.0.dev124+gd991644f3
@@ -5265,73 +5331,6 @@ packages:
   version: 3.4.7
   sha256: 5649fd1c7bade02f320a462fdefd0b4bd3ce036065836d4f42e0de958038e116
   requires_python: '>=3.7'
-- pypi: https://files.pythonhosted.org/packages/4e/23/f87d9328c96e0107fed479ec564ce645b033ae0d6cedad2672bddeb0e065/nireports-25.3.0-py3-none-any.whl
-  name: nireports
-  version: 25.3.0
-  sha256: 2626149f718aaf9287cc2e08f4b221737ed77052a333957f0958e630ba851a2e
-  requires_dist:
-  - acres>=0.2
-  - lxml>=4.7
-  - matplotlib>=3.6
-  - nibabel>=5.0
-  - nilearn>=0.10.1
-  - nipype>=1.8.5
-  - numpy>=1.24
-  - pandas>=1.5
-  - pybids>=0.15.1
-  - pyyaml>=6.0
-  - seaborn>=0.13
-  - templateflow>=23.1
-  - coverage[toml]>=7.10 ; extra == 'all'
-  - furo ; extra == 'all'
-  - packaging>=25.0 ; extra == 'all'
-  - pre-commit ; extra == 'all'
-  - pydot>=1.2.3 ; extra == 'all'
-  - pydotplus ; extra == 'all'
-  - pytest-cov>=6.2 ; extra == 'all'
-  - pytest-env>=1.1 ; extra == 'all'
-  - pytest-xdist>=3.7 ; extra == 'all'
-  - pytest>=8.4 ; extra == 'all'
-  - ruff ; extra == 'all'
-  - sphinx ; extra == 'all'
-  - sphinx>=8.0 ; extra == 'all'
-  - sphinxcontrib-apidoc ; extra == 'all'
-  - sphinxcontrib-napoleon ; extra == 'all'
-  - pre-commit ; extra == 'dev'
-  - ruff ; extra == 'dev'
-  - furo ; extra == 'doc'
-  - pydot>=1.2.3 ; extra == 'doc'
-  - pydotplus ; extra == 'doc'
-  - sphinx ; extra == 'doc'
-  - sphinxcontrib-apidoc ; extra == 'doc'
-  - sphinxcontrib-napoleon ; extra == 'doc'
-  - furo ; extra == 'docs'
-  - pydot>=1.2.3 ; extra == 'docs'
-  - pydotplus ; extra == 'docs'
-  - sphinx ; extra == 'docs'
-  - sphinxcontrib-apidoc ; extra == 'docs'
-  - sphinxcontrib-napoleon ; extra == 'docs'
-  - coverage[toml]>=7.10 ; extra == 'test'
-  - packaging>=25.0 ; extra == 'test'
-  - pytest-cov>=6.2 ; extra == 'test'
-  - pytest-env>=1.1 ; extra == 'test'
-  - pytest-xdist>=3.7 ; extra == 'test'
-  - pytest>=8.4 ; extra == 'test'
-  - sphinx>=8.0 ; extra == 'test'
-  - coverage[toml]>=7.10 ; extra == 'tests'
-  - packaging>=25.0 ; extra == 'tests'
-  - pytest-cov>=6.2 ; extra == 'tests'
-  - pytest-env>=1.1 ; extra == 'tests'
-  - pytest-xdist>=3.7 ; extra == 'tests'
-  - pytest>=8.4 ; extra == 'tests'
-  - sphinx>=8.0 ; extra == 'tests'
-  - lxml-stubs ; extra == 'types'
-  - pandas-stubs ; extra == 'types'
-  - pytest ; extra == 'types'
-  - scipy-stubs ; extra == 'types'
-  - types-jinja2 ; extra == 'types'
-  - types-pyyaml ; extra == 'types'
-  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/4e/74/d5405b9b3b12e9176dff223576d7090bc161092878f533fd0dc23dd6ae1d/looseversion-1.3.0-py2.py3-none-any.whl
   name: looseversion
   version: 1.3.0
