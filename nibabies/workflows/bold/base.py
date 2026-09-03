@@ -273,16 +273,16 @@ def init_bold_apply_wf(
         ds_bold_native_wf.inputs.inputnode.source_files = bold_series
 
         workflow.connect([
-            (bold_native_wf, ds_bold_native_wf, [
-                ('outputnode.bold_native', 'inputnode.bold'),
-                ('outputnode.bold_echos', 'inputnode.bold_echos'),
-                ('outputnode.t2star_map', 'inputnode.t2star'),
-            ]),
             (inputnode, ds_bold_native_wf, [
                 ('run_mask', 'inputnode.bold_mask'),
                 ('motion_xfm', 'inputnode.motion_xfm'),
                 ('run2fmap_xfm', 'inputnode.run2fmap_xfm'),
                 ('run2template_xfm', 'inputnode.run2template_xfm'),
+            ]),
+            (bold_native_wf, ds_bold_native_wf, [
+                ('outputnode.bold_native', 'inputnode.bold'),
+                ('outputnode.bold_echos', 'inputnode.bold_echos'),
+                ('outputnode.t2star_map', 'inputnode.t2star'),
             ]),
         ])  # fmt:skip
 
