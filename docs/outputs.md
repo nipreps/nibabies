@@ -259,7 +259,7 @@ the `space` and `from`/`to` entities of functional outputs:
   from the sbref or a robust average of the BOLD series.
 - **`session`** — the coregistration reference space when `--bold-coreg-level session`:
   a template image built from all run-level boldrefs and registered to anatomy. Its
-  boldref, mask and `session→anat` transform are each written once for the session
+  boldref and `session→anat` transform are each written once for the session
   (the run-varying entities are dropped from the filename).
 - **`anat`** — the anatomical reference space (T1w or T2w).
 
@@ -316,14 +316,13 @@ sub-<subject_label>/[ses-<session_label>/]
 ```
 
 With `--bold-coreg-level session`, a session template is built from all run
-boldrefs; the template boldref, mask and `session→anat` transform are written once
+boldrefs; the template boldref and `session→anat` transform are written once
 (run-varying entities dropped), alongside a per-run `run→session` transform:
 
 ```
 sub-<subject_label>/[ses-<session_label>/]
   func/
     sub-<subject_label>_ses-<session_label>_space-session_boldref.nii.gz
-    sub-<subject_label>_ses-<session_label>_space-session_desc-brain_mask.nii.gz
     sub-<subject_label>_ses-<session_label>_from-session_to-<anat>_mode-image_desc-coreg_xfm.txt
     sub-<subject_label>_[specifiers]_from-run_to-session_mode-image_desc-coreg_xfm.txt
 ```
