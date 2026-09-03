@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from nipype.interfaces import utility as niu
 from nipype.interfaces.base import Undefined
 from nipype.pipeline import engine as pe
@@ -15,7 +13,7 @@ from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.bids import BIDSURI
 from nibabies.utils.bids import GROUP_DISMISS_ENTITIES
 
-logger = logging.getLogger('nipype.workflow')
+logger = config.loggers.workflow
 
 INPUT_FIELDS = [
     'run_boldrefs',
@@ -224,25 +222,25 @@ def init_bold_run_coreg_wf(
             continue
 
         reg_wf = init_bold_reg_wf(name=f'boldref_reg_{bold_id}_wf', **reg_kwargs)
-        ds_template2anat = init_ds_registration_wf(
+        ds_template2anat_wf = init_ds_registration_wf(
             source_file=bold_file,
             output_dir=output_dir,
             source=coreg_space,
             dest=reference_anat,
             desc='coreg',
-            name=f'ds_template2anat_{bold_id}',
+            name=f'ds_template2anat_{bold_id}_wf',
         )
 
         workflow.connect([
-            (select_boldref, reg_wf, [('out', 'inputnode.ref_bold_brain')]),
             # workflow connect edits the list in place, so make a copy
             (inputnode, reg_wf, list(ANAT_REG_INPUTS)),
-            (select_boldref, ds_template2anat, [('out', 'inputnode.source_files')]),
-            (reg_wf, ds_template2anat, [
+            (select_boldref, reg_wf, [('out', 'inputnode.ref_bold_brain')]),
+            (select_boldref, ds_template2anat_wf, [('out', 'inputnode.source_files')]),
+            (reg_wf, ds_template2anat_wf, [
                 ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
                 ('outputnode.metadata', 'inputnode.metadata'),
             ]),
-            (ds_template2anat, merge_template2anat, [('outputnode.xform', f'in{i + 1}')]),
+            (ds_template2anat_wf, merge_template2anat, [('outputnode.xform', f'in{i + 1}')]),
             (reg_wf, merge_fallbacks, [('outputnode.fallback', f'in{i + 1}')]),
         ])  # fmt:skip
 
@@ -314,73 +312,87 @@ def init_bold_template_coreg_wf(
     if coreg_space == 'subject':
         _dismiss.append('session')
 
+    boldref_template = precomputed.get('boldref_template')
     run2template_xfms = precomputed.get('run2template_xfms') or [None] * n_runs
     template2anat_xfm = precomputed.get('template2anat_xfm')
     if isinstance(template2anat_xfm, (list, tuple)):
         template2anat_xfm = template2anat_xfm[0] if template2anat_xfm else None
 
-    # Only skip if ALL run -> template transforms are present.
-    skip_template = all(run2template_xfms)
-    # If template needs to be recomputed, redo coregistration to anat
-    skip_reg = bool(template2anat_xfm) and skip_template
-    if template2anat_xfm and not skip_template:
-        logger.warning(
-            'A precomputed template2anat transform was found without a complete set '
-            'of run2template transforms; ignoring it and recomputing registration '
-            'against the rebuilt template.'
-        )
-
     template_buffer = pe.Node(
         niu.IdentityInterface(fields=['boldref', 'run2template_xfms']),
         name='template_buffer',
     )
-    boldref_template = precomputed.get('boldref_template')
-    if skip_template:
-        from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+    reg_buffer = pe.Node(
+        niu.IdentityInterface(fields=['template2anat_xfm', 'fallback']),
+        name='reg_buffer',
+    )
 
-        template_buffer.inputs.run2template_xfms = list(run2template_xfms)
-
-        if boldref_template:
-            logger.info('Reusing precomputed boldref template; skipping reconstruction.')
-            template_buffer.inputs.boldref = boldref_template
-        else:
-            logger.info(
-                'Found precomputed run2template transforms; '
-                'reconstructing boldref template from run references.'
-            )
-            select_boldref0 = pe.Node(
-                niu.Select(index=0), name='select_boldref0', run_without_submitting=True
-            )
-            warp_template_boldref = pe.Node(
-                ApplyTransforms(
-                    transforms=[run2template_xfms[0]], interpolation='LanczosWindowedSinc'
-                ),
-                name='warp_template_boldref',
-            )
-            workflow.connect([
-                (inputnode, select_boldref0, [('run_boldrefs', 'inlist')]),
-                (select_boldref0, warp_template_boldref, [
-                    ('out', 'input_image'),
-                    ('out', 'reference_image'),
-                ]),
-                (warp_template_boldref, template_buffer, [('output_image', 'boldref')]),
-            ])  # fmt:skip
+    # Populate buffers; these can be overridden by connections.
+    if boldref_template:
+        template_buffer.inputs.boldref = boldref_template
+    if have_run2template_xfms := all(run2template_xfms):
+        template_buffer.inputs.run2template_xfms = run2template_xfms
     else:
         if any(run2template_xfms):
             logger.warning(
-                'Only some run2template transforms were found - ignoring and recomputing the template.'
+                f'Only some run-to-{coreg_space} transforms were found; '
+                'ignoring and recomputing the template.'
             )
-        bold_template_wf = init_bold_template_wf(
-            num_bold_runs=n_runs,
-            omp_nthreads=omp_nthreads,
+        if template2anat_xfm:
+            template2anat_xfm = None
+            logger.warning(
+                f'A precomputed {coreg_space}-to-anat transform was found without a '
+                f'complete set of run-to-{coreg_space} transforms; '
+                'ignoring it and recomputing registration against the rebuilt template.'
+            )
+    if template2anat_xfm:
+        logger.info(f'Found precomputed {coreg_space}-to-anat transform; skipping coregistration.')
+        reg_buffer.inputs.template2anat_xfm = template2anat_xfm
+        reg_buffer.inputs.fallback = False
+
+    # Collation nodes
+    expand_template2anat = pe.Node(niu.Function(function=_expand), name='expand_template2anat')
+    expand_boldref = pe.Node(niu.Function(function=_expand), name='expand_boldref')
+    expand_fallback = pe.Node(niu.Function(function=_expand), name='expand_fallback')
+    for node in (expand_template2anat, expand_boldref, expand_fallback):
+        node.inputs.n = n_runs
+        node.run_without_submitting = True
+
+    merge_run2anat = pe.MapNode(
+        niu.Merge(2), iterfield=['in1'], name='merge_run2anat', run_without_submitting=True
+    )
+    run2anat_xfms = pe.MapNode(ConcatenateXFMs(), iterfield=['in_xfms'], name='run2anat_xfms')
+
+    workflow.connect([
+        # Create run2anat transforms
+        (template_buffer, merge_run2anat, [('run2template_xfms', 'in1')]),
+        (reg_buffer, merge_run2anat, [('template2anat_xfm', 'in2')]),
+        (merge_run2anat, run2anat_xfms, [('out', 'in_xfms')]),
+        # Broadcast single values to per-run lists
+        (template_buffer, expand_boldref, [('boldref', 'value')]),
+        (reg_buffer, expand_template2anat, [('template2anat_xfm', 'value')]),
+        (reg_buffer, expand_fallback, [('fallback', 'value')]),
+        # Connect outputs
+        (template_buffer, outputnode, [('boldref', 'boldref_template')]),
+        (expand_boldref, outputnode, [('out', 'template_boldrefs')]),
+        (expand_fallback, outputnode, [('out', 'fallbacks')]),
+        (expand_template2anat, outputnode, [('out', 'template2anat_xfms')]),
+        (template_buffer, outputnode, [('run2template_xfms', 'run2template_xfms')]),
+        (run2anat_xfms, outputnode, [('out_xfm', 'run2anat_xfms')]),
+    ])  # fmt:skip
+
+    if not have_run2template_xfms:
+        logger.info('Constructing BOLD template from run references.')
+
+        bold_template_wf = init_bold_template_wf(num_bold_runs=n_runs, omp_nthreads=omp_nthreads)
+
+        template_sources = pe.Node(
+            BIDSURI(
+                numinputs=1, dataset_links=config.execution.dataset_links, out_dir=str(output_dir)
+            ),
+            name='template_sources',
+            run_without_submitting=True,
         )
-        workflow.connect([
-            (inputnode, bold_template_wf, [('run_boldrefs', 'inputnode.boldref_files')]),
-            (bold_template_wf, template_buffer, [
-                ('outputnode.boldref', 'boldref'),
-                ('outputnode.run2template_xfms', 'run2template_xfms'),
-            ]),
-        ])  # fmt:skip
 
         # Datasink the session template boldref (written once, with run-varying
         # entities dropped so a single file represents all runs)
@@ -396,131 +408,93 @@ def init_bold_template_coreg_wf(
             name='ds_boldref_template',
             run_without_submitting=True,
         )
-        template_sources = pe.Node(
-            BIDSURI(
-                numinputs=1,
-                dataset_links=config.execution.dataset_links,
-                out_dir=str(output_dir),
+
+        merge_run2template = pe.Node(
+            niu.Merge(n_runs), name='merge_run2template', run_without_submitting=True
+        )
+
+        workflow.connect([
+            (inputnode, bold_template_wf, [('run_boldrefs', 'inputnode.boldref_files')]),
+            (inputnode, template_sources, [('run_boldrefs', 'in1')]),
+            (template_sources, ds_boldref_template, [('out', 'Sources')]),
+            (bold_template_wf, ds_boldref_template, [('outputnode.boldref', 'in_file')]),
+            (ds_boldref_template, template_buffer, [('out_file', 'boldref')]),
+            (merge_run2template, template_buffer, [('out', 'run2template_xfms')]),
+        ])  # fmt:skip
+
+        for i, (bold_file, bold_id) in enumerate(zip(bold_files, bold_ids, strict=True)):
+            select_run2template = pe.Node(
+                niu.Select(index=i),
+                name=f'select_run2template_{bold_id}',
+                run_without_submitting=True,
+            )
+            ds_run2template_wf = init_ds_registration_wf(
+                source_file=bold_file,
+                output_dir=output_dir,
+                source='run',
+                dest=coreg_space,
+                desc='coreg',
+                name=f'ds_run2template_{bold_id}_wf',
+            )
+            workflow.connect([
+                (inputnode, ds_run2template_wf, [('run_boldrefs', 'inputnode.source_files')]),
+                (bold_template_wf, select_run2template, [('outputnode.run2template_xfms', 'inlist')]),
+                (select_run2template, ds_run2template_wf, [('out', 'inputnode.xform')]),
+                (ds_run2template_wf, merge_run2template, [('outputnode.xform', f'in{i + 1}')]),
+            ])  # fmt:skip
+
+    elif boldref_template:
+        logger.info('Reusing precomputed boldref template; skipping reconstruction.')
+    else:
+        from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
+
+        logger.info(
+            'Found precomputed run2template transforms; '
+            'reconstructing boldref template from run references.'
+        )
+        select_boldref0 = pe.Node(
+            niu.Select(index=0), name='select_boldref0', run_without_submitting=True
+        )
+        warp_template_boldref = pe.Node(
+            ApplyTransforms(
+                transforms=[run2template_xfms[0]], interpolation='LanczosWindowedSinc'
             ),
-            name='template_sources',
-            run_without_submitting=True,
+            name='warp_template_boldref',
         )
         workflow.connect([
-            (inputnode, template_sources, [('run_boldrefs', 'in1')]),
-            (template_buffer, ds_boldref_template, [('boldref', 'in_file')]),
-            (template_sources, ds_boldref_template, [('out', 'Sources')]),
+            (inputnode, select_boldref0, [('run_boldrefs', 'inlist')]),
+            (select_boldref0, warp_template_boldref, [
+                ('out', 'input_image'),
+                ('out', 'reference_image'),
+            ]),
+            (warp_template_boldref, template_buffer, [('output_image', 'boldref')]),
         ])  # fmt:skip
 
-    reg_buffer = pe.Node(
-        niu.IdentityInterface(fields=['template2anat', 'fallback']),
-        name='reg_buffer',
-    )
-    if skip_reg:
-        logger.info('Found precomputed template2anat transform; skipping coregistration.')
-        reg_buffer.inputs.template2anat = template2anat_xfm
-        reg_buffer.inputs.fallback = False
-    else:
+    if not template2anat_xfm:
+        logger.info('Registering BOLD template to anatomical.')
         boldref_reg_wf = init_bold_reg_wf(name='boldref_reg_wf', **reg_kwargs)
-        workflow.connect([
-            (template_buffer, boldref_reg_wf, [('boldref', 'inputnode.ref_bold_brain')]),
-            # workflow connect edits the list in place, so make a copy
-            (inputnode, boldref_reg_wf, list(ANAT_REG_INPUTS)),
-            (boldref_reg_wf, reg_buffer, [
-                ('outputnode.itk_bold_to_anat', 'template2anat'),
-                ('outputnode.fallback', 'fallback'),
-            ]),
-        ])  # fmt:skip
 
         # Single template->anat transform is written, dropping run-varying entities
-        ds_template2anat = init_ds_registration_wf(
+        ds_template2anat_wf = init_ds_registration_wf(
             source_file=bold_files[0],
             output_dir=output_dir,
             source=coreg_space,
             dest=reference_anat,
             desc='coreg',
             dismiss_entities=_dismiss,
-            name='ds_template2anat',
+            name='ds_template2anat_wf',
         )
         workflow.connect([
-            (inputnode, ds_template2anat, [('run_boldrefs', 'inputnode.source_files')]),
-            (reg_buffer, ds_template2anat, [('template2anat', 'inputnode.xform')]),
+            # workflow connect edits the list in place, so make a copy
+            (inputnode, boldref_reg_wf, list(ANAT_REG_INPUTS)),
+            (inputnode, ds_template2anat_wf, [('run_boldrefs', 'inputnode.source_files')]),
+            (template_buffer, boldref_reg_wf, [('boldref', 'inputnode.ref_bold_brain')]),
+            (boldref_reg_wf, ds_template2anat_wf, [
+                ('outputnode.itk_bold_to_anat', 'inputnode.xform'),
+                ('outputnode.metadata', 'inputnode.metadata'),
+            ]),
+            (boldref_reg_wf, reg_buffer, [('outputnode.fallback', 'fallback')]),
+            (ds_template2anat_wf, reg_buffer, [('outputnode.xform', 'template2anat_xfm')]),
         ])  # fmt:skip
-
-    merge_run2template = pe.Node(
-        niu.Merge(n_runs), name='merge_run2template', run_without_submitting=True
-    )
-    merge_template2anat = pe.Node(
-        niu.Merge(n_runs), name='merge_template2anat', run_without_submitting=True
-    )
-    merge_run2anat_xfms = pe.Node(
-        niu.Merge(n_runs), name='merge_run2anat_xfms', run_without_submitting=True
-    )
-
-    for i, (bold_file, bold_id) in enumerate(zip(bold_files, bold_ids, strict=True)):
-        select_run2template = pe.Node(
-            niu.Select(index=i),
-            name=f'select_run2template_{bold_id}',
-            run_without_submitting=True,
-        )
-        workflow.connect(template_buffer, 'run2template_xfms', select_run2template, 'inlist')
-
-        merge_run2anat = pe.Node(
-            niu.Merge(2), name=f'merge_run2anat_{bold_id}', run_without_submitting=True
-        )
-        concat = pe.Node(ConcatenateXFMs(), name=f'concat_run2anat_{bold_id}')
-
-        if skip_template:
-            workflow.connect([
-                (select_run2template, merge_run2template, [('out', f'in{i + 1}')]),
-                (select_run2template, merge_run2anat, [('out', 'in1')]),
-            ])  # fmt:skip
-        else:
-            ds_run2template = init_ds_registration_wf(
-                source_file=bold_file,
-                output_dir=output_dir,
-                source='run',
-                dest=coreg_space,
-                desc='coreg',
-                name=f'ds_run2template_{bold_id}',
-            )
-            workflow.connect([
-                (inputnode, ds_run2template, [('run_boldrefs', 'inputnode.source_files')]),
-                (select_run2template, ds_run2template, [('out', 'inputnode.xform')]),
-                (ds_run2template, merge_run2template, [('outputnode.xform', f'in{i + 1}')]),
-                (ds_run2template, merge_run2anat, [('outputnode.xform', 'in1')]),
-            ])  # fmt:skip
-
-        if skip_reg:
-            setattr(merge_template2anat.inputs, f'in{i + 1}', template2anat_xfm)
-            merge_run2anat.inputs.in2 = template2anat_xfm
-        else:
-            # Pass single template->anat transform to all runs
-            workflow.connect([
-                (reg_buffer, merge_template2anat, [('template2anat', f'in{i + 1}')]),
-                (reg_buffer, merge_run2anat, [('template2anat', 'in2')]),
-            ])  # fmt:skip
-
-        workflow.connect([
-            (merge_run2anat, concat, [('out', 'in_xfms')]),
-            (concat, merge_run2anat_xfms, [('out_xfm', f'in{i + 1}')]),
-        ])  # fmt:skip
-
-    # Broadcast the session template image/fallback into per-run lists
-    expand_boldref = pe.Node(niu.Function(function=_expand), name='expand_boldref')
-    expand_fallback = pe.Node(niu.Function(function=_expand), name='expand_fallback')
-    for node in (expand_boldref, expand_fallback):
-        node.inputs.n = n_runs
-        node.run_without_submitting = True
-
-    workflow.connect([
-        (template_buffer, expand_boldref, [('boldref', 'value')]),
-        (reg_buffer, expand_fallback, [('fallback', 'value')]),
-        (template_buffer, outputnode, [('boldref', 'boldref_template')]),
-        (expand_boldref, outputnode, [('out', 'template_boldrefs')]),
-        (expand_fallback, outputnode, [('out', 'fallbacks')]),
-        (merge_run2template, outputnode, [('out', 'run2template_xfms')]),
-        (merge_template2anat, outputnode, [('out', 'template2anat_xfms')]),
-        (merge_run2anat_xfms, outputnode, [('out', 'run2anat_xfms')]),
-    ])  # fmt:skip
 
     return workflow
