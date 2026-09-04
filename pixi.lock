@@ -4607,7 +4607,6 @@ packages:
   - tedana>=23.0.2
   - templateflow>=25.0.3
   - toml
-  - typing-extensions ; python_full_version < '3.11'
   - coverage[toml] ; extra == 'all'
   - fuzzywuzzy ; extra == 'all'
   - migas>=0.4.0 ; extra == 'all'
@@ -4619,7 +4618,6 @@ packages:
   - pytest-env ; extra == 'all'
   - pytest-xdist ; extra == 'all'
   - python-levenshtein ; extra == 'all'
-  - ruff ; extra == 'all'
   - shibuya ; extra == 'all'
   - sphinx-argparse ; extra == 'all'
   - sphinx-togglebutton ; extra == 'all'
@@ -4629,7 +4627,6 @@ packages:
   - datalad-osf ; extra == 'container'
   - migas>=0.4.0 ; extra == 'container'
   - pre-commit ; extra == 'dev'
-  - ruff ; extra == 'dev'
   - myst-parser ; extra == 'doc'
   - pydot>=1.2.3 ; extra == 'doc'
   - shibuya ; extra == 'doc'
