@@ -1,8 +1,8 @@
-26.0.0 (August 31, 2026)
-========================
+26.0.0 (September 4, 2026)
+==========================
 First release of the 26.0.x series.
 
-This release introduces the ``--bold-coreg-level`` flag for finer-grained control of BOLD-to-anatomical coregistration, allowing per-session and per-run coregistration.
+This release introduces the ``--bold-coreg-level`` flag for finer-grained control of BOLD-to-anatomical coregistration, allowing per-session in addition to the traditional per-run method.
 
 Additionally, MCRIBS-reconstructed surfaces are now registered directly to fsLR (previously dhcpAsym), adding consistency across surface reconstruction methods, and a new reportlet has been added.
 
@@ -12,7 +12,7 @@ Finally, SPEC 0 has been adopted - the minimum supported Python is now 3.12.
 
 ### Enhancements
   * ENH: Overhaul fit workflow with upstream fMRIPrep changes (#502)
-  * ENH: Align coregistration BOLD reference with fMRIPrep (#573, #575)
+  * ENH: Align coregistration BOLD reference with fMRIPrep (#573, #575, #578)
   * ENH: Expand BOLD coregistration targets (#546)
   * ENH: Prefer normalized correlation over least squares in BOLD reference generation (#553)
   * ENH: Add ``auto`` option to ``--hmc-bold-frame`` to find a low-motion BOLD reference (#518)
@@ -22,6 +22,7 @@ Finally, SPEC 0 has been adopted - the minimum supported Python is now 3.12.
   * ENH: Register MCRIBS directly to fsLR and add fsLR surface report (#557)
 
 ### Bug Fixes
+  * FIX: Remove colorbar from carpet plot (#576)
   * FIX: Avoid submitting the FreeSurfer source node (#568)
   * FIX: Single anatomical skullstrip connection (#562)
   * FIX: Avoid anatomical apply workflow if no recon or standard spaces (#561)
