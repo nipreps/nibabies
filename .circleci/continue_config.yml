@@ -61,8 +61,8 @@ _apt_mirror_fallback: &apt_mirror_fallback
   name: Configure apt mirror fallback
   command: |
     printf '%s\n' \
-      'http://us-east-1.ec2.archive.ubuntu.com/ubuntu/	priority:1' \
-      'http://archive.ubuntu.com/ubuntu/	priority:2' \
+      'http://archive.ubuntu.com/ubuntu/	priority:1' \
+      'http://us-east-1.ec2.archive.ubuntu.com/ubuntu/	priority:2' \
       | sudo tee /etc/apt/mirrors.txt
     sudo sed -i -E 's#https?://[a-z0-9.-]*ec2\.archive\.ubuntu\.com/ubuntu/?#mirror+file:/etc/apt/mirrors.txt#g' /etc/apt/sources.list
 
