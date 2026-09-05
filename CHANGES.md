@@ -1,3 +1,12 @@
+26.0.1 (September 5, 2026)
+==========================
+Patch release in the 26.0.x series.
+
+Restores the resampling methods boilerplate to the BOLD workflow, which could lead to an error when building the workflow.
+
+### Bug Fixes
+  * FIX: Restore resampling methods boilerplate to BOLD workflow (#579)
+
 26.0.0 (September 4, 2026)
 ==========================
 First release of the 26.0.x series.
