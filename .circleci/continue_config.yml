@@ -57,6 +57,15 @@ _pull_from_registry: &pull_from_registry
     docker pull localhost:5000/nibabies
     docker tag localhost:5000/nibabies nipreps/nibabies:dev
 
+_apt_mirror_fallback: &apt_mirror_fallback
+  name: Configure apt mirror fallback
+  command: |
+    printf '%s\n' \
+      'http://us-east-1.ec2.archive.ubuntu.com/ubuntu/	priority:1' \
+      'http://archive.ubuntu.com/ubuntu/	priority:2' \
+      | sudo tee /etc/apt/mirrors.txt
+    sudo sed -i -E 's#https?://[a-z0-9.-]*ec2\.archive\.ubuntu\.com/ubuntu/?#mirror+file:/etc/apt/mirrors.txt#g' /etc/apt/sources.list
+
 _check_skip_job: &check_skip_job
   name: Check commit message and determine if job should be skipped
   command: |
@@ -101,6 +110,7 @@ jobs:
         paths:
         - /tmp/docker
         - /tmp/images
+    - run: *apt_mirror_fallback
     - docker/install-docker-credential-helper
     - run: *docker_auth
     - run: *setup_docker_registry
@@ -256,6 +266,7 @@ jobs:
     - restore_cache:
         keys:
         - data-v0-{{ .Branch }}-{{ .Revision }}
+    - run: *apt_mirror_fallback
     - docker/install-docker-credential-helper
     - run: *docker_auth
     - run: *setup_docker_registry
@@ -325,6 +336,7 @@ jobs:
         - bcp-anat-v0-{{ .Branch }}-
         - bcp-anat-v0-master-
         - bcp-anat-v0-
+    - run: *apt_mirror_fallback
     - docker/install-docker-credential-helper
     - run: *docker_auth
     - run: *setup_docker_registry
@@ -469,6 +481,7 @@ jobs:
         paths:
         - /tmp/docker
         - /tmp/images
+    - run: *apt_mirror_fallback
     - docker/install-docker-credential-helper
     - run: *docker_auth
     - run: *setup_docker_registry
@@ -498,6 +511,7 @@ jobs:
         paths:
         - /tmp/docker
         - /tmp/images
+    - run: *apt_mirror_fallback
     - docker/install-docker-credential-helper
     - run: *docker_auth
     - run: *setup_docker_registry
@@ -608,7 +622,10 @@ jobs:
 workflows:
   version: 2
   build_test_deploy:
-    when: << pipeline.parameters.run-build >>
+    when:
+      or:
+        - << pipeline.parameters.run-build >>
+        - << pipeline.git.tag >>
     jobs:
 
     - build:
