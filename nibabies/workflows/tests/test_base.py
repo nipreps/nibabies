@@ -228,6 +228,7 @@ def _patch_output_spaces(output_spaces: str | None):
         # _make_params(surface_recon_method='mcribs'),  # Requires precomputed segmentation
         _make_params(surface_recon_method='infantfs'),
         _make_params(surface_recon_method='freesurfer'),
+        _make_params(surface_recon_method='freesurfer', output_spaces='fsaverage'),
         # Currently unsupported:
         # _make_params(freesurfer=False, bold2anat_init="header"),
         # _make_params(freesurfer=False, bold2anat_init="header", use_bbr=True),
