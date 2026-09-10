@@ -326,7 +326,7 @@ It is released under the [CC0]\
         )
 
     recon_method = config.workflow.surface_recon_method
-    msm_sulc = False
+    msm_sulc = config.workflow.msm_sulc
 
     anatomical_cache = {}
     if config.execution.derivatives:

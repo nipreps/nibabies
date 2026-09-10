@@ -148,13 +148,15 @@ sub-<subject_label>/[ses-<session_label>/]
     sub-<subject_label>_hemi-[LR]_pial.surf.gii
     sub-<subject_label>_hemi-[LR]_desc-reg_sphere.surf.gii
     sub-<subject_label>_hemi-[LR]_space-fsLR_desc-reg_sphere.surf.gii
+    sub-<subject_label>_hemi-[LR]_space-fsLR_desc-msmsulc_sphere.surf.gii
 ```
 
 The registration spheres target `fsaverage` and `fsLR` spaces.
 
-:::{warning}
-Unlike fMRIPrep, MSMSulc support is not available at the moment.
-:::
+When MSM-sulc registration is enabled (default, disable with `--no-msm`), an
+additional `desc-msmsulc` sphere is generated that refines the `fsLR` registration
+by driving the subject's sulcal depth onto the `fsLR` reference. It is used as the
+registration sphere for all downstream `fsLR` resampling.
 
 And the affine translation (and inverse) between the anatomical reference sampling and
 FreeSurfer's conformed space for surface reconstruction (`fsnative`) is stored in::
