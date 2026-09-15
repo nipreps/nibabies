@@ -286,6 +286,7 @@ def test_init_nibabies_wf(
         config.workflow.surface_recon_method = surface_recon_method
         config.workflow.ignore = ignore
         config.workflow.hmc_bold_frame = hmc_bold_frame
+        before = config.get(flat=True)
         with (
             _patch_output_spaces(output_spaces),
             patch.dict('nibabies.config.execution.bids_filters', bids_filters),
@@ -295,6 +296,7 @@ def test_init_nibabies_wf(
                     ('01', None),
                 ]
             )
+        assert config.get(flat=True) == before
 
     generate_expanded_graph(wf._create_flat_graph())
 
