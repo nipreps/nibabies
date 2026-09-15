@@ -153,6 +153,26 @@ nibabies-23.0.0.sif /data /out participant
 Note that the `-i` flag is required when using Singularity, and should be the path to the already built Singularity image file.
 :::
 
+## TemplateFlow
+
+*NiBabies* uses [TemplateFlow](https://www.templateflow.org/) to fetch standard-space
+templates and the transforms between them on demand. Downloaded files are cached in the
+directory pointed to by the `TEMPLATEFLOW_HOME` environment variable, which defaults to
+`$HOME/.cache/templateflow`.
+
+Apptainer/Singularity bind mounts your home directory by default, so this cache generally
+persists on the host across runs without any extra configuration. If you would rather keep
+the cache in a dedicated location, or your setup does not mount `$HOME`, point
+`TEMPLATEFLOW_HOME` at a host directory that you bind-mount into the container:
+
+```shell
+apptainer run \
+    --env TEMPLATEFLOW_HOME=/opt/templateflow \
+    -B /path/to/templateflow:/opt/templateflow \
+    nibabies.sif \
+    /data /out participant [OPTIONS]
+```
+
 The command-line interface of the nibabies wrapper
 ------------------------------------------------
 

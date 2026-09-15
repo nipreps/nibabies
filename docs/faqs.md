@@ -106,6 +106,30 @@ and T2-only configurations in sequence in `--sloppy` mode — completes in rough
 subject typically takes on the order of **several hours**, depending on the
 enabled options, available resources, and resolution plus number of acquisitions in a dataset.
 
+## Templateflow: No results found
+
+Occasionally a run fails while fetching files, with a *TemplateFlow* error such as
+`No results found`. This usually means the local *TemplateFlow* cache is stale or
+incomplete relative to what the workflow requests (see
+[#571](https://github.com/nipreps/nibabies/issues/571)).
+
+You can fix this by refreshing the cache index. Run `templateflow.update(local=True)` in
+the same environment *NiBabies* uses to rebuild the layout from the skeleton bundled with
+*TemplateFlow* (no network access required). See [](usage.md#templateflow) for where this
+cache lives and how to reach it from a container.
+
+```shell
+# use exec to avoid running the nibabies entrypoint
+apptainer exec nibabies.sif \
+    python -c "import templateflow; templateflow.update(local=True)"
+```
+
+If you installed *NiBabies* natively, run the same command directly:
+
+```shell
+python -c "import templateflow; templateflow.update(local=True)"
+```
+
 ## More context on releases
 
 Like other *NiPreps*, *NiBabies* follows Calendar Versioning ([CalVer](https://calver.org/)), in format of `YY.MINOR.MICRO`.
