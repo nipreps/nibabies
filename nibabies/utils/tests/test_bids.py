@@ -79,6 +79,8 @@ scans = {
     [
         ('session_id', 'ses-1', age, 'months', 4),
         ('session_id', 'ses-1', age, 'weeks', 1),  # Convert from 4 weeks -> 1 month
+        ('session_id', 'ses-1', age, 'week', 1),  # The BIDS example uses the singular
+        ('session_id', 'ses-1', age, 'Month', 4),
         ('session_id', 'ses-2', age_weeks, False, 2),
         ('participant_id', 'sub-1', age_months, False, 3),
         ('participant_id', 'sub-11', age_years, False, 24),

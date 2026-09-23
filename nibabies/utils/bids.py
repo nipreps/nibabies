@@ -345,8 +345,12 @@ def _get_age_units(bids_json: Path) -> ty.Literal['weeks', 'months', 'years', Fa
         # Multiple units consfuse us
         return False
 
-    if units.lower() in SUPPORTED_AGE_UNITS:
-        return units.lower()
+    units = units.lower()
+    # The BIDS spec's own example uses the singular, e.g. "year"
+    if not units.endswith('s'):
+        units += 's'
+    if units in SUPPORTED_AGE_UNITS:
+        return units
     return False
 
 
