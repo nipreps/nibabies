@@ -91,18 +91,42 @@ def init_subcortical_rois_wf(*, name: str = 'subcortical_rois_wf'):
     return workflow
 
 
+SUBCORTICAL_GROUPS = {
+    'basal_ganglia_left': ('ACCUMBENS_LEFT', 'CAUDATE_LEFT', 'PALLIDUM_LEFT', 'PUTAMEN_LEFT'),
+    'basal_ganglia_right': ('ACCUMBENS_RIGHT', 'CAUDATE_RIGHT', 'PALLIDUM_RIGHT', 'PUTAMEN_RIGHT'),
+    'mtl_left': ('HIPPOCAMPUS_LEFT', 'AMYGDALA_LEFT'),
+    'mtl_right': ('HIPPOCAMPUS_RIGHT', 'AMYGDALA_RIGHT'),
+    'cerebellum_left': ('CEREBELLUM_LEFT',),
+    'cerebellum_right': ('CEREBELLUM_RIGHT',),
+    'thalamus_left': ('THALAMUS_LEFT',),
+    'thalamus_right': ('THALAMUS_RIGHT',),
+    'diencephalon_brainstem': (
+        'DIENCEPHALON_VENTRAL_LEFT',
+        'DIENCEPHALON_VENTRAL_RIGHT',
+        'BRAIN_STEM',
+    ),
+}
+"""Neighboring CIFTI subcortical structures that share a single affine alignment."""
+
+
 def init_subcortical_mni_alignment_wf(
     *,
     vol_sigma: float = 0.8,
+    groups: dict[str, tuple[str, ...]] | None = None,
     name: str = 'subcortical_mni_alignment_wf',
 ):
     """
-    Align individual subcortical structures into MNI space.
+    Align groups of neighboring subcortical structures into MNI space.
 
-    This is a nipype workflow port of the DCAN infant pipeline:
+    Adapted from the DCAN infant pipeline:
     https://github.com/DCAN-Labs/dcan-infant-pipeline/blob\
     /master/fMRISurface/scripts/SubcorticalAlign_ROIs.sh
 
+    Differences from the DCAN implementation:
+
+    * Neighboring structures are aligned together, as groups rather than one structure at a time.
+    * The aligned groups are combined by summing their volumes, rather than through a dense
+      CIFTI template, to reduce memory usage.
 
     Parameters
     ----------
@@ -110,25 +134,28 @@ def init_subcortical_mni_alignment_wf(
         Name of the workflow
     vol_sigma : :obj:`float`
         The sigma for the gaussian volume smoothing kernel, in mm
+    groups : :obj:`dict` or None
+        Mapping of group name to CIFTI structure names, covering every structure exactly
+        once. Defaults to :data:`SUBCORTICAL_GROUPS`.
 
     Inputs
     ------
     MNIInfant_bold : :obj:`str`
         BOLD file in MNI Infant space
     MNIInfant_rois : :obj:`str`
-        File containing ROIs in MNI Infant space
+        Subject subcortical label volume in MNI Infant space
     MNI152_rois : :obj:`str`
-        File containing ROIs in MNI152NLin6Asym space
+        HCP subcortical atlas label volume in MNI152NLin6Asym space
 
     Outputs
     -------
     subcortical_volume : :obj:`str`
-        Volume file containing all ROIs individually aligned to standard
+        BOLD volume on the atlas grid, with each structure group aligned separately
     subcortical_labels : :obj:`str`
-        Volume file containing all labels
+        Atlas label volume defining the subcortical grayordinates (``MNI152_rois``)
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.nibabel import MergeROIs
+    from niworkflows.interfaces.nibabel import MapLabels, MergeROIs
 
     from ...interfaces.workbench import (
         CiftiCreateDenseTimeseries,
@@ -137,8 +164,12 @@ def init_subcortical_mni_alignment_wf(
         CiftiResample,
         CiftiSeparate,
         CiftiSmooth,
-        VolumeAllLabelsToROIs,
         VolumeLabelExportTable,
+    )
+
+    mappings = group_label_mappings(
+        SUBCORTICAL_GROUPS if groups is None else groups,
+        load_data('FreeSurferSubcorticalLabelTableLut.txt'),
     )
 
     inputnode = pe.Node(
@@ -150,18 +181,13 @@ def init_subcortical_mni_alignment_wf(
         name='outputnode',
     )
 
-    subj_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name='subj_rois')
-    split_rois = pe.Node(fsl.Split(dimension='t'), name='split_rois')
-    atlas_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name='atlas_rois')
-    split_atlas_rois = pe.Node(fsl.Split(dimension='t'), name='split_atlas_rois')
+    subj_group = pe.MapNode(MapLabels(), iterfield=['mappings'], name='subj_group')
+    subj_group.inputs.mappings = mappings
+    atlas_group = pe.MapNode(MapLabels(), iterfield=['mappings'], name='atlas_group')
+    atlas_group.inputs.mappings = mappings
     atlas_labels = pe.Node(VolumeLabelExportTable(label_map=1), name='atlas_labels')
-    parse_labels = pe.Node(
-        niu.Function(function=parse_roi_labels, output_names=['structures', 'label_ids']),
-        name='parse_labels',
-    )
 
-    # The following is wrapped in a for-loop, iterating across each roi
-    # Instead, we will use MapNodes and iter across the varying inputs
+    # iterate across structure groups
     roi2atlas = pe.MapNode(
         fsl.FLIRT(
             searchr_x=[-20, 20],
@@ -177,16 +203,6 @@ def init_subcortical_mni_alignment_wf(
         iterfield=['reference', 'in_matrix_file'],
         name='applyxfm_roi',
         mem_gb=4,
-    )
-    mul_roi = pe.MapNode(
-        fsl.BinaryMaths(operation='mul'),
-        iterfield=['in_file', 'operand_value'],
-        name='mul_roi',
-    )
-    mul_atlas_roi = pe.MapNode(
-        fsl.BinaryMaths(operation='mul'),
-        iterfield=['in_file', 'operand_value'],
-        name='mul_atlas_roi',
     )
     vol_label = pe.MapNode(
         VolumeLabelImport(drop_unused_labels=True),
@@ -238,25 +254,18 @@ def init_subcortical_mni_alignment_wf(
 
     workflow = Workflow(name=name)
     workflow.connect([
-        (inputnode, subj_rois, [('MNIInfant_rois', 'in_file')]),
-        (inputnode, atlas_rois, [('MNI152_rois', 'in_file')]),
-        (subj_rois, split_rois, [('out_file', 'in_file')]),
-        (atlas_rois, split_atlas_rois, [('out_file', 'in_file')]),
+        (inputnode, subj_group, [('MNIInfant_rois', 'in_file')]),
+        (inputnode, atlas_group, [('MNI152_rois', 'in_file')]),
         (inputnode, atlas_labels, [('MNI152_rois', 'in_file')]),
-        (atlas_labels, parse_labels, [('out_file', 'label_file')]),
-        # for loop across ROIs
-        (split_rois, roi2atlas, [('out_files', 'in_file')]),
-        (split_atlas_rois, roi2atlas, [('out_files', 'reference')]),
+        # for loop across structure groups
+        (subj_group, roi2atlas, [('out_file', 'in_file')]),
+        (atlas_group, roi2atlas, [('out_file', 'reference')]),
         (inputnode, applyxfm_roi, [('MNIInfant_bold', 'in_file')]),
-        (split_atlas_rois, applyxfm_roi, [('out_files', 'reference')]),
+        (atlas_group, applyxfm_roi, [('out_file', 'reference')]),
         (roi2atlas, applyxfm_roi, [('out_matrix_file', 'in_matrix_file')]),
-        (roi2atlas, mul_roi, [('out_file', 'in_file')]),
-        (parse_labels, mul_roi, [('label_ids', 'operand_value')]),
-        (split_atlas_rois, mul_atlas_roi, [('out_files', 'in_file')]),
-        (parse_labels, mul_atlas_roi, [('label_ids', 'operand_value')]),
-        (mul_roi, vol_label, [('out_file', 'in_file')]),
+        (roi2atlas, vol_label, [('out_file', 'in_file')]),
         (atlas_labels, vol_label, [('out_file', 'label_list_file')]),
-        (mul_atlas_roi, vol_atlas_label, [('out_file', 'in_file')]),
+        (atlas_group, vol_atlas_label, [('out_file', 'in_file')]),
         (atlas_labels, vol_atlas_label, [('out_file', 'label_list_file')]),
         (applyxfm_roi, create_dtseries, [('out_file', 'volume_data')]),
         (vol_label, create_dtseries, [('out_file', 'volume_structure_labels')]),
@@ -276,18 +285,18 @@ def init_subcortical_mni_alignment_wf(
     return workflow
 
 
-def parse_roi_labels(label_file: str):
+def parse_roi_labels(label_file: str) -> dict[str, int]:
     """
     Parse a label file composed of one or more sets of:
     <labelname>
     <key> <red> <green> <blue> <alpha>
 
-    Return a list of structure names and label keys.
+    Return a mapping of structure names to label keys, in file order.
 
-    >>> structs, ids = parse_roi_labels(datadir / "FreeSurferSubcorticalLabelTableLut.txt")
-    >>> structs
+    >>> labels = parse_roi_labels(datadir / "FreeSurferSubcorticalLabelTableLut.txt")
+    >>> list(labels.keys())
     ['ACCUMBENS_LEFT', 'ACCUMBENS_RIGHT', 'AMYGDALA_LEFT', ...]
-    >>> ids
+    >>> list(labels.values())
     [26, 58, 18, ...]
     """
 
@@ -295,10 +304,40 @@ def parse_roi_labels(label_file: str):
         lines = fp.readlines()
     if len(lines) % 2 == 1:
         raise RuntimeError('Label file is incomplete or invalid')
-    structs, label_ids = [], []
-    for idx, line in enumerate(lines):
-        if idx % 2 == 0:
-            structs.append(line.strip())
-        else:
-            label_ids.append(int(line.split(' ', 1)[0]))
-    return structs, label_ids
+    return {
+        name.strip(): int(entry.split(' ', 1)[0])
+        for name, entry in zip(lines[::2], lines[1::2], strict=True)
+    }
+
+
+def group_label_mappings(groups: dict[str, tuple[str, ...]], label_file: str) -> list[dict]:
+    """
+    Build one label remapping per group, zeroing every label outside that group.
+
+    Raises :obj:`ValueError` unless ``groups`` covers every structure in ``label_file``
+    exactly once.
+
+    >>> mappings = group_label_mappings(
+    ...     SUBCORTICAL_GROUPS, datadir / "FreeSurferSubcorticalLabelTableLut.txt"
+    ... )
+    >>> len(mappings)
+    9
+    >>> sorted(mappings[0])  # basal_ganglia_left keeps 11, 12, 13, 26
+    [8, 10, 16, 17, 18, 28, 47, 49, 50, 51, 52, 53, 54, 58, 60]
+    """
+    labels = parse_roi_labels(label_file)
+    grouped = [val for values in groups.values() for val in values]
+
+    unknown = sorted(set(grouped) - set(labels))
+    duped = sorted({s for s in grouped if grouped.count(s) > 1})
+    missing = sorted(set(labels) - set(grouped))
+    if unknown or duped or missing:
+        raise ValueError(
+            'Subcortical groups must cover each structure exactly once '
+            f'(unknown: {unknown}, duplicated: {duped}, missing: {missing})'
+        )
+
+    return [
+        {key: 0 for struct, key in labels.items() if struct not in members}
+        for members in groups.values()
+    ]
