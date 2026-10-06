@@ -137,13 +137,10 @@ def init_subcortical_mni_alignment_wf(
         CiftiResample,
         CiftiSeparate,
         CiftiSmooth,
-        VolumeAffineResample,
         VolumeAllLabelsToROIs,
         VolumeLabelExportTable,
     )
 
-    # reuse saved atlas to atlas transform
-    atlas_xfm = load_data('MNIInfant_to_MNI1526NLinAsym.mat')
     inputnode = pe.Node(
         niu.IdentityInterface(fields=['MNIInfant_bold', 'MNIInfant_rois', 'MNI152_rois']),
         name='inputnode',
@@ -153,11 +150,6 @@ def init_subcortical_mni_alignment_wf(
         name='outputnode',
     )
 
-    applyxfm_atlas = pe.Node(fsl.ApplyXFM(in_matrix_file=atlas_xfm), name='applyxfm_atlas')
-    vol_resample = pe.Node(
-        VolumeAffineResample(method='ENCLOSING_VOXEL', flirt=True, affine=atlas_xfm),
-        name='vol_resample',
-    )
     subj_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name='subj_rois')
     split_rois = pe.Node(fsl.Split(dimension='t'), name='split_rois')
     atlas_rois = pe.Node(VolumeAllLabelsToROIs(label_map=1), name='atlas_rois')
@@ -185,11 +177,6 @@ def init_subcortical_mni_alignment_wf(
         iterfield=['reference', 'in_matrix_file'],
         name='applyxfm_roi',
         mem_gb=4,
-    )
-    bold_mask_roi = pe.MapNode(
-        fsl.ApplyMask(),
-        iterfield=['in_file', 'mask_file'],
-        name='bold_mask_roi',
     )
     mul_roi = pe.MapNode(
         fsl.BinaryMaths(operation='mul'),
@@ -247,27 +234,10 @@ def init_subcortical_mni_alignment_wf(
         iterfield=['in_file'],
         name='separate',
     )
-    fmt_agg_rois = pe.Node(
-        niu.Function(
-            function=format_agg_rois,
-            output_names=['first_image', 'op_files', 'op_string'],
-        ),
-        name='fmt_agg_rois',
-    )
-    agg_rois = pe.Node(fsl.MultiImageMaths(), name='agg_rois')
     merge_rois = pe.Node(MergeROIs(), name='merge_rois')
 
     workflow = Workflow(name=name)
     workflow.connect([
-        (inputnode, applyxfm_atlas, [
-            ('MNIInfant_bold', 'in_file'),
-            ('MNI152_rois', 'reference')]),
-        (inputnode, vol_resample, [
-            ('MNIInfant_rois', 'in_file'),
-            ('MNIInfant_rois', 'flirt_source_volume')]),
-        (applyxfm_atlas, vol_resample, [
-            ('out_file', 'volume_space'),
-            ('out_file', 'flirt_target_volume')]),
         (inputnode, subj_rois, [('MNIInfant_rois', 'in_file')]),
         (inputnode, atlas_rois, [('MNI152_rois', 'in_file')]),
         (subj_rois, split_rois, [('out_file', 'in_file')]),
@@ -280,8 +250,6 @@ def init_subcortical_mni_alignment_wf(
         (inputnode, applyxfm_roi, [('MNIInfant_bold', 'in_file')]),
         (split_atlas_rois, applyxfm_roi, [('out_files', 'reference')]),
         (roi2atlas, applyxfm_roi, [('out_matrix_file', 'in_matrix_file')]),
-        (applyxfm_roi, bold_mask_roi, [('out_file', 'in_file')]),
-        (roi2atlas, bold_mask_roi, [('out_file', 'mask_file')]),
         (roi2atlas, mul_roi, [('out_file', 'in_file')]),
         (parse_labels, mul_roi, [('label_ids', 'operand_value')]),
         (split_atlas_rois, mul_atlas_roi, [('out_files', 'in_file')]),
@@ -290,7 +258,7 @@ def init_subcortical_mni_alignment_wf(
         (atlas_labels, vol_label, [('out_file', 'label_list_file')]),
         (mul_atlas_roi, vol_atlas_label, [('out_file', 'in_file')]),
         (atlas_labels, vol_atlas_label, [('out_file', 'label_list_file')]),
-        (bold_mask_roi, create_dtseries, [('out_file', 'volume_data')]),
+        (applyxfm_roi, create_dtseries, [('out_file', 'volume_data')]),
         (vol_label, create_dtseries, [('out_file', 'volume_structure_labels')]),
         (vol_atlas_label, create_label, [
             ('out_file', 'volume_label'),
@@ -301,11 +269,6 @@ def init_subcortical_mni_alignment_wf(
         (resample, smooth, [('out_file', 'in_file')]),
         (smooth, separate, [('out_file', 'in_file')]),
         # end loop
-        (mul_roi, fmt_agg_rois, [('out_file', 'rois')]),
-        (fmt_agg_rois, agg_rois, [
-            ('first_image', 'in_file'),
-            ('op_files', 'operand_files'),
-            ('op_string', 'op_string')]),
         (separate, merge_rois, [('volume_all_file', 'in_files')]),
         (merge_rois, outputnode, [('out_file', 'subcortical_volume')]),
         (inputnode, outputnode, [('MNI152_rois', 'subcortical_labels')]),
@@ -339,22 +302,3 @@ def parse_roi_labels(label_file: str):
         else:
             label_ids.append(int(line.split(' ', 1)[0]))
     return structs, label_ids
-
-
-def format_agg_rois(rois):
-    """
-    Helper function to format MultiImageMaths command.
-
-    Parameters
-    ----------
-    rois : `list` of `str`s
-        List of files
-
-    Returns
-    -------
-    first_image
-    op_files
-    op_string
-
-    """
-    return rois[0], rois[1:], ('-add %s ' * (len(rois) - 1)).strip()
