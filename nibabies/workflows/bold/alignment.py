@@ -156,6 +156,7 @@ def init_subcortical_mni_alignment_wf(
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.nibabel import MapLabels, MergeROIs
+    from niworkflows.interfaces.utility import KeySelect
 
     from ...interfaces.workbench import (
         CiftiCreateDenseTimeseries,
@@ -167,10 +168,9 @@ def init_subcortical_mni_alignment_wf(
         VolumeLabelExportTable,
     )
 
-    mappings = group_label_mappings(
-        SUBCORTICAL_GROUPS if groups is None else groups,
-        load_data('FreeSurferSubcorticalLabelTableLut.txt'),
-    )
+    if groups is None:
+        groups = SUBCORTICAL_GROUPS
+    mappings = group_label_mappings(groups, load_data('FreeSurferSubcorticalLabelTableLut.txt'))
 
     inputnode = pe.Node(
         niu.IdentityInterface(fields=['MNIInfant_bold', 'MNIInfant_rois', 'MNI152_rois']),
@@ -181,14 +181,17 @@ def init_subcortical_mni_alignment_wf(
         name='outputnode',
     )
 
-    subj_group = pe.MapNode(MapLabels(), iterfield=['mappings'], name='subj_group')
-    subj_group.inputs.mappings = mappings
-    atlas_group = pe.MapNode(MapLabels(), iterfield=['mappings'], name='atlas_group')
-    atlas_group.inputs.mappings = mappings
+    select_subcortical_group = pe.Node(
+        KeySelect(fields=['mappings'], keys=list(groups), mappings=mappings),
+        name='select_subcortical_group',
+        run_without_submitting=True,
+    )
+    select_subcortical_group.iterables = ('key', list(groups))
+    subj_group = pe.Node(MapLabels(), name='subj_group')
+    atlas_group = pe.Node(MapLabels(), name='atlas_group')
     atlas_labels = pe.Node(VolumeLabelExportTable(label_map=1), name='atlas_labels')
 
-    # iterate across structure groups
-    roi2atlas = pe.MapNode(
+    roi2atlas = pe.Node(
         fsl.FLIRT(
             searchr_x=[-20, 20],
             searchr_y=[-20, 20],
@@ -196,40 +199,20 @@ def init_subcortical_mni_alignment_wf(
             interp='nearestneighbour',
         ),
         name='roi2atlas',
-        iterfield=['in_file', 'reference'],
     )
-    applyxfm_roi = pe.MapNode(
+    applyxfm_roi = pe.Node(
         fsl.ApplyXFM(interp='spline'),
-        iterfield=['reference', 'in_matrix_file'],
         name='applyxfm_roi',
         mem_gb=4,
     )
-    vol_label = pe.MapNode(
-        VolumeLabelImport(drop_unused_labels=True),
-        iterfield=['in_file'],
-        name='vol_label',
+    vol_label = pe.Node(VolumeLabelImport(drop_unused_labels=True), name='vol_label')
+    vol_atlas_label = pe.Node(VolumeLabelImport(drop_unused_labels=True), name='vol_atlas_label')
+    create_dtseries = pe.Node(CiftiCreateDenseTimeseries(), name='create_dtseries')
+    create_label = pe.Node(CiftiCreateLabel(), name='create_label')
+    dilate = pe.Node(
+        CiftiDilate(direction='COLUMN', surface_distance=0, volume_distance=10), name='dilate'
     )
-    vol_atlas_label = pe.MapNode(
-        VolumeLabelImport(drop_unused_labels=True),
-        iterfield=['in_file'],
-        name='vol_atlas_label',
-    )
-    create_dtseries = pe.MapNode(
-        CiftiCreateDenseTimeseries(),
-        iterfield=['volume_data', 'volume_structure_labels'],
-        name='create_dtseries',
-    )
-    create_label = pe.MapNode(
-        CiftiCreateLabel(),
-        iterfield=['volume_label', 'structure_label_volume'],
-        name='create_label',
-    )
-    dilate = pe.MapNode(
-        CiftiDilate(direction='COLUMN', surface_distance=0, volume_distance=10),
-        iterfield=['in_file'],
-        name='dilate',
-    )
-    resample = pe.MapNode(
+    resample = pe.Node(
         CiftiResample(
             direction='COLUMN',
             template_direction='COLUMN',
@@ -237,18 +220,20 @@ def init_subcortical_mni_alignment_wf(
             volume_method='CUBIC',
             volume_predilate=10,
         ),
-        iterfield=['in_file', 'template'],
         name='resample',
     )
-    smooth = pe.MapNode(
+    smooth = pe.Node(
         CiftiSmooth(direction='COLUMN', fix_zeros_vol=True, sigma_surf=0, sigma_vol=vol_sigma),
-        iterfield=['in_file'],
         name='smooth',
     )
-    separate = pe.MapNode(
-        CiftiSeparate(direction='COLUMN', volume_all_file='volume_all.nii.gz'),
-        iterfield=['in_file'],
-        name='separate',
+    separate = pe.Node(
+        CiftiSeparate(direction='COLUMN', volume_all_file='volume_all.nii.gz'), name='separate'
+    )
+    join_subcortical_groups = pe.JoinNode(
+        niu.IdentityInterface(fields=['volumes']),
+        joinsource='select_subcortical_group',
+        joinfield=['volumes'],
+        name='join_subcortical_groups',
     )
     merge_rois = pe.Node(MergeROIs(), name='merge_rois')
 
@@ -256,8 +241,10 @@ def init_subcortical_mni_alignment_wf(
     workflow.connect([
         (inputnode, subj_group, [('MNIInfant_rois', 'in_file')]),
         (inputnode, atlas_group, [('MNI152_rois', 'in_file')]),
+        (select_subcortical_group, subj_group, [('mappings', 'mappings')]),
+        (select_subcortical_group, atlas_group, [('mappings', 'mappings')]),
         (inputnode, atlas_labels, [('MNI152_rois', 'in_file')]),
-        # for loop across structure groups
+        # per structure group (select_subcortical_group iterables)
         (subj_group, roi2atlas, [('out_file', 'in_file')]),
         (atlas_group, roi2atlas, [('out_file', 'reference')]),
         (inputnode, applyxfm_roi, [('MNIInfant_bold', 'in_file')]),
@@ -277,8 +264,8 @@ def init_subcortical_mni_alignment_wf(
         (create_label, resample, [('out_file', 'template')]),
         (resample, smooth, [('out_file', 'in_file')]),
         (smooth, separate, [('out_file', 'in_file')]),
-        # end loop
-        (separate, merge_rois, [('volume_all_file', 'in_files')]),
+        (separate, join_subcortical_groups, [('volume_all_file', 'volumes')]),
+        (join_subcortical_groups, merge_rois, [('volumes', 'in_files')]),
         (merge_rois, outputnode, [('out_file', 'subcortical_volume')]),
         (inputnode, outputnode, [('MNI152_rois', 'subcortical_labels')]),
     ])  # fmt:skip
