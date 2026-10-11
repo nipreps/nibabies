@@ -588,6 +588,8 @@ class workflow(_Config):
     """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
     medial_surface_nan = None
     """Fill medial surface with :abbr:`NaNs (not-a-number)` when sampling."""
+    msm_sulc = True
+    """Run Multimodal Surface Matching registration of the sulcal depth to fsLR."""
     multi_step_reg = True
     """Perform multiple registrations (native -> MNIInfant -> template) and concatenate into a
     single transform"""
@@ -835,6 +837,7 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'hmc_bold_frame',
         'longitudinal',
         'medial_surface_nan',
+        'msm_sulc',
         'multi_step_reg',
         'norm_csf',
         'project_goodvoxels',

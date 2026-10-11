@@ -612,6 +612,13 @@ Useful for further Tedana processing post-NiBabies.""",
         dest='hires',
         help='disable sub-millimeter (hires) reconstruction',
     )
+    g_surfs.add_argument(
+        '--msm',
+        action=BooleanOptionalAction,
+        default=True,
+        dest='msm_sulc',
+        help='Enable MSM-sulc surface registration to fsLR (default: enabled)',
+    )
     g_surfs_xor = g_surfs.add_mutually_exclusive_group()
     g_surfs_xor.add_argument(
         '--cifti-output',

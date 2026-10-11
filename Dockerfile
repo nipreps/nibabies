@@ -99,6 +99,11 @@ RUN mkdir -p /opt/afni-latest \
         -name "3dAutomask" -or \
         -name "3dvolreg" \) -delete
 
+# MSM HOCR (Nov 19, 2019 release)
+FROM downloader AS msm
+RUN curl -L -H "Accept: application/octet-stream" https://api.github.com/repos/ecr05/MSM_HOCR/releases/assets/16253707 -o /usr/local/bin/msm \
+    && chmod +x /usr/local/bin/msm
+
 # Main container
 FROM ${BASE_IMAGE} AS nibabies
 ENV DEBIAN_FRONTEND="noninteractive" \
@@ -168,6 +173,9 @@ RUN apt-get update -qq \
     && ldconfig
 
 COPY --from=afni /opt/afni-latest /opt/afni-latest
+
+# MSM HOCR
+COPY --from=msm /usr/local/bin/msm /usr/local/bin/msm
 
 # AFNI config
 ENV PATH="/opt/afni-latest:$PATH" \

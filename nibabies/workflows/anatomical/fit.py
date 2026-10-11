@@ -33,6 +33,7 @@ from smriprep.workflows.surfaces import (
     init_fsLR_reg_wf,
     init_gifti_morphometrics_wf,
     init_gifti_surfaces_wf,
+    init_msm_sulc_wf,
     init_refinement_wf,
 )
 
@@ -1392,6 +1393,34 @@ def init_infant_anat_fit_wf(
         LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
         fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
 
+    # Stage 9b: MSMSulc refinement of the fsLR registration sphere
+    if msm_sulc and len(precomputed.get('sphere_reg_msm', [])) < 2:
+        LOGGER.info('ANAT Stage 9b: Running MSMSulc registration')
+        msm_sulc_wf = init_msm_sulc_wf(sloppy=config.execution.sloppy)
+        ds_msmsulc_wf = init_ds_surfaces_wf(
+            output_dir=output_dir,
+            surfaces=['sphere_reg_msm'],
+            name='ds_msmsulc_wf',
+        )
+
+        workflow.connect([
+            (surfaces_buffer, msm_sulc_wf, [
+                ('sphere', 'inputnode.sphere'),
+                ('sulc', 'inputnode.sulc'),
+            ]),
+            (fsLR_buffer, msm_sulc_wf, [('sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')]),
+            (sourcefile_buffer, ds_msmsulc_wf, [('anat_source_files', 'inputnode.source_files')]),
+            (msm_sulc_wf, ds_msmsulc_wf, [
+                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_msm')
+            ]),
+            (ds_msmsulc_wf, msm_buffer, [('outputnode.sphere_reg_msm', 'sphere_reg_msm')]),
+        ])  # fmt:skip
+    elif msm_sulc:
+        LOGGER.info('ANAT Stage 9b: Found pre-computed MSMSulc registration sphere')
+        msm_buffer.inputs.sphere_reg_msm = sorted(precomputed['sphere_reg_msm'])
+    else:
+        LOGGER.info('ANAT Stage 9b: MSMSulc disabled')
+
     # Stage 10: Cortical surface mask
     if len(precomputed.get('cortex_mask', [])) < 2:
         LOGGER.info('ANAT Stage 11: Creating cortical surface mask')
@@ -2324,6 +2353,34 @@ def init_infant_single_anat_fit_wf(
     else:
         LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
         fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+
+    # Stage 9b: MSMSulc refinement of the fsLR registration sphere
+    if msm_sulc and len(precomputed.get('sphere_reg_msm', [])) < 2:
+        LOGGER.info('ANAT Stage 9b: Running MSMSulc registration')
+        msm_sulc_wf = init_msm_sulc_wf(sloppy=config.execution.sloppy)
+        ds_msmsulc_wf = init_ds_surfaces_wf(
+            output_dir=output_dir,
+            surfaces=['sphere_reg_msm'],
+            name='ds_msmsulc_wf',
+        )
+
+        workflow.connect([
+            (surfaces_buffer, msm_sulc_wf, [
+                ('sphere', 'inputnode.sphere'),
+                ('sulc', 'inputnode.sulc'),
+            ]),
+            (fsLR_buffer, msm_sulc_wf, [('sphere_reg_fsLR', 'inputnode.sphere_reg_fsLR')]),
+            (sourcefile_buffer, ds_msmsulc_wf, [('anat_source_files', 'inputnode.source_files')]),
+            (msm_sulc_wf, ds_msmsulc_wf, [
+                ('outputnode.sphere_reg_fsLR', 'inputnode.sphere_reg_msm')
+            ]),
+            (ds_msmsulc_wf, msm_buffer, [('outputnode.sphere_reg_msm', 'sphere_reg_msm')]),
+        ])  # fmt:skip
+    elif msm_sulc:
+        LOGGER.info('ANAT Stage 9b: Found pre-computed MSMSulc registration sphere')
+        msm_buffer.inputs.sphere_reg_msm = sorted(precomputed['sphere_reg_msm'])
+    else:
+        LOGGER.info('ANAT Stage 9b: MSMSulc disabled')
 
     # Stage 10: Cortical surface mask
     if len(precomputed.get('cortex_mask', [])) < 2:
