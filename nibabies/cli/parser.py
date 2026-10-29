@@ -31,9 +31,15 @@ def _build_parser():
 
     deprecations = {
         # parser attribute name: (replacement flag, version slated to be removed in)
+        'force_bbr': ('--force bbr', '27.0.0'),
+        'force_no_bbr': ('--force no-bbr', '27.0.0'),
+        'force_syn': ('--force syn-sdc', '27.0.0'),
     }
 
     class DeprecatedAction(Action):
+        def __init__(self, option_strings, dest, nargs=0, **kwargs):
+            super().__init__(option_strings, dest, nargs=nargs, **kwargs)
+
         def __call__(self, parser, namespace, values, option_string=None):
             new_opt, rem_vers = deprecations.get(self.dest, (None, None))
             msg = (
@@ -367,6 +373,20 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         'parts of the workflow (a space delimited list)',
     )
     g_conf.add_argument(
+        '--force',
+        required=False,
+        action='store',
+        nargs='+',
+        default=[],
+        choices=['bbr', 'no-bbr', 'syn-sdc'],
+        help='Force selected processing choices, overriding automatic selections '
+        '(a space delimited list).\n'
+        ' * [no-]bbr: Use/disable boundary-based registration for BOLD-to-anatomical '
+        'coregistration\n'
+        '             (No goodness-of-fit checks)\n'
+        ' * syn-sdc: Calculate SyN-SDC correction *in addition* to other fieldmaps\n',
+    )
+    g_conf.add_argument(
         '--longitudinal',
         action='store_true',
         help='treat dataset as longitudinal - may increase runtime',
@@ -422,17 +442,13 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_conf.add_argument(
         '--force-bbr',
-        action='store_true',
-        dest='use_bbr',
-        default=None,
-        help='Always use boundary-based registration (no goodness-of-fit checks)',
+        action=DeprecatedAction,
+        help='Deprecated - use `--force bbr` instead.',
     )
     g_conf.add_argument(
         '--force-no-bbr',
-        action='store_false',
-        dest='use_bbr',
-        default=None,
-        help='Do not use boundary-based registration (no goodness-of-fit checks)',
+        action=DeprecatedAction,
+        help='Deprecated - use `--force no-bbr` instead.',
     )
     g_conf.add_argument(
         '--medial-surface-nan',
@@ -583,10 +599,9 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_syn.add_argument(
         '--force-syn',
-        action='store_true',
+        action=DeprecatedAction,
         default=False,
-        help='EXPERIMENTAL/TEMPORARY: Use SyN correction in addition to '
-        'fieldmap correction, if available',
+        help='Deprecated - use `--force syn-sdc` instead.',
     )
 
     # FreeSurfer options
@@ -818,6 +833,14 @@ def parse_args(args=None, namespace=None):
 
     config.execution.log_level = int(max(25 - 5 * opts.verbose_count, logging.DEBUG))
     config.from_dict(vars(opts), init=['nipype'])
+
+    # Consistency checks
+    if {'bbr', 'no-bbr'} <= set(config.workflow.force):
+        msg = (
+            'Cannot force and disable boundary-based registration at the same time. '
+            'Remove `bbr` or `no-bbr` from the `--force` options.'
+        )
+        raise ValueError(msg)
 
     # Retrieve logging level
     build_log = config.loggers.cli

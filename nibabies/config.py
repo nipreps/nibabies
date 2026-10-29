@@ -584,6 +584,8 @@ class workflow(_Config):
     """Frame to start head motion correction estimation on BOLD. If 'auto', use heuristic to estimate reference in each timeseries"""
     ignore = None
     """Ignore particular steps for *nibabies*."""
+    force = None
+    """Force particular steps for *nibabies*."""
     level = None
     """Level of preprocessing to complete. One of ['minimal', 'resampling', 'full']."""
     longitudinal = False
@@ -862,7 +864,7 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'fd_radius',
         'fmap_bspline',
         'fmap_demean',
-        'force_syn',
+        'force',
         'hmc_bold_frame',
         'longitudinal',
         'medial_surface_nan',
@@ -876,7 +878,6 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'skull_strip_anat',
         'slice_time_ref',
         'surface_recon_method',
-        'use_bbr',
         'use_syn_sdc',
         'me_t2s_fit_method',
     ],

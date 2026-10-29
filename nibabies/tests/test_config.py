@@ -150,7 +150,7 @@ def _load_spaces(age):
 
 def test_hash_config():
     # This may change with changes to config defaults / new attributes!
-    expected = '72e79be7'
+    expected = 'ea133d27'
     assert config.hash_config(config.get()) == expected
     _reset_config()
 

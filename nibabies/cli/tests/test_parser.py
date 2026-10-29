@@ -230,6 +230,46 @@ def test_use_syn_sdc(tmp_path, args, expectation):
     _reset_config()
 
 
+@pytest.mark.parametrize(
+    ('args', 'force'),
+    [
+        ([], []),
+        (['--force', 'bbr', 'syn-sdc'], ['bbr', 'syn-sdc']),
+        (['--force-bbr'], []),
+        (['--force-no-bbr'], []),
+        (['--force-syn'], []),
+    ],
+)
+def test_force(tmp_path, capsys, args, force):
+    bids_path = tmp_path / 'data'
+    out_path = tmp_path / 'out'
+    bids_path.mkdir()
+
+    opts = _build_parser().parse_args([str(bids_path), str(out_path), 'participant'] + args)
+    assert opts.force == force
+    if args and args[0] != '--force':
+        assert 'deprecated' in capsys.readouterr().err
+    _reset_config()
+
+
+def test_force_bbr_conflict(tmp_path, minimal_bids):
+    with pytest.raises(ValueError, match='boundary-based registration'):
+        parse_args(
+            args=[
+                str(minimal_bids),
+                str(tmp_path / 'out'),
+                'participant',
+                '-w',
+                str(tmp_path / 'work'),
+                '--skip-bids-validation',
+                '--force',
+                'bbr',
+                'no-bbr',
+            ]
+        )
+    _reset_config()
+
+
 def test_derivatives(tmp_path):
     """Check the correct parsing of the derivatives argument."""
     bids_path = tmp_path / 'data'
