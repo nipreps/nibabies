@@ -72,8 +72,8 @@ def acompcor_masks(in_files, is_aseg=False, zooms=None):
 
       * the masks are prepared in high-resolution, anatomical space and then
         projected into BOLD space; and,
-      * instead of using binary erosion, a dilated GM map is generated -- thresholding
-        the corresponding PV map at 0.05 (i.e., pixels containing at least 5% of GM tissue)
+      * instead of using binary erosion, a dilated GM map is generated after thresholding
+        the corresponding PV map at >0.05 (i.e., pixels containing more than 5% of GM tissue)
         and then subtracting that map from the CSF, WM and CSF+WM (combined) masks.
         This should be equivalent to eroding the masks, except that the erosion
         only happens at direct interfaces with GM.

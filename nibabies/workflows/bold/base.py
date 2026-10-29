@@ -67,6 +67,7 @@ def init_bold_apply_wf(
     fieldmap_id: str | None = None,
     spaces: 'SpatialReferences',
     coreg_space: str = 'boldref',
+    tpms_from_aseg: bool = False,
     name: str = 'bold_apply_wf',
 ) -> pe.Workflow:
     """
@@ -100,6 +101,9 @@ def init_bold_apply_wf(
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
+    tpms_from_aseg
+        Whether ``anat_tpms`` are binary maps split from an *aseg* segmentation
+        (``False`` when they are continuous FSL FAST partial volume maps).
 
     Inputs
     ------
@@ -713,7 +717,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
     bold_confounds_wf = init_bold_confs_wf(
         mem_gb=mem_gb['largemem'],
         metadata=all_metadata[0],
-        freesurfer=config.workflow.run_reconall,
+        freesurfer=tpms_from_aseg,
         regressors_all_comps=config.workflow.regressors_all_comps,
         regressors_fd_th=config.workflow.regressors_fd_th,
         regressors_dvars_th=config.workflow.regressors_dvars_th,

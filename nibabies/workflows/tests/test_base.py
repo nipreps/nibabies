@@ -385,6 +385,62 @@ def test_init_nibabies_wf_monomodal_pepolar(monkeypatch, tmp_path):
     assert len(fmap_inputs.inputs.in_data) == 4
 
 
+@pytest.mark.parametrize(
+    ('precomputed', 'is_aseg'),
+    [
+        (None, False),
+        ('aseg', True),
+        ('tpms', False),
+    ],
+)
+def test_init_nibabies_wf_acompcor_tpms(monkeypatch, tmp_path, precomputed, is_aseg):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    derivatives = {}
+    if precomputed:
+        if precomputed == 'aseg':
+            entities = [{'desc': 'aseg', 'suffix': 'dseg'}]
+        else:
+            # A prior nibabies run: FAST dseg and TPMs, no aseg
+            entities = [{'suffix': 'dseg'}] + [
+                {'label': label, 'suffix': 'probseg'} for label in ('GM', 'WM', 'CSF')
+            ]
+        deriv_dir = tmp_path / 'deriv'
+        generate_bids_skeleton(
+            deriv_dir,
+            {
+                'dataset_description': {'Name': precomputed, 'DatasetType': 'derivative'},
+                '01': {
+                    'anat': [
+                        {'space': space, **ents} for space in ('T1w', 'T2w') for ents in entities
+                    ]
+                },
+            },
+        )
+        derivatives = {precomputed: deriv_dir}
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.execution, 'derivatives', derivatives)
+        monkeypatch.setattr(config.workflow, 'surface_recon_method', None)
+        wf = init_nibabies_wf([('01', None)])
+
+    acc_masks = [wf.get_node(n) for n in wf.list_node_names() if n.endswith('.acc_masks')]
+    assert acc_masks
+    assert all(node.inputs.is_aseg is is_aseg for node in acc_masks)
+
+
 def test_get_estimator_none(tmp_path):
     bids_dir = tmp_path / 'bids'
 

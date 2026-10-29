@@ -79,9 +79,9 @@ class aCompCorMasks(SimpleInterface):
         from ..utils.confounds import acompcor_masks
 
         self._results['out_masks'] = acompcor_masks(
-            self.inputs.in_vfs,
-            self.inputs.is_aseg,
-            self.inputs.bold_zooms,
+            in_files=self.inputs.in_vfs,
+            is_aseg=self.inputs.is_aseg,
+            zooms=self.inputs.bold_zooms,
         )
         return runtime
 

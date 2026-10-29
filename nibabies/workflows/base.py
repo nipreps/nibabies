@@ -392,6 +392,10 @@ It is released under the [CC0]\
         )
 
     anat = reference_anat.lower()  # To be used for workflow connections
+    # Precomputed TPMs without an aseg are assumed to be continuous, as written by FAST
+    tpms_from_aseg = bool(
+        anat_images.get(f'{anat}_aseg') or config.execution.segmentation_atlases_dir
+    )
     LOGGER.info(
         'Collected the following data for %s:\nRaw:\n%s\n\nDerivatives:\n\n%s\n',
         f'sub-{subject_id}' if not session_id else f'sub-{subject_id}_ses-{session_id}',
@@ -1014,6 +1018,7 @@ tasks and sessions), the following preprocessing was performed.
             spaces=spaces,
             reference_anat=reference_anat,
             coreg_space=bold_coreg_level,
+            tpms_from_aseg=tpms_from_aseg,
             name=f'bold_apply_{bold_id}_wf',
         )
 
