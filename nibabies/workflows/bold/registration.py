@@ -331,6 +331,8 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
             dof=bold2anat_dof,
             contrast_type='t2',
             out_lta_file=True,
+            # Bug in nipype prevents using init_cost_file=True
+            init_cost_file='bbregister.initcost',
         ),
         name='bbregister',
         mem_gb=12,
@@ -439,6 +441,8 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         (transforms, compare_transforms, [('out', 'lta_list')]),
         (compare_transforms, outputnode, [('out', 'fallback')]),
         (compare_transforms, select_transform, [('out', 'index')]),
+        (compare_transforms, select_gen, [('out', 'index')]),
+        (compare_transforms, select_cost, [('out', 'index')]),
     ])  # fmt:skip
 
     return workflow
