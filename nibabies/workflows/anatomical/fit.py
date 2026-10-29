@@ -328,9 +328,11 @@ def init_infant_anat_fit_wf(
         'were found within the input BIDS dataset.'
     )
 
-    t1w_preproc = precomputed.get('t1w_preproc')
-    t2w_preproc = precomputed.get('t2w_preproc')
-    anat_preproc = precomputed.get(f'{anat}_preproc')
+    images = precomputed.get('images', {})
+    surfaces = precomputed.get('surfaces', {})
+    t1w_preproc = images.get('t1w_preproc')
+    t2w_preproc = images.get('t2w_preproc')
+    anat_preproc = images.get(f'{anat}_preproc')
 
     # Stage 1: Conform & valid T1w/T2w images
     # Note: Since stage 1 & 2 are tightly knit together, it may be more intuitive
@@ -459,9 +461,9 @@ def init_infant_anat_fit_wf(
     # Stage 2: Use previously computed mask or calculate
     # If we only have one mask (could be either T1w/T2w),
     # just apply transform to get it in the other space
-    t1w_mask = precomputed.get('t1w_mask')
-    t2w_mask = precomputed.get('t2w_mask')
-    anat_mask = precomputed.get(f'{anat}_mask')
+    t1w_mask = images.get('t1w_mask')
+    t2w_mask = images.get('t2w_mask')
+    anat_mask = images.get(f'{anat}_mask')
     refine_mask = False
     # T1w masking - define preemptively
     apply_t1w_mask = pe.Node(ApplyMask(), name='apply_t1w_mask')
@@ -743,8 +745,8 @@ def init_infant_anat_fit_wf(
             apply_t2w_mask.inputs.in_mask = t2w_mask
 
     # Stage 3: Coregistration
-    t1w2t2w_xfm = precomputed.get('t1w2t2w_xfm')
-    t2w2t1w_xfm = precomputed.get('t2w2t1w_xfm')
+    t1w2t2w_xfm = precomputed.get('coreg', {}).get('t1w2t2w_xfm')
+    t2w2t1w_xfm = precomputed.get('coreg', {}).get('t2w2t1w_xfm')
 
     # To use the found xfm, requires both precomputed anatomicals to be found as well
     if (t1w_preproc and t2w_preproc) and (t1w2t2w_xfm and t2w2t1w_xfm):
@@ -836,9 +838,9 @@ def init_infant_anat_fit_wf(
             ])  # fmt:skip
 
     # Stage 4: Segmentation
-    anat_dseg = precomputed.get(f'{anat}_dseg')
-    anat_tpms = precomputed.get(f'{anat}_tpms')
-    anat_aseg = precomputed.get(f'{anat}_aseg')
+    anat_dseg = images.get(f'{anat}_dseg')
+    anat_tpms = images.get(f'{anat}_tpms')
+    anat_aseg = images.get(f'{anat}_aseg')
 
     seg_method = 'jlf' if config.execution.segmentation_atlases_dir else 'fast'
 
@@ -1251,9 +1253,9 @@ def init_infant_anat_fit_wf(
 
     # Detect pre-computed surfaces
     found_surfs = {
-        surf: sorted(precomputed[surf])
+        surf: surfaces[surf]
         for surf in needed_anat_surfs + needed_metrics + needed_spheres
-        if len(precomputed.get(surf, [])) == 2
+        if surf in surfaces
     }
     if found_surfs:
         LOGGER.info(f'ANAT Stage 8: Found pre-converted surfaces for {list(found_surfs)}')
@@ -1333,7 +1335,7 @@ def init_infant_anat_fit_wf(
             ]),
         ])  # fmt:skip
 
-    if 'anat_ribbon' not in precomputed:
+    if 'ribbon' not in images:
         LOGGER.info('ANAT Stage 8a: Creating cortical ribbon mask')
         anat_ribbon_wf = init_anat_ribbon_wf()
         ds_ribbon_mask_wf = init_ds_mask_wf(
@@ -1362,10 +1364,10 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Stage 8a: Found pre-computed cortical ribbon mask')
-        outputnode.inputs.anat_ribbon = precomputed['anat_ribbon']
+        outputnode.inputs.anat_ribbon = images['ribbon']
 
     # Stage 9: Baseline fsLR registration
-    if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
+    if 'sphere_reg_fsLR' not in surfaces:
         LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
         if recon_method == 'mcribs':
             fsLR_reg_wf = init_mcribs_fsLR_reg_wf()
@@ -1390,10 +1392,10 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
-        fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+        fsLR_buffer.inputs.sphere_reg_fsLR = surfaces['sphere_reg_fsLR']
 
     # Stage 10: Cortical surface mask
-    if len(precomputed.get('cortex_mask', [])) < 2:
+    if 'cortex' not in surfaces:
         LOGGER.info('ANAT Stage 11: Creating cortical surface mask')
 
         cortex_masks_wf = init_cortex_masks_wf()
@@ -1416,7 +1418,7 @@ def init_infant_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Stage 11: Found pre-computed cortical surface mask')
-        outputnode.inputs.cortex_mask = sorted(precomputed['cortex_mask'])
+        outputnode.inputs.cortex_mask = surfaces['cortex']
     return workflow
 
 
@@ -1615,11 +1617,13 @@ def init_infant_single_anat_fit_wf(
     anat = reference_anat.lower()
 
     # Derivatives
-    anat_preproc = precomputed.get(f'{anat}_preproc')
-    anat_mask = precomputed.get(f'{anat}_mask')
-    anat_tpms = precomputed.get(f'{anat}_tpms')
-    anat_dseg = precomputed.get(f'{anat}_dseg')
-    anat_aseg = precomputed.get(f'{anat}_aseg')
+    images = precomputed.get('images', {})
+    surfaces = precomputed.get('surfaces', {})
+    anat_preproc = images.get(f'{anat}_preproc')
+    anat_mask = images.get(f'{anat}_mask')
+    anat_tpms = images.get(f'{anat}_tpms')
+    anat_dseg = images.get(f'{anat}_dseg')
+    anat_aseg = images.get(f'{anat}_aseg')
 
     anat_validate = pe.Node(ValidateImage(), name='anat_validate', run_without_submitting=True)
     if not anat_preproc:
@@ -2183,9 +2187,9 @@ def init_infant_single_anat_fit_wf(
 
     # Detect pre-computed surfaces
     found_surfs = {
-        surf: sorted(precomputed[surf])
+        surf: surfaces[surf]
         for surf in needed_anat_surfs + needed_metrics + needed_spheres
-        if len(precomputed.get(surf, [])) == 2
+        if surf in surfaces
     }
     if found_surfs:
         LOGGER.info(f'ANAT Stage 7: Found pre-converted surfaces for {list(found_surfs)}')
@@ -2265,7 +2269,7 @@ def init_infant_single_anat_fit_wf(
             ]),
         ])  # fmt:skip
 
-    if 'anat_ribbon' not in precomputed:
+    if 'ribbon' not in images:
         LOGGER.info('ANAT Stage 8a: Creating cortical ribbon mask')
         anat_ribbon_wf = init_anat_ribbon_wf()
         ds_ribbon_mask_wf = init_ds_mask_wf(
@@ -2294,10 +2298,10 @@ def init_infant_single_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Stage 8a: Found pre-computed cortical ribbon mask')
-        outputnode.inputs.anat_ribbon = precomputed['anat_ribbon']
+        outputnode.inputs.anat_ribbon = images['ribbon']
 
     # Stage 9: Baseline fsLR registration
-    if len(precomputed.get('sphere_reg_fsLR', [])) < 2:
+    if 'sphere_reg_fsLR' not in surfaces:
         LOGGER.info('ANAT Stage 9: Creating fsLR registration sphere')
         if recon_method == 'mcribs':
             # M-CRIB-S surfaces are calibrated to M-CRIB-S's own fsaverage/fsLR templates
@@ -2323,10 +2327,10 @@ def init_infant_single_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Stage 9: Found pre-computed fsLR registration sphere')
-        fsLR_buffer.inputs.sphere_reg_fsLR = sorted(precomputed['sphere_reg_fsLR'])
+        fsLR_buffer.inputs.sphere_reg_fsLR = surfaces['sphere_reg_fsLR']
 
     # Stage 10: Cortical surface mask
-    if len(precomputed.get('cortex_mask', [])) < 2:
+    if 'cortex' not in surfaces:
         LOGGER.info('ANAT Stage 11: Creating cortical surface mask')
 
         cortex_masks_wf = init_cortex_masks_wf()
@@ -2349,5 +2353,5 @@ def init_infant_single_anat_fit_wf(
         ])  # fmt:skip
     else:
         LOGGER.info('ANAT Stage 11: Found pre-computed cortical surface mask')
-        outputnode.inputs.cortex_mask = sorted(precomputed['cortex_mask'])
+        outputnode.inputs.cortex_mask = surfaces['cortex']
     return workflow

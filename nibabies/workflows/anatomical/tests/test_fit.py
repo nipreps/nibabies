@@ -79,12 +79,13 @@ def test_dual_anat_fit_wf(monkeypatch, tmp_path, recon_method, use_aseg, skull_s
         config.execution.mcribs_dir.mkdir()
 
         if use_aseg:
-            precomputed = {
+            images = {
                 't1w_aseg': str(tmp_path / 'sub-01_space-T1w_desc-aseg_dseg.nii.gz'),
                 't2w_aseg': str(tmp_path / 'sub-01_space-T2w_desc-aseg_dseg.nii.gz'),
             }
-            Path(precomputed['t1w_aseg']).touch()
-            Path(precomputed['t2w_aseg']).touch()
+            Path(images['t1w_aseg']).touch()
+            Path(images['t2w_aseg']).touch()
+            precomputed = {'images': images}
         else:
             precomputed = {}
 
@@ -133,12 +134,13 @@ def test_single_anat_fit_wf(
         config.execution.mcribs_dir.mkdir()
 
         if use_aseg:
-            precomputed = {
+            images = {
                 f'{ref_anat.lower()}_aseg': str(
                     tmp_path / f'sub-01_space-{ref_anat}_desc-aseg_dseg.nii.gz'
                 )
             }
-            Path(precomputed[f'{ref_anat.lower()}_aseg']).touch()
+            Path(images[f'{ref_anat.lower()}_aseg']).touch()
+            precomputed = {'images': images}
         else:
             precomputed = {}
 

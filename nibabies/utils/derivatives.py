@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import json
 import logging
 import shutil
 from pathlib import Path
 
-from bids.layout import BIDSLayout
-from nipost.bids import collect_derivatives, load_spec, sanitize_fieldmap_id
-from niworkflows.data import load as nwf_load
+from nipost.bids import (
+    collect_derivatives,
+    load_spec,
+    sanitize_fieldmap_id,
+    sanitize_space,
+)
 
 from nibabies.data import load
 
@@ -19,83 +21,6 @@ if TYPE_CHECKING:
         template2anat_xfm: list[str]
         run2template_xfms: NotRequired[list[str]]
         boldref_template: NotRequired[str | None]
-
-
-def collect_anatomical_derivatives(
-    derivatives_dir: Path | str,
-    subject_id: str,
-    std_spaces: list,
-    session_id: str | None,
-    spec: dict | None = None,
-    patterns: list | None = None,
-):
-    """
-    Collect outputs from across processing stages.
-
-    Potential files:
-    - T1w preproc
-    - T2w preproc
-    - T1w mask
-    - T2w mask
-
-
-    """
-
-    if spec is None or patterns is None:
-        _spec, _patterns = tuple(json.loads(load('io_spec_anat.json').read_text()).values())
-
-        if spec is None:
-            spec = _spec
-        if patterns is None:
-            patterns = _patterns
-
-    deriv_config = nwf_load('nipreps.json')
-    layout = BIDSLayout(derivatives_dir, config=deriv_config, validate=False)
-    derivs_cache = {}
-
-    base_qry = {
-        'subject': subject_id,
-    }
-    if session_id is not None:
-        base_qry['session'] = session_id
-
-    for key, qry in spec['baseline'].items():
-        qry.update(base_qry)
-        item = layout.get(return_type='filename', **qry)
-        if not item:
-            continue
-
-        derivs_cache[key] = item[0] if len(item) == 1 else item
-
-    for key, qry in spec['coreg'].items():  # T1w->T2w, T2w->T1w
-        qry.update(base_qry)
-        item = layout.get(return_type='filename', **qry)
-        if not item:
-            continue
-        derivs_cache[key] = item[0] if len(item) == 1 else item
-
-    transforms = derivs_cache.setdefault('transforms', {})
-    for _space in std_spaces:
-        space = _space.replace(':cohort-', '+')
-        for key, qry in spec['transforms'].items():
-            qry = qry.copy()
-            qry.update(base_qry)
-            qry['from'] = qry['from'] or space
-            qry['to'] = qry['to'] or space
-            item = layout.get(return_type='filename', **qry)
-            if not item:
-                continue
-            transforms.setdefault(_space, {})[key] = item[0] if len(item) == 1 else item
-
-    for key, qry in spec['surfaces'].items():
-        qry.update(base_qry)
-        item = layout.get(return_type='filename', **qry)
-        if not item or len(item) != 2:
-            continue
-
-        derivs_cache[key] = sorted(item)
-
-    return derivs_cache
 
 
 def _merge(merged: dict, found: dict, kind: str, deriv_dir) -> None:
@@ -120,33 +45,52 @@ def collect_anat_derivatives(
     ----------
     derivatives
         Derivatives datasets to search. Later datasets take precedence for each
-        derivative and each space's transforms they provide.
+        image, coregistration transform and surface they provide, and for each space
+        they have transforms for. Forward and reverse transforms for a space are never
+        combined across datasets.
         Each derivative a later dataset replaces is logged at DEBUG level.
     subject_id
         Subject label, without ``sub-``.
     std_spaces
-        Standard spaces to find transforms for.
+        Standard spaces to find transforms for, in TemplateFlow form
+        (e.g., ``MNIInfant:cohort-1``). Transforms to ``fsnative`` are always searched.
     session_id
         Session label, without ``ses-``.
 
     Returns
     -------
     dict
-        Paths to precomputed derivatives, as returned by
-        :func:`collect_anatomical_derivatives`.
+        ``images``, ``coreg`` and ``surfaces`` map query names in ``anat_spec.yml``
+        to paths. ``transforms`` maps each space with precomputed transforms to its
+        ``forward`` and/or ``reverse`` transform.
+
+    Raises
+    ------
+    ValueError
+        If a query matches more than one file in a dataset.
     """
-    merged = {}
-    transforms = {}
+    entities = {'subject': subject_id}
+    if session_id:
+        entities['session'] = session_id
+    # Filenames use the BIDS form of cohort spaces; workflows use the TemplateFlow form
+    spaces = {sanitize_space(space): space for space in [*std_spaces, 'fsnative']}
+    params = {'space': list(spaces)}
+    spec = load_spec(load('anat_spec.yml'))
+
+    deriv_cache = {'images': {}, 'coreg': {}, 'surfaces': {}, 'transforms': {}}
     for deriv_dir in derivatives:
-        found = collect_anatomical_derivatives(
-            derivatives_dir=deriv_dir,
-            subject_id=subject_id,
-            session_id=session_id,
-            std_spaces=std_spaces,
-        )
-        _merge(transforms, found.pop('transforms', {}), 'transform', deriv_dir)
-        _merge(merged, found, 'derivative', deriv_dir)
-    return {**merged, 'transforms': transforms}
+        collected = collect_derivatives(deriv_dir, spec=spec, entities=entities, params=params)
+        _merge(deriv_cache['images'], collected['images'], 'image', deriv_dir)
+        _merge(deriv_cache['coreg'], collected['coreg'], 'transform', deriv_dir)
+        _merge(deriv_cache['surfaces'], collected['surfaces'], 'surface', deriv_dir)
+        # Replace whole spaces, so a transform pair always comes from one dataset.
+        # Spaces this dataset has no transforms for are empty and must not replace others.
+        transforms = {
+            spaces[space]: xfms for space, xfms in collected['transforms'].items() if xfms
+        }
+        _merge(deriv_cache['transforms'], transforms, 'transforms for', deriv_dir)
+
+    return deriv_cache
 
 
 def collect_func_derivatives(

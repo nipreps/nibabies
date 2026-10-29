@@ -332,12 +332,10 @@ It is released under the [CC0]\
     if config.execution.derivatives:
         from nibabies.utils.derivatives import collect_anat_derivatives
 
-        std_spaces = spaces.get_spaces(nonstandard=False, dim=(3,))
-        std_spaces.append('fsnative')
         anatomical_cache = collect_anat_derivatives(
             config.execution.derivatives.values(),
             subject_id,
-            std_spaces,
+            spaces.get_spaces(nonstandard=False, dim=(3,)),
             session_id=session_id,
         )
 
@@ -356,10 +354,12 @@ It is released under the [CC0]\
                 else None,
             )
 
+    anat_images = anatomical_cache.get('images', {})
+
     # Determine some session level options here, as we should have
     # all the required information
     if recon_method == 'auto':
-        if age <= MCRIBS_RECOMMEND_AGE_CAP and anatomical_cache.get('t2w_aseg'):
+        if age <= MCRIBS_RECOMMEND_AGE_CAP and anat_images.get('t2w_aseg'):
             # do not force mcribs without a vetted segmentation
             recon_method = 'mcribs'
         elif age <= 24:
@@ -491,7 +491,7 @@ It is released under the [CC0]\
     anat_fit_wf = fit_wf(**wf_args)
 
     # allow to run with anat-fast-track on fMRI-only dataset
-    if f'{anat}_preproc' in anatomical_cache and not subject_data[anat]:
+    if f'{anat}_preproc' in anat_images and not subject_data[anat]:
         workflow.connect([
             (bidssrc, bids_info, [(('bold', fix_multi_source_name), 'in_file')]),
             (anat_fit_wf, summary, [('outputnode.anat_preproc', anat)]),
@@ -731,7 +731,7 @@ tasks and sessions), the following preprocessing was performed.
     # Before initializing BOLD workflow, select/verify anatomical target for coregistration
     bold2anat_init = config.workflow.bold2anat_init
     if bold2anat_init in ('auto', 't2w'):
-        has_t2w = subject_data['t2w'] or 't2w_preproc' in anatomical_cache
+        has_t2w = subject_data['t2w'] or 't2w_preproc' in anat_images
         if bold2anat_init == 't2w' and not has_t2w:
             raise OSError(
                 'A T2w image is expected for BOLD-to-anatomical coregistration and was not found'
