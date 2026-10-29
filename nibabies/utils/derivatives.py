@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import shutil
 from collections import defaultdict
@@ -176,6 +177,90 @@ def collect_functional_derivatives(
 
     derivs_cache['transforms'] = transforms_cache
     return derivs_cache
+
+
+def _merge(merged: dict, found: dict, kind: str, deriv_dir) -> None:
+    """Update ``merged`` with ``found``, logging each entry that is replaced."""
+    for name, value in found.items():
+        if name in merged:
+            logging.getLogger('nipype.utils').debug(
+                f'Precomputed {kind} {name} found in {deriv_dir}, replacing {merged[name]}'
+            )
+        merged[name] = value
+
+
+def collect_anat_derivatives(
+    derivatives: list[Path],
+    subject_id: str,
+    std_spaces: list,
+    session_id: str | None,
+) -> dict:
+    """Gather precomputed anatomical derivatives from one or more datasets.
+
+    Parameters
+    ----------
+    derivatives
+        Derivatives datasets to search. Later datasets take precedence for each
+        derivative and each space's transforms they provide.
+        Each derivative a later dataset replaces is logged at DEBUG level.
+    subject_id
+        Subject label, without ``sub-``.
+    std_spaces
+        Standard spaces to find transforms for.
+    session_id
+        Session label, without ``ses-``.
+
+    Returns
+    -------
+    dict
+        Paths to precomputed derivatives, as returned by
+        :func:`collect_anatomical_derivatives`.
+    """
+    merged = {}
+    transforms = {}
+    for deriv_dir in derivatives:
+        found = collect_anatomical_derivatives(
+            derivatives_dir=deriv_dir,
+            subject_id=subject_id,
+            session_id=session_id,
+            std_spaces=std_spaces,
+        )
+        _merge(transforms, found.pop('transforms', {}), 'transform', deriv_dir)
+        _merge(merged, found, 'derivative', deriv_dir)
+    return {**merged, 'transforms': transforms}
+
+
+def collect_func_derivatives(
+    derivatives: list[Path],
+    entities: dict,
+    fieldmap_id: str | None = None,
+) -> dict:
+    """Gather precomputed functional derivatives from one or more datasets.
+
+    Parameters
+    ----------
+    derivatives
+        Derivatives datasets to search. Later datasets take precedence for each
+        derivative and each transform they provide.
+        Each derivative a later dataset replaces is logged at DEBUG level.
+    entities
+        BIDS entities of the BOLD series.
+    fieldmap_id
+        Fieldmap estimator ID, used to find the BOLD-to-fieldmap transform.
+
+    Returns
+    -------
+    dict
+        Paths to precomputed derivatives, as returned by
+        :func:`collect_functional_derivatives`.
+    """
+    merged = {}
+    transforms = {}
+    for deriv_dir in derivatives:
+        found = collect_functional_derivatives(deriv_dir, entities, fieldmap_id=fieldmap_id)
+        _merge(transforms, found.pop('transforms', {}), 'transform', deriv_dir)
+        _merge(merged, found, 'derivative', deriv_dir)
+    return {**merged, 'transforms': transforms}
 
 
 def aggregate_coreg_precomputed(caches: list[dict], level: str) -> dict:

@@ -1,6 +1,7 @@
 from niworkflows.utils.testing import generate_bids_skeleton
 
 from nibabies.utils.derivatives import (
+    collect_anat_derivatives,
     collect_anatomical_derivatives,
     collect_functional_derivatives,
     copy_derivatives,
@@ -76,3 +77,19 @@ def test_copy_derivatives(tmp_path):
 
     for fl in (mask, aseg, aseg_meta):
         assert (outpath / fl.name).exists()
+
+
+def test_collect_anat_derivatives_empty_later_dataset(tmp_path):
+    """An empty later dataset does not clobber an earlier dataset's transforms."""
+    deriv_dir = tmp_path / 'derivatives'
+    generate_bids_skeleton(deriv_dir, str(DERIV_SKELETON))
+    empty = tmp_path / 'empty'
+    generate_bids_skeleton(
+        empty,
+        {'dataset_description': {'Name': 'empty', 'DatasetType': 'derivative'}, '01': []},
+    )
+    kwargs = {'subject_id': '01', 'std_spaces': ['MNIInfant:cohort-1'], 'session_id': None}
+
+    anat_cache = collect_anat_derivatives([deriv_dir, empty], **kwargs)
+    assert anat_cache == collect_anat_derivatives([deriv_dir], **kwargs)
+    assert anat_cache['transforms']['MNIInfant:cohort-1']['forward']

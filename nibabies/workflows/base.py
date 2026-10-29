@@ -330,19 +330,16 @@ It is released under the [CC0]\
 
     anatomical_cache = {}
     if config.execution.derivatives:
-        from nibabies.utils.derivatives import collect_anatomical_derivatives
+        from nibabies.utils.derivatives import collect_anat_derivatives
 
         std_spaces = spaces.get_spaces(nonstandard=False, dim=(3,))
         std_spaces.append('fsnative')
-        for deriv_dir in config.execution.derivatives.values():
-            anatomical_cache.update(
-                collect_anatomical_derivatives(
-                    derivatives_dir=deriv_dir,
-                    subject_id=subject_id,
-                    session_id=session_id,
-                    std_spaces=std_spaces,
-                )
-            )
+        anatomical_cache = collect_anat_derivatives(
+            config.execution.derivatives.values(),
+            subject_id,
+            std_spaces,
+            session_id=session_id,
+        )
 
         if config.execution.copy_derivatives:
             from nibabies.utils.derivatives import copy_derivatives
@@ -760,18 +757,13 @@ tasks and sessions), the following preprocessing was performed.
     for bold_series in bold_runs:
         cache = {}
         if config.execution.derivatives:
-            from nibabies.utils.derivatives import collect_functional_derivatives
+            from nibabies.utils.derivatives import collect_func_derivatives
 
-            entities = extract_entities(bold_series)
-            fieldmap_id = estimator_map.get(bold_series[0])
-            for deriv_dir in config.execution.derivatives.values():
-                cache.update(
-                    collect_functional_derivatives(
-                        derivatives_dir=deriv_dir,
-                        entities=entities,
-                        fieldmap_id=fieldmap_id,
-                    )
-                )
+            cache = collect_func_derivatives(
+                config.execution.derivatives.values(),
+                extract_entities(bold_series),
+                fieldmap_id=estimator_map.get(bold_series[0]),
+            )
 
             if config.execution.copy_derivatives:
                 from nibabies.utils.derivatives import copy_derivatives

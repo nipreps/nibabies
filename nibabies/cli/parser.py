@@ -257,7 +257,9 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         help=(
             'Search PATH(s) for pre-computed derivatives. '
             'These may be provided as named folders '
-            '(e.g., `--derivatives smriprep=/path/to/smriprep`).'
+            '(e.g., `--derivatives smriprep=/path/to/smriprep`). '
+            'When several PATHs are given, all are searched, and a later one takes '
+            'precedence for the derivatives it provides.'
         ),
     )
     g_bids.add_argument(
