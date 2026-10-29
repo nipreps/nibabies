@@ -634,15 +634,29 @@ It is released under the [CC0]\
         from sdcflows import fieldmaps as fm
         from sdcflows.workflows.base import init_fmap_preproc_wf
 
-        fmap_wf = init_fmap_preproc_wf(
-            debug='fieldmaps' in config.execution.debug,
-            estimators=fmap_estimators,
-            omp_nthreads=omp_nthreads,
-            output_dir=output_dir,
-            subject=subject_id,
-            topup_config=config.execution.topup_config,
-            sd_prior=False,  # No priors for infants yet
-        )
+        fallback_trt = config.workflow.fallback_total_readout_time
+        try:
+            fmap_wf = init_fmap_preproc_wf(
+                use_metadata_estimates=fallback_trt == 'estimated',
+                fallback_total_readout_time=fallback_trt
+                if isinstance(fallback_trt, float)
+                else None,
+                debug='fieldmaps' in config.execution.debug,
+                estimators=fmap_estimators,
+                omp_nthreads=omp_nthreads,
+                output_dir=output_dir,
+                subject=subject_id,
+                topup_config=config.execution.topup_config,
+                sd_prior=False,  # No priors for infants yet
+            )
+        except RuntimeError:
+            message = (
+                'Missing readout time information. '
+                'See documentation for `--fallback-total-readout-time`.'
+            )
+            config.loggers.workflow.critical(message, exc_info=True)
+            sys.exit(os.EX_DATAERR)
+
         fmap_wf.__desc__ = f"""
 
 Preprocessing of B<sub>0</sub> inhomogeneity mappings
@@ -873,6 +887,7 @@ tasks and sessions), the following preprocessing was performed.
             precomputed=functional_cache,
             fieldmap_id=fieldmap_id,
             jacobian=jacobian,
+            fallback_total_readout_time=config.workflow.fallback_total_readout_time,
             omp_nthreads=omp_nthreads,
             name=f'bold_fit_{bold_id}_wf',
         )
@@ -1038,6 +1053,7 @@ tasks and sessions), the following preprocessing was performed.
             bold_series=bold_series,
             fieldmap_id=fieldmap_id,
             jacobian=jacobian,
+            fallback_total_readout_time=config.workflow.fallback_total_readout_time,
             spaces=spaces,
             reference_anat=reference_anat,
             coreg_space=bold_coreg_level,

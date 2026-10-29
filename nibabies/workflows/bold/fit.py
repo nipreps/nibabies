@@ -108,6 +108,7 @@ def init_bold_fit_wf(
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
     jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_fit_wf',
 ) -> pe.Workflow:
@@ -137,6 +138,12 @@ def init_bold_fit_wf(
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
 
     Inputs
     ------
@@ -498,7 +505,7 @@ def init_bold_fit_wf(
                 DistortionParameters(
                     metadata=metadata,
                     in_file=bold_file,
-                    # TODO: Estimate fallback readout time
+                    fallback=fallback_total_readout_time,
                 ),
                 name='distortion_params',
                 run_without_submitting=True,
@@ -571,6 +578,7 @@ def init_bold_native_wf(
     bold_series: list[str],
     fieldmap_id: str | None = None,
     jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_native_wf',
 ) -> pe.Workflow:
@@ -605,6 +613,9 @@ def init_bold_native_wf(
     jacobian
         Whether to apply Jacobian determinant correction when resampling with
         the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
 
     Inputs
     ------
@@ -755,7 +766,11 @@ def init_bold_native_wf(
     # Prepare fieldmap metadata
     if fieldmap_id:
         distortion_params = pe.Node(
-            DistortionParameters(metadata=metadata, in_file=bold_file),
+            DistortionParameters(
+                metadata=metadata,
+                in_file=bold_file,
+                fallback=fallback_total_readout_time,
+            ),
             name='distortion_params',
             run_without_submitting=True,
         )
@@ -850,6 +865,7 @@ def init_bold_boldref_wf(
     bold_series: list[str],
     fieldmap_id: str | None = None,
     jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_boldref_wf',
 ) -> pe.Workflow:
@@ -871,6 +887,9 @@ def init_bold_boldref_wf(
     jacobian
         Whether to apply Jacobian determinant correction when resampling with
         the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
     omp_nthreads
         Maximum number of threads per process.
 
@@ -952,7 +971,11 @@ def init_bold_boldref_wf(
 
     if fieldmap_id:
         distortion_params = pe.Node(
-            DistortionParameters(metadata=metadata, in_file=bold_file),
+            DistortionParameters(
+                metadata=metadata,
+                in_file=bold_file,
+                fallback=fallback_total_readout_time,
+            ),
             name='distortion_params',
             run_without_submitting=True,
         )

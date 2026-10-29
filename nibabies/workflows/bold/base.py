@@ -66,6 +66,7 @@ def init_bold_apply_wf(
     bold_series: list[str],
     fieldmap_id: str | None = None,
     jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     spaces: 'SpatialReferences',
     coreg_space: str = 'boldref',
     tpms_from_aseg: bool = False,
@@ -105,6 +106,9 @@ def init_bold_apply_wf(
     jacobian
         Whether to apply Jacobian determinant correction when resampling with
         the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
     tpms_from_aseg
         Whether ``anat_tpms`` are binary maps split from an *aseg* segmentation
         (``False`` when they are continuous FSL FAST partial volume maps).
@@ -261,6 +265,7 @@ configured with cubic B-spline interpolation.
         bold_series=bold_series,
         fieldmap_id=fieldmap_id,
         jacobian=jacobian,
+        fallback_total_readout_time=fallback_total_readout_time,
         omp_nthreads=omp_nthreads,
     )
 
@@ -311,6 +316,7 @@ configured with cubic B-spline interpolation.
             bold_series=bold_series,
             fieldmap_id=fieldmap_id,
             jacobian=jacobian,
+            fallback_total_readout_time=fallback_total_readout_time,
             omp_nthreads=omp_nthreads,
         )
         workflow.connect([
@@ -401,6 +407,7 @@ configured with cubic B-spline interpolation.
     # Resample to anatomical space
     bold_anat_wf = init_bold_volumetric_resample_wf(
         metadata=all_metadata[0],
+        fallback_total_readout_time=fallback_total_readout_time,
         fieldmap_id=fieldmap_id if not multiecho else None,
         omp_nthreads=omp_nthreads,
         mem_gb=mem_gb,
@@ -461,6 +468,7 @@ configured with cubic B-spline interpolation.
         #  * Resampling parcellations
         bold_std_wf = init_bold_volumetric_resample_wf(
             metadata=all_metadata[0],
+            fallback_total_readout_time=fallback_total_readout_time,
             fieldmap_id=fieldmap_id if not multiecho else None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb,
@@ -573,6 +581,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         bold_MNIInfant_wf = init_bold_volumetric_resample_wf(
             metadata=all_metadata[0],
+            fallback_total_readout_time=fallback_total_readout_time,
             fieldmap_id=fieldmap_id if not multiecho else None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb,

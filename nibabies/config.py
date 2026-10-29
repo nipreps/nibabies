@@ -578,6 +578,9 @@ class workflow(_Config):
     """Remove the mean from fieldmaps."""
     force_syn = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation."""
+    fallback_total_readout_time = None
+    """Infer the total readout time if unavailable from authoritative metadata.
+    This may be a number or the string "estimated"."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     hmc_bold_frame = 16
@@ -861,6 +864,7 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'bold_coreg_level',
         'bold_coreg_upsample',
         'dummy_scans',
+        'fallback_total_readout_time',
         'fd_radius',
         'fmap_bspline',
         'fmap_demean',

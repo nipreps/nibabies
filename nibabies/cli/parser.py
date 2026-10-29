@@ -142,6 +142,16 @@ def _build_parser():
             else:
                 raise parser.error(f'Path does not exist: <{value}>.')
 
+    def _fallback_trt(value, parser):
+        if value == 'estimated':
+            return value
+        try:
+            return float(value)
+        except ValueError:
+            raise parser.error(
+                f'Falling back to TRT must be a number or "estimated". Received {value}.'
+            ) from None
+
     def _slice_time_ref(value, parser):
         if value == 'start':
             value = 0
@@ -175,6 +185,7 @@ def _build_parser():
     PositiveInt = partial(_min_one, parser=parser)
     BIDSFilter = partial(_bids_filter, parser=parser)
     SliceTimeRef = partial(_slice_time_ref, parser=parser)
+    FallbackTRT = partial(_fallback_trt, parser=parser)
 
     parser.description = f"""
 NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
@@ -487,6 +498,15 @@ Useful for further Tedana processing post-NiBabies.""",
         default=None,
         type=int,
         help='Number of non steady state volumes.',
+    )
+    g_conf.add_argument(
+        '--fallback-total-readout-time',
+        required=False,
+        action='store',
+        default=None,
+        type=FallbackTRT,
+        help='Fallback value for Total Readout Time (TRT) calculation. '
+        'May be a number or "estimated".',
     )
     g_conf.add_argument(
         '--random-seed',

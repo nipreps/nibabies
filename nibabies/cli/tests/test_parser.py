@@ -275,6 +275,29 @@ def test_force_conflict(tmp_path, minimal_bids, args, match):
     _reset_config()
 
 
+@pytest.mark.parametrize(
+    ('value', 'expectation'),
+    [
+        ('0.05', 0.05),
+        ('estimated', 'estimated'),
+        ('other', SystemExit),
+    ],
+)
+def test_fallback_total_readout_time(tmp_path, value, expectation):
+    bids_path = tmp_path / 'data'
+    out_path = tmp_path / 'out'
+    bids_path.mkdir()
+    args = [str(bids_path), str(out_path), 'participant', '--fallback-total-readout-time', value]
+
+    parser = _build_parser()
+    if expectation is SystemExit:
+        with pytest.raises(SystemExit):
+            parser.parse_args(args)
+    else:
+        assert parser.parse_args(args).fallback_total_readout_time == expectation
+    _reset_config()
+
+
 def test_derivatives(tmp_path):
     """Check the correct parsing of the derivatives argument."""
     bids_path = tmp_path / 'data'

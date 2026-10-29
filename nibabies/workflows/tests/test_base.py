@@ -429,6 +429,41 @@ def test_init_nibabies_wf_fmap_jacobian(monkeypatch, tmp_path, fmap, option, jac
     assert all(node.inputs.jacobian is jacobian for node in resamplers)
 
 
+@pytest.mark.parametrize('fallback', [None, 0.05, 'estimated'])
+def test_init_nibabies_wf_fallback_trt(monkeypatch, tmp_path, fallback):
+    from nibabies.interfaces.resampling import DistortionParameters
+
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = 'pepolar'
+    spec['01']['fmap'] = [f for f in spec['01']['fmap'] if f['suffix'] == 'epi']
+    for f in spec['01']['fmap']:
+        f['metadata']['B0FieldIdentifier'] = 'pepolar'
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'fallback_total_readout_time', fallback)
+        wf = init_nibabies_wf([('01', None)])
+
+    params = [
+        node
+        for node in (wf.get_node(n) for n in wf.list_node_names())
+        if isinstance(node.interface, DistortionParameters)
+    ]
+    assert params
+    assert all(node.inputs.fallback == fallback for node in params)
+
+
 @pytest.mark.parametrize(
     ('precomputed', 'is_aseg'),
     [

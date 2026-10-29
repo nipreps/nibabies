@@ -16,6 +16,7 @@ def init_bold_volumetric_resample_wf(
     metadata: dict,
     mem_gb: dict[str, float],
     jacobian: bool,
+    fallback_total_readout_time: str | float | None = None,
     fieldmap_id: str | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_volumetric_resample_wf',
@@ -46,6 +47,9 @@ def init_bold_volumetric_resample_wf(
         BIDS metadata for BOLD file.
     fieldmap_id
         Fieldmap identifier, if fieldmap correction is to be applied.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
     omp_nthreads
         Maximum number of threads an individual process may use.
     name
@@ -158,7 +162,10 @@ def init_bold_volumetric_resample_wf(
         return workflow
 
     distortion_params = pe.Node(
-        DistortionParameters(metadata=metadata),
+        DistortionParameters(
+            metadata=metadata,
+            fallback=fallback_total_readout_time,
+        ),
         name='distortion_params',
         run_without_submitting=True,
     )
