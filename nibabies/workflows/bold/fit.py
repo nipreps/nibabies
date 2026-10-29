@@ -652,6 +652,7 @@ def init_bold_native_wf(
     .. _optimal combination: https://tedana.readthedocs.io/en/stable/approach.html#optimal-combination
 
     """
+    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     layout = config.execution.layout
 
@@ -680,7 +681,7 @@ def init_bold_native_wf(
 
     run_stc = bool(metadata.get('SliceTiming')) and 'slicetiming' not in config.workflow.ignore
 
-    workflow = pe.Workflow(name=name)
+    workflow = Workflow(name=name)
 
     inputnode = pe.Node(
         niu.IdentityInterface(
