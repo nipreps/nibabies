@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import pytest
+from niworkflows.utils.testing import generate_bids_skeleton
 
 from nibabies.utils import derivatives
 from nibabies.utils.testing import write_derivatives
@@ -43,14 +44,14 @@ TRANSFORMS = [
     'session2anat',
     'subject2anat',
 ]
-# Groups collected under another name
-KEYS = {'run2session': 'run2template', 'run2subject': 'run2template'}
-# The run-level reference is collected as ``coreg_boldref``, aliased as ``run_boldref``
-BOLDREF_KEYS = {'run_boldref': ('coreg_boldref', 'run_boldref')}
 
 
-def _key(group: str) -> str:
-    return KEYS.get(group, group.removesuffix('_legacy'))
+def _path(group: str) -> tuple[str, str]:
+    """Group and key a derivatives.yml group is collected under."""
+    name = group.removesuffix('_legacy')
+    if name.endswith('_boldref'):
+        return 'boldrefs', name.removesuffix('_boldref')
+    return 'transforms', name
 
 
 @pytest.mark.parametrize('session', [None, 'A'])
@@ -64,14 +65,11 @@ def test_boldref_found_as_str(tmp_path: Path, group: str, session):
     root = write_derivatives(tmp_path / 'deriv', [group], run=1, session=session)
     [found] = _files(root)
 
-    key = group.removesuffix('_legacy')
+    _, key = _path(group)
     derivs = derivatives.collect_func_derivatives(
         [root], _entities(session), fieldmap_id='auto_00000'
     )
-    assert derivs == {
-        **dict.fromkeys(BOLDREF_KEYS.get(key, (key,)), found),
-        'transforms': {},
-    }
+    assert derivs == {'boldrefs': {key: found}, 'transforms': {}}
 
 
 @pytest.mark.parametrize('session', [None, 'A'])
@@ -79,17 +77,16 @@ def test_boldref_found_as_str(tmp_path: Path, group: str, session):
 def test_transform_found_as_str(tmp_path: Path, group: str, session):
     """Generate a single transform and verify it's found.
 
-    See above RE legacy derivatives. ``KEYS`` lists the other groups
-    that are collected under another name.
+    See above RE legacy derivatives.
     """
     root = write_derivatives(tmp_path / 'deriv', [group], run=1, session=session)
     [found] = _files(root)
 
-    key = _key(group)
+    _, key = _path(group)
     derivs = derivatives.collect_func_derivatives(
         [root], _entities(session), fieldmap_id='auto_00000'
     )
-    assert derivs == {'transforms': {key: found}}
+    assert derivs == {'boldrefs': {}, 'transforms': {key: found}}
 
     # Collector function normalizes fieldmap IDs internally
     if key == 'run2fmap':
@@ -104,19 +101,13 @@ def test_defaults_collected_once_each(tmp_path: Path, session):
     derivs = derivatives.collect_func_derivatives(
         [root], _entities(session), fieldmap_id='auto_00000'
     )
-    transforms = derivs.pop('transforms')
-    assert derivs.keys() == {
-        'hmc_boldref',
-        'coreg_boldref',
-        'run_boldref',
-        'session_boldref',
-        'subject_boldref',
-    }
-    assert transforms.keys() == {_key(group) for group in TRANSFORMS}
-    assert {*derivs.values(), *transforms.values()} == set(_files(root))
+    assert derivs['boldrefs'].keys() == {'hmc', 'run', 'session', 'subject'}
+    # The defaults write run2session but not run2subject
+    expected = {_path(group)[1] for group in TRANSFORMS if group != 'run2subject'}
+    assert derivs['transforms'].keys() == expected
+    assert {*derivs['boldrefs'].values(), *derivs['transforms'].values()} == set(_files(root))
 
 
-@pytest.mark.xfail(reason='existing collector returns both the current and the legacy file')
 @pytest.mark.parametrize('group', ['hmc_boldref', 'run_boldref', 'hmc', 'run2anat', 'run2fmap'])
 def test_current_name_preferred_over_legacy(tmp_path: Path, group: str):
     """Generate current and legacy files and verify only current is returned."""
@@ -125,16 +116,46 @@ def test_current_name_preferred_over_legacy(tmp_path: Path, group: str):
     root = write_derivatives(tmp_path / 'deriv', [group, f'{group}_legacy'], run=1)
 
     derivs = derivatives.collect_func_derivatives([root], ENTITIES, fieldmap_id='auto_00000')
-    found = derivs['transforms'][group] if group in derivs['transforms'] else derivs[group]
-    assert found == str(root / 'sub-01' / 'func' / Path(current).name)
+    kind, key = _path(group)
+    assert derivs[kind][key] == str(root / 'sub-01' / 'func' / Path(current).name)
 
 
-@pytest.mark.xfail(reason='existing run2fmap query matches any transform from the run')
 def test_no_run2fmap_without_fieldmap(tmp_path: Path):
-    root = write_derivatives(tmp_path / 'deriv', ['run2anat'], run=1)
+    """A run without an estimator ignores transforms to any fieldmap."""
+    root = write_derivatives(tmp_path / 'deriv', ['run2anat', 'run2fmap'], run=1)
+    write_derivatives(root, ['run2fmap'], run=1, fmapid='auto00001')
 
     derivs = derivatives.collect_func_derivatives([root], ENTITIES)
     assert 'run2fmap' not in derivs['transforms']
+
+
+def test_run2fmap_matches_the_estimator(tmp_path: Path):
+    """With transforms to two fieldmaps, a run collects its estimator's."""
+    root = write_derivatives(tmp_path / 'deriv', ['run2fmap'], run=1)
+    write_derivatives(root, ['run2fmap'], run=1, fmapid='auto00001')
+
+    derivs = derivatives.collect_func_derivatives([root], ENTITIES, fieldmap_id='auto_00001')
+    assert '_to-auto00001_' in derivs['transforms']['run2fmap']
+
+
+def test_ambiguous_derivative_raises(tmp_path: Path):
+    """Several files for one derivative are an error, not a list."""
+    root = tmp_path / 'deriv'
+    generate_bids_skeleton(
+        root,
+        {
+            'dataset_description': {'Name': 'NiBabies', 'DatasetType': 'derivative'},
+            '01': {
+                'func': [
+                    {'task': 'rest', 'run': 1, 'echo': echo, 'space': 'run', 'suffix': 'boldref'}
+                    for echo in (1, 2)
+                ]
+            },
+        },
+    )
+
+    with pytest.raises(ValueError, match=r'^boldrefs/run in .*expected at most one match'):
+        derivatives.collect_func_derivatives([root], ENTITIES)
 
 
 def _find(root: Path, pattern: str) -> str:
@@ -152,11 +173,11 @@ def test_collect_func_derivatives_merges_per_key(tmp_path: Path, caplog):
         )
 
     # hmc is overridden
-    run_boldref = _find(second, '*_space-run_boldref.nii.gz')
     assert derivs == {
-        'hmc_boldref': _find(first, '*_desc-hmc_boldref.nii.gz'),
-        'coreg_boldref': run_boldref,
-        'run_boldref': run_boldref,
+        'boldrefs': {
+            'hmc': _find(first, '*_desc-hmc_boldref.nii.gz'),
+            'run': _find(second, '*_space-run_boldref.nii.gz'),
+        },
         'transforms': {
             'hmc': _find(second, '*_desc-hmc_xfm.txt'),
             'run2anat': _find(first, '*_to-T1w_*xfm.txt'),
@@ -184,7 +205,7 @@ def test_collect_func_derivatives_empty_later_dataset(tmp_path: Path, caplog):
 
 
 def test_collect_func_derivatives_nothing():
-    assert derivatives.collect_func_derivatives([], ENTITIES) == {'transforms': {}}
+    assert derivatives.collect_func_derivatives([], ENTITIES) == {'boldrefs': {}, 'transforms': {}}
 
 
 def _run_caches(tmp_path: Path, shared: list[str], per_run: list[str], session='A'):
@@ -216,7 +237,7 @@ def test_aggregate_coreg_precomputed_group(tmp_path: Path):
 
     assert derivatives.aggregate_coreg_precomputed(caches, 'session') == {
         'template2anat_xfm': [session2anat, session2anat],
-        'run2template_xfms': [c['transforms']['run2template'] for c in caches],
-        'boldref_template': caches[0]['session_boldref'],
+        'run2template_xfms': [c['transforms']['run2session'] for c in caches],
+        'boldref_template': caches[0]['boldrefs']['session'],
     }
-    assert caches[0]['transforms']['run2template'] != caches[1]['transforms']['run2template']
+    assert caches[0]['transforms']['run2session'] != caches[1]['transforms']['run2session']

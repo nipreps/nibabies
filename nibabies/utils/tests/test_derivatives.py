@@ -3,7 +3,7 @@ from niworkflows.utils.testing import generate_bids_skeleton
 from nibabies.utils.derivatives import (
     collect_anat_derivatives,
     collect_anatomical_derivatives,
-    collect_functional_derivatives,
+    collect_func_derivatives,
     copy_derivatives,
 )
 
@@ -40,9 +40,9 @@ def test_collect_derivatives(tmp_path):
     ):
         assert len(anat_cache[surface]) == 2
 
-    func_cache = collect_functional_derivatives(deriv_dir, {'subject': '01'}, None)
-    for val in ('hmc_boldref', 'coreg_boldref'):
-        assert func_cache[val]
+    func_cache = collect_func_derivatives([deriv_dir], {'subject': '01'})
+    for val in ('hmc', 'run'):
+        assert func_cache['boldrefs'][val]
     for xfm in ('hmc', 'run2anat'):
         assert func_cache['transforms'][xfm]
 

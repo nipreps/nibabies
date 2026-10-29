@@ -1,0 +1,139 @@
+boldrefs:
+  queries:
+    hmc:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          space: orig
+          desc: hmc
+          suffix: boldref
+          extension: [.nii.gz, .nii]
+        # NiBabies 24.0 - 25.2
+        - datatype: func
+          space: null
+          desc: hmc
+          suffix: boldref
+          extension: [.nii.gz, .nii]
+    run:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          space: run
+          desc: null
+          suffix: boldref
+          extension: [.nii.gz, .nii]
+        # NiBabies 24.0 - 25.2
+        - datatype: func
+          space: null
+          desc: coreg
+          suffix: boldref
+          extension: [.nii.gz, .nii]
+    session:
+      entities:
+        - datatype: func
+          space: session
+          suffix: boldref
+          extension: [.nii.gz, .nii]
+      scope: [subject, session]
+    subject:
+      entities:
+        - datatype: func
+          space: subject
+          suffix: boldref
+          extension: [.nii.gz, .nii]
+      scope: [subject]
+transforms:
+  queries:
+    hmc:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          from: orig
+          to: run
+          mode: image
+          suffix: xfm
+          extension: .txt
+        # NiBabies 24.0 - 25.2
+        - datatype: func
+          from: orig
+          to: boldref
+          mode: image
+          suffix: xfm
+          extension: .txt
+    run2anat:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          from: run
+          to: [anat, T1w, T2w]
+          mode: image
+          suffix: xfm
+          extension: .txt
+        # NiBabies 24.0 - 25.2
+        - datatype: func
+          from: boldref
+          to: [anat, T1w, T2w]
+          mode: image
+          suffix: xfm
+          extension: .txt
+    run2session:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          from: run
+          to: session
+          desc: coreg
+          mode: image
+          suffix: xfm
+          extension: .txt
+    run2subject:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          from: run
+          to: subject
+          desc: coreg
+          mode: image
+          suffix: xfm
+          extension: .txt
+    session2anat:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          from: session
+          to: [anat, T1w, T2w]
+          mode: image
+          suffix: xfm
+          extension: .txt
+      scope: [subject, session]
+    subject2anat:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          from: subject
+          to: [anat, T1w, T2w]
+          mode: image
+          suffix: xfm
+          extension: .txt
+      scope: [subject]
+fmap_transforms:
+  per: fmapid
+  queries:
+    run2fmap:
+      entities:
+        # NiBabies 26.0 -
+        - datatype: func
+          from: run
+          to: "{fmapid}"
+          desc: fmap
+          mode: image
+          suffix: xfm
+          extension: .txt
+        # NiBabies 24.0 - 25.2
+        - datatype: func
+          from: boldref
+          to: "{fmapid}"
+          desc: null
+          mode: image
+          suffix: xfm
+          extension: .txt
