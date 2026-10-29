@@ -564,6 +564,8 @@ class workflow(_Config):
     BOLD image-header ('header')."""
     bold_coreg_level = 'run'
     """Level to coregister BOLD runs to a common reference, either 'run' (default) or 'session'."""
+    bold_coreg_upsample = True
+    """Upsample run references before building a session-level BOLD template."""
     cifti_output = None
     """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
     dummy_scans = None
@@ -827,6 +829,7 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'bold2anat_dof',
         'bold2anat_init',
         'bold_coreg_level',
+        'bold_coreg_upsample',
         'dummy_scans',
         'fd_radius',
         'fmap_bspline',

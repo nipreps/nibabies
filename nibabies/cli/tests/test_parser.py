@@ -301,3 +301,19 @@ def test_surface_recon_method(tmp_path, args, expectation):
     with cm:
         opts = _build_parser().parse_args(args)
         assert opts.surface_recon_method == expectation
+
+
+@pytest.mark.parametrize(
+    ('supp_args', 'opt', 'expected'),
+    [
+        (['--bold-coreg-upsample'], 'bold_coreg_upsample', True),
+        (['--no-bold-coreg-upsample'], 'bold_coreg_upsample', False),
+        ([], 'bold_coreg_upsample', True),
+    ],
+)
+def test_optional_booleans(tmp_path, supp_args, opt, expected):
+    out_path = str(tmp_path / 'out')
+    args = [str(tmp_path), out_path, 'participant'] + supp_args
+    pargs = _build_parser().parse_args(args)
+    assert getattr(pargs, opt) == expected
+    _reset_config()

@@ -785,6 +785,16 @@ discourage its usage.""",
         default='run',
         help='Determine BOLD reference image for coregistration at run or session level.',
     )
+    g_baby.add_argument(
+        '--bold-coreg-upsample',
+        action=BooleanOptionalAction,
+        default=True,
+        help='Upsample run references before building a session-level BOLD '
+        'template (default: enabled). The template is isotropic at 1.2mm, or at the '
+        'finest acquired voxel size if that is smaller, which reduces interpolation '
+        'error when resampling at the cost of larger BOLD reference outputs. '
+        'Only applies to `--bold-coreg-level session`.',
+    )
     return parser
 
 

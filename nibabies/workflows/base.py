@@ -748,8 +748,9 @@ tasks and sessions), the following preprocessing was performed.
             bold_refs = '\n'.join(f'  - {listify(series)[0]}' for series in bold_runs)
             raise RuntimeError(
                 'Error when creating BOLD coregistration template: '
-                'Either only some runs have SDC applied, or all are SDC-less '
-                'runs but contain multiple phase-encoding directions.\n'
+                'Either only some runs have SDC applied, all are SDC-less '
+                'runs but contain multiple phase-encoding directions, '
+                'or the runs were acquired at differing voxel sizes.\n'
                 f'BOLD runs:\n{bold_refs}'
             )
 
@@ -801,6 +802,7 @@ tasks and sessions), the following preprocessing was performed.
         output_dir=config.execution.nibabies_dir,
         reference_anat=reference_anat,
         precomputed=coreg_precomputed,
+        upsample=config.workflow.bold_coreg_upsample,
     )
 
     n_runs = len(bold_runs)
