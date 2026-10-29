@@ -66,7 +66,7 @@ def init_bold_stc_wf(metadata, name='bold_stc_wf'):
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.bold import init_bold_stc_wf
+            from nibabies.workflows.bold.stc import init_bold_stc_wf
             wf = init_bold_stc_wf(
                 metadata={"RepetitionTime": 2.0,
                           "SliceTiming": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]},

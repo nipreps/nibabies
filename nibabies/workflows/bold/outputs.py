@@ -1018,7 +1018,7 @@ def init_bold_preproc_report_wf(
             :graph2use: orig
             :simple_form: yes
 
-            from nibabies.workflows.bold.resampling import init_bold_preproc_report_wf
+            from nibabies.workflows.bold.outputs import init_bold_preproc_report_wf
             wf = init_bold_preproc_report_wf(mem_gb=1, reportlets_dir='.')
 
     Parameters

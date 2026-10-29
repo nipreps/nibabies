@@ -28,13 +28,15 @@ def init_bold_volumetric_resample_wf(
 
     .. workflow::
 
-        from fmriprep.workflows.bold.resampling import init_bold_volumetric_resample_wf
+        from nibabies.workflows.bold.apply import init_bold_volumetric_resample_wf
         wf = init_bold_volumetric_resample_wf(
             metadata={
                 'RepetitionTime': 2.0,
                 'PhaseEncodingDirection': 'j-',
                 'TotalReadoutTime': 0.03
             },
+            mem_gb={'resampled': 1},
+            jacobian=True,
             fieldmap_id='my_fieldmap',
         )
 

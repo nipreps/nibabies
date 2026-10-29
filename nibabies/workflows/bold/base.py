@@ -81,14 +81,16 @@ def init_bold_apply_wf(
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.tests import mock_config
-            from fmriprep import config
-            from fmriprep.workflows.bold.base import init_bold_wf
+            from nibabies.workflows.tests import mock_config
+            from nibabies import config
+            from nibabies.workflows.bold.base import init_bold_apply_wf
             with mock_config():
                 bold_file = config.execution.bids_dir / "sub-01" / "func" \
                     / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
-                wf = init_bold_wf(
+                wf = init_bold_apply_wf(
+                    reference_anat='T1w',
                     bold_series=[str(bold_file)],
+                    spaces=config.workflow.spaces,
                 )
 
     Parameters
