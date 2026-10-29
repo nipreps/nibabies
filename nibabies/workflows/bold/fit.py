@@ -20,6 +20,7 @@
 #
 #     https://www.nipreps.org/community/licensing/
 #
+import logging
 import os
 import re
 import typing as ty
@@ -84,10 +85,21 @@ def get_sbrefs(
     entities.update(suffix='sbref', extension=['.nii', '.nii.gz'])
     entities.update(entity_overrides)
 
-    return sorted(
-        layout.get(return_type='file', **entities),
-        key=lambda fname: layout.get_metadata(fname).get('EchoTime'),
-    )
+    sbref_files = layout.get(return_type='file', **entities)
+    if len(sbref_files) == 1:
+        return sbref_files
+
+    valid_sbref_files = []
+
+    for fname in sbref_files:
+        if (echo_time := layout.get_metadata(fname).get('EchoTime')) is None:
+            logging.getLogger('nipype.workflow').warning(
+                'Dropping SBRef without EchoTime metadata: %s', fname
+            )
+            continue
+        valid_sbref_files.append((echo_time, fname))
+
+    return [fname for _, fname in sorted(valid_sbref_files)]
 
 
 def init_bold_fit_wf(
