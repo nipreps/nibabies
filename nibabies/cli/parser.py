@@ -811,12 +811,13 @@ def parse_args(args=None, namespace=None):
         opts.multi_step_reg = False
 
     if opts.config_file:
-        skip = {} if opts.reports_only else {'execution': ('run_uuid',)}
-        config.load(opts.config_file, skip=skip)
+        reuse_skips = config.default_reuse_skips()
+
+        config.load(opts.config_file, skip=reuse_skips, init=False)
         config.loggers.cli.info(f'Loaded previous configuration file {opts.config_file}')
 
     config.execution.log_level = int(max(25 - 5 * opts.verbose_count, logging.DEBUG))
-    config.from_dict(vars(opts))
+    config.from_dict(vars(opts), init=['nipype'])
 
     # Retrieve logging level
     build_log = config.loggers.cli
@@ -939,13 +940,21 @@ applied."""
         build_log.info(
             'Making sure the input data is BIDS compliant (warnings can be ignored in most cases).'
         )
-        validate_input_dir(config.environment.exec_env, opts.bids_dir, opts.participant_label)
+        validate_input_dir(
+            config.environment.exec_env,
+            config.execution.bids_dir,
+            config.execution.participant_label,
+        )
 
     # Setup directories
     config.execution.log_dir = config.execution.nibabies_dir / 'logs'
     # Check and create output and working directories
     config.execution.log_dir.mkdir(exist_ok=True, parents=True)
     work_dir.mkdir(exist_ok=True, parents=True)
+
+    # Update the config with an empty dict to trigger initialization of all config
+    # sections (we used `init=False` above).
+    config.from_dict({})
 
     # Force initialization of the BIDSLayout
     config.execution.init()
