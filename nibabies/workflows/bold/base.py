@@ -603,6 +603,25 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 (bold_anat_wf, goodvoxels_bold_mask_wf, [
                     ('outputnode.bold_file', 'inputnode.bold_file'),
                 ]),
+            ])  # fmt:skip
+
+            ds_goodvoxels_mask = pe.Node(
+                DerivativesDataSink(
+                    base_directory=output_dir,
+                    dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+                    compress=True,
+                    space=reference_anat,
+                    desc='goodvoxels',
+                    suffix='mask',
+                ),
+                name='ds_goodvoxels_mask',
+                run_without_submitting=True,
+            )
+            ds_goodvoxels_mask.inputs.source_file = bold_file
+            workflow.connect([
+                (goodvoxels_bold_mask_wf, ds_goodvoxels_mask, [
+                    ('outputnode.goodvoxels_mask', 'in_file'),
+                ]),
                 (goodvoxels_bold_mask_wf, bold_fsLR_resampling_wf, [
                     ('outputnode.goodvoxels_mask', 'inputnode.volume_roi'),
                 ]),

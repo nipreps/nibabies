@@ -508,6 +508,38 @@ def test_init_nibabies_wf_precomputed_fmap(monkeypatch, tmp_path, precomputed):
     assert fmap_select.inputs.key == 'pepolar'
 
 
+@pytest.mark.parametrize('space', ['T1w', 'T2w'])
+def test_init_nibabies_wf_goodvoxels_mask(monkeypatch, tmp_path, space):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    spec['01']['anat'] = [{'suffix': space}]
+    del spec['01']['func'][1:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'surface_recon_method', 'infantfs')
+        monkeypatch.setattr(config.workflow, 'cifti_output', '91k')
+        monkeypatch.setattr(config.workflow, 'project_goodvoxels', True)
+        wf = init_nibabies_wf([('01', None)])
+
+    (ds_goodvoxels,) = [
+        wf.get_node(n) for n in wf.list_node_names() if n.endswith('.ds_goodvoxels_mask')
+    ]
+    assert ds_goodvoxels.inputs.space == space
+    assert ds_goodvoxels.inputs.desc == 'goodvoxels'
+    (source_file,) = ds_goodvoxels.inputs.source_file
+    assert source_file.endswith('_bold.nii.gz')
+
+
 @pytest.mark.parametrize(
     ('precomputed', 'is_aseg'),
     [
