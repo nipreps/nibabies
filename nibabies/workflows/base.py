@@ -612,7 +612,7 @@ It is released under the [CC0]\
     if config.workflow.anat_only:
         return configure_workflow(workflow)
 
-    fmap_estimators, estimator_map = map_fieldmap_estimation(
+    all_estimators, estimator_map = map_fieldmap_estimation(
         layout=config.execution.layout,
         subject_id=subject_id,
         session_id=session_id,
@@ -622,8 +622,63 @@ It is released under the [CC0]\
         force_syn='syn-sdc' in config.workflow.force,
         filters=config.execution.get().get('bids_filters', {}).get('fmap'),
     )
-    estimator_types = {est.bids_id: est.method for est in fmap_estimators}
 
+    fmap_buffers = {
+        field: pe.Node(niu.Merge(2), name=f'{field}_merge', run_without_submitting=True)
+        for field in ['fmap', 'fmap_ref', 'fmap_coeff', 'fmap_mask', 'fmap_id', 'sdc_method']
+    }
+
+    estimator_types = {est.bids_id: est.method for est in all_estimators}
+    fmap_estimators = []
+    if all_estimators:
+        from nipost.bids import sanitize_fieldmap_id
+
+        from nibabies.utils.derivatives import collect_fmap_derivatives
+
+        # Find precomputed fieldmaps that apply to this workflow. An estimator may come from
+        # another session than the BOLD runs it serves, so look in its own session.
+        fmap_caches = {}
+        pared_cache = {}
+        for est in all_estimators:
+            fmap_session = next(
+                f.entities.get('session') for f in est.sources if f.suffix not in ('T1w', 'T2w')
+            )
+            if fmap_session not in fmap_caches:
+                fmap_caches[fmap_session] = collect_fmap_derivatives(
+                    (config.execution.derivatives or {}).values(), subject_id, fmap_session
+                )
+            if found := fmap_caches[fmap_session].get(sanitize_fieldmap_id(est.bids_id)):
+                pared_cache[est.bids_id] = found
+            else:
+                fmap_estimators.append(est)
+
+        if pared_cache:
+            LOGGER.info(
+                'Precomputed B0 field inhomogeneity maps found for the following '
+                f'{len(pared_cache)} estimator(s): {list(pared_cache)}.'
+            )
+
+            fieldmaps = [fmap['fieldmap'] for fmap in pared_cache.values()]
+            refs = [fmap['magnitude'] for fmap in pared_cache.values()]
+            coeffs = [fmap['coeffs'] for fmap in pared_cache.values()]
+            LOGGER.debug(f'Reusing fieldmaps: {fieldmaps}')
+            LOGGER.debug(f'Reusing references: {refs}')
+            LOGGER.debug(f'Reusing coefficients: {coeffs}')
+
+            fmap_buffers['fmap'].inputs.in1 = fieldmaps
+            fmap_buffers['fmap_ref'].inputs.in1 = refs
+            fmap_buffers['fmap_coeff'].inputs.in1 = coeffs
+
+            # Note that masks are not emitted. The BOLD-fmap transforms cannot be
+            # computed with precomputed fieldmaps until we either start emitting masks
+            # or start skull-stripping references on the fly.
+            fmap_buffers['fmap_mask'].inputs.in1 = [
+                pared_cache[fmapid].get('mask', 'MISSING') for fmapid in pared_cache
+            ]
+            fmap_buffers['fmap_id'].inputs.in1 = list(pared_cache)
+            fmap_buffers['sdc_method'].inputs.in1 = ['precomputed'] * len(pared_cache)
+
+    # Estimators without precomputed fieldmaps
     if fmap_estimators:
         LOGGER.info(
             'B0 field inhomogeneity map will be estimated with the following '
@@ -669,6 +724,15 @@ BIDS structure for this particular subject.
         for node in fmap_wf.list_node_names():
             if node.split('.')[-1].startswith('ds_'):
                 fmap_wf.get_node(node).interface.out_path_base = ''
+
+        workflow.connect([
+            (fmap_wf, fmap_buffers[field], [
+                # We get "sdc_method" as "method" from estimator workflows
+                # All else stays the same, and no other sdc_ prefixes are used
+                (f'outputnode.{field.removeprefix("sdc_")}', 'in2'),
+            ])
+            for field in fmap_buffers
+        ])  # fmt:skip
 
         # MG: No prior is used ATM, so no need for xfm
         # fmap_select_std = pe.Node(
@@ -978,14 +1042,12 @@ tasks and sessions), the following preprocessing was performed.
             )
 
             workflow.connect([
-                (fmap_wf, fmap_select, [
-                    ('outputnode.fmap', 'fmap'),
-                    ('outputnode.fmap_ref', 'fmap_ref'),
-                    ('outputnode.fmap_coeff', 'fmap_coeff'),
-                    ('outputnode.fmap_mask', 'fmap_mask'),
-                    ('outputnode.method', 'sdc_method'),
-                    ('outputnode.fmap_id', 'keys'),
-                ]),
+                (fmap_buffers['fmap'], fmap_select, [('out', 'fmap')]),
+                (fmap_buffers['fmap_ref'], fmap_select, [('out', 'fmap_ref')]),
+                (fmap_buffers['fmap_coeff'], fmap_select, [('out', 'fmap_coeff')]),
+                (fmap_buffers['fmap_mask'], fmap_select, [('out', 'fmap_mask')]),
+                (fmap_buffers['sdc_method'], fmap_select, [('out', 'sdc_method')]),
+                (fmap_buffers['fmap_id'], fmap_select, [('out', 'keys')]),
                 (fmap_select, bold_fit_wf, [
                     ('fmap_ref', 'inputnode.fmap_ref'),
                     ('fmap_coeff', 'inputnode.fmap_coeff'),

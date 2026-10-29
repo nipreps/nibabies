@@ -5,7 +5,7 @@ import pytest
 from niworkflows.utils.testing import generate_bids_skeleton
 
 from nibabies.utils import derivatives
-from nibabies.utils.testing import write_derivatives
+from nibabies.utils.testing import deriv_skeleton, write_derivatives
 
 ENTITIES = {
     'subject': '01',
@@ -241,3 +241,103 @@ def test_aggregate_coreg_precomputed_group(tmp_path: Path):
         'boldref_template': caches[0]['boldrefs']['session'],
     }
     assert caches[0]['transforms']['run2session'] != caches[1]['transforms']['run2session']
+
+
+@pytest.mark.parametrize(
+    ('include', 'expected'),
+    [
+        (['fieldmap', 'coeffs', 'magnitude'], ('preproc', ['coeff'], 'magnitude')),
+        (['fieldmap', 'coeffs', 'magnitude_epi'], ('preproc', ['coeff'], 'epi')),
+        (
+            ['fieldmap', 'coeffs_split', 'magnitude'],
+            ('preproc', ['coeff0', 'coeff1'], 'magnitude'),
+        ),
+    ],
+    ids=['magnitude', 'epi', 'split-coeffs'],
+)
+def test_fieldmaps_found(tmp_path: Path, include, expected):
+    root = write_derivatives(tmp_path / 'deriv', include, run=1)
+    fmap = root / 'sub-01' / 'fmap'
+
+    def _path(desc):
+        if isinstance(desc, list):
+            return [_path(d) for d in desc]
+        return str(fmap / f'sub-01_fmapid-auto00000_desc-{desc}_fieldmap.nii.gz')
+
+    fmaps = derivatives.collect_fmap_derivatives([root], '01')
+    assert fmaps == {
+        'auto00000': dict(
+            zip(('fieldmap', 'coeffs', 'magnitude'), map(_path, expected), strict=True)
+        ),
+    }
+
+
+def test_collect_fmap_derivatives_merges_per_fieldmap(tmp_path: Path, caplog):
+    first = write_derivatives(tmp_path / 'first', ['fieldmap', 'coeffs', 'magnitude'])
+    second = tmp_path / 'second'
+    skeleton = deriv_skeleton(['fieldmap'])
+    skeleton['01'][0]['fmap'] += deriv_skeleton(
+        ['fieldmap', 'coeffs', 'magnitude'], fmapid='auto00001'
+    )['01'][0]['fmap']
+    generate_bids_skeleton(second, skeleton)
+
+    def _fmap(fmapid, desc):
+        return str(
+            second / 'sub-01' / 'fmap' / f'sub-01_fmapid-{fmapid}_desc-{desc}_fieldmap.nii.gz'
+        )
+
+    with caplog.at_level(logging.DEBUG, logger='nipype.utils'):
+        fmaps = derivatives.collect_fmap_derivatives([first, second], '01')
+    # The second dataset's entry replaces the first's entirely, even though it is incomplete
+    assert fmaps == {
+        'auto00000': {'fieldmap': _fmap('auto00000', 'preproc')},
+        'auto00001': {
+            'fieldmap': _fmap('auto00001', 'preproc'),
+            'coeffs': [_fmap('auto00001', 'coeff')],
+            'magnitude': _fmap('auto00001', 'magnitude'),
+        },
+    }
+    [record] = [r for r in caplog.records if 'replacing' in r.getMessage()]
+    assert 'auto00000' in record.getMessage()
+
+
+def test_collect_fmap_derivatives_empty_later_dataset(tmp_path: Path):
+    first = write_derivatives(tmp_path / 'first', ['fieldmap', 'coeffs', 'magnitude'])
+    empty = write_derivatives(tmp_path / 'empty', [])
+
+    fmaps = derivatives.collect_fmap_derivatives([first, empty], '01')
+    assert fmaps == derivatives.collect_fmap_derivatives([first], '01')
+    assert list(fmaps) == ['auto00000']
+
+
+def test_collect_fmap_derivatives_skips_ids_without_files(tmp_path: Path):
+    root = write_derivatives(tmp_path / 'deriv', ['fieldmap', 'coeffs', 'magnitude'])
+    (root / 'sub-01' / 'fmap' / 'sub-01_fmapid-auto00009_desc-other_fieldmap.nii.gz').write_text(
+        ''
+    )
+
+    assert list(derivatives.collect_fmap_derivatives([root], '01')) == ['auto00000']
+
+
+def test_collect_fmap_derivatives_by_session(tmp_path: Path):
+    """Fieldmap IDs may repeat across sessions; only the requested session's are collected."""
+    groups = ['fieldmap', 'coeffs', 'magnitude']
+    root = write_derivatives(tmp_path / 'deriv', groups, session='A')
+    write_derivatives(root, groups, session='B')
+    write_derivatives(root, groups)
+
+    fmaps = derivatives.collect_fmap_derivatives([root], '01', session_id='A')
+    assert fmaps == derivatives.collect_fmap_derivatives([root], '01', session_id=['A'])
+    assert set(_files(root / 'sub-01' / 'ses-A', 'fmap')) == {
+        fmaps['auto00000']['fieldmap'],
+        *fmaps['auto00000']['coeffs'],
+        fmaps['auto00000']['magnitude'],
+    }
+
+    # Without a session, only the subject-level fieldmaps are collected
+    fmaps = derivatives.collect_fmap_derivatives([root], '01')
+    assert {str(p) for p in (root / 'sub-01' / 'fmap').iterdir()} == {
+        fmaps['auto00000']['fieldmap'],
+        *fmaps['auto00000']['coeffs'],
+        fmaps['auto00000']['magnitude'],
+    }

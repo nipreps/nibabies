@@ -6,6 +6,7 @@ from pathlib import Path
 
 from nipost.bids import (
     collect_derivatives,
+    collect_fieldmaps,
     load_spec,
     sanitize_fieldmap_id,
     sanitize_space,
@@ -135,6 +136,44 @@ def collect_func_derivatives(
         transforms = {**found['transforms'], **found['fmap_transforms'].get(fmapid, {})}
         _merge(merged['boldrefs'], found['boldrefs'], 'boldref', deriv_dir)
         _merge(merged['transforms'], transforms, 'transform', deriv_dir)
+    return merged
+
+
+def collect_fmap_derivatives(
+    derivatives: list[Path],
+    subject_id: str,
+    session_id: str | list[str] | None = None,
+) -> dict:
+    """Gather precomputed fieldmaps from one or more datasets.
+
+    Parameters
+    ----------
+    derivatives
+        Derivatives datasets to search. A later dataset's files for a fieldmap ID replace
+        any earlier dataset's files for that ID; files for one ID are never combined
+        across datasets. Each replacement is logged at DEBUG level.
+    subject_id
+        Subject label, without ``sub-``.
+    session_id
+        Session label(s), without ``ses-``. Fieldmap IDs may repeat across sessions,
+        so only the given sessions are searched. By default, only fieldmaps without
+        a session are.
+
+    Returns
+    -------
+    dict
+        Precomputed fieldmaps by fieldmap ID, each mapping the queries in ``fmap_spec.yml``
+        (``fieldmap``, ``coeffs`` and ``magnitude``) that found files to those files.
+        ``coeffs`` is a list.
+    """
+    spec = load_spec(load('fmap_spec.yml'))
+    entities = {'subject': subject_id, 'session': session_id}
+    merged = {}
+    for deriv_dir in derivatives:
+        found = collect_fieldmaps(deriv_dir, entities=entities, spec=spec)
+        # Keep only the IDs with files
+        fmaps = {fmapid: files for fmapid, files in found['fieldmaps'].items() if files}
+        _merge(merged, fmaps, 'fieldmap', deriv_dir)
     return merged
 
 

@@ -14,6 +14,7 @@ from sdcflows.fieldmaps import clear_registry
 from sdcflows.utils.wrangler import find_estimators
 
 from ... import config
+from ...utils.testing import write_derivatives
 from ..base import get_estimator, init_nibabies_wf
 from ..tests import mock_config
 
@@ -462,6 +463,49 @@ def test_init_nibabies_wf_fallback_trt(monkeypatch, tmp_path, fallback):
     ]
     assert params
     assert all(node.inputs.fallback == fallback for node in params)
+
+
+@pytest.mark.parametrize('precomputed', [False, True])
+def test_init_nibabies_wf_precomputed_fmap(monkeypatch, tmp_path, precomputed):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = 'pepolar'
+    spec['01']['fmap'] = [f for f in spec['01']['fmap'] if f['suffix'] == 'epi']
+    for f in spec['01']['fmap']:
+        f['metadata']['B0FieldIdentifier'] = 'pepolar'
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    derivatives = {}
+    if precomputed:
+        derivatives['nibabies'] = write_derivatives(
+            tmp_path / 'deriv',
+            ['fieldmap', 'coeffs', 'magnitude', 'run2fmap'],
+            run=1,
+            fmapid='pepolar',
+        )
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.execution, 'derivatives', derivatives)
+        wf = init_nibabies_wf([('01', None)])
+
+    names = wf.list_node_names()
+    assert any('fmap_preproc_wf' in name for name in names) is not precomputed
+    (sdc_method,) = [wf.get_node(n) for n in names if n.endswith('.sdc_method_merge')]
+    if precomputed:
+        assert sdc_method.inputs.in1 == ['precomputed']
+    # The run selects its fieldmap from the merged precomputed and estimated fieldmaps
+    (fmap_select,) = [wf.get_node(n) for n in names if '.fmap_select_' in n]
+    assert fmap_select.inputs.key == 'pepolar'
 
 
 @pytest.mark.parametrize(

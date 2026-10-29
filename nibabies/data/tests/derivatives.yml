@@ -1,4 +1,4 @@
-# Skeleton of NiBabies functional derivatives,
+# Skeleton of NiBabies functional and fieldmap derivatives,
 # for use with ``nibabies.utils.testing.deriv_skeleton()``.
 #
 # Files are grouped by the key that collects them, so tests can toggle individual
@@ -23,6 +23,9 @@ defaults:
   - run2session
   - session2anat
   - subject2anat
+  - fieldmap
+  - coeffs
+  - magnitude
 groups:
   hmc_boldref:
     - datatype: func
@@ -166,3 +169,38 @@ groups:
       desc: coreg
       suffix: xfm
       extension: .txt
+  fieldmap:
+    - datatype: fmap
+      session: "{session}"
+      fmapid: "{fmapid}"
+      desc: preproc
+      suffix: fieldmap
+  coeffs:
+    - datatype: fmap
+      session: "{session}"
+      fmapid: "{fmapid}"
+      desc: coeff
+      suffix: fieldmap
+  coeffs_split:
+    - datatype: fmap
+      session: "{session}"
+      fmapid: "{fmapid}"
+      desc: coeff0
+      suffix: fieldmap
+    - datatype: fmap
+      session: "{session}"
+      fmapid: "{fmapid}"
+      desc: coeff1
+      suffix: fieldmap
+  magnitude:
+    - datatype: fmap
+      session: "{session}"
+      fmapid: "{fmapid}"
+      desc: magnitude
+      suffix: fieldmap
+  magnitude_epi:
+    - datatype: fmap
+      session: "{session}"
+      fmapid: "{fmapid}"
+      desc: epi
+      suffix: fieldmap

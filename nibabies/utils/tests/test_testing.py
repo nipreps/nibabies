@@ -28,6 +28,9 @@ def test_deriv_skeleton_defaults(tmp_path: Path):
             f'{ses}/func/{run}_from-run_to-session_mode-image_desc-coreg_xfm.txt',
             f'{ses}/func/sub-01_ses-A_from-session_to-T1w_mode-image_desc-coreg_xfm.txt',
             'sub-01/func/sub-01_from-subject_to-T1w_mode-image_desc-coreg_xfm.txt',
+            f'{ses}/fmap/sub-01_ses-A_fmapid-auto00000_desc-preproc_fieldmap.nii.gz',
+            f'{ses}/fmap/sub-01_ses-A_fmapid-auto00000_desc-coeff_fieldmap.nii.gz',
+            f'{ses}/fmap/sub-01_ses-A_fmapid-auto00000_desc-magnitude_fieldmap.nii.gz',
         ]
     )
 
@@ -40,6 +43,8 @@ def test_deriv_skeleton_legacy_and_alternatives(tmp_path: Path):
         'run2anat_legacy',
         'run2fmap_legacy',
         'run2subject',
+        'coeffs_split',
+        'magnitude_epi',
     ]
     root = write_derivatives(tmp_path / 'deriv', groups, run=1)
 
@@ -53,6 +58,9 @@ def test_deriv_skeleton_legacy_and_alternatives(tmp_path: Path):
             f'sub-01/func/{run}_from-boldref_to-T1w_mode-image_desc-coreg_xfm.txt',
             f'sub-01/func/{run}_from-boldref_to-auto00000_mode-image_xfm.txt',
             f'sub-01/func/{run}_from-run_to-subject_mode-image_desc-coreg_xfm.txt',
+            'sub-01/fmap/sub-01_fmapid-auto00000_desc-coeff0_fieldmap.nii.gz',
+            'sub-01/fmap/sub-01_fmapid-auto00000_desc-coeff1_fieldmap.nii.gz',
+            'sub-01/fmap/sub-01_fmapid-auto00000_desc-epi_fieldmap.nii.gz',
         ]
     )
 
