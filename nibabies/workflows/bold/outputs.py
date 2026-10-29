@@ -352,7 +352,7 @@ def init_func_fit_reports_wf(
                 moving_label='Fieldmap reference',
                 show='both',
             ),
-            name='sdecreg_report',
+            name='sdcreg_report',
             mem_gb=0.1,
         )
 
