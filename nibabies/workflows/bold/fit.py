@@ -570,6 +570,7 @@ def init_bold_native_wf(
     *,
     bold_series: list[str],
     fieldmap_id: str | None = None,
+    jacobian: bool = False,
     omp_nthreads: int = 1,
     name: str = 'bold_native_wf',
 ) -> pe.Workflow:
@@ -601,6 +602,9 @@ def init_bold_native_wf(
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
 
     Inputs
     ------
@@ -765,7 +769,7 @@ def init_bold_native_wf(
     # Resample to boldref
     boldref_bold = pe.Node(
         ResampleSeries(
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             num_threads=omp_nthreads,
         ),
         name='boldref_bold',
@@ -845,6 +849,7 @@ def init_bold_boldref_wf(
     *,
     bold_series: list[str],
     fieldmap_id: str | None = None,
+    jacobian: bool = False,
     omp_nthreads: int = 1,
     name: str = 'bold_boldref_wf',
 ) -> pe.Workflow:
@@ -863,6 +868,9 @@ def init_bold_boldref_wf(
         List of paths to NIfTI files (used to derive metadata).
     fieldmap_id
         Fieldmap identifier. If :obj:`None`, no SDC is applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
     omp_nthreads
         Maximum number of threads per process.
 
@@ -921,7 +929,7 @@ def init_bold_boldref_wf(
 
     boldref_bold = pe.Node(
         ResampleSeries(
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             num_threads=omp_nthreads,
         ),
         name='boldref_bold',

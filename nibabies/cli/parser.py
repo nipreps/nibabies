@@ -378,13 +378,15 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         action='store',
         nargs='+',
         default=[],
-        choices=['bbr', 'no-bbr', 'syn-sdc'],
+        choices=['bbr', 'no-bbr', 'syn-sdc', 'fmap-jacobian'],
         help='Force selected processing choices, overriding automatic selections '
         '(a space delimited list).\n'
         ' * [no-]bbr: Use/disable boundary-based registration for BOLD-to-anatomical '
         'coregistration\n'
         '             (No goodness-of-fit checks)\n'
-        ' * syn-sdc: Calculate SyN-SDC correction *in addition* to other fieldmaps\n',
+        ' * syn-sdc: Calculate SyN-SDC correction *in addition* to other fieldmaps\n'
+        ' * fmap-jacobian: Apply Jacobian determinant correction for all fieldmap types\n'
+        '                  (default: PEPOLAR fieldmaps only)\n',
     )
     g_conf.add_argument(
         '--longitudinal',
@@ -835,10 +837,18 @@ def parse_args(args=None, namespace=None):
     config.from_dict(vars(opts), init=['nipype'])
 
     # Consistency checks
-    if {'bbr', 'no-bbr'} <= set(config.workflow.force):
+    force_set = set(config.workflow.force)
+    ignore_set = set(config.workflow.ignore)
+    if {'bbr', 'no-bbr'} <= force_set:
         msg = (
             'Cannot force and disable boundary-based registration at the same time. '
             'Remove `bbr` or `no-bbr` from the `--force` options.'
+        )
+        raise ValueError(msg)
+    if 'fmap-jacobian' in force_set & ignore_set:
+        msg = (
+            'Cannot force and ignore fieldmap Jacobian correction. '
+            'Remove `fmap-jacobian` from either the `--force` or the `--ignore` option.'
         )
         raise ValueError(msg)
 

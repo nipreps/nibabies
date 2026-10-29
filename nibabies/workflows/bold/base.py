@@ -65,6 +65,7 @@ def init_bold_apply_wf(
     reference_anat: Anatomical,
     bold_series: list[str],
     fieldmap_id: str | None = None,
+    jacobian: bool = False,
     spaces: 'SpatialReferences',
     coreg_space: str = 'boldref',
     tpms_from_aseg: bool = False,
@@ -101,6 +102,9 @@ def init_bold_apply_wf(
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
     tpms_from_aseg
         Whether ``anat_tpms`` are binary maps split from an *aseg* segmentation
         (``False`` when they are continuous FSL FAST partial volume maps).
@@ -256,6 +260,7 @@ configured with cubic B-spline interpolation.
     bold_native_wf = init_bold_native_wf(
         bold_series=bold_series,
         fieldmap_id=fieldmap_id,
+        jacobian=jacobian,
         omp_nthreads=omp_nthreads,
     )
 
@@ -305,6 +310,7 @@ configured with cubic B-spline interpolation.
         bold_boldref_wf = init_bold_boldref_wf(
             bold_series=bold_series,
             fieldmap_id=fieldmap_id,
+            jacobian=jacobian,
             omp_nthreads=omp_nthreads,
         )
         workflow.connect([
@@ -398,7 +404,7 @@ configured with cubic B-spline interpolation.
         fieldmap_id=fieldmap_id if not multiecho else None,
         omp_nthreads=omp_nthreads,
         mem_gb=mem_gb,
-        jacobian='fmap-jacobian' not in config.workflow.ignore,
+        jacobian=jacobian,
         name='bold_anat_wf',
     )
     bold_anat_wf.inputs.inputnode.resolution = 'native'
@@ -458,7 +464,7 @@ configured with cubic B-spline interpolation.
             fieldmap_id=fieldmap_id if not multiecho else None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb,
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             name='bold_std_wf',
         )
         ds_bold_std_wf = init_ds_volumes_wf(
@@ -570,7 +576,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             fieldmap_id=fieldmap_id if not multiecho else None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb,
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             name='bold_MNIInfant_wf',
         )
 

@@ -252,8 +252,15 @@ def test_force(tmp_path, capsys, args, force):
     _reset_config()
 
 
-def test_force_bbr_conflict(tmp_path, minimal_bids):
-    with pytest.raises(ValueError, match='boundary-based registration'):
+@pytest.mark.parametrize(
+    ('args', 'match'),
+    [
+        (['--force', 'bbr', 'no-bbr'], 'boundary-based registration'),
+        (['--force', 'fmap-jacobian', '--ignore', 'fmap-jacobian'], 'Jacobian'),
+    ],
+)
+def test_force_conflict(tmp_path, minimal_bids, args, match):
+    with pytest.raises(ValueError, match=match):
         parse_args(
             args=[
                 str(minimal_bids),
@@ -262,9 +269,7 @@ def test_force_bbr_conflict(tmp_path, minimal_bids):
                 '-w',
                 str(tmp_path / 'work'),
                 '--skip-bids-validation',
-                '--force',
-                'bbr',
-                'no-bbr',
+                *args,
             ]
         )
     _reset_config()

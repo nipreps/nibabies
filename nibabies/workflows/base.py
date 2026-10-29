@@ -622,6 +622,7 @@ It is released under the [CC0]\
         force_syn='syn-sdc' in config.workflow.force,
         filters=config.execution.get().get('bids_filters', {}).get('fmap'),
     )
+    estimator_types = {est.bids_id: est.method for est in fmap_estimators}
 
     if fmap_estimators:
         LOGGER.info(
@@ -810,6 +811,17 @@ tasks and sessions), the following preprocessing was performed.
         else None
     )
 
+    def _jacobian_for(fieldmap_id):
+        if not fieldmap_id:
+            return False
+        if 'fmap-jacobian' in config.workflow.force:
+            return True
+        if 'fmap-jacobian' not in config.workflow.ignore:
+            # Default behavior is to only use Jacobians for PEPOLAR fieldmaps
+            est_type = estimator_types[fieldmap_id]
+            return est_type == est_type.__class__.PEPOLAR
+        return False
+
     bold_anat_coreg_wf = init_bold_anat_coreg_wf(
         bold_files=[series[0] for series in bold_runs],
         coreg_space=bold_coreg_level,
@@ -849,6 +861,7 @@ tasks and sessions), the following preprocessing was performed.
         entities = extract_entities(bold_series)
         metadata = config.execution.layout.get_metadata(bold_file)
         fieldmap_id = estimator_map.get(bold_file)
+        jacobian = _jacobian_for(fieldmap_id)
 
         bold_id = _get_wf_name(bold_file, None).removesuffix('_wf')
 
@@ -859,6 +872,7 @@ tasks and sessions), the following preprocessing was performed.
             bold_series=bold_series,
             precomputed=functional_cache,
             fieldmap_id=fieldmap_id,
+            jacobian=jacobian,
             omp_nthreads=omp_nthreads,
             name=f'bold_fit_{bold_id}_wf',
         )
@@ -1023,6 +1037,7 @@ tasks and sessions), the following preprocessing was performed.
         bold_apply_wf = init_bold_apply_wf(
             bold_series=bold_series,
             fieldmap_id=fieldmap_id,
+            jacobian=jacobian,
             spaces=spaces,
             reference_anat=reference_anat,
             coreg_space=bold_coreg_level,

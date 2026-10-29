@@ -384,6 +384,52 @@ def test_init_nibabies_wf_monomodal_pepolar(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize(
+    ('fmap', 'option', 'jacobian'),
+    [
+        ('pepolar', None, True),
+        ('pepolar', 'ignore', False),
+        ('phasediff', None, False),
+        ('phasediff', 'force', True),
+    ],
+)
+def test_init_nibabies_wf_fmap_jacobian(monkeypatch, tmp_path, fmap, option, jacobian):
+    from nibabies.interfaces.resampling import ResampleSeries
+
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = fmap
+    spec['01']['fmap'] = [
+        f for f in spec['01']['fmap'] if (f['suffix'] == 'epi') is (fmap == 'pepolar')
+    ]
+    for f in spec['01']['fmap']:
+        f['metadata']['B0FieldIdentifier'] = fmap
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'force', ['fmap-jacobian'] * (option == 'force'))
+        monkeypatch.setattr(config.workflow, 'ignore', ['fmap-jacobian'] * (option == 'ignore'))
+        wf = init_nibabies_wf([('01', None)])
+
+    resamplers = [
+        node
+        for node in (wf.get_node(n) for n in wf.list_node_names())
+        if isinstance(node.interface, ResampleSeries)
+    ]
+    assert resamplers
+    assert all(node.inputs.jacobian is jacobian for node in resamplers)
+
+
+@pytest.mark.parametrize(
     ('precomputed', 'is_aseg'),
     [
         (None, False),
