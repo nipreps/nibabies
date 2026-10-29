@@ -817,6 +817,7 @@ def init_ds_bold_boldref_wf(
 
 def init_ds_volumes_wf(
     *,
+    source_file: str,
     bids_root: str,
     output_dir: str,
     multiecho: bool,
@@ -866,6 +867,7 @@ def init_ds_volumes_wf(
     # BOLD is pre-resampled
     ds_bold = pe.Node(
         DerivativesDataSink(
+            source_file=source_file,
             base_directory=output_dir,
             desc='preproc',
             compress=True,
@@ -894,7 +896,6 @@ def init_ds_volumes_wf(
             ('run2template_xfm', 'in3'),
         ]),
         (inputnode, ds_bold, [
-            ('source_files', 'source_file'),
             ('bold', 'in_file'),
             ('space', 'space'),
             ('resolution', 'resolution'),
@@ -921,6 +922,7 @@ def init_ds_volumes_wf(
 
     ds_ref = pe.Node(
         DerivativesDataSink(
+            source_file=source_file,
             base_directory=output_dir,
             suffix='boldref',
             compress=True,
@@ -932,6 +934,7 @@ def init_ds_volumes_wf(
     )
     ds_mask = pe.Node(
         DerivativesDataSink(
+            source_file=source_file,
             base_directory=output_dir,
             desc='brain',
             suffix='mask',
@@ -961,6 +964,7 @@ def init_ds_volumes_wf(
         )
         ds_t2star = pe.Node(
             DerivativesDataSink(
+                source_file=source_file,
                 base_directory=output_dir,
                 suffix='T2starmap',
                 compress=True,
@@ -985,7 +989,6 @@ def init_ds_volumes_wf(
             for resampler in resamplers
         ] + [
             (inputnode, datasink, [
-                ('source_files', 'source_file'),
                 ('space', 'space'),
                 ('resolution', 'resolution'),
             ])

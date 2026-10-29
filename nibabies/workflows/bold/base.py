@@ -381,6 +381,13 @@ configured with cubic B-spline interpolation.
                 workflow.get_node(node).inputs.source_file = bold_file
         return workflow
 
+    # Pass along BOLD reference as a source file for provenance
+    merge_bold_sources = pe.Node(
+        niu.Merge(2), name='merge_bold_sources', run_without_submitting=True
+    )
+    merge_bold_sources.inputs.in1 = bold_series
+    workflow.connect(inputnode, 'template_boldref', merge_bold_sources, 'in2')
+
     # Resample to anatomical space
     bold_anat_wf = init_bold_volumetric_resample_wf(
         metadata=all_metadata[0],
@@ -412,13 +419,13 @@ configured with cubic B-spline interpolation.
     # Full derivatives, including resampled BOLD series
     if nonstd_spaces.intersection(('anat', 'T1w', 'T2w')):
         ds_bold_anat_wf = init_ds_volumes_wf(
+            source_file=bold_file,
             bids_root=str(config.execution.bids_dir),
             output_dir=output_dir,
             multiecho=multiecho,
             metadata=all_metadata[0],
             name='ds_bold_anat_wf',
         )
-        ds_bold_anat_wf.inputs.inputnode.source_files = bold_series
         ds_bold_anat_wf.inputs.inputnode.space = reference_anat
 
         workflow.connect([
@@ -435,6 +442,7 @@ configured with cubic B-spline interpolation.
                 ('outputnode.bold_file', 'inputnode.bold'),
                 ('outputnode.resampling_reference', 'inputnode.ref_file'),
             ]),
+            (merge_bold_sources, ds_bold_anat_wf, [('out', 'inputnode.source_files')]),
         ])  # fmt:skip
 
     if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
@@ -450,13 +458,13 @@ configured with cubic B-spline interpolation.
             name='bold_std_wf',
         )
         ds_bold_std_wf = init_ds_volumes_wf(
+            source_file=bold_file,
             bids_root=str(config.execution.bids_dir),
             output_dir=output_dir,
             multiecho=multiecho,
             metadata=all_metadata[0],
             name='ds_bold_std_wf',
         )
-        ds_bold_std_wf.inputs.inputnode.source_files = bold_series
 
         workflow.connect([
             (inputnode, bold_std_wf, [
@@ -493,6 +501,7 @@ configured with cubic B-spline interpolation.
                 ('outputnode.bold_file', 'inputnode.bold'),
                 ('outputnode.resampling_reference', 'inputnode.ref_file'),
             ]),
+            (merge_bold_sources, ds_bold_std_wf, [('out', 'inputnode.source_files')]),
         ])  # fmt:skip
 
     if config.workflow.surface_recon_method and freesurfer_spaces:
