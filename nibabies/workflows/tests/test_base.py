@@ -319,6 +319,7 @@ def test_init_nibabies_wf_sanitize_fmaps(monkeypatch, tmp_path):
         img.to_filename(img_path)
 
     with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
         wf = init_nibabies_wf([('01', None)])
     generate_expanded_graph(wf._create_flat_graph())
 
@@ -342,6 +343,7 @@ def test_init_nibabies_wf_sanitize_plus(monkeypatch, tmp_path):
         img.to_filename(img_path)
 
     with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
         wf = init_nibabies_wf([('01', None)])
     generate_expanded_graph(wf._create_flat_graph())
 
