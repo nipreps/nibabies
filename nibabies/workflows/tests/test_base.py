@@ -323,6 +323,29 @@ def test_init_nibabies_wf_sanitize_fmaps(monkeypatch, tmp_path):
     generate_expanded_graph(wf._create_flat_graph())
 
 
+def test_init_nibabies_wf_sanitize_plus(monkeypatch, tmp_path):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    spec['01']['func'][0]['acquisition'] = 'mb4+pf68th'
+    spec['01']['anat'][0]['acquisition'] = 'memprage+rms'
+    spec['01']['fmap'][2]['acquisition'] = 'sbref+pf68th'
+    spec['01']['fmap'][3]['acquisition'] = 'sbref+pf68th'
+    del spec['01']['func'][4:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        wf = init_nibabies_wf([('01', None)])
+    generate_expanded_graph(wf._create_flat_graph())
+
+
 def test_get_estimator_none(tmp_path):
     bids_dir = tmp_path / 'bids'
 

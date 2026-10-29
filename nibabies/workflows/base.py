@@ -1325,12 +1325,14 @@ def _get_wf_name(bold_fname, prefix):
     ...     "preproc",
     ... )
     'preproc_task_nback_run_01_echo_1_wf'
+    >>> _get_wf_name("/completely/made/up/path/sub-01_task-rest_acq-mb4+pf68th_bold.nii.gz", None)
+    'task-rest_acq-mb4_pf68th_wf'
 
     """
     from nipype.utils.filemanip import split_filename
 
     fname = split_filename(bold_fname)[1]
-    fname_nosub = '_'.join(fname.split('_')[1:-1])
+    fname_sanitized = '_'.join(fname.split('_')[1:-1]).replace('+', '_')
     if prefix is None:
-        return f'{fname_nosub}_wf'
-    return f'{prefix}_{fname_nosub.replace("-", "_")}_wf'
+        return f'{fname_sanitized}_wf'
+    return f'{prefix}_{fname_sanitized.replace("-", "_")}_wf'
