@@ -11,7 +11,7 @@ from nibabies import config
 from nibabies._types import Anatomical
 from nibabies.interfaces import DerivativesDataSink
 from nibabies.interfaces.bids import BIDSURI
-from nibabies.utils.bids import GROUP_DISMISS_ENTITIES
+from nibabies.utils.bids import GROUP_DISMISS_ENTITIES, bold_template_zooms
 
 logger = config.loggers.workflow
 
@@ -63,6 +63,7 @@ def init_bold_anat_coreg_wf(
     output_dir: str,
     reference_anat: Anatomical,
     precomputed: dict | None = None,
+    upsample: bool = False,
     name: str = 'bold_anat_coreg_wf',
 ) -> Workflow:
     """
@@ -100,6 +101,9 @@ def init_bold_anat_coreg_wf(
             Session-level: the precomputed template reference. When supplied
             alongside a complete set of ``run2template_xfms``, it is reused directly
             instead of reconstructing the reference from run 0.
+    upsample
+        Session-level: upsample the run references before building the template
+        (see :func:`~nibabies.utils.bids.bold_template_zooms`). Ignored at run level.
 
     Inputs
     ------
@@ -135,7 +139,12 @@ def init_bold_anat_coreg_wf(
     fallbacks
         Per-run fallback flags from registration.
     """
-    init_coreg_wf = init_bold_run_coreg_wf if coreg_space == 'run' else init_bold_template_coreg_wf
+    if coreg_space == 'run':
+        init_coreg_wf = init_bold_run_coreg_wf
+        template_kwargs = {}
+    else:
+        init_coreg_wf = init_bold_template_coreg_wf
+        template_kwargs = {'upsample': upsample}
     return init_coreg_wf(
         bold_files=bold_files,
         coreg_space=coreg_space,
@@ -150,6 +159,7 @@ def init_bold_anat_coreg_wf(
         reference_anat=reference_anat,
         precomputed=precomputed,
         name=name,
+        **template_kwargs,
     )
 
 
@@ -272,6 +282,7 @@ def init_bold_template_coreg_wf(
     output_dir: str,
     reference_anat: Anatomical,
     precomputed: dict | None = None,
+    upsample: bool = False,
     name: str = 'bold_template_coreg_wf',
 ) -> Workflow:
     """Coregister BOLD runs through a common template to the anatomical.
@@ -326,6 +337,8 @@ def init_bold_template_coreg_wf(
         niu.IdentityInterface(fields=['template2anat_xfm', 'fallback']),
         name='reg_buffer',
     )
+    # Connected only when something is computed, but the caller connects to it regardless
+    workflow.add_nodes([inputnode])
 
     # Populate buffers; these can be overridden by connections.
     if boldref_template:
@@ -384,7 +397,11 @@ def init_bold_template_coreg_wf(
     if not have_run2template_xfms:
         logger.info('Constructing BOLD template from run references.')
 
-        bold_template_wf = init_bold_template_wf(num_bold_runs=n_runs, omp_nthreads=omp_nthreads)
+        bold_template_wf = init_bold_template_wf(
+            num_bold_runs=n_runs,
+            upsample=bold_template_zooms(bold_files) if upsample else None,
+            omp_nthreads=omp_nthreads,
+        )
 
         template_sources = pe.Node(
             BIDSURI(
@@ -449,7 +466,7 @@ def init_bold_template_coreg_wf(
         from niworkflows.interfaces.fixes import FixHeaderApplyTransforms as ApplyTransforms
 
         logger.info(
-            'Found precomputed run2template transforms; '
+            f'Found precomputed run2{coreg_space} transforms; '
             'reconstructing boldref template from run references.'
         )
         select_boldref0 = pe.Node(

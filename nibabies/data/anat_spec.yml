@@ -1,0 +1,220 @@
+images:
+  queries:
+    t1w_preproc:
+      entities:
+        - datatype: anat
+          space: null
+          desc: preproc
+          suffix: T1w
+          extension: [.nii.gz, .nii]
+    t2w_preproc:
+      entities:
+        - datatype: anat
+          space: null
+          desc: preproc
+          suffix: T2w
+          extension: [.nii.gz, .nii]
+    t1w_mask:
+      entities:
+        - datatype: anat
+          space: T1w
+          desc: brain
+          suffix: mask
+          extension: [.nii.gz, .nii]
+    t1w_dseg:
+      entities:
+        - datatype: anat
+          space: T1w
+          desc: null
+          suffix: dseg
+          extension: [.nii.gz, .nii]
+    t1w_tpms:
+      entities:
+        - datatype: anat
+          space: T1w
+          label: [GM, WM, CSF]
+          suffix: probseg
+          extension: [.nii.gz, .nii]
+      multi: { order: label }
+    t1w_aseg:
+      entities:
+        - datatype: anat
+          space: T1w
+          desc: aseg
+          suffix: dseg
+          extension: [.nii.gz, .nii]
+    t2w_mask:
+      entities:
+        - datatype: anat
+          space: T2w
+          desc: brain
+          suffix: mask
+          extension: [.nii.gz, .nii]
+    t2w_dseg:
+      entities:
+        - datatype: anat
+          space: T2w
+          desc: null
+          suffix: dseg
+          extension: [.nii.gz, .nii]
+    t2w_tpms:
+      entities:
+        - datatype: anat
+          space: T2w
+          label: [GM, WM, CSF]
+          suffix: probseg
+          extension: [.nii.gz, .nii]
+      multi: { order: label }
+    t2w_aseg:
+      entities:
+        - datatype: anat
+          space: T2w
+          desc: aseg
+          suffix: dseg
+          extension: [.nii.gz, .nii]
+    ribbon:
+      entities:
+        - datatype: anat
+          desc: ribbon
+          suffix: mask
+          extension: [.nii.gz, .nii]
+coreg:
+  queries:
+    t1w2t2w_xfm:
+      entities:
+        - datatype: anat
+          from: T1w
+          to: T2w
+          mode: image
+          suffix: xfm
+          extension: [.h5, .txt]
+    t2w2t1w_xfm:
+      entities:
+        - datatype: anat
+          from: T2w
+          to: T1w
+          mode: image
+          suffix: xfm
+          extension: [.h5, .txt]
+surfaces:
+  queries:
+    white:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          suffix: white
+          extension: .surf.gii
+      multi: { order: hemi }
+    pial:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          suffix: pial
+          extension: .surf.gii
+      multi: { order: hemi }
+    midthickness:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          suffix: midthickness
+          extension: .surf.gii
+      multi: { order: hemi }
+    sphere:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          desc: null
+          suffix: sphere
+          extension: .surf.gii
+      multi: { order: hemi }
+    sphere_reg:
+      # Alternatives are tried in order: current naming first, legacy naming
+      # (without a space entity, from sMRIPrep < 0.16) as a fallback
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: fsaverage
+          desc: reg
+          suffix: sphere
+          extension: .surf.gii
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          desc: reg
+          suffix: sphere
+          extension: .surf.gii
+      multi: { order: hemi }
+    sphere_reg_fsLR:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: fsLR
+          desc: reg
+          suffix: sphere
+          extension: .surf.gii
+      multi: { order: hemi }
+    sphere_reg_msm:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: fsLR
+          desc: msmsulc
+          suffix: sphere
+          extension: .surf.gii
+      multi: { order: hemi }
+    thickness:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          suffix: thickness
+          extension: .shape.gii
+      multi: { order: hemi }
+    sulc:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          suffix: sulc
+          extension: .shape.gii
+      multi: { order: hemi }
+    curv:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          suffix: curv
+          extension: .shape.gii
+      multi: { order: hemi }
+    cortex:
+      entities:
+        - datatype: anat
+          hemi: [L, R]
+          space: null
+          desc: cortex
+          suffix: mask
+          extension: .label.gii
+      multi: { order: hemi }
+transforms:
+  per: space
+  queries:
+    forward:
+      entities:
+        - datatype: anat
+          from: [T1w, T2w]
+          to: "{space}"
+          mode: image
+          suffix: xfm
+          extension: [.h5, .txt]
+    reverse:
+      entities:
+        - datatype: anat
+          from: "{space}"
+          to: [T1w, T2w]
+          mode: image
+          suffix: xfm
+          extension: [.h5, .txt]

@@ -102,8 +102,9 @@ def init_infant_anat_apply_wf(
         ])  # fmt:skip
 
     if recon_method is not None:
-        anat_aseg = precomputed.get(f'{reference_anat.lower()}_aseg')
-        anat_aparc = precomputed.get(f'{reference_anat.lower()}_aparc')
+        images = precomputed.get('images', {})
+        anat_aseg = images.get(f'{reference_anat.lower()}_aseg')
+        anat_aparc = images.get(f'{reference_anat.lower()}_aparc')
 
         surface_derivatives_wf = init_surface_derivatives_wf()
         # Split out segmentations to better save precomputed inputs

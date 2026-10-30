@@ -518,7 +518,7 @@ class execution(_Config):
                 else:
                     return (
                         getattr(Query, value[7:-4])
-                        if not isinstance(value, Query) and 'Query' in value
+                        if isinstance(value, str) and 'Query' in value
                         else value
                     )
 
@@ -564,6 +564,8 @@ class workflow(_Config):
     BOLD image-header ('header')."""
     bold_coreg_level = 'run'
     """Level to coregister BOLD runs to a common reference, either 'run' (default) or 'session'."""
+    bold_coreg_upsample = True
+    """Upsample run references before building a session-level BOLD template."""
     cifti_output = None
     """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
     dummy_scans = None
@@ -576,12 +578,17 @@ class workflow(_Config):
     """Remove the mean from fieldmaps."""
     force_syn = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation."""
+    fallback_total_readout_time = None
+    """Infer the total readout time if unavailable from authoritative metadata.
+    This may be a number or the string "estimated"."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     hmc_bold_frame = 16
     """Frame to start head motion correction estimation on BOLD. If 'auto', use heuristic to estimate reference in each timeseries"""
     ignore = None
     """Ignore particular steps for *nibabies*."""
+    force = None
+    """Force particular steps for *nibabies*."""
     level = None
     """Level of preprocessing to complete. One of ['minimal', 'resampling', 'full']."""
     longitudinal = False
@@ -725,13 +732,40 @@ def from_dict(settings, init=True, ignore=None):
 
     # Accept global True/False or container of configs to initialize
     def initialize(x):
-        return init if init in (True, False) else x in init
+        if isinstance(init, bool):
+            return init
+        return x in init
 
     nipype.load(settings, init=initialize('nipype'), ignore=ignore)
     execution.load(settings, init=initialize('execution'), ignore=ignore)
     workflow.load(settings, init=initialize('workflow'), ignore=ignore)
     seeds.load(settings, init=initialize('seeds'), ignore=ignore)
     loggers.init()
+
+
+# Certain config fields are not directly settable, and should not be copied when reused
+# Additionally, some toggle arguments only can be switched one way
+REUSE_SKIPS = {
+    'execution': [
+        'dataset_links',
+        'layout',
+        '_layout',
+        'nibabies_dir',
+        'notrack',
+        'sloppy',
+        'templateflow_home',
+        'run_uuid',
+        'log_dir',
+    ],
+    'workflow': [
+        'anat_only',
+    ],
+    'seeds': [],
+}
+
+
+def default_reuse_skips():
+    return {k: list(v) for k, v in REUSE_SKIPS.items()}
 
 
 def load(filename, skip=None, init=True):
@@ -757,10 +791,11 @@ def load(filename, skip=None, init=True):
     filename = Path(filename)
     settings = loads(filename.read_text())
     for sectionname, configs in settings.items():
-        if sectionname != 'environment':
-            section = getattr(sys.modules[__name__], sectionname)
-            ignore = skip.get(sectionname)
-            section.load(configs, ignore=ignore, init=initialize(sectionname))
+        if sectionname == 'environment':
+            continue
+        section = getattr(sys.modules[__name__], sectionname)
+        ignore = skip.get(sectionname)
+        section.load(configs, ignore=ignore, init=initialize(sectionname))
 
 
 def get(flat=False):
@@ -827,11 +862,13 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'bold2anat_dof',
         'bold2anat_init',
         'bold_coreg_level',
+        'bold_coreg_upsample',
         'dummy_scans',
+        'fallback_total_readout_time',
         'fd_radius',
         'fmap_bspline',
         'fmap_demean',
-        'force_syn',
+        'force',
         'hmc_bold_frame',
         'longitudinal',
         'medial_surface_nan',
@@ -845,7 +882,6 @@ DEFAULT_CONFIG_HASH_FIELDS = {
         'skull_strip_anat',
         'slice_time_ref',
         'surface_recon_method',
-        'use_bbr',
         'use_syn_sdc',
         'me_t2s_fit_method',
     ],

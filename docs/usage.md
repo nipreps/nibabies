@@ -94,17 +94,30 @@ registering that template to the anatomical image.
 This can improve BOLD-to-anatomical registration quality by averaging signal across runs
 before coregistration.
 
-The session-level pipeline follows four steps:
+This approach, and the upsampling described below, follow the within-individual
+alignment strategy of the [iProc](https://github.com/harvard-nrg/iProc) pipeline.
+
+The session-level pipeline follows five steps:
 
 1. Head-motion correction (HMC) is applied per-volume within each run.
 2. Susceptibility distortion correction (SDC) is applied to each run's BOLD reference image.
-3. Each run's SDC-corrected boldref is registered to a session-wide BOLD template using FreeSurfer's `mri_robust_template`.
-4. The session template is registered to the anatomical image.
+3. Each run's SDC-corrected boldref is upsampled and registered to a session-wide BOLD template space using FreeSurfer's `mri_robust_template`.
+4. The template image is computed as the voxelwise median of the intensity-normalized run references, each resampled once from its acquired grid into the template space.
+5. The session template is registered to the anatomical image.
+
+:::{note}
+Upsampling the run references improves spatial accuracy, but results in slower
+template construction and larger BOLD reference outputs.
+The template is isotropic at 1.2mm, or at the finest acquired voxel size if that
+is smaller.
+Acquisitions already isotropic at or finer than 1.2mm are left as acquired.
+To disable the upsampling, use the `--no-bold-coreg-upsample` flag.
+:::
 
 The full transform chain applied during resampling is therefore:
 `bold volume → run boldref (HMC) → boldref (run2boldref) → T1w (boldref2anat) → standard space (anat2std)`.
 
-If `--bold-coreg-level session` is selected, NiBabies will first validate whether all runs can contribute to a common session template. If the data are incompatible (for example, when only some runs have SDC applied, or when all runs are SDC-less but have mixed phase-encoding directions), NiBabies falls back to `run`-level coregistration instead.
+If `--bold-coreg-level session` is selected, NiBabies will first validate whether all runs can contribute to a common session template. If the data are incompatible (for example, when only some runs have SDC applied, when all runs are SDC-less but have mixed phase-encoding directions, or when runs were acquired at differing voxel sizes), NiBabies falls back to `run`-level coregistration instead.
 
 :::{admonition} Output spaces and template-space BOLD
 :class: tip

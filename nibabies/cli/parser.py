@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import sys
 import typing as ty
+from pathlib import Path
 
 from .. import config
 
@@ -22,7 +23,6 @@ def _build_parser():
         BooleanOptionalAction,
     )
     from functools import partial
-    from pathlib import Path
 
     from niworkflows.utils.spaces import OutputReferencesAction, Reference
     from packaging.version import Version
@@ -31,9 +31,15 @@ def _build_parser():
 
     deprecations = {
         # parser attribute name: (replacement flag, version slated to be removed in)
+        'force_bbr': ('--force bbr', '27.0.0'),
+        'force_no_bbr': ('--force no-bbr', '27.0.0'),
+        'force_syn': ('--force syn-sdc', '27.0.0'),
     }
 
     class DeprecatedAction(Action):
+        def __init__(self, option_strings, dest, nargs=0, **kwargs):
+            super().__init__(option_strings, dest, nargs=nargs, **kwargs)
+
         def __call__(self, parser, namespace, values, option_string=None):
             new_opt, rem_vers = deprecations.get(self.dest, (None, None))
             msg = (
@@ -136,6 +142,16 @@ def _build_parser():
             else:
                 raise parser.error(f'Path does not exist: <{value}>.')
 
+    def _fallback_trt(value, parser):
+        if value == 'estimated':
+            return value
+        try:
+            return float(value)
+        except ValueError:
+            raise parser.error(
+                f'Falling back to TRT must be a number or "estimated". Received {value}.'
+            ) from None
+
     def _slice_time_ref(value, parser):
         if value == 'start':
             value = 0
@@ -169,6 +185,7 @@ def _build_parser():
     PositiveInt = partial(_min_one, parser=parser)
     BIDSFilter = partial(_bids_filter, parser=parser)
     SliceTimeRef = partial(_slice_time_ref, parser=parser)
+    FallbackTRT = partial(_fallback_trt, parser=parser)
 
     parser.description = f"""
 NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
@@ -257,7 +274,9 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         help=(
             'Search PATH(s) for pre-computed derivatives. '
             'These may be provided as named folders '
-            '(e.g., `--derivatives smriprep=/path/to/smriprep`).'
+            '(e.g., `--derivatives smriprep=/path/to/smriprep`). '
+            'When several PATHs are given, all are searched, and a later one takes '
+            'precedence for the derivatives it provides.'
         ),
     )
     g_bids.add_argument(
@@ -365,6 +384,22 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         'parts of the workflow (a space delimited list)',
     )
     g_conf.add_argument(
+        '--force',
+        required=False,
+        action='store',
+        nargs='+',
+        default=[],
+        choices=['bbr', 'no-bbr', 'syn-sdc', 'fmap-jacobian'],
+        help='Force selected processing choices, overriding automatic selections '
+        '(a space delimited list).\n'
+        ' * [no-]bbr: Use/disable boundary-based registration for BOLD-to-anatomical '
+        'coregistration\n'
+        '             (No goodness-of-fit checks; default: disabled)\n'
+        ' * syn-sdc: Calculate SyN-SDC correction *in addition* to other fieldmaps\n'
+        ' * fmap-jacobian: Apply Jacobian determinant correction for all fieldmap types\n'
+        '                  (default: PEPOLAR fieldmaps only)\n',
+    )
+    g_conf.add_argument(
         '--longitudinal',
         action='store_true',
         help='treat dataset as longitudinal - may increase runtime',
@@ -420,17 +455,13 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_conf.add_argument(
         '--force-bbr',
-        action='store_true',
-        dest='use_bbr',
-        default=None,
-        help='Always use boundary-based registration (no goodness-of-fit checks)',
+        action=DeprecatedAction,
+        help='Deprecated - use `--force bbr` instead.',
     )
     g_conf.add_argument(
         '--force-no-bbr',
-        action='store_false',
-        dest='use_bbr',
-        default=None,
-        help='Do not use boundary-based registration (no goodness-of-fit checks)',
+        action=DeprecatedAction,
+        help='Deprecated - use `--force no-bbr` instead.',
     )
     g_conf.add_argument(
         '--medial-surface-nan',
@@ -442,7 +473,6 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_conf.add_argument(
         '--project-goodvoxels',
-        required=False,
         action='store_true',
         default=False,
         help='Exclude voxels whose timeseries have locally high coefficient of variation '
@@ -453,7 +483,7 @@ Useful for further Tedana processing post-NiBabies.""",
         '--slice-time-ref',
         required=False,
         action='store',
-        default=None,
+        default=0.5,
         type=SliceTimeRef,
         help='The time of the reference slice to correct BOLD values to, as a fraction '
         'acquisition time. 0 indicates the start, 0.5 the midpoint, and 1 the end '
@@ -467,6 +497,15 @@ Useful for further Tedana processing post-NiBabies.""",
         default=None,
         type=int,
         help='Number of non steady state volumes.',
+    )
+    g_conf.add_argument(
+        '--fallback-total-readout-time',
+        required=False,
+        action='store',
+        default=None,
+        type=FallbackTRT,
+        help='Fallback value for Total Readout Time (TRT) calculation. '
+        'May be a number or "estimated".',
     )
     g_conf.add_argument(
         '--random-seed',
@@ -581,10 +620,9 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_syn.add_argument(
         '--force-syn',
-        action='store_true',
+        action=DeprecatedAction,
         default=False,
-        help='EXPERIMENTAL/TEMPORARY: Use SyN correction in addition to '
-        'fieldmap correction, if available',
+        help='Deprecated - use `--force syn-sdc` instead.',
     )
 
     # FreeSurfer options
@@ -607,10 +645,11 @@ Useful for further Tedana processing post-NiBabies.""",
     # Surface generation xor
     g_surfs = parser.add_argument_group('Surface preprocessing options')
     g_surfs.add_argument(
-        '--no-submm-recon',
-        action='store_false',
+        '--submm-recon',
+        action=BooleanOptionalAction,
+        default=True,
         dest='hires',
-        help='disable sub-millimeter (hires) reconstruction',
+        help='Enable or disable sub-millimeter (hi-res) reconstruction.',
     )
     g_surfs_xor = g_surfs.add_mutually_exclusive_group()
     g_surfs_xor.add_argument(
@@ -642,7 +681,6 @@ Useful for further Tedana processing post-NiBabies.""",
         '--work-dir',
         action='store',
         type=Path,
-        default=Path('work').absolute(),
         help='path where intermediate results should be stored',
     )
     g_other.add_argument(
@@ -783,6 +821,16 @@ discourage its usage.""",
         default='run',
         help='Determine BOLD reference image for coregistration at run or session level.',
     )
+    g_baby.add_argument(
+        '--bold-coreg-upsample',
+        action=BooleanOptionalAction,
+        default=True,
+        help='Upsample run references before building a session-level BOLD '
+        'template (default: enabled). The template is isotropic at 1.2mm, or at the '
+        'finest acquired voxel size if that is smaller, which reduces interpolation '
+        'error when resampling at the cost of larger BOLD reference outputs. '
+        'Only applies to `--bold-coreg-level session`.',
+    )
     return parser
 
 
@@ -799,12 +847,32 @@ def parse_args(args=None, namespace=None):
         opts.multi_step_reg = False
 
     if opts.config_file:
-        skip = {} if opts.reports_only else {'execution': ('run_uuid',)}
-        config.load(opts.config_file, skip=skip)
+        reuse_skips = config.default_reuse_skips()
+
+        config.load(opts.config_file, skip=reuse_skips, init=False)
         config.loggers.cli.info(f'Loaded previous configuration file {opts.config_file}')
 
     config.execution.log_level = int(max(25 - 5 * opts.verbose_count, logging.DEBUG))
-    config.from_dict(vars(opts))
+    config.from_dict(vars(opts), init=['nipype'])
+
+    if config.execution.work_dir is None:
+        config.execution.work_dir = Path('work').absolute()
+
+    # Consistency checks
+    force_set = set(config.workflow.force)
+    ignore_set = set(config.workflow.ignore)
+    if {'bbr', 'no-bbr'} <= force_set:
+        msg = (
+            'Cannot force and disable boundary-based registration at the same time. '
+            'Remove `bbr` or `no-bbr` from the `--force` options.'
+        )
+        raise ValueError(msg)
+    if 'fmap-jacobian' in force_set & ignore_set:
+        msg = (
+            'Cannot force and ignore fieldmap Jacobian correction. '
+            'Remove `fmap-jacobian` from either the `--force` or the `--ignore` option.'
+        )
+        raise ValueError(msg)
 
     # Retrieve logging level
     build_log = config.loggers.cli
@@ -927,13 +995,21 @@ applied."""
         build_log.info(
             'Making sure the input data is BIDS compliant (warnings can be ignored in most cases).'
         )
-        validate_input_dir(config.environment.exec_env, opts.bids_dir, opts.participant_label)
+        validate_input_dir(
+            config.environment.exec_env,
+            config.execution.bids_dir,
+            config.execution.participant_label,
+        )
 
     # Setup directories
     config.execution.log_dir = config.execution.nibabies_dir / 'logs'
     # Check and create output and working directories
     config.execution.log_dir.mkdir(exist_ok=True, parents=True)
     work_dir.mkdir(exist_ok=True, parents=True)
+
+    # Update the config with an empty dict to trigger initialization of all config
+    # sections (we used `init=False` above).
+    config.from_dict({})
 
     # Force initialization of the BIDSLayout
     config.execution.init()

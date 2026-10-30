@@ -330,19 +330,14 @@ It is released under the [CC0]\
 
     anatomical_cache = {}
     if config.execution.derivatives:
-        from nibabies.utils.derivatives import collect_anatomical_derivatives
+        from nibabies.utils.derivatives import collect_anat_derivatives
 
-        std_spaces = spaces.get_spaces(nonstandard=False, dim=(3,))
-        std_spaces.append('fsnative')
-        for deriv_dir in config.execution.derivatives.values():
-            anatomical_cache.update(
-                collect_anatomical_derivatives(
-                    derivatives_dir=deriv_dir,
-                    subject_id=subject_id,
-                    session_id=session_id,
-                    std_spaces=std_spaces,
-                )
-            )
+        anatomical_cache = collect_anat_derivatives(
+            config.execution.derivatives.values(),
+            subject_id,
+            spaces.get_spaces(nonstandard=False, dim=(3,)),
+            session_id=session_id,
+        )
 
         if config.execution.copy_derivatives:
             from nibabies.utils.derivatives import copy_derivatives
@@ -359,10 +354,12 @@ It is released under the [CC0]\
                 else None,
             )
 
+    anat_images = anatomical_cache.get('images', {})
+
     # Determine some session level options here, as we should have
     # all the required information
     if recon_method == 'auto':
-        if age <= MCRIBS_RECOMMEND_AGE_CAP and anatomical_cache.get('t2w_aseg'):
+        if age <= MCRIBS_RECOMMEND_AGE_CAP and anat_images.get('t2w_aseg'):
             # do not force mcribs without a vetted segmentation
             recon_method = 'mcribs'
         elif age <= 24:
@@ -395,6 +392,10 @@ It is released under the [CC0]\
         )
 
     anat = reference_anat.lower()  # To be used for workflow connections
+    # Precomputed TPMs without an aseg are assumed to be continuous, as written by FAST
+    tpms_from_aseg = bool(
+        anat_images.get(f'{anat}_aseg') or config.execution.segmentation_atlases_dir
+    )
     LOGGER.info(
         'Collected the following data for %s:\nRaw:\n%s\n\nDerivatives:\n\n%s\n',
         f'sub-{subject_id}' if not session_id else f'sub-{subject_id}_ses-{session_id}',
@@ -494,7 +495,7 @@ It is released under the [CC0]\
     anat_fit_wf = fit_wf(**wf_args)
 
     # allow to run with anat-fast-track on fMRI-only dataset
-    if f'{anat}_preproc' in anatomical_cache and not subject_data[anat]:
+    if f'{anat}_preproc' in anat_images and not subject_data[anat]:
         workflow.connect([
             (bidssrc, bids_info, [(('bold', fix_multi_source_name), 'in_file')]),
             (anat_fit_wf, summary, [('outputnode.anat_preproc', anat)]),
@@ -611,16 +612,73 @@ It is released under the [CC0]\
     if config.workflow.anat_only:
         return configure_workflow(workflow)
 
-    fmap_estimators, estimator_map = map_fieldmap_estimation(
+    all_estimators, estimator_map = map_fieldmap_estimation(
         layout=config.execution.layout,
         subject_id=subject_id,
+        session_id=session_id,
         bold_data=bold_runs,
         ignore_fieldmaps='fieldmaps' in config.workflow.ignore,
         use_syn=config.workflow.use_syn_sdc,
-        force_syn=config.workflow.force_syn,
+        force_syn='syn-sdc' in config.workflow.force,
         filters=config.execution.get().get('bids_filters', {}).get('fmap'),
     )
 
+    fmap_buffers = {
+        field: pe.Node(niu.Merge(2), name=f'{field}_merge', run_without_submitting=True)
+        for field in ['fmap', 'fmap_ref', 'fmap_coeff', 'fmap_mask', 'fmap_id', 'sdc_method']
+    }
+
+    estimator_types = {est.bids_id: est.method for est in all_estimators}
+    fmap_estimators = []
+    if all_estimators:
+        from nipost.bids import sanitize_fieldmap_id
+
+        from nibabies.utils.derivatives import collect_fmap_derivatives
+
+        # Find precomputed fieldmaps that apply to this workflow. An estimator may come from
+        # another session than the BOLD runs it serves, so look in its own session.
+        fmap_caches = {}
+        pared_cache = {}
+        for est in all_estimators:
+            fmap_session = next(
+                f.entities.get('session') for f in est.sources if f.suffix not in ('T1w', 'T2w')
+            )
+            if fmap_session not in fmap_caches:
+                fmap_caches[fmap_session] = collect_fmap_derivatives(
+                    (config.execution.derivatives or {}).values(), subject_id, fmap_session
+                )
+            if found := fmap_caches[fmap_session].get(sanitize_fieldmap_id(est.bids_id)):
+                pared_cache[est.bids_id] = found
+            else:
+                fmap_estimators.append(est)
+
+        if pared_cache:
+            LOGGER.info(
+                'Precomputed B0 field inhomogeneity maps found for the following '
+                f'{len(pared_cache)} estimator(s): {list(pared_cache)}.'
+            )
+
+            fieldmaps = [fmap['fieldmap'] for fmap in pared_cache.values()]
+            refs = [fmap['magnitude'] for fmap in pared_cache.values()]
+            coeffs = [fmap['coeffs'] for fmap in pared_cache.values()]
+            LOGGER.debug(f'Reusing fieldmaps: {fieldmaps}')
+            LOGGER.debug(f'Reusing references: {refs}')
+            LOGGER.debug(f'Reusing coefficients: {coeffs}')
+
+            fmap_buffers['fmap'].inputs.in1 = fieldmaps
+            fmap_buffers['fmap_ref'].inputs.in1 = refs
+            fmap_buffers['fmap_coeff'].inputs.in1 = coeffs
+
+            # Note that masks are not emitted. The BOLD-fmap transforms cannot be
+            # computed with precomputed fieldmaps until we either start emitting masks
+            # or start skull-stripping references on the fly.
+            fmap_buffers['fmap_mask'].inputs.in1 = [
+                pared_cache[fmapid].get('mask', 'MISSING') for fmapid in pared_cache
+            ]
+            fmap_buffers['fmap_id'].inputs.in1 = list(pared_cache)
+            fmap_buffers['sdc_method'].inputs.in1 = ['precomputed'] * len(pared_cache)
+
+    # Estimators without precomputed fieldmaps
     if fmap_estimators:
         LOGGER.info(
             'B0 field inhomogeneity map will be estimated with the following '
@@ -631,15 +689,29 @@ It is released under the [CC0]\
         from sdcflows import fieldmaps as fm
         from sdcflows.workflows.base import init_fmap_preproc_wf
 
-        fmap_wf = init_fmap_preproc_wf(
-            debug='fieldmaps' in config.execution.debug,
-            estimators=fmap_estimators,
-            omp_nthreads=omp_nthreads,
-            output_dir=output_dir,
-            subject=subject_id,
-            topup_config=config.execution.topup_config,
-            sd_prior=False,  # No priors for infants yet
-        )
+        fallback_trt = config.workflow.fallback_total_readout_time
+        try:
+            fmap_wf = init_fmap_preproc_wf(
+                use_metadata_estimates=fallback_trt == 'estimated',
+                fallback_total_readout_time=fallback_trt
+                if isinstance(fallback_trt, float)
+                else None,
+                debug='fieldmaps' in config.execution.debug,
+                estimators=fmap_estimators,
+                omp_nthreads=omp_nthreads,
+                output_dir=output_dir,
+                subject=subject_id,
+                topup_config=config.execution.topup_config,
+                sd_prior=False,  # No priors for infants yet
+            )
+        except RuntimeError:
+            message = (
+                'Missing readout time information. '
+                'See documentation for `--fallback-total-readout-time`.'
+            )
+            config.loggers.workflow.critical(message, exc_info=True)
+            sys.exit(os.EX_DATAERR)
+
         fmap_wf.__desc__ = f"""
 
 Preprocessing of B<sub>0</sub> inhomogeneity mappings
@@ -652,6 +724,15 @@ BIDS structure for this particular subject.
         for node in fmap_wf.list_node_names():
             if node.split('.')[-1].startswith('ds_'):
                 fmap_wf.get_node(node).interface.out_path_base = ''
+
+        workflow.connect([
+            (fmap_wf, fmap_buffers[field], [
+                # We get "sdc_method" as "method" from estimator workflows
+                # All else stays the same, and no other sdc_ prefixes are used
+                (f'outputnode.{field.removeprefix("sdc_")}', 'in2'),
+            ])
+            for field in fmap_buffers
+        ])  # fmt:skip
 
         # MG: No prior is used ATM, so no need for xfm
         # fmap_select_std = pe.Node(
@@ -679,8 +760,16 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
             suffices = [s.suffix for s in estimator.sources]
 
             if estimator.method == fm.EstimatorType.PEPOLAR:
-                if len(suffices) == 2 and all(suf in ('epi', 'bold', 'sbref') for suf in suffices):
-                    wf_inputs = getattr(fmap_wf.inputs, f'in_{estimator.bids_id}')
+                # "Sophisticated" PEPOLAR schemes should be run "manually" with SDCFlows
+                # The following two cases are not considered sophisticated:
+                # 1. All PEPOLAR entities are the same modality
+                #    (typically, more than two EPI PE directions), or
+                # 2. Two modalities are involved, with at most two images to pass
+                #    into FSL TOPUP.
+                if len(set(suffices)) == 1 or (
+                    len(suffices) == 2 and all(suf in ('epi', 'bold', 'sbref') for suf in suffices)
+                ):
+                    wf_inputs = getattr(fmap_wf.inputs, f'in_{estimator.sanitized_id}')
                     wf_inputs.in_data = [str(s.path) for s in estimator.sources]
                     wf_inputs.metadata = [s.metadata for s in estimator.sources]
                 else:
@@ -699,7 +788,7 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
                     auto_bold_nss=True,
                     t1w_inversion=False,
                     sd_prior=False,
-                    name=f'syn_preprocessing_{estimator.bids_id}',
+                    name=f'syn_preprocessing_{estimator.sanitized_id}',
                 )
                 syn_preprocessing_wf.inputs.inputnode.in_epis = sources
                 syn_preprocessing_wf.inputs.inputnode.in_meta = source_meta
@@ -714,11 +803,11 @@ Setting-up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
                     #     ('std2anat_xfm', 'inputnode.std2anat_xfm'),
                     # ]),
                     (syn_preprocessing_wf, fmap_wf, [
-                        ('outputnode.epi_ref', f'in_{estimator.bids_id}.epi_ref'),
-                        ('outputnode.epi_mask', f'in_{estimator.bids_id}.epi_mask'),
-                        ('outputnode.anat_ref', f'in_{estimator.bids_id}.anat_ref'),
-                        ('outputnode.anat_mask', f'in_{estimator.bids_id}.anat_mask'),
-                        ('outputnode.sd_prior', f'in_{estimator.bids_id}.sd_prior'),
+                        ('outputnode.epi_ref', f'in_{estimator.sanitized_id}.epi_ref'),
+                        ('outputnode.epi_mask', f'in_{estimator.sanitized_id}.epi_mask'),
+                        ('outputnode.anat_ref', f'in_{estimator.sanitized_id}.anat_ref'),
+                        ('outputnode.anat_mask', f'in_{estimator.sanitized_id}.anat_mask'),
+                        ('outputnode.sd_prior', f'in_{estimator.sanitized_id}.sd_prior'),
                     ]),
                 ])  # fmt:skip
 
@@ -734,7 +823,7 @@ tasks and sessions), the following preprocessing was performed.
     # Before initializing BOLD workflow, select/verify anatomical target for coregistration
     bold2anat_init = config.workflow.bold2anat_init
     if bold2anat_init in ('auto', 't2w'):
-        has_t2w = subject_data['t2w'] or 't2w_preproc' in anatomical_cache
+        has_t2w = subject_data['t2w'] or 't2w_preproc' in anat_images
         if bold2anat_init == 't2w' and not has_t2w:
             raise OSError(
                 'A T2w image is expected for BOLD-to-anatomical coregistration and was not found'
@@ -751,8 +840,9 @@ tasks and sessions), the following preprocessing was performed.
             bold_refs = '\n'.join(f'  - {listify(series)[0]}' for series in bold_runs)
             raise RuntimeError(
                 'Error when creating BOLD coregistration template: '
-                'Either only some runs have SDC applied, or all are SDC-less '
-                'runs but contain multiple phase-encoding directions.\n'
+                'Either only some runs have SDC applied, all are SDC-less '
+                'runs but contain multiple phase-encoding directions, '
+                'or the runs were acquired at differing voxel sizes.\n'
                 f'BOLD runs:\n{bold_refs}'
             )
 
@@ -760,18 +850,13 @@ tasks and sessions), the following preprocessing was performed.
     for bold_series in bold_runs:
         cache = {}
         if config.execution.derivatives:
-            from nibabies.utils.derivatives import collect_functional_derivatives
+            from nibabies.utils.derivatives import collect_func_derivatives
 
-            entities = extract_entities(bold_series)
-            fieldmap_id = estimator_map.get(bold_series[0])
-            for deriv_dir in config.execution.derivatives.values():
-                cache.update(
-                    collect_functional_derivatives(
-                        derivatives_dir=deriv_dir,
-                        entities=entities,
-                        fieldmap_id=fieldmap_id,
-                    )
-                )
+            cache = collect_func_derivatives(
+                config.execution.derivatives.values(),
+                extract_entities(bold_series),
+                fieldmap_id=estimator_map.get(bold_series[0]),
+            )
 
             if config.execution.copy_derivatives:
                 from nibabies.utils.derivatives import copy_derivatives
@@ -796,12 +881,29 @@ tasks and sessions), the following preprocessing was performed.
 
     coreg_precomputed = aggregate_coreg_precomputed(functional_caches, bold_coreg_level)
 
+    # Unlike fMRIPrep, BBR is opt-in: infant reconstructions may lack the inputs it requires.
+    # Header initialization has no affine step to fall back on, so it always implies BBR.
+    use_bbr = 'bbr' in config.workflow.force or (
+        bold2anat_init == 'header' and 'no-bbr' not in config.workflow.force
+    )
+
+    def _jacobian_for(fieldmap_id):
+        if not fieldmap_id:
+            return False
+        if 'fmap-jacobian' in config.workflow.force:
+            return True
+        if 'fmap-jacobian' not in config.workflow.ignore:
+            # Default behavior is to only use Jacobians for PEPOLAR fieldmaps
+            est_type = estimator_types[fieldmap_id]
+            return est_type == est_type.__class__.PEPOLAR
+        return False
+
     bold_anat_coreg_wf = init_bold_anat_coreg_wf(
         bold_files=[series[0] for series in bold_runs],
         coreg_space=bold_coreg_level,
         bold2anat_dof=config.workflow.bold2anat_dof,
         bold2anat_init=bold2anat_init,
-        use_bbr=config.workflow.use_bbr,
+        use_bbr=use_bbr,
         freesurfer=recon_method is not None,
         omp_nthreads=omp_nthreads,
         mem_gb=2,  # Estimated
@@ -809,6 +911,7 @@ tasks and sessions), the following preprocessing was performed.
         output_dir=config.execution.nibabies_dir,
         reference_anat=reference_anat,
         precomputed=coreg_precomputed,
+        upsample=config.workflow.bold_coreg_upsample,
     )
 
     n_runs = len(bold_runs)
@@ -834,6 +937,7 @@ tasks and sessions), the following preprocessing was performed.
         entities = extract_entities(bold_series)
         metadata = config.execution.layout.get_metadata(bold_file)
         fieldmap_id = estimator_map.get(bold_file)
+        jacobian = _jacobian_for(fieldmap_id)
 
         bold_id = _get_wf_name(bold_file, None).removesuffix('_wf')
 
@@ -844,6 +948,8 @@ tasks and sessions), the following preprocessing was performed.
             bold_series=bold_series,
             precomputed=functional_cache,
             fieldmap_id=fieldmap_id,
+            jacobian=jacobian,
+            fallback_total_readout_time=config.workflow.fallback_total_readout_time,
             omp_nthreads=omp_nthreads,
             name=f'bold_fit_{bold_id}_wf',
         )
@@ -934,14 +1040,12 @@ tasks and sessions), the following preprocessing was performed.
             )
 
             workflow.connect([
-                (fmap_wf, fmap_select, [
-                    ('outputnode.fmap', 'fmap'),
-                    ('outputnode.fmap_ref', 'fmap_ref'),
-                    ('outputnode.fmap_coeff', 'fmap_coeff'),
-                    ('outputnode.fmap_mask', 'fmap_mask'),
-                    ('outputnode.method', 'sdc_method'),
-                    ('outputnode.fmap_id', 'keys'),
-                ]),
+                (fmap_buffers['fmap'], fmap_select, [('out', 'fmap')]),
+                (fmap_buffers['fmap_ref'], fmap_select, [('out', 'fmap_ref')]),
+                (fmap_buffers['fmap_coeff'], fmap_select, [('out', 'fmap_coeff')]),
+                (fmap_buffers['fmap_mask'], fmap_select, [('out', 'fmap_mask')]),
+                (fmap_buffers['sdc_method'], fmap_select, [('out', 'sdc_method')]),
+                (fmap_buffers['fmap_id'], fmap_select, [('out', 'keys')]),
                 (fmap_select, bold_fit_wf, [
                     ('fmap_ref', 'inputnode.fmap_ref'),
                     ('fmap_coeff', 'inputnode.fmap_coeff'),
@@ -1008,9 +1112,12 @@ tasks and sessions), the following preprocessing was performed.
         bold_apply_wf = init_bold_apply_wf(
             bold_series=bold_series,
             fieldmap_id=fieldmap_id,
+            jacobian=jacobian,
+            fallback_total_readout_time=config.workflow.fallback_total_readout_time,
             spaces=spaces,
             reference_anat=reference_anat,
             coreg_space=bold_coreg_level,
+            tpms_from_aseg=tpms_from_aseg,
             name=f'bold_apply_{bold_id}_wf',
         )
 
@@ -1212,6 +1319,7 @@ def init_execution_spaces():
 def map_fieldmap_estimation(
     layout: BIDSLayout,
     subject_id: str,
+    session_id: str | list[str] | None,
     bold_data: list[list[str]],
     ignore_fieldmaps: bool,
     use_syn: bool | str,
@@ -1227,11 +1335,12 @@ def map_fieldmap_estimation(
     # In the case where fieldmaps are ignored and `--use-syn-sdc` is requested,
     # SDCFlows `find_estimators` still receives a full layout (which includes the fmap modality)
     # and will not calculate fmapless schemes.
-    # Similarly, if fieldmaps are ignored and `--force-syn` is requested,
+    # Similarly, if fieldmaps are ignored and `--force syn-sdc` is requested,
     # `fmapless` should be set to True to ensure BOLD targets are found to be corrected.
     fmap_estimators = find_estimators(
         layout=layout,
         subject=subject_id,
+        sessions=[session_id] if isinstance(session_id, str) else session_id,
         fmapless=bool(use_syn) or (ignore_fieldmaps and force_syn),
         force_fmapless=force_syn or (ignore_fieldmaps and use_syn),
         bids_filters=filters,
@@ -1253,7 +1362,7 @@ def map_fieldmap_estimation(
         if any(f.method == fm.EstimatorType.ANAT for f in fmap_estimators):
             LOGGER.info(
                 'Option "--ignore fieldmaps" was set, but either "--use-syn-sdc" '
-                'or "--force-syn" were given, so fieldmap-less estimation will be executed.'
+                'or "--force syn-sdc" were given, so fieldmap-less estimation will be executed.'
             )
             fmap_estimators = [f for f in fmap_estimators if f.method == fm.EstimatorType.ANAT]
         else:
@@ -1328,12 +1437,14 @@ def _get_wf_name(bold_fname, prefix):
     ...     "preproc",
     ... )
     'preproc_task_nback_run_01_echo_1_wf'
+    >>> _get_wf_name("/completely/made/up/path/sub-01_task-rest_acq-mb4+pf68th_bold.nii.gz", None)
+    'task-rest_acq-mb4_pf68th_wf'
 
     """
     from nipype.utils.filemanip import split_filename
 
     fname = split_filename(bold_fname)[1]
-    fname_nosub = '_'.join(fname.split('_')[1:-1])
+    fname_sanitized = '_'.join(fname.split('_')[1:-1]).replace('+', '_')
     if prefix is None:
-        return f'{fname_nosub}_wf'
-    return f'{prefix}_{fname_nosub.replace("-", "_")}_wf'
+        return f'{fname_sanitized}_wf'
+    return f'{prefix}_{fname_sanitized.replace("-", "_")}_wf'

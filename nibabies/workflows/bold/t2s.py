@@ -102,15 +102,18 @@ def init_bold_t2s_wf(
         fit_str = f'unknown method: {me_t2s_fit_method}'
 
     workflow.__desc__ = f"""\
-A T2<sup>★</sup> map was estimated from the preprocessed EPI echoes, by voxel-wise fitting
-the maximal number of echoes with reliable signal in that voxel to a monoexponential signal
-decay model with {fit_str}.
+A T2<sup>★</sup> map was estimated from the preprocessed EPI echoes using tedana's t2smap
+workflow [@DuPre2021], by voxel-wise fitting the maximal number of echoes with reliable signal in
+that voxel to a monoexponential signal decay model with {fit_str}.
 The calculated T2<sup>★</sup> map was then used to optimally combine preprocessed BOLD across
 echoes following the method described in [@posse_t2s].
 The optimally combined time series was carried forward as the *preprocessed BOLD*.
 """
 
-    inputnode = pe.Node(niu.IdentityInterface(fields=['bold_file', 'bold_mask']), name='inputnode')
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['bold_file', 'bold_mask', 'skip_vols']),
+        name='inputnode',
+    )
 
     outputnode = pe.Node(niu.IdentityInterface(fields=['bold', 't2star_map']), name='outputnode')
 
@@ -125,7 +128,10 @@ The optimally combined time series was carried forward as the *preprocessed BOLD
     )
     workflow.connect([
         (inputnode, dilate_mask, [('bold_mask', 'in_mask')]),
-        (inputnode, t2smap_node, [('bold_file', 'in_files')]),
+        (inputnode, t2smap_node, [
+            ('bold_file', 'in_files'),
+            ('skip_vols', 'n_exclude'),
+        ]),
         (dilate_mask, t2smap_node, [('out_mask', 'mask_file')]),
         (t2smap_node, outputnode, [('optimal_comb', 'bold'),
                                    ('t2star_map', 't2star_map')]),

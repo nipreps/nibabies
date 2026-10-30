@@ -72,7 +72,7 @@ def init_bold_surf_wf(
             :graph2use: colored
             :simple_form: yes
 
-            from nibabies.workflows.bold import init_bold_surf_wf
+            from nibabies.workflows.bold.resampling import init_bold_surf_wf
             wf = init_bold_surf_wf(mem_gb=0.1,
                                    surface_spaces=["fsnative", "fsaverage5"],
                                    medial_surface_nan=False,
@@ -736,7 +736,7 @@ def init_bold_grayords_wf(
             :simple_form: yes
 
             from nibabies.workflows.bold.resampling import init_bold_grayords_wf
-            wf = init_bold_grayords_wf(grayord_density='91k')
+            wf = init_bold_grayords_wf(grayord_density='91k', repetition_time=2.0)
 
     Parameters
     ----------

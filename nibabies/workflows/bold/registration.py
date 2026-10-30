@@ -52,13 +52,13 @@ def init_bold_reg_wf(
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.bold.registration import init_bold_reg_wf
+            from nibabies.workflows.bold.registration import init_bold_reg_wf
             wf = init_bold_reg_wf(freesurfer=True,
                                   mem_gb=3,
                                   omp_nthreads=1,
                                   use_bbr=True,
                                   bold2anat_dof=9,
-                                  bold2anat_init='auto')
+                                  bold2anat_init='t1w')
 
     Parameters
     ----------
@@ -112,8 +112,8 @@ def init_bold_reg_wf(
 
     See Also
     --------
-      * :py:func:`~fmriprep.workflows.bold.registration.init_bbreg_wf`
-      * :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`
+      * :py:func:`~nibabies.workflows.bold.registration.init_bbreg_wf`
+      * :py:func:`~nibabies.workflows.bold.registration.init_fsl_bbr_wf`
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
@@ -192,7 +192,7 @@ def init_bbreg_wf(
     This workflow uses FreeSurfer's ``bbregister`` to register a BOLD image to
     a T2-weighted or T1-weighted structural image.
 
-    It is a counterpart to :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`,
+    It is a counterpart to :py:func:`~nibabies.workflows.bold.registration.init_fsl_bbr_wf`,
     which performs the same task using FSL's FLIRT with a BBR cost function.
     The ``use_bbr`` option permits a high degree of control over registration.
     If ``False``, standard, affine coregistration will be performed using
@@ -240,11 +240,11 @@ def init_bbreg_wf(
     subject_id
         FreeSurfer subject ID (must have folder in SUBJECTS_DIR)
     anat_preproc
-        Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`)
+        Unused (see :py:func:`~nibabies.workflows.bold.registration.init_fsl_bbr_wf`)
     anat_mask
-        Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`)
+        Unused (see :py:func:`~nibabies.workflows.bold.registration.init_fsl_bbr_wf`)
     anat_dseg
-        Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_fsl_bbr_wf`)
+        Unused (see :py:func:`~nibabies.workflows.bold.registration.init_fsl_bbr_wf`)
 
     Outputs
     -------
@@ -331,6 +331,8 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
             dof=bold2anat_dof,
             contrast_type='t2',
             out_lta_file=True,
+            # Bug in nipype prevents using init_cost_file=True
+            init_cost_file='bbregister.initcost',
         ),
         name='bbregister',
         mem_gb=12,
@@ -439,6 +441,8 @@ Co-registration was configured with {dof} degrees of freedom{reason}.
         (transforms, compare_transforms, [('out', 'lta_list')]),
         (compare_transforms, outputnode, [('out', 'fallback')]),
         (compare_transforms, select_transform, [('out', 'index')]),
+        (compare_transforms, select_gen, [('out', 'index')]),
+        (compare_transforms, select_cost, [('out', 'index')]),
     ])  # fmt:skip
 
     return workflow
@@ -457,7 +461,7 @@ def init_fsl_bbr_wf(
 
     This workflow uses FSL FLIRT to register a BOLD image to an anatomical
     structural image, using a boundary-based registration (BBR) cost function.
-    It is a counterpart to :py:func:`~fmriprep.workflows.bold.registration.init_bbreg_wf`,
+    It is a counterpart to :py:func:`~nibabies.workflows.bold.registration.init_bbreg_wf`,
     which performs the same task using FreeSurfer's ``bbregister``.
 
     The ``use_bbr`` option permits a high degree of control over registration.
@@ -474,7 +478,7 @@ def init_fsl_bbr_wf(
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.bold.registration import init_fsl_bbr_wf
+            from nibabies.workflows.bold.registration import init_fsl_bbr_wf
             wf = init_fsl_bbr_wf(
                 use_bbr=True, bold2anat_dof=9, bold2anat_init='t1w', omp_nthreads=1
             )
@@ -505,11 +509,11 @@ def init_fsl_bbr_wf(
     anat_dseg
         FAST segmentation of masked ``t1w_preproc``
     fsnative2anat_xfm
-        Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_bbreg_wf`)
+        Unused (see :py:func:`~nibabies.workflows.bold.registration.init_bbreg_wf`)
     subjects_dir
-        Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_bbreg_wf`)
+        Unused (see :py:func:`~nibabies.workflows.bold.registration.init_bbreg_wf`)
     subject_id
-        Unused (see :py:func:`~fmriprep.workflows.bold.registration.init_bbreg_wf`)
+        Unused (see :py:func:`~nibabies.workflows.bold.registration.init_bbreg_wf`)
 
     Outputs
     -------

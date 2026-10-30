@@ -20,6 +20,7 @@
 #
 #     https://www.nipreps.org/community/licensing/
 #
+import logging
 import os
 import re
 import typing as ty
@@ -84,10 +85,21 @@ def get_sbrefs(
     entities.update(suffix='sbref', extension=['.nii', '.nii.gz'])
     entities.update(entity_overrides)
 
-    return sorted(
-        layout.get(return_type='file', **entities),
-        key=lambda fname: layout.get_metadata(fname).get('EchoTime'),
-    )
+    sbref_files = layout.get(return_type='file', **entities)
+    if len(sbref_files) == 1:
+        return sbref_files
+
+    valid_sbref_files = []
+
+    for fname in sbref_files:
+        if (echo_time := layout.get_metadata(fname).get('EchoTime')) is None:
+            logging.getLogger('nipype.workflow').warning(
+                'Dropping SBRef without EchoTime metadata: %s', fname
+            )
+            continue
+        valid_sbref_files.append((echo_time, fname))
+
+    return [fname for _, fname in sorted(valid_sbref_files)]
 
 
 def init_bold_fit_wf(
@@ -96,6 +108,7 @@ def init_bold_fit_wf(
     precomputed: dict | None = None,
     fieldmap_id: str | None = None,
     jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_fit_wf',
 ) -> pe.Workflow:
@@ -125,6 +138,12 @@ def init_bold_fit_wf(
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
 
     Inputs
     ------
@@ -213,8 +232,9 @@ def init_bold_fit_wf(
     # Boolean used to update workflow self-descriptions
     multiecho = len(bold_series) > 1
 
-    hmc_boldref = precomputed.get('hmc_boldref')
-    run_boldref = precomputed.get('run_boldref')
+    boldrefs = precomputed.get('boldrefs', {})
+    hmc_boldref = boldrefs.get('hmc')
+    run_boldref = boldrefs.get('run')
     # Can contain
     #  1) run2fmap
     #  2) template2anat
@@ -485,7 +505,7 @@ def init_bold_fit_wf(
                 DistortionParameters(
                     metadata=metadata,
                     in_file=bold_file,
-                    # TODO: Estimate fallback readout time
+                    fallback=fallback_total_readout_time,
                 ),
                 name='distortion_params',
                 run_without_submitting=True,
@@ -557,6 +577,8 @@ def init_bold_native_wf(
     *,
     bold_series: list[str],
     fieldmap_id: str | None = None,
+    jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_native_wf',
 ) -> pe.Workflow:
@@ -588,6 +610,12 @@ def init_bold_native_wf(
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
 
     Inputs
     ------
@@ -639,6 +667,7 @@ def init_bold_native_wf(
     .. _optimal combination: https://tedana.readthedocs.io/en/stable/approach.html#optimal-combination
 
     """
+    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     layout = config.execution.layout
 
@@ -667,7 +696,7 @@ def init_bold_native_wf(
 
     run_stc = bool(metadata.get('SliceTiming')) and 'slicetiming' not in config.workflow.ignore
 
-    workflow = pe.Workflow(name=name)
+    workflow = Workflow(name=name)
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -737,7 +766,11 @@ def init_bold_native_wf(
     # Prepare fieldmap metadata
     if fieldmap_id:
         distortion_params = pe.Node(
-            DistortionParameters(metadata=metadata, in_file=bold_file),
+            DistortionParameters(
+                metadata=metadata,
+                in_file=bold_file,
+                fallback=fallback_total_readout_time,
+            ),
             name='distortion_params',
             run_without_submitting=True,
         )
@@ -751,7 +784,7 @@ def init_bold_native_wf(
     # Resample to boldref
     boldref_bold = pe.Node(
         ResampleSeries(
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             num_threads=omp_nthreads,
         ),
         name='boldref_bold',
@@ -804,7 +837,10 @@ def init_bold_native_wf(
         # Do NOT set motion_xfm on outputnode
         # This prevents downstream resamplers from double-dipping
         workflow.connect([
-            (inputnode, bold_t2s_wf, [('run_mask', 'inputnode.bold_mask')]),
+            (inputnode, bold_t2s_wf, [
+                ('run_mask', 'inputnode.bold_mask'),
+                ('dummy_scans', 'inputnode.skip_vols'),
+            ]),
             (boldref_bold, join_echos, [('out_file', 'bold_files')]),
             (join_echos, bold_t2s_wf, [('bold_files', 'inputnode.bold_file')]),
             (join_echos, outputnode, [('bold_files', 'bold_echos')]),
@@ -828,6 +864,8 @@ def init_bold_boldref_wf(
     *,
     bold_series: list[str],
     fieldmap_id: str | None = None,
+    jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     omp_nthreads: int = 1,
     name: str = 'bold_boldref_wf',
 ) -> pe.Workflow:
@@ -846,6 +884,12 @@ def init_bold_boldref_wf(
         List of paths to NIfTI files (used to derive metadata).
     fieldmap_id
         Fieldmap identifier. If :obj:`None`, no SDC is applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
     omp_nthreads
         Maximum number of threads per process.
 
@@ -904,7 +948,7 @@ def init_bold_boldref_wf(
 
     boldref_bold = pe.Node(
         ResampleSeries(
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             num_threads=omp_nthreads,
         ),
         name='boldref_bold',
@@ -927,7 +971,11 @@ def init_bold_boldref_wf(
 
     if fieldmap_id:
         distortion_params = pe.Node(
-            DistortionParameters(metadata=metadata, in_file=bold_file),
+            DistortionParameters(
+                metadata=metadata,
+                in_file=bold_file,
+                fallback=fallback_total_readout_time,
+            ),
             name='distortion_params',
             run_without_submitting=True,
         )

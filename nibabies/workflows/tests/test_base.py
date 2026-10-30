@@ -14,6 +14,7 @@ from sdcflows.fieldmaps import clear_registry
 from sdcflows.utils.wrangler import find_estimators
 
 from ... import config
+from ...utils.testing import write_derivatives
 from ..base import get_estimator, init_nibabies_wf
 from ..tests import mock_config
 
@@ -62,12 +63,12 @@ BASE_LAYOUT = {
             {'suffix': 'magnitude1', 'metadata': {'EchoTime': 0.005}},
             {
                 'suffix': 'epi',
-                'direction': 'PA',
+                'dir': 'PA',
                 'metadata': {'PhaseEncodingDirection': 'j', 'TotalReadoutTime': 0.6},
             },
             {
                 'suffix': 'epi',
-                'direction': 'AP',
+                'dir': 'AP',
                 'metadata': {'PhaseEncodingDirection': 'j-', 'TotalReadoutTime': 0.6},
             },
         ],
@@ -125,7 +126,6 @@ def bids_root(tmp_path_factory, request):
 
 def _make_params(
     bold2anat_init: str = 'auto',
-    use_bbr: bool | None = None,
     dummy_scans: int | None = None,
     me_output_echos: bool = False,
     medial_surface_nan: bool = False,
@@ -134,9 +134,9 @@ def _make_params(
     run_msmsulc: bool = True,
     skull_strip_anat: str = 'auto',
     use_syn_sdc: str | bool = False,
-    force_syn: bool = False,
     surface_recon_method: str | None = 'auto',
     ignore: list[str] | None = None,
+    force: list[str] | None = None,
     bids_filters: dict | None = None,
     norm_csf: bool = False,
     multi_step_reg: bool = True,
@@ -146,11 +146,12 @@ def _make_params(
 ):
     if ignore is None:
         ignore = []
+    if force is None:
+        force = []
     if bids_filters is None:
         bids_filters = {}
     return (
         bold2anat_init,
-        use_bbr,
         dummy_scans,
         me_output_echos,
         medial_surface_nan,
@@ -159,9 +160,9 @@ def _make_params(
         run_msmsulc,
         skull_strip_anat,
         use_syn_sdc,
-        force_syn,
         surface_recon_method,
         ignore,
+        force,
         bids_filters,
         norm_csf,
         multi_step_reg,
@@ -182,7 +183,6 @@ def _patch_output_spaces(output_spaces: str | None):
 @pytest.mark.parametrize(
     (
         'bold2anat_init',
-        'use_bbr',
         'dummy_scans',
         'me_output_echos',
         'medial_surface_nan',
@@ -191,9 +191,9 @@ def _patch_output_spaces(output_spaces: str | None):
         'run_msmsulc',
         'skull_strip_anat',
         'use_syn_sdc',
-        'force_syn',
         'surface_recon_method',
         'ignore',
+        'force',
         'bids_filters',
         'norm_csf',
         'multi_step_reg',
@@ -206,11 +206,11 @@ def _patch_output_spaces(output_spaces: str | None):
         _make_params(bold2anat_init='t1w'),
         _make_params(bold2anat_init='t2w'),
         _make_params(bold2anat_init='header'),
-        _make_params(use_bbr=True),
-        _make_params(use_bbr=False),
-        _make_params(bold2anat_init='header', use_bbr=True),
+        _make_params(force=['bbr']),
+        _make_params(force=['no-bbr']),
+        _make_params(bold2anat_init='header', force=['bbr']),
         # Currently disabled
-        # _make_params(bold2anat_init="header", use_bbr=False),
+        # _make_params(bold2anat_init="header", force=['no-bbr']),
         _make_params(dummy_scans=2),
         _make_params(me_output_echos=True),
         _make_params(medial_surface_nan=True),
@@ -219,10 +219,10 @@ def _patch_output_spaces(output_spaces: str | None):
         _make_params(cifti_output='91k', run_msmsulc=False),
         _make_params(skull_strip_anat='force'),
         _make_params(skull_strip_anat='skip'),
-        # _make_params(use_syn_sdc='warn', force_syn=True, ignore=['fieldmaps']),
+        # _make_params(use_syn_sdc='warn', ignore=['fieldmaps'], force=['syn-sdc']),
         _make_params(surface_recon_method=None),
-        _make_params(surface_recon_method=None, use_bbr=True),
-        _make_params(surface_recon_method=None, use_bbr=False),
+        _make_params(surface_recon_method=None, force=['bbr']),
+        _make_params(surface_recon_method=None, force=['no-bbr']),
         _make_params(surface_recon_method=None, output_spaces='T1w'),
         _make_params(surface_recon_method='auto'),
         # _make_params(surface_recon_method='mcribs'),  # Requires precomputed segmentation
@@ -231,8 +231,8 @@ def _patch_output_spaces(output_spaces: str | None):
         _make_params(surface_recon_method='freesurfer', output_spaces='fsaverage'),
         # Currently unsupported:
         # _make_params(freesurfer=False, bold2anat_init="header"),
-        # _make_params(freesurfer=False, bold2anat_init="header", use_bbr=True),
-        # _make_params(freesurfer=False, bold2anat_init="header", use_bbr=False),
+        # _make_params(freesurfer=False, bold2anat_init="header", force=['bbr']),
+        # _make_params(freesurfer=False, bold2anat_init="header", force=['no-bbr']),
         # Regression test for gh-3154:
         _make_params(bids_filters={'sbref': {'suffix': 'sbref'}}),
         _make_params(norm_csf=True),
@@ -248,7 +248,6 @@ def test_init_nibabies_wf(
     level: str,
     anat_only: bool,
     bold2anat_init: str,
-    use_bbr: bool | None,
     dummy_scans: int | None,
     me_output_echos: bool,
     medial_surface_nan: bool,
@@ -257,9 +256,9 @@ def test_init_nibabies_wf(
     run_msmsulc: bool,
     skull_strip_anat: str,
     use_syn_sdc: str | bool,
-    force_syn: bool,
     surface_recon_method: str | None,
     ignore: list[str],
+    force: list[str],
     bids_filters: dict,
     norm_csf: bool,
     multi_step_reg: bool,
@@ -269,10 +268,9 @@ def test_init_nibabies_wf(
 ):
     monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
     with mock_config(bids_dir=bids_root):
-        config.workflow.level = level
-        config.workflow.anat_only = anat_only
+        monkeypatch.setattr(config.workflow, 'level', level)
+        monkeypatch.setattr(config.workflow, 'anat_only', anat_only)
         config.workflow.bold2anat_init = bold2anat_init
-        config.workflow.use_bbr = use_bbr
         config.workflow.dummy_scans = dummy_scans
         config.execution.me_output_echos = me_output_echos
         config.workflow.medial_surface_nan = medial_surface_nan
@@ -285,6 +283,7 @@ def test_init_nibabies_wf(
         config.workflow.cifti_output = cifti_output
         config.workflow.surface_recon_method = surface_recon_method
         config.workflow.ignore = ignore
+        config.workflow.force = force
         config.workflow.hmc_bold_frame = hmc_bold_frame
         before = config.get(flat=True)
         with (
@@ -299,6 +298,330 @@ def test_init_nibabies_wf(
         assert config.get(flat=True) == before
 
     generate_expanded_graph(wf._create_flat_graph())
+
+
+def test_init_nibabies_wf_sanitize_fmaps(monkeypatch, tmp_path):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = 'epi<<run1>>'
+    spec['01']['fmap'][2]['metadata']['B0FieldIdentifier'] = 'epi<<run1>>'
+    spec['01']['fmap'][3]['metadata']['B0FieldIdentifier'] = 'epi<<run1>>'
+    del spec['01']['func'][4:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        wf = init_nibabies_wf([('01', None)])
+    generate_expanded_graph(wf._create_flat_graph())
+
+
+def test_init_nibabies_wf_sanitize_plus(monkeypatch, tmp_path):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    spec['01']['func'][0]['acquisition'] = 'mb4+pf68th'
+    spec['01']['anat'][0]['acquisition'] = 'memprage+rms'
+    spec['01']['fmap'][2]['acquisition'] = 'sbref+pf68th'
+    spec['01']['fmap'][3]['acquisition'] = 'sbref+pf68th'
+    del spec['01']['func'][4:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        wf = init_nibabies_wf([('01', None)])
+    generate_expanded_graph(wf._create_flat_graph())
+
+
+def test_init_nibabies_wf_monomodal_pepolar(monkeypatch, tmp_path):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = 'pepolar'
+    spec['01']['fmap'] = [
+        {
+            'suffix': 'epi',
+            'dir': pe_dir,
+            'metadata': {
+                'PhaseEncodingDirection': pe,
+                'TotalReadoutTime': 0.6,
+                'B0FieldIdentifier': 'pepolar',
+            },
+        }
+        for pe_dir, pe in (('PA', 'j'), ('AP', 'j-'), ('LR', 'i'), ('RL', 'i-'))
+    ]
+    del spec['01']['func'][4:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        wf = init_nibabies_wf([('01', None)])
+
+    (fmap_inputs,) = [
+        wf.get_node(n) for n in wf.list_node_names() if n.endswith('fmap_preproc_wf.in_pepolar')
+    ]
+    assert len(fmap_inputs.inputs.in_data) == 4
+
+
+@pytest.mark.parametrize(
+    ('fmap', 'option', 'jacobian'),
+    [
+        ('pepolar', None, True),
+        ('pepolar', 'ignore', False),
+        ('phasediff', None, False),
+        ('phasediff', 'force', True),
+    ],
+)
+def test_init_nibabies_wf_fmap_jacobian(monkeypatch, tmp_path, fmap, option, jacobian):
+    from nibabies.interfaces.resampling import ResampleSeries
+
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = fmap
+    spec['01']['fmap'] = [
+        f for f in spec['01']['fmap'] if (f['suffix'] == 'epi') is (fmap == 'pepolar')
+    ]
+    for f in spec['01']['fmap']:
+        f['metadata']['B0FieldIdentifier'] = fmap
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'force', ['fmap-jacobian'] * (option == 'force'))
+        monkeypatch.setattr(config.workflow, 'ignore', ['fmap-jacobian'] * (option == 'ignore'))
+        wf = init_nibabies_wf([('01', None)])
+
+    resamplers = [
+        node
+        for node in (wf.get_node(n) for n in wf.list_node_names())
+        if isinstance(node.interface, ResampleSeries)
+    ]
+    assert resamplers
+    assert all(node.inputs.jacobian is jacobian for node in resamplers)
+
+
+@pytest.mark.parametrize('fallback', [None, 0.05, 'estimated'])
+def test_init_nibabies_wf_fallback_trt(monkeypatch, tmp_path, fallback):
+    from nibabies.interfaces.resampling import DistortionParameters
+
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = 'pepolar'
+    spec['01']['fmap'] = [f for f in spec['01']['fmap'] if f['suffix'] == 'epi']
+    for f in spec['01']['fmap']:
+        f['metadata']['B0FieldIdentifier'] = 'pepolar'
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'fallback_total_readout_time', fallback)
+        wf = init_nibabies_wf([('01', None)])
+
+    params = [
+        node
+        for node in (wf.get_node(n) for n in wf.list_node_names())
+        if isinstance(node.interface, DistortionParameters)
+    ]
+    assert params
+    assert all(node.inputs.fallback == fallback for node in params)
+
+
+@pytest.mark.parametrize('precomputed', [False, True])
+def test_init_nibabies_wf_precomputed_fmap(monkeypatch, tmp_path, precomputed):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+    spec['01']['func'][0]['metadata']['B0FieldSource'] = 'pepolar'
+    spec['01']['fmap'] = [f for f in spec['01']['fmap'] if f['suffix'] == 'epi']
+    for f in spec['01']['fmap']:
+        f['metadata']['B0FieldIdentifier'] = 'pepolar'
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    derivatives = {}
+    if precomputed:
+        derivatives['nibabies'] = write_derivatives(
+            tmp_path / 'deriv',
+            ['fieldmap', 'coeffs', 'magnitude', 'run2fmap'],
+            run=1,
+            fmapid='pepolar',
+        )
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.execution, 'derivatives', derivatives)
+        wf = init_nibabies_wf([('01', None)])
+
+    names = wf.list_node_names()
+    assert any('fmap_preproc_wf' in name for name in names) is not precomputed
+    (sdc_method,) = [wf.get_node(n) for n in names if n.endswith('.sdc_method_merge')]
+    if precomputed:
+        assert sdc_method.inputs.in1 == ['precomputed']
+    # The run selects its fieldmap from the merged precomputed and estimated fieldmaps
+    (fmap_select,) = [wf.get_node(n) for n in names if '.fmap_select_' in n]
+    assert fmap_select.inputs.key == 'pepolar'
+
+
+@pytest.mark.parametrize('space', ['T1w', 'T2w'])
+def test_init_nibabies_wf_goodvoxels_mask(monkeypatch, tmp_path, space):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    spec['01']['anat'] = [{'suffix': space}]
+    del spec['01']['func'][1:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'surface_recon_method', 'infantfs')
+        monkeypatch.setattr(config.workflow, 'cifti_output', '91k')
+        monkeypatch.setattr(config.workflow, 'project_goodvoxels', True)
+        wf = init_nibabies_wf([('01', None)])
+
+    (ds_goodvoxels,) = [
+        wf.get_node(n) for n in wf.list_node_names() if n.endswith('.ds_goodvoxels_mask')
+    ]
+    assert ds_goodvoxels.inputs.space == space
+    assert ds_goodvoxels.inputs.desc == 'goodvoxels'
+    (source_file,) = ds_goodvoxels.inputs.source_file
+    assert source_file.endswith('_bold.nii.gz')
+
+
+@pytest.mark.parametrize(
+    ('force', 'bbregister'), [([], False), (['no-bbr'], False), (['bbr'], True)]
+)
+def test_init_nibabies_wf_bbr_opt_in(monkeypatch, tmp_path, force, bbregister):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'surface_recon_method', 'infantfs')
+        monkeypatch.setattr(config.workflow, 'force', force)
+        wf = init_nibabies_wf([('01', None)])
+
+    names = wf.list_node_names()
+    assert any(n.endswith('.bbreg_wf.mri_coreg') for n in names)
+    assert any(n.endswith('.bbreg_wf.bbregister') for n in names) is bbregister
+
+
+@pytest.mark.parametrize(
+    ('precomputed', 'is_aseg'),
+    [
+        (None, False),
+        ('aseg', True),
+        ('tpms', False),
+    ],
+)
+def test_init_nibabies_wf_acompcor_tpms(monkeypatch, tmp_path, precomputed, is_aseg):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    derivatives = {}
+    if precomputed:
+        if precomputed == 'aseg':
+            entities = [{'desc': 'aseg', 'suffix': 'dseg'}]
+        else:
+            # A prior nibabies run: FAST dseg and TPMs, no aseg
+            entities = [{'suffix': 'dseg'}] + [
+                {'label': label, 'suffix': 'probseg'} for label in ('GM', 'WM', 'CSF')
+            ]
+        deriv_dir = tmp_path / 'deriv'
+        generate_bids_skeleton(
+            deriv_dir,
+            {
+                'dataset_description': {'Name': precomputed, 'DatasetType': 'derivative'},
+                '01': {
+                    'anat': [
+                        {'space': space, **ents} for space in ('T1w', 'T2w') for ents in entities
+                    ]
+                },
+            },
+        )
+        derivatives = {precomputed: deriv_dir}
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.execution, 'derivatives', derivatives)
+        monkeypatch.setattr(config.workflow, 'surface_recon_method', None)
+        wf = init_nibabies_wf([('01', None)])
+
+    acc_masks = [wf.get_node(n) for n in wf.list_node_names() if n.endswith('.acc_masks')]
+    assert acc_masks
+    assert all(node.inputs.is_aseg is is_aseg for node in acc_masks)
 
 
 def test_get_estimator_none(tmp_path):
@@ -336,6 +659,25 @@ def test_get_estimator_b0field_and_intendedfor(tmp_path):
     )
 
     assert get_estimator(layout, bold_files[0]) == ('epi',)
+    # if B0FieldIdentifiers are found, IntendedFor will not be used
+    assert get_estimator(layout, bold_files[1]) == ()
+
+
+def test_get_estimator_intendedfor(tmp_path):
+    bids_dir = tmp_path / 'bids'
+
+    # Set B0FieldSource for run 1
+    spec = deepcopy(BASE_LAYOUT)
+    spec['01']['fmap'][0]['metadata']['IntendedFor'] = 'func/sub-01_task-rest_run-2_bold.nii.gz'
+
+    generate_bids_skeleton(bids_dir, spec)
+    layout = bids.BIDSLayout(bids_dir)
+    _ = find_estimators(layout=layout, subject='01')
+
+    bold_files = sorted(
+        layout.get(suffix='bold', task='rest', extension='.nii.gz', return_type='file')
+    )
+
     assert get_estimator(layout, bold_files[1]) == ('auto_00000',)
 
 

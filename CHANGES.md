@@ -1,3 +1,58 @@
+26.1.0 (TBD)
+===========
+First release of the 26.1.x series.
+
+This release synchronizes with fMRIPrep, porting a range of fixes and enhancements, and moves derivative collection to NiPost.
+Precomputed derivatives are now gathered through declarative specifications shared with fMRIPrep and sMRIPrep, and precomputed fieldmaps can now be reused.
+
+Several changes may alter results compared with previous releases:
+
+  * Fieldmap Jacobian correction is now applied by default only for PEPOLAR fieldmaps.
+    To restore the previous behavior for all fieldmap types, use ``--force fmap-jacobian``.
+  * When NiBabies runs FSL FAST, aCompCor masks are now built from the continuous partial-volume maps,
+    instead of being truncated as if they were derived from an *aseg* segmentation.
+  * With ``--bold-coreg-level session`` or ``subject``, the BOLD coregistration template is now upsampled
+    (to 1.2mm isotropic, or the finest acquired voxel size if smaller). Use ``--no-bold-coreg-upsample`` to disable.
+  * The ``multiverse`` output layout hash includes new options, so hashed output directories will differ from previous releases.
+
+The ``--force-bbr``, ``--force-no-bbr`` and ``--force-syn`` flags are deprecated in favor of ``--force bbr``, ``--force no-bbr`` and ``--force syn-sdc``,
+and will be removed in 27.0.0. These flags no longer have any effect.
+
+### Enhancements
+  * ENH: Add ``--force`` option, replacing the individual ``--force-*`` flags (#593, nipreps/fmriprep#3442)
+  * ENH: Enable fieldmap Jacobians only for PEPOLAR by default, allow forcing with ``--force fmap-jacobian`` (#593, nipreps/fmriprep#3443)
+  * ENH: Add ``--fallback-total-readout-time`` to fall back to estimated or user-provided readout times (#593, nipreps/fmriprep#3423)
+  * ENH: Detect and apply precomputed fieldmaps (#593, nipreps/fmriprep#3439, nipreps/fmriprep#3466)
+  * ENH: Upsample the BOLD coregistration template (#593, nipreps/fmriprep#3699)
+  * ENH: Ignore non-steady-state volumes in T2\*/S0 estimation (#593, nipreps/fmriprep#3556)
+  * ENH: Write out the goodvoxels mask (#593, nipreps/fmriprep#3513)
+  * ENH: Add the BOLD reference to anatomical and standard space output ``Sources`` (#593, nipreps/fmriprep#3532)
+  * ENH: Support single-modality "sophisticated" PEPOLAR schemes (#593, nipreps/fmriprep#3393)
+  * ENH: Add titles to HTML reports (#593, nipreps/fmriprep#3302)
+
+### Bug Fixes
+  * FIX: Choose the aCompCor mask procedure from the tissue probability map source (#593, nipreps/fmriprep#3589)
+  * FIX: Drop SBRefs without ``EchoTime`` when sorting (#593, nipreps/fmriprep#3648)
+  * FIX: Use sanitized fieldmap naming (#593, nipreps/fmriprep#3471)
+  * FIX: Pass session ID to the fieldmap finder (#593, nipreps/fmriprep#3573)
+  * FIX: Reuse fewer config options when using ``--config-file`` (#593, nipreps/fmriprep#3625)
+  * FIX: Do not crash on non-string BIDS filter values (#593, nipreps/fmriprep#3641)
+  * FIX: Sanitize plus signs from entities in workflow names (#593, nipreps/fmriprep#3604)
+  * FIX: Select registration metadata matching the chosen transform (#593, nipreps/fmriprep#3500)
+  * FIX: Include multi-echo and slice-timing text in the boilerplate (#593, nipreps/fmriprep#3577)
+  * FIX: Rename ``sdecreg_report`` node to ``sdcreg_report`` (#593, nipreps/fmriprep#3387)
+  * FIX: Clean up report language and show fieldmap registration and T2\* reportlets (#593, nipreps/fmriprep#3529)
+
+### Documentation
+  * DOC: Fix stale workflow examples and cross-references (#593)
+
+### Internals / Maintenance
+  * RF: Collect functional derivatives and resample with NiPost (#593, nipreps/fmriprep#3687)
+  * RF: Collect anatomical derivatives with NiPost (#593, nipreps/smriprep#585)
+  * RF: Make parser defaults explicit (#593, nipreps/fmriprep#3487)
+  * TST: Generate derivative datasets to test precomputed derivatives (#593, nipreps/fmriprep#3696)
+  * MAINT: Require ``tedana >= 25.1.0`` (#593)
+
 26.0.1 (September 5, 2026)
 ==========================
 Patch release in the 26.0.x series.

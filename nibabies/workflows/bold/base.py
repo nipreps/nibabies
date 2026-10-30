@@ -65,8 +65,11 @@ def init_bold_apply_wf(
     reference_anat: Anatomical,
     bold_series: list[str],
     fieldmap_id: str | None = None,
+    jacobian: bool = False,
+    fallback_total_readout_time: str | float | None = None,
     spaces: 'SpatialReferences',
     coreg_space: str = 'boldref',
+    tpms_from_aseg: bool = False,
     name: str = 'bold_apply_wf',
 ) -> pe.Workflow:
     """
@@ -81,14 +84,16 @@ def init_bold_apply_wf(
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.tests import mock_config
-            from fmriprep import config
-            from fmriprep.workflows.bold.base import init_bold_wf
+            from nibabies.workflows.tests import mock_config
+            from nibabies import config
+            from nibabies.workflows.bold.base import init_bold_apply_wf
             with mock_config():
                 bold_file = config.execution.bids_dir / "sub-01" / "func" \
                     / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
-                wf = init_bold_wf(
+                wf = init_bold_apply_wf(
+                    reference_anat='T1w',
                     bold_series=[str(bold_file)],
+                    spaces=config.workflow.spaces,
                 )
 
     Parameters
@@ -98,6 +103,15 @@ def init_bold_apply_wf(
     fieldmap_id
         ID of the fieldmap to use to correct this BOLD series. If :obj:`None`,
         no correction will be applied.
+    jacobian
+        Whether to apply Jacobian determinant correction when resampling with
+        the fieldmap.
+    fallback_total_readout_time
+        Fallback for a missing ``TotalReadoutTime``: a number (in seconds), ``"estimated"``
+        to accept ``Estimated*`` metadata, or :obj:`None` for no fallback.
+    tpms_from_aseg
+        Whether ``anat_tpms`` are binary maps split from an *aseg* segmentation
+        (``False`` when they are continuous FSL FAST partial volume maps).
 
     Inputs
     ------
@@ -250,6 +264,8 @@ configured with cubic B-spline interpolation.
     bold_native_wf = init_bold_native_wf(
         bold_series=bold_series,
         fieldmap_id=fieldmap_id,
+        jacobian=jacobian,
+        fallback_total_readout_time=fallback_total_readout_time,
         omp_nthreads=omp_nthreads,
     )
 
@@ -299,6 +315,8 @@ configured with cubic B-spline interpolation.
         bold_boldref_wf = init_bold_boldref_wf(
             bold_series=bold_series,
             fieldmap_id=fieldmap_id,
+            jacobian=jacobian,
+            fallback_total_readout_time=fallback_total_readout_time,
             omp_nthreads=omp_nthreads,
         )
         workflow.connect([
@@ -379,13 +397,21 @@ configured with cubic B-spline interpolation.
                 workflow.get_node(node).inputs.source_file = bold_file
         return workflow
 
+    # Pass along BOLD reference as a source file for provenance
+    merge_bold_sources = pe.Node(
+        niu.Merge(2), name='merge_bold_sources', run_without_submitting=True
+    )
+    merge_bold_sources.inputs.in1 = bold_series
+    workflow.connect(inputnode, 'template_boldref', merge_bold_sources, 'in2')
+
     # Resample to anatomical space
     bold_anat_wf = init_bold_volumetric_resample_wf(
         metadata=all_metadata[0],
+        fallback_total_readout_time=fallback_total_readout_time,
         fieldmap_id=fieldmap_id if not multiecho else None,
         omp_nthreads=omp_nthreads,
         mem_gb=mem_gb,
-        jacobian='fmap-jacobian' not in config.workflow.ignore,
+        jacobian=jacobian,
         name='bold_anat_wf',
     )
     bold_anat_wf.inputs.inputnode.resolution = 'native'
@@ -410,13 +436,13 @@ configured with cubic B-spline interpolation.
     # Full derivatives, including resampled BOLD series
     if nonstd_spaces.intersection(('anat', 'T1w', 'T2w')):
         ds_bold_anat_wf = init_ds_volumes_wf(
+            source_file=bold_file,
             bids_root=str(config.execution.bids_dir),
             output_dir=output_dir,
             multiecho=multiecho,
             metadata=all_metadata[0],
             name='ds_bold_anat_wf',
         )
-        ds_bold_anat_wf.inputs.inputnode.source_files = bold_series
         ds_bold_anat_wf.inputs.inputnode.space = reference_anat
 
         workflow.connect([
@@ -433,6 +459,7 @@ configured with cubic B-spline interpolation.
                 ('outputnode.bold_file', 'inputnode.bold'),
                 ('outputnode.resampling_reference', 'inputnode.ref_file'),
             ]),
+            (merge_bold_sources, ds_bold_anat_wf, [('out', 'inputnode.source_files')]),
         ])  # fmt:skip
 
     if spaces.cached.get_spaces(nonstandard=False, dim=(3,)):
@@ -441,20 +468,21 @@ configured with cubic B-spline interpolation.
         #  * Resampling parcellations
         bold_std_wf = init_bold_volumetric_resample_wf(
             metadata=all_metadata[0],
+            fallback_total_readout_time=fallback_total_readout_time,
             fieldmap_id=fieldmap_id if not multiecho else None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb,
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             name='bold_std_wf',
         )
         ds_bold_std_wf = init_ds_volumes_wf(
+            source_file=bold_file,
             bids_root=str(config.execution.bids_dir),
             output_dir=output_dir,
             multiecho=multiecho,
             metadata=all_metadata[0],
             name='ds_bold_std_wf',
         )
-        ds_bold_std_wf.inputs.inputnode.source_files = bold_series
 
         workflow.connect([
             (inputnode, bold_std_wf, [
@@ -491,6 +519,7 @@ configured with cubic B-spline interpolation.
                 ('outputnode.bold_file', 'inputnode.bold'),
                 ('outputnode.resampling_reference', 'inputnode.ref_file'),
             ]),
+            (merge_bold_sources, ds_bold_std_wf, [('out', 'inputnode.source_files')]),
         ])  # fmt:skip
 
     if config.workflow.surface_recon_method and freesurfer_spaces:
@@ -552,10 +581,11 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
         bold_MNIInfant_wf = init_bold_volumetric_resample_wf(
             metadata=all_metadata[0],
+            fallback_total_readout_time=fallback_total_readout_time,
             fieldmap_id=fieldmap_id if not multiecho else None,
             omp_nthreads=omp_nthreads,
             mem_gb=mem_gb,
-            jacobian='fmap-jacobian' not in config.workflow.ignore,
+            jacobian=jacobian,
             name='bold_MNIInfant_wf',
         )
 
@@ -572,6 +602,25 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 (inputnode, goodvoxels_bold_mask_wf, [('anat_ribbon', 'inputnode.anat_ribbon')]),
                 (bold_anat_wf, goodvoxels_bold_mask_wf, [
                     ('outputnode.bold_file', 'inputnode.bold_file'),
+                ]),
+            ])  # fmt:skip
+
+            ds_goodvoxels_mask = pe.Node(
+                DerivativesDataSink(
+                    base_directory=output_dir,
+                    dismiss_entities=DEFAULT_DISMISS_ENTITIES,
+                    compress=True,
+                    space=reference_anat,
+                    desc='goodvoxels',
+                    suffix='mask',
+                ),
+                name='ds_goodvoxels_mask',
+                run_without_submitting=True,
+            )
+            ds_goodvoxels_mask.inputs.source_file = bold_file
+            workflow.connect([
+                (goodvoxels_bold_mask_wf, ds_goodvoxels_mask, [
+                    ('outputnode.goodvoxels_mask', 'in_file'),
                 ]),
                 (goodvoxels_bold_mask_wf, bold_fsLR_resampling_wf, [
                     ('outputnode.goodvoxels_mask', 'inputnode.volume_roi'),
@@ -702,7 +751,7 @@ excluding voxels whose time-series have a locally high coefficient of variation.
     bold_confounds_wf = init_bold_confs_wf(
         mem_gb=mem_gb['largemem'],
         metadata=all_metadata[0],
-        freesurfer=config.workflow.run_reconall,
+        freesurfer=tpms_from_aseg,
         regressors_all_comps=config.workflow.regressors_all_comps,
         regressors_fd_th=config.workflow.regressors_fd_th,
         regressors_dvars_th=config.workflow.regressors_dvars_th,

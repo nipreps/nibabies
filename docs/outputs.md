@@ -258,7 +258,9 @@ the `space` and `from`/`to` entities of functional outputs:
 - **`run`** — the per-run boldref space. This is the target of HMC and is derived
   from the sbref or a robust average of the BOLD series.
 - **`session`** — the coregistration reference space when `--bold-coreg-level session`:
-  a template image built from all run-level boldrefs and registered to anatomy. Its
+  a template image built from all run-level boldrefs and registered to anatomy, isotropic
+  at 1.2mm (or at the finest acquired voxel size, where that is smaller) unless
+  `--no-bold-coreg-upsample` is given. Its
   boldref and `session→anat` transform are each written once for the session
   (the run-varying entities are dropped from the filename).
 - **`anat`** — the anatomical reference space (T1w or T2w).
