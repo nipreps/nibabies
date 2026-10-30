@@ -268,8 +268,8 @@ def test_init_nibabies_wf(
 ):
     monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
     with mock_config(bids_dir=bids_root):
-        config.workflow.level = level
-        config.workflow.anat_only = anat_only
+        monkeypatch.setattr(config.workflow, 'level', level)
+        monkeypatch.setattr(config.workflow, 'anat_only', anat_only)
         config.workflow.bold2anat_init = bold2anat_init
         config.workflow.dummy_scans = dummy_scans
         config.execution.me_output_echos = me_output_echos
