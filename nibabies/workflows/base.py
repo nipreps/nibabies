@@ -881,8 +881,11 @@ tasks and sessions), the following preprocessing was performed.
 
     coreg_precomputed = aggregate_coreg_precomputed(functional_caches, bold_coreg_level)
 
-    # Unlike fMRIPrep, BBR is opt-in: infant reconstructions may lack the inputs it requires
-    use_bbr = 'bbr' in config.workflow.force
+    # Unlike fMRIPrep, BBR is opt-in: infant reconstructions may lack the inputs it requires.
+    # Header initialization has no affine step to fall back on, so it always implies BBR.
+    use_bbr = 'bbr' in config.workflow.force or (
+        bold2anat_init == 'header' and 'no-bbr' not in config.workflow.force
+    )
 
     def _jacobian_for(fieldmap_id):
         if not fieldmap_id:
