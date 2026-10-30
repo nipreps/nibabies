@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import sys
 import typing as ty
+from pathlib import Path
 
 from .. import config
 
@@ -22,7 +23,6 @@ def _build_parser():
         BooleanOptionalAction,
     )
     from functools import partial
-    from pathlib import Path
 
     from niworkflows.utils.spaces import OutputReferencesAction, Reference
     from packaging.version import Version
@@ -473,7 +473,6 @@ Useful for further Tedana processing post-NiBabies.""",
     )
     g_conf.add_argument(
         '--project-goodvoxels',
-        required=False,
         action='store_true',
         default=False,
         help='Exclude voxels whose timeseries have locally high coefficient of variation '
@@ -484,7 +483,7 @@ Useful for further Tedana processing post-NiBabies.""",
         '--slice-time-ref',
         required=False,
         action='store',
-        default=None,
+        default=0.5,
         type=SliceTimeRef,
         help='The time of the reference slice to correct BOLD values to, as a fraction '
         'acquisition time. 0 indicates the start, 0.5 the midpoint, and 1 the end '
@@ -646,10 +645,11 @@ Useful for further Tedana processing post-NiBabies.""",
     # Surface generation xor
     g_surfs = parser.add_argument_group('Surface preprocessing options')
     g_surfs.add_argument(
-        '--no-submm-recon',
-        action='store_false',
+        '--submm-recon',
+        action=BooleanOptionalAction,
+        default=True,
         dest='hires',
-        help='disable sub-millimeter (hires) reconstruction',
+        help='Enable or disable sub-millimeter (hi-res) reconstruction.',
     )
     g_surfs_xor = g_surfs.add_mutually_exclusive_group()
     g_surfs_xor.add_argument(
@@ -681,7 +681,6 @@ Useful for further Tedana processing post-NiBabies.""",
         '--work-dir',
         action='store',
         type=Path,
-        default=Path('work').absolute(),
         help='path where intermediate results should be stored',
     )
     g_other.add_argument(
@@ -855,6 +854,9 @@ def parse_args(args=None, namespace=None):
 
     config.execution.log_level = int(max(25 - 5 * opts.verbose_count, logging.DEBUG))
     config.from_dict(vars(opts), init=['nipype'])
+
+    if config.execution.work_dir is None:
+        config.execution.work_dir = Path('work').absolute()
 
     # Consistency checks
     force_set = set(config.workflow.force)

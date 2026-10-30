@@ -377,6 +377,9 @@ def test_surface_recon_method(tmp_path, args, expectation):
         (['--bold-coreg-upsample'], 'bold_coreg_upsample', True),
         (['--no-bold-coreg-upsample'], 'bold_coreg_upsample', False),
         ([], 'bold_coreg_upsample', True),
+        (['--no-submm-recon'], 'hires', False),
+        (['--submm-recon'], 'hires', True),
+        ([], 'hires', True),
     ],
 )
 def test_optional_booleans(tmp_path, supp_args, opt, expected):
