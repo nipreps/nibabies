@@ -394,7 +394,7 @@ NiBabies: Preprocessing workflows for infants v{config.environment.version}"""
         '(a space delimited list).\n'
         ' * [no-]bbr: Use/disable boundary-based registration for BOLD-to-anatomical '
         'coregistration\n'
-        '             (No goodness-of-fit checks)\n'
+        '             (No goodness-of-fit checks; default: disabled)\n'
         ' * syn-sdc: Calculate SyN-SDC correction *in addition* to other fieldmaps\n'
         ' * fmap-jacobian: Apply Jacobian determinant correction for all fieldmap types\n'
         '                  (default: PEPOLAR fieldmaps only)\n',

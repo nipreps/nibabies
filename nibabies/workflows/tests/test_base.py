@@ -541,6 +541,34 @@ def test_init_nibabies_wf_goodvoxels_mask(monkeypatch, tmp_path, space):
 
 
 @pytest.mark.parametrize(
+    ('force', 'bbregister'), [([], False), (['no-bbr'], False), (['bbr'], True)]
+)
+def test_init_nibabies_wf_bbr_opt_in(monkeypatch, tmp_path, force, bbregister):
+    monkeypatch.setenv('SUBJECTS_DIR', '/opt/freesurfer/subjects')
+    bids_dir = tmp_path / 'bids'
+
+    spec = deepcopy(BASE_LAYOUT)
+    del spec['01']['func'][1:]
+
+    generate_bids_skeleton(bids_dir, spec)
+    df = pd.DataFrame({'participant_id': ['sub-01'], 'age_months': ['1']})
+    df.to_csv(str(bids_dir / 'participants.tsv'), sep='\t', index=False)
+    img = nb.Nifti1Image(np.zeros((10, 10, 10, 10)), np.eye(4))
+    for img_path in bids_dir.glob('sub-01/*/*.nii.gz'):
+        img.to_filename(img_path)
+
+    with mock_config(bids_dir=bids_dir):
+        config.workflow.bold_coreg_level = 'run'
+        monkeypatch.setattr(config.workflow, 'surface_recon_method', 'infantfs')
+        monkeypatch.setattr(config.workflow, 'force', force)
+        wf = init_nibabies_wf([('01', None)])
+
+    names = wf.list_node_names()
+    assert any(n.endswith('.bbreg_wf.mri_coreg') for n in names)
+    assert any(n.endswith('.bbreg_wf.bbregister') for n in names) is bbregister
+
+
+@pytest.mark.parametrize(
     ('precomputed', 'is_aseg'),
     [
         (None, False),
