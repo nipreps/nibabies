@@ -1,4 +1,5 @@
 package: nibabies
+title: Visual report for participant '{subject}' - NiBabies
 sections:
 - name: Summary
   reportlets:
