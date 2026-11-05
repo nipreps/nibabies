@@ -258,9 +258,9 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-misc_tcl-2406.0-0.tar.bz2
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
-      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#ced78c38698d3579dc97d0cb1f30b0dbb59e6ae2
+      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0bdee79e10c30d6727591e18aa040d0a8e9fdb74
       - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#d0dd398a87edca4ff1411a9f7ea1d92286f82933
-      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#327a6513e4462ea2a998488f53bdd4cfc2498784
+      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#9d65419ca4322be4b6e34d7a10ea72e2c0648986
       - pypi: https://files.pythonhosted.org/packages/08/f6/af32e23e563971ffb0fb86be52bc5be5c2c118858ffc119bf6a9039b173d/lxml-6.1.1-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/09/59/e94dd478e2d8cb72aa64cc5f11819d07cc47694b6857aea840ff504694f1/nipost-0.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0c/b6/156a8de1e1b47694f0e7de6675866936608d45dc68388fd017d36f8693be/simplejson-4.1.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
@@ -580,9 +580,9 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-misc_tcl-2406.0-0.tar.bz2
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
-      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#ced78c38698d3579dc97d0cb1f30b0dbb59e6ae2
+      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0bdee79e10c30d6727591e18aa040d0a8e9fdb74
       - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#d0dd398a87edca4ff1411a9f7ea1d92286f82933
-      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#327a6513e4462ea2a998488f53bdd4cfc2498784
+      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#9d65419ca4322be4b6e34d7a10ea72e2c0648986
       - pypi: https://files.pythonhosted.org/packages/01/ea/5352950cbee9d1e8392e5396ddbc6defc982414e2abc004b501139bce13c/boto3-1.43.21-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/08/f6/af32e23e563971ffb0fb86be52bc5be5c2c118858ffc119bf6a9039b173d/lxml-6.1.1-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/09/59/e94dd478e2d8cb72aa64cc5f11819d07cc47694b6857aea840ff504694f1/nipost-0.1.0-py3-none-any.whl
@@ -942,9 +942,9 @@ environments:
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-misc_tcl-2406.0-0.tar.bz2
       - conda: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/noarch/fsl-sub-2.10.0-py_0.conda
       - pypi: .
-      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#ced78c38698d3579dc97d0cb1f30b0dbb59e6ae2
+      - pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0bdee79e10c30d6727591e18aa040d0a8e9fdb74
       - pypi: git+https://github.com/nipreps/sdcflows.git?rev=main#d0dd398a87edca4ff1411a9f7ea1d92286f82933
-      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#327a6513e4462ea2a998488f53bdd4cfc2498784
+      - pypi: git+https://github.com/nipreps/smriprep.git?rev=master#9d65419ca4322be4b6e34d7a10ea72e2c0648986
       - pypi: https://files.pythonhosted.org/packages/08/f6/af32e23e563971ffb0fb86be52bc5be5c2c118858ffc119bf6a9039b173d/lxml-6.1.1-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/09/59/e94dd478e2d8cb72aa64cc5f11819d07cc47694b6857aea840ff504694f1/nipost-0.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl
@@ -4663,9 +4663,9 @@ packages:
   - pytest-env ; extra == 'tests'
   - pytest-xdist ; extra == 'tests'
   requires_python: '>=3.12'
-- pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#ced78c38698d3579dc97d0cb1f30b0dbb59e6ae2
+- pypi: git+https://github.com/nipreps/niworkflows.git?rev=master#0bdee79e10c30d6727591e18aa040d0a8e9fdb74
   name: niworkflows
-  version: 1.16.0.dev21+gced78c386
+  version: 1.16.0.dev22+g0bdee79e1
   requires_dist:
   - acres>=0.5
   - attrs>=23.1
@@ -4798,9 +4798,9 @@ packages:
   - pytest-xdist>=3.3 ; extra == 'tests'
   - pytest>=8.1 ; extra == 'tests'
   requires_python: '>=3.12'
-- pypi: git+https://github.com/nipreps/smriprep.git?rev=master#327a6513e4462ea2a998488f53bdd4cfc2498784
+- pypi: git+https://github.com/nipreps/smriprep.git?rev=master#9d65419ca4322be4b6e34d7a10ea72e2c0648986
   name: smriprep
-  version: 0.20.1.dev13+g327a6513e
+  version: 0.20.1.dev14+g9d65419ca
   requires_dist:
   - acres>=0.5.0
   - indexed-gzip>=1.8.7
